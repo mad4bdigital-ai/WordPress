@@ -17,6 +17,9 @@ $GLOBALS['model_enabled'] = true;
 $GLOBALS['credentials'] = true;
 $GLOBALS['identity'] = true;
 $GLOBALS['ai_policy'] = 'ai_only';
+$GLOBALS['ai_policy_ready']=true;
+$GLOBALS['ai_exact_grant_ready']=true;
+$GLOBALS['ai_catalog_eligible']=true;
 function add_action($name, $callable) { $GLOBALS['wp_hooks'][$name] = $callable; }
 function current_user_can($cap) { return $GLOBALS['admin']; }
 function get_current_user_id() { return 11; }
@@ -32,6 +35,12 @@ class MAD4B_SCP_AI_Model_Router {
 class MAD4B_SCP_Local_Client { public static function bound() { return $GLOBALS['bound']; } }
 class MAD4B_SCP_Context_Authority {
     public static function review_policy() { return array('mode' => $GLOBALS['ai_policy']); }
+    public static function ai_review_policy_status() {
+        // Simulate exact, already-registered independent review grant only.
+        return array('mode'=>$GLOBALS['ai_policy'],'ready'=>$GLOBALS['ai_policy_ready'],
+            'exact_grant_ready'=>$GLOBALS['ai_exact_grant_ready'],
+            'catalog_eligible'=>$GLOBALS['ai_catalog_eligible']);
+    }
 }
 class MAD4B_SCP_AI_Only_Local_Activation {
     public static function status() { return array('identity_ready' => $GLOBALS['identity']); }
@@ -69,6 +78,13 @@ $GLOBALS['credentials'] = false;
 check('missing credential denied', !MAD4B_SCP_AI_Review_Worker::preflight()['ready']);
 $GLOBALS['credentials'] = true;
 check('fully enrolled local preflight', MAD4B_SCP_AI_Review_Worker::preflight()['ready']);
+foreach (array('ai_policy_ready','ai_exact_grant_ready','ai_catalog_eligible') as $gate) {
+    $GLOBALS[$gate]=false;
+    check('original authority gate denied when '.$gate.' missing',
+        !MAD4B_SCP_AI_Review_Worker::preflight()['ready']
+        && MAD4B_SCP_AI_Review_Worker::preflight()['publication_authorized']===false);
+    $GLOBALS[$gate]=true;
+}
 $GLOBALS['local_env']='staging';
 check('staging without scope rejected', !MAD4B_SCP_AI_Review_Worker::preflight()['ready']);
 $GLOBALS['crossenv_bound']=true;

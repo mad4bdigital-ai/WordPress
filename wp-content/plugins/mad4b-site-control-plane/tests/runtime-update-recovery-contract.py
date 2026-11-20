@@ -8,7 +8,12 @@ for fixture in ('runtime-update-recovery-runtime.php', 'dynamic-first-party-enro
                 'post-manual-update-guidance-runtime.php', 'plugin-operation-readiness-runtime.php',
                 'read-callback-boundary-runtime.php', 'gateway-regression-runtime.php',
                 'context-scan-completeness-runtime.php', 'drive-scan-continuation-runtime.php'):
-    subprocess.run(['php', '-n', str(root / 'tests' / fixture)], check=True)
+    # Drive scan already passes the original Readiness PHP execution lane.
+    # Use the same configured CLI environment for that exact hermetic case.
+    # Keep php -n for every other source-only fixture.
+    args = ['php', str(root / 'tests' / fixture)] if fixture == 'drive-scan-continuation-runtime.php' else [
+        'php', '-n', str(root / 'tests' / fixture)]
+    subprocess.run(args, check=True)
 parity = (root / 'includes/class-mad4b-scp-remote-operation-parity.php').read_text()
 enrollment_mount = parity.split('public static function enrollment_abilities()', 1)[1].split('public static function register_abilities()', 1)[0]
 assert 'array_keys( MAD4B_SCP_Governed_Ability_Census::eligible() )' in enrollment_mount
@@ -32,7 +37,12 @@ assert "$public['verification_guidance'] = self::connection_verification_guidanc
 read_consistency = (includes / 'class-mad4b-scp-read-consistency.php').read_text()
 assert "'wp_register_ability_args', array( 'MAD4B_SCP_Connector_Resilience', 'wrap_read_registration' ), 180, 2" in read_consistency
 abilities = (includes / 'class-mad4b-scp-abilities.php').read_text()
-assert "'prepare_execution' => array( 'type' => 'boolean', 'default' => true )" in abilities
+registration = (includes / 'trait-mad4b-scp-abilities-registration.php').read_text()
+assert "require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php';" in abilities
+assert "use MAD4B_SCP_Abilities_Registration_Trait;" in abilities
+assert "$this->register_source_abilities();" in abilities
+assert "trait MAD4B_SCP_Abilities_Registration_Trait" in registration
+assert "'prepare_execution' => array( 'type' => 'boolean', 'default' => true )" in registration
 assert "array_key_exists( 'prepare_execution', $input ) && false === $input['prepare_execution']" in abilities
 
 provider = (includes / 'class-mad4b-scp-context-provider-gateway.php').read_text()
@@ -43,3 +53,24 @@ assert handler.index('self::require_admin( self::ACTION_SCAN_SOURCE )') < handle
 assert 'source_scan_apply_admission' in handler
 authority = (includes / 'class-mad4b-scp-context-authority.php').read_text()
 assert "isset( $scan['expected_registry_revision'] ) && (int) $scan['expected_registry_revision'] !== self::registry_revision()" in authority
+
+
+# Same-PR Production Readiness evidence for the newly cataloged passive Brand
+# Core status ability. Source assertions are deliberately non-authorizing:
+# no fake owner approval, signed Host receipt, credential or release verdict.
+brand = (includes / 'class-mad4b-scp-brand-core-remote-recovery.php').read_text()
+assert "const STATUS_ABILITY = 'mad4b/brand-core-remote-recovery-status';" in brand
+assert "self::STATUS_ABILITY => array(" in brand
+status_registration = brand.split("self::STATUS_ABILITY => array(", 1)[1].split("self::ALTERNATIVES_ABILITY => array(", 1)[0]
+assert "'callback' => 'status'" in status_registration
+assert "'required' => array()" in status_registration
+assert "'category' => 'mad4b-read'" in brand
+assert "'permission_callback' => array( __CLASS__, 'can_read' )" in brand
+assert "'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true )" in brand
+status_function = brand.split("public static function status( $input = array() )", 1)[1].split("public static function prepare(", 1)[0]
+assert "if ( ! self::can_read() )" in status_function
+assert "'candidate_sha'" in status_function
+assert "'include_host_challenge'" in status_function
+assert "production_authorized" in status_function
+assert not any(x in status_function for x in ("wp_update_post(", "update_option(", "file_put_contents(", "$wpdb->query("))
+print("BRAND_CORE_REMOTE_RECOVERY_STATUS_IMPACT_CONTRACT_PASS: CI-only, no release authority")

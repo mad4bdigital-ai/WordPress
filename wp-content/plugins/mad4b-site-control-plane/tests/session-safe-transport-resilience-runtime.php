@@ -59,6 +59,21 @@ $sections = array( 'runtime' => array( 'checks' => array(
         'effective_skill_ready' => false, 'live_skill_ready' => null,
         'live_skill_evaluation_deferred' => true ) ),
 ) ) );
+// Negative control: a missing site/read identity MUST block diagnostics,
+// regardless of a deferred optional Skills validation.
+$identity_missing = $method->invoke( null, $sections, false, array(), array( 'environment' => 'staging' ) );
+require_contract( $identity_missing['state'] === 'BLOCKED'
+    && $identity_missing['readiness_lanes']['read'] === 'BLOCKED'
+    && in_array( 'read_identity_not_ready', $identity_missing['reasons'], true ),
+    'Missing runtime/read identity must remain fail closed even when Skills is deferred' );
+// Provide a complete, synthetic read identity. Skills remains unobserved; this
+// fixture does not impersonate an actual MCP transport or grant any write.
+$sections['identity']['checks'] = array(
+    'site_profile' => array( 'summary' => array( 'exact_profile_bound' => true ) ),
+    'build' => array( 'state' => 'ready' ),
+    'connection' => array( 'subject_ready' => true ),
+    'reconnect' => array( 'subject_ready' => true ),
+);
 $info = $method->invoke( null, $sections, false, array(), array( 'environment' => 'staging' ) );
 require_contract( $info['signals']['skills_runtime_ready'] === null &&
     $info['signals']['skills_candidate_checkpoint_ready'] === false &&
@@ -71,9 +86,11 @@ require_contract( $info['state'] === 'DEGRADED' &&
 $sections['runtime']['checks']['write_authority']['summary']['effective_authority_ready'] = false;
 $denied = $method->invoke( null, $sections, false,
     array( 'write_authority_not_effective' ), array( 'environment' => 'staging' ) );
-require_contract( $denied['state'] === 'BLOCKED' &&
-    $denied['signals']['write_authority_ready'] === false,
-    'Real stale Write Authority remains blocking despite deferred Skills' );
+require_contract( $denied['readiness_lanes']['write'] === 'BLOCKED'
+    && $denied['signals']['write_authority_ready'] === false
+    && $denied['readiness_lanes']['read'] === 'READY'
+    && $denied['state'] === 'DEGRADED',
+    'A stale write authority must block writes but not healthy authenticated reads' );
 // A WordPress-level Throwable in a generation snapshot must never terminate
 // an MCP client with a raw fatal, and cannot be counted as a ready identity.
 $snapshot = new ReflectionMethod( 'MAD4B_SCP_Read_Consistency', 'safe_read_snapshot' );

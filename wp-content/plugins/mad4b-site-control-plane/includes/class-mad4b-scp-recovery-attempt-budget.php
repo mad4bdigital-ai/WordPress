@@ -10,7 +10,7 @@ final class MAD4B_SCP_Recovery_Attempt_Budget {
     const CONTRACT = 'mad4b.recovery-attempt-budget.v1';
     const PREFIX = 'mad4b_scp_retry_slot_v1_';
     const LIMIT = 3;
-    const LANES = array( 'brand_draft_create', 'materialize_brand_draft', 'reconcile_brand_materialization' );
+    const LANES = array( 'brand_draft_create', 'brand_draft_append', 'materialize_brand_draft', 'reconcile_brand_materialization' );
 
     private static function error( $code, $message ) { return new WP_Error( $code, $message ); }
 
@@ -23,8 +23,8 @@ final class MAD4B_SCP_Recovery_Attempt_Budget {
         $source = isset( $input['source_id'] ) ? (string) $input['source_id'] : '';
         // An already created artifact has a unique identity regardless of
         // caller-selected source/plan: neither field may reset its budget.
-        if ( 'brand_draft_create' !== $lane ) { $source = ''; $plan = ''; $category = ''; }
-        if ( 'brand_draft_create' === $lane ) {
+        if ( ! in_array( $lane, array( 'brand_draft_create', 'brand_draft_append' ), true ) ) { $source = ''; $plan = ''; $category = ''; }
+        if ( in_array( $lane, array( 'brand_draft_create', 'brand_draft_append' ), true ) ) {
             if ( ! in_array( $category, array( 'tone_of_voice', 'editorial_guidelines' ), true ) || ! preg_match( '/^[a-f0-9]{64}$/', $plan ) )
                 return self::error( 'mad4b_retry_binding_missing', 'Draft retry requires exact category and source plan fingerprint.' );
         } elseif ( ! preg_match( '/^[a-f0-9-]{36}$/i', $artifact ) ) {
@@ -34,11 +34,21 @@ final class MAD4B_SCP_Recovery_Attempt_Budget {
         $environment = class_exists( 'MAD4B_SCP_Environment' ) ? (string) MAD4B_SCP_Environment::effective()
             : ( function_exists( 'wp_get_environment_type' ) ? (string) wp_get_environment_type() : '' );
         if ( '' === $site || '' === $environment ) return self::error( 'mad4b_retry_site_identity_unavailable', 'Site and environment identity are required for persistent retries.' );
-        return hash( 'sha256', wp_json_encode( array(
+        $basis_data = array(
             'contract' => self::CONTRACT, 'site' => $site, 'environment' => $environment,
             'lane' => $lane, 'category' => $category, 'source' => $source,
             'artifact' => $artifact, 'expected_plan_sha256' => $plan,
-        ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+        );
+        if ( 'brand_draft_append' === $lane ) {
+            $preflight = (string) ( $input['draft_preflight_sha256'] ?? '' );
+            $evidence = (string) ( $input['evidence_digest'] ?? '' );
+            if ( ! preg_match( '/^[a-f0-9]{64}$/D', $preflight )
+                || ! preg_match( '/^[a-f0-9]{64}$/D', $evidence ) )
+                return self::error( 'mad4b_retry_binding_missing', 'Append retry requires exact preflight and evidence fingerprints.' );
+            $basis_data['draft_preflight_sha256'] = $preflight;
+            $basis_data['evidence_digest'] = $evidence;
+        }
+        return hash( 'sha256', wp_json_encode( $basis_data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
     }
 
     private static function key( $hash, $ordinal ) { return self::PREFIX . $hash . '_' . (int) $ordinal; }
@@ -126,7 +136,14 @@ final class MAD4B_SCP_Recovery_Attempt_Budget {
         $status = self::status( $lane, $input );
         if ( is_wp_error( $status ) ) return $status;
         if ( 'pending' === $status['last_outcome'] )
-            return self::error( 'mad4b_retry_reset_in_flight', 'Do not reset while the remote write outcome is unknown; complete independent reconciliation first.' );
+            return self::error( 'mad4b_retry_reset_in_flight', 'Do not reset while the original write is in flight.' );
+        // A confirmed admin click or journal checksum is not proof of the
+        // original provider postcondition. An uncertain or successful effect
+        // must be reconciled by the native durable owner before a fresh write;
+        // this retry-budget module cannot verify or manufacture that proof.
+        if ( ! in_array( $status['last_outcome'], array( 'none', 'failed' ), true ) )
+            return self::error( 'mad4b_retry_reset_independent_reconciliation_required',
+                'Unknown or successful original write cannot be reset without independently verified postcondition.' );
         if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', (string) $expected_journal_sha256 ) ||
             ! hash_equals( $status['journal_sha256'], (string) $expected_journal_sha256 ) )
             return self::error( 'mad4b_retry_reset_stale', 'Retry journal changed; refresh exact state before reset.' );

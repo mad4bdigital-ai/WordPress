@@ -98,41 +98,82 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			'context/source-scan-apply' => 'google_drive_context',
 		);
 
-		// Feature 007 Staging reconciliation review (38 exact ability/provider
-		// pairs).  These were already in the runtime-eligible governed Write
-		// inventory, but omitted from this grant-reconciliation source policy.
-		// This is NOT wildcard authority or a grant: the separate reconciliation
-		// execution still demands exact Site Profile, immutable provenance,
-		// explicit 95-ability plan, one-time approval, audit and rollback.
-		// Never include these wider administrative operations on Production.
+		// Review the original Staging-specific support/diagnostic lanes.
+		// Ordinary source-owned company operations are promoted separately
+		// to exact Staging + Production provider parity below. Those are
+		// grant eligibility ONLY, never issued grants or runtime authority.
+		// Scratch recovery, unverified self-certified installs, CI-outage
+		// attestations and source-bound Staging probes remain environment-limited
+		// until their own independent production-safe contracts are certified.
 		if ( 'staging' === self::current_environment() ) {
 			$staging_reviewed = array(
-				// Enrolled Staging-only Media Library transfer has separate
-				// mad4b_attachment_transfer capability, upload_files and mutation
-				// kill-switch gates. An exact NHI grant never bypasses them.
-				'mad4b/attachment-transfer' => 'core',
-				// Only the exact reversible JetSmartFilters metadata writer.
-				// Its behavioral certificate makes it inventory-eligible, but a
-				// grant is never issued without a fresh source/profile/inventory
-				// bound plan, separate owner approval, one-time claim and audit.
-				'jetsmartfilters/update-filter-meta' => 'jetsmartfilters',
-				// WordPress-native candidate opt-in is an exact owner-approved
-				// administrative toggle, never a blanket wp_options update.
+                // Only the original Staging-specific facilities remain here.
+                // Their own callbacks enforce separate scratch/CI/source
+                // identity or self-certified-install boundaries. Ordinary
+                // company operations live in the reviewed shared map below.
+				'mad4b/acceptance-target-provision' => 'core',
+				'mad4b/business-activity-wpai-observation-arm' => 'core',
+				'mad4b/control-plane-selected-head-apply' => 'core',
+				'mad4b/deployment-binding-setup-apply' => 'core',
+				'mad4b/fleet-intake-auto' => 'core',
+				'mad4b/fleet-intake-plan' => 'core',
+				'mad4b/fleet-intake-save' => 'core',
+				'mad4b/hub-source-sync-request' => 'core',
+				'mad4b/native-recovery-cleanup' => 'core',
+				'mad4b/native-recovery-start' => 'core',
+				'mad4b/provider-connection-refresh' => 'core',
+				'mad4b/runtime-release-set-apply' => 'core',
+				'mad4b/staging-offline-attestor-enroll-apply' => 'core',
 				'mad4b/wordpress-native-candidate-opt-in-apply' => 'core',
-				// Build-only scheduling and self-certified install are distinct, exact
-				// Staging abilities. Grant eligibility never starts a build or install:
-				// each requires its own owner OAuth step-up, one-time approval,
-				// exact plan, execution claim and audited postconditions.
 				'mad4b/wp-native-build-start' => 'core',
 				'mad4b/wp-native-self-approve-install' => 'core',
-				// One reviewed, ticketed token-refresh operation for the enrolled
-				// Staging grant. Other provider adapters are discovery-only until
-				// separately certified and explicitly allowlisted.
-				'mad4b/provider-connection-refresh' => 'core',
+			);
+			// Only a registered, exact central Staging diagnostic may receive a
+			// separately approved core grant. General Hub enqueue remains forbidden.
+			if ( class_exists( 'MAD4B_Hub_Queue_Site_Health_Enqueue' )
+				&& function_exists( 'wp_has_ability' )
+				&& wp_has_ability( MAD4B_Hub_Queue_Site_Health_Enqueue::ABILITY )
+				&& MAD4B_Hub_Queue_Site_Health_Enqueue::site_enrolled() ) {
+				$staging_reviewed[ MAD4B_Hub_Queue_Site_Health_Enqueue::ABILITY ] = 'core';
+			}
+			// Exact central Staging Universal VPS enqueue. This is narrowly
+			// grant-ELIGIBILITY only: the registered contract dispatcher,
+			// WordPress Ability callback, one-time grant reconciliation and
+			// all original authorization checks remain independently required.
+			// No other site/environment inherits this reviewed ability.
+			if ( class_exists( 'MAD4B_Hub_Universal_VPS_V1' )
+				&& function_exists( 'wp_has_ability' )
+				&& MAD4B_Hub_Universal_VPS_V1::scoped()
+				&& wp_has_ability( 'mad4b/hub-universal-vps-enqueue' ) ) {
+				$staging_reviewed['mad4b/hub-universal-vps-enqueue'] = 'core';
+			}
+			foreach ( $staging_reviewed as $ability => $provider ) {
+				$allowed[ $ability ] = $provider;
+			}
+		}
+
+		// Environment-neutral provider eligibility for a fixed, source-reviewed
+		// set of abilities. Site Profile, active provider mount, exact company
+		// grant and one-time owner authorization still determine execution.
+		// This list does not mint grants or enable the Production write feature;
+		// 'production_write_confirmed' is enforced by Site Profile independently.
+		// Never turn a discovered third-party Ability into approved authority.
+		if ( in_array( self::current_environment(), array( 'staging', 'production' ), true ) ) {
+			$shared_reviewed = array(
+				// Original media transfer and operator advisory mutations now enforce
+				// exact site-bound Production write confirmation in their own
+				// callbacks. Eligibility never issues a transfer or a grant.
+				'mad4b/attachment-transfer' => 'core',
+				'mad4b/optional-governance-apply' => 'core',
+				// Source-reviewed company operations: the provider is the same
+				// on enrolled Staging and Production. No ability is added by
+				// third-party runtime discovery. Production still requires its
+				// explicit Site Profile write confirmation and exact grant.
 				'context/brand-profile-save' => 'google_drive_context',
 				'context/governed-source-upsert' => 'google_drive_context',
 				'context/remote-owner-review-apply' => 'google_drive_context',
-				'mad4b/acceptance-target-provision' => 'core',
+				'jetsmartfilters/update-filter-meta' => 'jetsmartfilters',
+				'mad4b/artifact-append' => 'core',
 				'mad4b/business-activity-import-approve' => 'core',
 				'mad4b/business-activity-import-batch-append' => 'core',
 				'mad4b/business-activity-import-batch-approve' => 'core',
@@ -145,7 +186,6 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				'mad4b/business-activity-sync-cancel' => 'core',
 				'mad4b/business-activity-sync-finalize-reconciled' => 'core',
 				'mad4b/business-activity-sync-recover' => 'core',
-				'mad4b/business-activity-wpai-observation-arm' => 'core',
 				'mad4b/content-delete-meta' => 'core',
 				'mad4b/content-experience-profile-apply' => 'core',
 				'mad4b/content-experience-profile-clone-apply' => 'core',
@@ -153,34 +193,51 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				'mad4b/content-import-bundle' => 'core',
 				'mad4b/content-set-meta' => 'core',
 				'mad4b/content-trash-post' => 'core',
-				'mad4b/control-plane-selected-head-apply' => 'core',
-				// PR #423: the registered Optional Governance Apply is covered by
-				// canonical one-time ticket admission; this is an exact Staging
-				// provider pair, never a new generic/Wildcard grant.
-				'mad4b/optional-governance-apply' => 'core',
 				'mad4b/deployment-binding-native-apply' => 'core',
-				'mad4b/deployment-binding-setup-apply' => 'core',
 				'mad4b/host-operation-apply' => 'core',
 				'mad4b/market-growth-policy-update' => 'core',
-				'mad4b/native-recovery-cleanup' => 'core',
-				'mad4b/native-recovery-start' => 'core',
-				'mad4b/runtime-release-set-apply' => 'core',
-				'mad4b/staging-offline-attestor-enroll-apply' => 'core',
+				'mad4b/page-r1-create-apply' => 'core',
+				'mad4b/page-r1-publish-apply' => 'core',
+				'mad4b/page-r1-update-apply' => 'core',
+				'mad4b/post-r1-create-apply' => 'core',
+				'mad4b/post-r1-publish-apply' => 'core',
+				'mad4b/post-r1-update-apply' => 'core',
+				'mad4b/properties-r1-create-apply' => 'core',
+				'mad4b/properties-r1-publish-apply' => 'core',
+				'mad4b/properties-r1-update-apply' => 'core',
 				'mad4b/taxonomy-update-term' => 'core',
-				'mad4b/translation-link-posts' => 'core',
-				'mad4b/translation-set-post-language' => 'core',
+				'mad4b/tours-and-activities-r1-create-apply' => 'core',
+				'mad4b/tours-and-activities-r1-publish-apply' => 'core',
+				'mad4b/tours-and-activities-r1-update-apply' => 'core',
+				'mad4b/tours-and-activities-r2-create-apply' => 'core',
+				'mad4b/tours-and-activities-r2-publish-apply' => 'core',
+				'mad4b/tours-and-activities-r2-update-apply' => 'core',
+				'mad4b/transportations-r1-create-apply' => 'core',
+				'mad4b/transportations-r1-publish-apply' => 'core',
+				'mad4b/transportations-r1-update-apply' => 'core',
 				'media/import-external' => 'media',
 				'media/remote-import-apply' => 'media',
+				'context/native-owner-transfer-apply' => 'google_drive_context',
+				'mad4b/approval-plan' => 'core',
+				'mad4b/content-job-cancel' => 'core',
+				'mad4b/content-job-create' => 'core',
+				'mad4b/content-job-transition' => 'core',
+				'mad4b/content-update-post' => 'core',
+				'mad4b/data-processing-record-decision' => 'core',
+				'mad4b/database-update' => 'core',
+				'mad4b/draft-apply' => 'core',
+				'mad4b/filesystem-patch' => 'core',
+				'mad4b/filesystem-write' => 'core',
+				'mad4b/intent-registry-reconcile' => 'core',
+				'mad4b/mutation-undo' => 'core',
+				'mad4b/plugin-activate' => 'core',
+				'mad4b/plugin-deactivate' => 'core',
+				'mad4b/provider-canary-execute' => 'core',
+				// Translation Bridge has a distinct provider, not the core.
+				'mad4b/translation-link-posts' => 'translation',
+				'mad4b/translation-set-post-language' => 'translation',
 			);
-			// Only a registered, exact central Staging diagnostic may receive a
-			// separately approved core grant. General Hub enqueue remains forbidden.
-			if ( class_exists( 'MAD4B_Hub_Queue_Site_Health_Enqueue' )
-				&& function_exists( 'wp_has_ability' )
-				&& wp_has_ability( MAD4B_Hub_Queue_Site_Health_Enqueue::ABILITY )
-				&& MAD4B_Hub_Queue_Site_Health_Enqueue::site_enrolled() ) {
-				$staging_reviewed[ MAD4B_Hub_Queue_Site_Health_Enqueue::ABILITY ] = 'core';
-			}
-			foreach ( $staging_reviewed as $ability => $provider ) {
+			foreach ( $shared_reviewed as $ability => $provider ) {
 				$allowed[ $ability ] = $provider;
 			}
 		}
@@ -546,11 +603,19 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 		$identity = MAD4B_SCP_Identity_Context::current();
 		if ( is_wp_error( $identity ) ) return $identity;
 		if ( empty( $identity['authenticated'] ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) ) return new WP_Error( 'mad4b_grant_reconcile_oauth_identity_required', 'Verified OAuth bearer governance identity is required.' );
-		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
-		if ( is_wp_error( $agent ) ) return $agent;
+		$resolved = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
+		if ( is_wp_error( $resolved ) ) return $resolved;
 		$environment = self::current_environment();
-		if ( 'chatgpt-governed-write' !== (string) $agent['slug'] || 'enabled' !== (string) $agent['status'] || $environment !== (string) $agent['environment'] ) return new WP_Error( 'mad4b_grant_reconcile_agent_invalid', 'Resolved governance identity is not the canonical enabled current-environment write agent.' );
-		if ( (int) $agent['wp_user_id'] !== get_current_user_id() ) return new WP_Error( 'mad4b_grant_reconcile_agent_user_mismatch', 'Resolved governed-write agent belongs to another WordPress user.' );
+		$agent = MAD4B_SCP_Agent_Registry::get_agent_by_slug( 'chatgpt-governed-write' );
+		if ( ! is_array( $agent ) || 'enabled' !== (string) ( $agent['status'] ?? '' )
+			|| $environment !== (string) ( $agent['environment'] ?? '' )
+			|| (int) ( $agent['wp_user_id'] ?? 0 ) !== get_current_user_id() )
+			return new WP_Error( 'mad4b_grant_reconcile_agent_invalid', 'Canonical enrolled write Agent not eligible.' );
+		$same_agent = is_array( $resolved ) && (int) ( $resolved['id'] ?? 0 ) === (int) $agent['id'];
+		$delegated = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+			&& MAD4B_SCP_Staging_Write_Authority::is_exact_delegated_oauth_agent( $resolved, get_current_user_id() );
+		if ( ! $same_agent && ! $delegated )
+			return new WP_Error( 'mad4b_grant_reconcile_subject_agent_mismatch', 'Authenticated OAuth identity is not an exact enrolled owner/delegate.' );
 		return $agent;
 	}
 

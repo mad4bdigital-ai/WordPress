@@ -3,6 +3,7 @@
 define('ABSPATH',__DIR__.'/');
 define('DAY_IN_SECONDS',86400);
 $GLOBALS['env']='local'; $GLOBALS['admin']=true; $GLOBALS['site']=true;
+$GLOBALS['prod_verified']=false;
 $GLOBALS['options']=['icl_sitepress_settings'=>[]];
 $GLOBALS['writes']=[]; $GLOBALS['terms_created']=0; $GLOBALS['http_requests']=0;
 function wp_get_environment_type(){return $GLOBALS['env'];}
@@ -26,7 +27,12 @@ function wp_schedule_event($time,$frequency,$hook){return true;}
 function is_wp_error($v){return $v instanceof WP_Error;}
 class WP_Error {private $code;function __construct($c,$message=''){$this->code=$c;}function get_error_code(){return $this->code;}}
 class MAD4B_SCP_Site_Profile {
- static function status(){return ['configured'=>$GLOBALS['site'],'wordpress_profile_mismatch'=>false];}
+ static function status(){
+  $bound=$GLOBALS['site'] && ($GLOBALS['env']!=='production'||$GLOBALS['prod_verified']);
+  return ['configured'=>$bound,'authority_ready'=>$bound,
+   'origin_match'=>$bound,'deployment_binding_match'=>$bound,
+   'wordpress_profile_mismatch'=>false];
+ }
  static function profile(){return ['site_uuid'=>'123e4567-e89b-12d3-a456-426614174000','environment'=>$GLOBALS['env']];}
 }
 class MAD4B_SCP_Google_Drive_Context {static function connection_status(){return ['health_state'=>'disconnected'];}}

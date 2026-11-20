@@ -334,7 +334,12 @@ for marker in (
     "MAD4B_SCP_Authorization::native_binding_callback_is_claimed( $input )",
     "MAD4B_SCP_Site_Profile::commit_record_with_audit(",
     "MAD4B_SCP_Site_Profile_Enrollment::can_execute(",
-    "'staging' !== ( $site['configured_environment'] ?? '' )",
+    # Staging-only hard-coding was superseded by Profile/WordPress/stored
+    # environment equality and independently authorized Production policy.
+    # Every environment identity must be present and exactly enrolled.
+    "'' === (string) ( $site['configured_environment'] ?? '' )",
+    "(string) ( $site['configured_environment'] ?? '' ) !== (string) ( $site['wordpress_environment'] ?? '' )",
+    "(string) ( $site['configured_environment'] ?? '' ) !== (string) ( $stored['environment'] ?? '' )",
     "'production_authorized' => false",
     "'independent_host_attestation_certified' => false",
     "function private_location(",

@@ -2,7 +2,7 @@ import importlib.util
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 script = Path(__file__).resolve().parents[1] / "mad4b_ci_latest_head_reaper.py"
 spec = importlib.util.spec_from_file_location("reaper", script)
@@ -20,6 +20,44 @@ def item(run_id, sha, pr=407, event="pull_request", branch="feature", state="que
 
 
 class LatestHeadReaperTests(unittest.TestCase):
+    def test_partial_get_is_retried_and_returns_complete_json(self):
+        import http.client
+        response = MagicMock()
+        response.__enter__.return_value.read.side_effect = [
+            http.client.IncompleteRead(b'', 65536),
+            b'{"total_count": 1, "workflow_runs": []}',
+        ]
+        with patch.object(reaper.urllib.request, "urlopen", return_value=response) as request, \
+             patch.object(reaper.time, "sleep") as sleep:
+            result = reaper.api("GET", "mad4bdigital-ai/WordPress", "/actions/runs", "test")
+        self.assertEqual(result, {"total_count": 1, "workflow_runs": []})
+        self.assertEqual(request.call_count, 2)
+        sleep.assert_called_once()
+
+    def test_exhausted_partial_get_stays_failed_closed(self):
+        import http.client
+        response = MagicMock()
+        response.__enter__.return_value.read.side_effect = [
+            http.client.IncompleteRead(b'', 65536) for _ in range(3)
+        ]
+        with patch.object(reaper.urllib.request, "urlopen", return_value=response) as request, \
+             patch.object(reaper.time, "sleep") as sleep:
+            with self.assertRaises(http.client.IncompleteRead):
+                reaper.api("GET", "mad4bdigital-ai/WordPress", "/actions/runs", "test")
+        self.assertEqual(request.call_count, 3)
+        self.assertEqual(sleep.call_count, 2)
+
+    def test_post_cancel_is_never_replayed_after_incomplete_read(self):
+        import http.client
+        response = MagicMock()
+        response.__enter__.return_value.read.side_effect = http.client.IncompleteRead(b'', 1)
+        with patch.object(reaper.urllib.request, "urlopen", return_value=response) as request, \
+             patch.object(reaper.time, "sleep") as sleep:
+            with self.assertRaises(http.client.IncompleteRead):
+                reaper.api("POST", "mad4bdigital-ai/WordPress", "/actions/runs/9/cancel", "test")
+        request.assert_called_once()
+        sleep.assert_not_called()
+
     def test_only_stale_same_pr_is_candidate(self):
         assert reaper.candidate(item(10, "old"), number=407, sha="new", branch="feature")
         for row in [

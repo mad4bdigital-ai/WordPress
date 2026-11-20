@@ -1,0 +1,22 @@
+{
+  "central_job_readback_current_sha256": "81fca113099a1e491127b8e301d5371f5c87130a12bcd4c6427e22406fd52d0b",
+  "contract": "mad4b.original313-sibling-source-reconciliation.v1",
+  "control_plane_current_blob_sha1": "35690d991908568219d0a439cd5e2042f7b6f188",
+  "control_plane_current_sha256": "4b70ca42120f6dc5842b139cebe253d66503977d2b2d3921feb82164808caa3b",
+  "current_readback_central_company_prod_scope_preserved": true,
+  "first_party_provider_registered": false,
+  "governed_bootstrap_unchanged_commit": "46c0c77b937b6d14b3e5fc9f1df35f1a8654368f",
+  "historical_238_git_commit": "a3164cb61d46d7e8347326dd5e3279de15d794fd",
+  "historical_69_git_commit": "31badd1e350c033dcd6f274d031c80d295bbbdf9",
+  "historical_cache_module_updated_after_238_source_capture": true,
+  "historical_postimage_drift_errors": 14,
+  "historical_postimage_errors_preexist_in_source_v27": true,
+  "historical_readback_source_untouched": true,
+  "historical_tool_current_runtime_authority": false,
+  "live_mutation_performed": false,
+  "native_v27_foundation_commit": "21dcebbc94c046e1c6c3f03dfe05b09a80fbbb64",
+  "original312_313_signed_receipts_verified": false,
+  "original_sibling_commit": "05b6a111090a3ce473b876e7e0c155155da31cb3",
+  "production_write_authorized": false,
+  "release_state": "HOLD__ORIGINAL313_CURRENT_SIGNED_POSTIMAGE_REQUIRES_INDEPENDENT_READBACK"
+}

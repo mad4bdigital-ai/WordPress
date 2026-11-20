@@ -1,0 +1,99 @@
+/* Pricing Lab Quote Testing — embeds the ORIGINAL MAD4B diagnostic forms.
+   Only a display shell; no pricing authority or native form behavior changes. */
+.mad4b-pricing-lab-page .mad4b-lab-quotes{
+  box-sizing:border-box;
+  max-width:100%;
+  min-width:0;
+  border:1px solid #d3e4da;
+  border-radius:12px;
+  background:#f9fcfa;
+  margin:24px 0;
+  overflow:hidden;
+  box-shadow:0 3px 14px rgba(29,77,55,.05);
+}
+.mad4b-lab-quotes-header{
+  display:flex;justify-content:space-between;align-items:flex-start;
+  flex-wrap:wrap;gap:15px;background:#fff;border-bottom:1px solid #dcebe1;
+  padding:21px 24px;
+}
+.mad4b-lab-quotes-eyebrow{
+  margin:0 0 5px;font-size:10px;letter-spacing:.09em;
+  text-transform:uppercase;color:#3e8063;font-weight:750;
+}
+.mad4b-lab-quotes-header h2{font-size:21px;line-height:1.3;color:#225742;margin:0 0 8px}
+.mad4b-lab-quotes-header p:not(.mad4b-lab-quotes-eyebrow){
+  color:#5b7768;font-size:12px;line-height:1.55;margin:0;max-width:76ch;
+}
+.mad4b-lab-quotes-label{
+  font-size:11px;font-weight:700;color:#287558;
+  border:1px solid #b9dbca;background:#eff8f2;
+  border-radius:20px;white-space:nowrap;padding:7px 12px
+}
+.mad4b-lab-quotes [role=tablist]{
+  padding:12px 20px 0;display:flex;flex-wrap:wrap;gap:8px;
+  border-bottom:1px solid #dcebe1;background:#f8fbf9;
+}
+.mad4b-lab-quotes [role=tab]{
+  cursor:pointer;font:inherit;font-size:13px;font-weight:700;
+  border:1px solid transparent;border-bottom:0;border-radius:8px 8px 0 0;
+  background:transparent;color:#517765;padding:11px 19px;min-height:42px;
+}
+.mad4b-lab-quotes [role=tab]:hover{background:#eaf4ed;color:#1d6248}
+.mad4b-lab-quotes [role=tab][aria-selected=true]{
+  background:#fff;color:#17664b;border-color:#c6dfd1;
+  box-shadow:inset 0 3px #2b8960;
+}
+.mad4b-lab-quotes [role=tab]:focus-visible{outline:3px solid #91c6ad;outline-offset:2px}
+.mad4b-lab-quotes-panel{min-width:0;padding:18px 20px 22px;background:#fff}
+.mad4b-lab-quotes-panel[hidden]{display:none!important}
+.mad4b-lab-quotes-panel #etg-quote-preview,
+.mad4b-lab-quotes-panel #shared-lab-stay-preview{
+  margin:0!important;padding:0!important;width:100%!important;
+  max-width:none!important;box-sizing:border-box;
+  background:transparent!important;border:0!important;
+}
+.mad4b-lab-quotes-panel #etg-quote-preview h2,
+.mad4b-lab-quotes-panel #shared-lab-stay-preview h2{
+  font-size:16px;color:#245b45;margin:0 0 9px
+}
+.mad4b-lab-quotes-panel #etg-quote-preview .etg-quote-fields{
+  grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;
+}
+.mad4b-lab-quotes-panel #shared-lab-stay-form>div{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+}
+.mad4b-lab-quotes-panel :is(input,select){
+  min-width:0;max-width:100%;box-sizing:border-box;
+  border-color:#cbded1;border-radius:7px;min-height:36px;
+}
+.mad4b-lab-quotes-panel label{color:#315b48;font-size:12px}
+.mad4b-lab-quotes-panel button[type=submit]{
+  background:#176c50;border-color:#176c50;border-radius:7px;
+  min-height:37px;font-weight:650
+}
+.mad4b-lab-quotes-panel :is(button,input,select):focus-visible{
+  outline:2px solid #70b18a;outline-offset:2px
+}
+.mad4b-lab-quotes-panel #etg-quote-preview-output,
+.mad4b-lab-quotes-panel #shared-lab-stay-result{
+  background:#f6fbf8;border:1px solid #dbeade;
+  border-radius:8px;padding:14px;margin-top:15px;
+  max-width:100%;overflow-wrap:anywhere;overflow-x:auto;
+}
+.mad4b-lab-quotes-panel table{max-width:100%;overflow-wrap:anywhere}
+@media(max-width:900px){
+  .mad4b-lab-quotes-panel #etg-quote-preview .etg-quote-fields,
+  .mad4b-lab-quotes-panel #shared-lab-stay-form>div{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
+@media(max-width:600px){
+  .mad4b-lab-quotes-header{padding:16px}
+  .mad4b-lab-quotes-panel{padding:12px}
+  .mad4b-lab-quotes [role=tablist]{padding:8px 10px 0}
+  .mad4b-lab-quotes [role=tab]{padding:10px 11px;font-size:12px}
+  .mad4b-lab-quotes-panel #etg-quote-preview .etg-quote-fields,
+  .mad4b-lab-quotes-panel #shared-lab-stay-form>div{
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+}

@@ -189,27 +189,27 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 	}
 
 	public static function enqueue_assets() {
-		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
+		if ( ! is_admin() || true !== current_user_can( 'manage_options' ) ) return;
 		$page = isset( $_GET['page'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'page' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- page-scoped read-only selection.
 		if ( self::PAGE_SLUG !== $page ) return;
 		wp_enqueue_script(
 			'mad4b-scp-chatgpt-connection',
 			plugins_url( 'assets/chatgpt-connection.js', MAD4B_SCP_FILE ),
 			array(),
-			MAD4B_SCP_VERSION,
+            MAD4B_SCP_VERSION.'-'.(string)(filemtime(MAD4B_SCP_DIR.'assets/chatgpt-connection.js')?:0),
 			true
 		);
 	}
 
 	public static function render_page() {
-		if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Administrator capability required.' );
+		if ( true !== current_user_can( 'manage_options' ) ) wp_die( 'Administrator capability required.' );
 		require_once __DIR__ . '/class-mad4b-scp-deferred-admin-reports.php';
 		MAD4B_SCP_Deferred_Admin_Reports::render( 'chatgpt' );
 	}
 
 	/** Explicit authenticated report; never run during initial page rendering. */
 	public static function render_checked_page() {
-		if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Administrator capability is required to inspect ChatGPT connection settings.', 'mad4b-site-control-plane' ) );
+		if ( true !== current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Administrator capability is required to inspect ChatGPT connection settings.', 'mad4b-site-control-plane' ) );
 		$status = self::status();
 		$site_name = wp_strip_all_tags( get_bloginfo( 'name' ) );
 		$name = '' !== $site_name ? 'MAD4B WordPress — ' . $site_name : 'MAD4B WordPress';
@@ -241,12 +241,13 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 					?></strong>
 					<?php echo esc_html__( ' Portable mode is read-only. An exact enrolled Production Site Profile with explicit Production write confirmation may bootstrap governed OAuth directly; every Production write remains bound to exact grants and a one-time approval. Developer and Breakglass remain unavailable.', 'mad4b-site-control-plane' ); ?>
 				</p></div>
+                <div id="mad4b-chatgpt-production-readonly-panel">
 				<?php if ( $production_profile_write ) : ?>
 					<p><strong><?php echo esc_html__( 'Exact Production Site Profile write intent is active.', 'mad4b-site-control-plane' ); ?></strong> <?php echo esc_html__( 'This does not certify runtime write authority. Every Production mutation still requires exact grants, candidate/runtime gates and a one-time approval; Developer and Breakglass remain unavailable.', 'mad4b-site-control-plane' ); ?></p>
 				<?php elseif ( ! empty( $status['production_readonly_auto_enabled'] ) ) : ?>
 					<p><strong><?php echo esc_html__( 'Portable read-only auto-connect is active for this site.', 'mad4b-site-control-plane' ); ?></strong> <?php echo esc_html__( 'Write authority remains disabled until an exact Production Site Profile explicitly enables governed writes.', 'mad4b-site-control-plane' ); ?></p>
 				<?php else : ?>
-					<form class="mad4b-settings-ajax-form" data-mad4b-refresh-selector=".wrap" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin:14px 0 20px">
+					<form class="mad4b-settings-ajax-form" data-mad4b-refresh-selector="#mad4b-chatgpt-production-readonly-panel" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin:14px 0 20px">
 						<?php wp_nonce_field( 'mad4b_production_readonly_oauth' ); ?>
 						<input type="hidden" name="action" value="<?php echo esc_attr( ! empty( $status['production_readonly_enabled'] ) ? 'mad4b_disable_production_readonly_oauth' : 'mad4b_enable_production_readonly_oauth' ); ?>">
 						<div class="mad4b-settings-feedback" data-mad4b-settings-feedback aria-live="polite"></div>
@@ -255,6 +256,7 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 						</button>
 					</form>
 				<?php endif; ?>
+                </div>
 			<?php endif; ?>
 
 			<div class="notice notice-<?php echo ! empty( $status['ready_for_chatgpt_draft'] ) ? 'success' : 'warning'; ?> inline"><p>

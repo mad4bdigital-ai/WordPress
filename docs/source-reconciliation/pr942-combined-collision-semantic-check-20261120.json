@@ -1,0 +1,155 @@
+{
+  "behavioral_harnesses": [
+    "tours-dev-provider-field-read-parity-runtime.php",
+    "tours-dev-live-source-skills-parity-runtime.php",
+    "tours-dev-live-catalog-read-runtime.php",
+    "external-skill-sources-runtime.php",
+    "external-skill-source-provider-runtime.php",
+    "admin-route-registry-runtime.php",
+    "admin-surface-coverage-runtime.php",
+    "tours-dev-chatbotx-site-neutral-runtime.php",
+    "skill-task-abilities-runtime.php",
+    "integration-pr415-pr416-pr420-pr421-contract.py",
+    "site-neutrality-contract.py",
+    "admin-route-registry-contract.py",
+    "skill-runtime-certification-contract.py",
+    "tools/readiness_test_execution.py self-test"
+  ],
+  "combined_collision_count": 11,
+  "contract": "mad4b.pr942-combined-collision-semantic-source-check.non-authorizing.v1",
+  "guarded_source_contract_check": "passed",
+  "historical_refs": {
+    "pr882": "65bb2791f7b46c5887f3e814feb8b48604a3e0ae",
+    "pr920": "e1b8c8aa83fd72bea87cfe6511f8200b57420b12",
+    "pr942": "ed7ae0508cd927aa89294e56840d468f9ea8233e",
+    "pr964": "9f610f0abc56f4d0cbe4249036f338acd6e46167"
+  },
+  "merge_authorized": false,
+  "original_conflict_count": 57,
+  "per_path": [
+    {
+      "human_functional_signoff": false,
+      "path": ".github/workflows/country-nationality-switchers.yml",
+      "risk_axis": "browser-compat",
+      "runtime_acceptance": "pending_exact_company_staging",
+      "sha_followup_964": "5d7fbbdcf74539098ea3a0ed6808cd76fcacf130",
+      "sha_pr882": "81318b2bcc25cea639bdeb7bd1b883d7e8fe1ea7",
+      "sha_pr920": "d65ce1a0e19382f0f774af0bfd1399f00b426499",
+      "sha_pr942": "5d7fbbdcf74539098ea3a0ed6808cd76fcacf130",
+      "verified_source_expectation": "Actual Playwright image and browser assertions remain"
+    },
+    {
+      "human_functional_signoff": false,
+      "path": ".github/workflows/mad4b-local-oauth-standalone.yml",
+      "risk_axis": "oauth-browser",
+      "runtime_acceptance": "pending_exact_company_staging",
+      "sha_followup_964": "86cded8b695b7ed22f5959f2b1e2996bf58a68d7",
+      "sha_pr882": "f14ac4496aaa1acc6070b1bbe68afc89f16bec74",
+      "sha_pr920": "f149de6874b75482f1d1e29ef5465ecce4c7fb0d",
+      "sha_pr942": "86cded8b695b7ed22f5959f2b1e2996bf58a68d7",
+      "verified_source_expectation": "Pinned Chromium install does not remove browser test"
+    },
+    {
+      "human_functional_signoff": false,
+      "path": "governance/production-readiness/capability-coverage.json",
+      "risk_axis": "governance",
+      "runtime_acceptance": "pending_exact_company_staging",
+      "sha_followup_964": "191e7a4a4bfe3b37e7088b6bc279e2849441ee54",
+      "sha_pr882": "594747ab9a60fc750d27b986c307846e1d157d15",
+      "sha_pr920": "e43d761abf363afcbc81f0749dd7e36ecb67e33f",
+      "sha_pr942": "606a9ecce141d0590b23bcd71851ceead76a5693",
+      "verified_source_expectation": "Review entries remain CI only, not authorizing"
+    },
+    {
+      "human_functional_signoff": false,
+      "path": "specs/007-content-intelligence-workflow-platform/post-merge-capability-fabric-closure.json",
+      "risk_axis": "traceability",
+      "runtime_acceptance": "pending_exact_company_staging",
+      "sha_followup_964": "a2f651f6785fd5befc549bd30785328ad9465145",
+      "sha_pr882": "2c1ec9d4472c9d0e621bcdfd9e84168241926b42",
+      "sha_pr920": "842c195d9222df61027d9a41aa04f037bee834ba",
+      "sha_pr942": "a2f651f6785fd5befc549bd30785328ad9465145",
+      "verified_source_expectation": "Historical baseline remains non-authorizing"
+    },
+    {
+      "human_functional_signoff": false,
+      "path": "tools/readiness_test_execution.py",
+      "risk_axis": "execution-admission",
+      "runtime_acceptance": "pending_exact_company_staging",
+      "sha_followup_964": "547760f7feded4e449858b5193b7fbe833385ea3",
+      "sha_pr882": "d83ce534269537f494e5dbdf3238f19a619a99dd",
+      "sha_pr920": "f75b19e38c6a32789bc514092816c1c10b2dc3fb",
+      "sha_pr942": "0a3586bce5e062760ef0ab38564b725e3d1d5fc1",
+      "verified_source_expectation": "Exact standalone CLI fixtures; no wildcard PHP execution"
+    },
+    {
+      "human_functional_signoff": false,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-field-intelligence.php",
+      "risk_axis": "tenant-isolation",
+      "runtime_acceptance": "pending_exact_company_staging",
+      "sha_followup_964": "20b53f6e84f219d1f49b34e592867e3d676c7133",
+      "sha_pr882": "92b227d03975a12d0193f439fa931a179c46c156",
+      "sha_pr920": "1831ceb9d5dd9765945c6feb09c43a95eae38aee",
+      "sha_pr942": "20b53f6e84f219d1f49b34e592867e3d676c7133",
+      "verified_source_expectation": "Site identity precedes CPT/taxonomy discovery"
+    },
+    {
+      "human_functional_signoff": false,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-registry.php",
+      "risk_axis": "catalog-identity",
+      "runtime_acceptance": "pending_exact_company_staging",
+      "sha_followup_964": "1afd5fb64cdba86459d84627cad67b31a65574a0",
+      "sha_pr882": "a6cdbf2434a7901ce7fb694c6469c08bb501ab3f",
+      "sha_pr920": "a9ce930e87c276dd05d6e429667c469533a0cd56",
+      "sha_pr942": "1afd5fb64cdba86459d84627cad67b31a65574a0",
+      "verified_source_expectation": "Enrolled exact site and explicit Skills opt-in"
+    },
+    {
+      "human_functional_signoff": false,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php",
+      "risk_axis": "admin-boundary",
+      "runtime_acceptance": "pending_exact_company_staging",
+      "sha_followup_964": "593f78cb49b39184b48766b34bdf83e2108a75c6",
+      "sha_pr882": "7448de7bf3df7c3878df92051843caaedb0c0dc6",
+      "sha_pr920": "6db5aced6e2e50179ac5415ae9e74735756e539d",
+      "sha_pr942": "593f78cb49b39184b48766b34bdf83e2108a75c6",
+      "verified_source_expectation": "Company operations read separate from administrator Skills editor and source writes"
+    },
+    {
+      "human_functional_signoff": false,
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "risk_axis": "activation",
+      "runtime_acceptance": "pending_exact_company_staging",
+      "sha_followup_964": "2c497ec72c57f420d1abf1eef242748be40f7bb2",
+      "sha_pr882": "cd47b7bc7cd8dcbbc9294698a84d39d0f0c1cc12",
+      "sha_pr920": "dcae0a0a32495bfcedd4300fd78a8ec765235697",
+      "sha_pr942": "2c497ec72c57f420d1abf1eef242748be40f7bb2",
+      "verified_source_expectation": "Local Ollama remains unloaded pending separate activation"
+    },
+    {
+      "human_functional_signoff": false,
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py",
+      "risk_axis": "qa31",
+      "runtime_acceptance": "pending_exact_company_staging",
+      "sha_followup_964": "d033336fd13715ffbf8c3e489e0748add889b672",
+      "sha_pr882": "efe40f95beff3dec59c88ab57d02578d798ca00d",
+      "sha_pr920": "5c86eb8d115b421adfca94ec989a2c1dfd276167",
+      "sha_pr942": "d033336fd13715ffbf8c3e489e0748add889b672",
+      "verified_source_expectation": "Exact Admin successor negative behavior is exercised"
+    },
+    {
+      "human_functional_signoff": false,
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-policy.json",
+      "risk_axis": "site-neutrality",
+      "runtime_acceptance": "pending_exact_company_staging",
+      "sha_followup_964": "81346d696ec1837d268b24cd40b2352ae6c79d69",
+      "sha_pr882": "642348339104b63e7eefd55b2f6a4d022f4eacd0",
+      "sha_pr920": "7a61ef6557d3fadb802f08a3651c5d9b49c8941c",
+      "sha_pr942": "81346d696ec1837d268b24cd40b2352ae6c79d69",
+      "verified_source_expectation": "Generic field intelligence no longer defaults to tourism CPT"
+    }
+  ],
+  "production_deploy_authorized": false,
+  "release_authorized": false,
+  "review_completed": false
+}

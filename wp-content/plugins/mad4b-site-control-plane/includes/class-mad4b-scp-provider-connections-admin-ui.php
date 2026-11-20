@@ -5,6 +5,13 @@
  * provider-specific POSTs or the approved MCP mutation boundary.
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-mad4b-scp-firecrawl-provider.php';
+require_once __DIR__ . '/class-mad4b-scp-research-groups.php';
+require_once __DIR__ . '/class-mad4b-scp-research-task-bridge.php';
+require_once __DIR__ . '/class-mad4b-scp-tour-workflow-runtime.php';
+if ( is_readable( __DIR__ . '/class-mad4b-scp-firecrawl-discovery-preflight.php' ) ) {
+    require_once __DIR__ . '/class-mad4b-scp-firecrawl-discovery-preflight.php';
+}
 final class MAD4B_SCP_Provider_Connections_Admin_UI {
     const PAGE_SLUG = 'mad4b-provider-connections';
     private static $booted = false;
@@ -21,39 +28,87 @@ final class MAD4B_SCP_Provider_Connections_Admin_UI {
             'manage_options', self::PAGE_SLUG, array( __CLASS__, 'render' ) );
     }
     public static function render() {
-        if ( ! current_user_can( 'manage_options' ) ) {
+        if ( true !== current_user_can( 'manage_options' ) ) {
             wp_die( esc_html__( 'Administrator permission required.', 'mad4b-site-control-plane' ) );
         }
-        $result = MAD4B_SCP_Provider_Connection_Center::discover();
+        try {
+            $result = MAD4B_SCP_Provider_Connection_Center::discover();
+        } catch ( \Throwable $error ) {
+            $result = new WP_Error( 'mad4b_provider_connection_discovery_unavailable',
+                'Original provider discovery is unavailable; no connection changes were made.' );
+        }
         echo '<div class="wrap"><h1>' . esc_html__( 'Provider Connections', 'mad4b-site-control-plane' ) . '</h1>';
+        MAD4B_SCP_Firecrawl_Provider::render();
+        // Signed feedback from the search-provider's native admin POST.
+        if ( class_exists( 'MAD4B_SCP_Search_Provider_Connections' ) ) {
+            $id = MAD4B_SCP_Admin_Experience::query_string( 'mad4b_provider_notice', '', 96 );
+            $operation = MAD4B_SCP_Admin_Experience::query_string( 'mad4b_provider_operation', '', 16 );
+            $adapters = MAD4B_SCP_Search_Providers::adapters();
+            if ( is_string( $id ) && is_array( $adapters ) && isset( $adapters[$id] )
+                && in_array( $operation, array( 'save', 'test', 'remove', 'conflict' ), true ) ) {
+                $status = MAD4B_SCP_Search_Provider_Connections::status( $id );
+                if ( is_array( $status ) && ( is_int( $status['revision'] ?? null )
+                    || is_string( $status['revision'] ?? null ) )
+                    && is_string( $status['connection_state'] ?? null ) ) {
+                    $binding = $id . ':' . $status['revision'] . ':' . $operation . ':' . $status['connection_state'];
+                    if ( MAD4B_SCP_Admin_Experience::notice_verified( self::PAGE_SLUG, 'provider_' . $operation, $binding ) ) {
+                        $text = 'conflict' === $operation ? 'Provider credentials changed in another request. Your attempted edit was not applied. This page shows the latest saved state.' :
+                            ( 'test' === $operation ? 'Latest saved provider account checked.' : 'Provider connection operation completed.' );
+                        echo '<div class="notice notice-' . esc_attr( 'conflict' === $operation ? 'warning' : 'success' ) . ' inline" role="status"><p>' . esc_html( $text ) . '</p></div>';
+                    }
+                }
+            }
+        }
+
         echo '<p>' . esc_html__( 'Live connection health and recommended recovery. Discovery is read-only; owner OAuth consent, exact one-time approval and post-operation verification are separate.', 'mad4b-site-control-plane' ) . '</p>';
         $peer_link = MAD4B_SCP_Admin_Workspace::link( 'mad4b-adapter-coverage', array( 'tab' => 'native-peers' ) );
         if ( '' !== $peer_link ) echo '<p><a href="' . esc_url( $peer_link ) . '">' . esc_html__( 'Inspect Native MCP peer health (no network probe)', 'mad4b-site-control-plane' ) . '</a></p>';
-        if ( is_wp_error( $result ) || empty( $result['providers'] ) ) {
+        $providers = is_array( $result ) && is_array( $result['providers'] ?? null )
+            ? array_slice( $result['providers'], 0, 200 ) : array();
+        $verified_rows = array();
+        foreach ( $providers as $row ) {
+            if ( ! is_array( $row ) || ! is_string( $row['provider'] ?? null )
+                || 1 !== preg_match( '/^[a-z][a-z0-9_-]{0,95}$/D', $row['provider'] )
+                || ! is_string( $row['label'] ?? null )
+                || ! is_string( $row['health_state'] ?? null ) ) continue;
+            $verified_rows[] = $row;
+        }
+        if ( is_wp_error( $result ) || ! $verified_rows ) {
             echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'No verified provider adapters are available to inspect.', 'mad4b-site-control-plane' ) . '</p></div>';
-            if ( class_exists('MAD4B_SCP_Provider_Setup_Coverage') )
+            if ( class_exists( 'MAD4B_SCP_Provider_Setup_Coverage' ) ) {
                 MAD4B_SCP_Provider_Setup_Coverage::render();
+                MAD4B_SCP_Provider_Setup_Coverage::render_custom_registration();
+            }
             echo '</div>';return;
         }
         echo '<table class="widefat striped"><thead><tr><th>' . esc_html__( 'Provider', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Live state', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Recommended action', 'mad4b-site-control-plane' ) . '</th><th>' . esc_html__( 'Owner handoff', 'mad4b-site-control-plane' ) . '</th></tr></thead><tbody>';
-        foreach ( $result['providers'] as $row ) {
-            $plan = MAD4B_SCP_Provider_Connection_Center::plan( array( 'provider' => $row['provider'] ) );
-            $action = is_array( $plan ) && ! empty( $plan['action'] ) ? (string) $plan['action'] : 'unavailable';
+        foreach ( $verified_rows as $row ) {
+            try {
+                $plan = MAD4B_SCP_Provider_Connection_Center::plan( array( 'provider' => $row['provider'] ) );
+            } catch ( \Throwable $error ) {
+                $plan = new WP_Error( 'mad4b_provider_connection_plan_unavailable',
+                    'Original provider plan readback failed; no connection change was made.' );
+            }
+            $action = is_array( $plan ) && is_string( $plan['action'] ?? null )
+                && 1 === preg_match( '/^[a-z][a-z0-9_-]{0,63}$/D', $plan['action'] )
+                ? $plan['action'] : 'unavailable';
             echo '<tr><td><strong>' . esc_html( $row['label'] ) . '</strong><br><code>' . esc_html( $row['provider'] ) . '</code></td>';
             echo '<td><code>' . esc_html( $row['health_state'] ) . '</code></td><td><code>' . esc_html( $action ) . '</code>';
             if ( 'refresh' === $action ) echo '<p class="description">' . esc_html__( 'Local refresh uses saved credentials. Remote execution requires a separate exact owner approval ticket.', 'mad4b-site-control-plane' ) . '</p>';
             if ( 'oauth_handoff' === $action ) echo '<p class="description">' . esc_html__( 'An owner must finish authorization in the provider browser. Remote discovery cannot sign in on their behalf.', 'mad4b-site-control-plane' ) . '</p>';
             if ( 'resolve_pending_revocation' === $action ) echo '<p class="description">' . esc_html__( 'Resolve the pending provider revocation first; do not reconnect or refresh.', 'mad4b-site-control-plane' ) . '</p>';
             echo '</td><td>';
-            $url = isset( $row['owner_handoff_url'] ) ? (string) $row['owner_handoff_url'] : '';
+            $url = is_string( $row['owner_handoff_url'] ?? null ) ? $row['owner_handoff_url'] : '';
             if ( $url ) echo '<a class="button" href="' . esc_url( $url ) . '">' . esc_html__( 'Open connection controls', 'mad4b-site-control-plane' ) . '</a>';
             else echo esc_html__( 'No certified handoff available', 'mad4b-site-control-plane' );
             echo '</td></tr>';
         }
         echo '</tbody></table>';
         echo '<p class="description">' . esc_html__( 'Adding a new provider requires an adapter with a read-only status contract, reviewed owner handoff and separately certified refresh executor. No wildcard provider mutation authority is created.', 'mad4b-site-control-plane' ) . '</p>';
-        if ( class_exists('MAD4B_SCP_Provider_Setup_Coverage') )
+        if ( class_exists( 'MAD4B_SCP_Provider_Setup_Coverage' ) ) {
             MAD4B_SCP_Provider_Setup_Coverage::render();
+            MAD4B_SCP_Provider_Setup_Coverage::render_custom_registration();
+        }
         echo '</div>';
     }
 }

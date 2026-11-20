@@ -7,17 +7,20 @@ class WP_Error {
     public function get_error_code() { return $this->code; }
 }
 function is_wp_error( $r ) { return $r instanceof WP_Error; }
-function wp_has_ability( $name ) { return isset( $GLOBALS['abilities'][$name] ); }
+function wp_has_ability( $name ) {
+    return array_key_exists( 'ability_override', $GLOBALS )
+        ? $GLOBALS['ability_override'] : isset( $GLOBALS['abilities'][$name] );
+}
 function insist( $truth, $message ) {
     if ( ! $truth ) { fwrite( STDERR, "FAIL: $message\n" ); exit( 1 ); }
 }
 class MAD4B_SCP_Policy {
-    public static function can_read() { return ! empty( $GLOBALS['site_read'] ); }
+    public static function can_read() { return $GLOBALS['site_read']; }
 }
 class MAD4B_SCP_Site_Profile {
     public static function status() {
         return array( 'site_uuid' => $GLOBALS['site_uuid'],
-            'profile_digest' => 'profile-exact', 'canonical_origin' => 'https://staging.example.test',
+            'profile_digest' => $GLOBALS['profile_digest'] ?? 'profile-exact', 'canonical_origin' => 'https://staging.example.test',
             'environment' => $GLOBALS['site_environment'], 'origin_match' => true, 'environment_match' => true );
     }
 }
@@ -32,7 +35,8 @@ class MAD4B_SCP_Context_Authority {
             'folder_membership_verified' => ! empty( $GLOBALS['complete_scan'] ),
             'provider_proof_sha256' => str_repeat( 'f', 64 ),
             'plan_sha256' => str_repeat( 'a', 64 ),
-            'original_folder_id' => 'selected-source-folder', 'matched_file_count' => 12 );
+            'original_folder_id' => $GLOBALS['folder_id_override'] ?? 'selected-source-folder',
+            'matched_file_count' => $GLOBALS['file_count_override'] ?? 12 );
     }
 }
 class MAD4B_SCP_Brand_Core_Remote_Recovery {
@@ -121,4 +125,57 @@ $GLOBALS['site_environment'] = 'staging';
 $GLOBALS['site_read'] = false;
 insist( is_wp_error( MAD4B_SCP_Runtime_Obstacle_Resolution::plan( $input ) ),
     'Read authority is mandatory.' );
+// Original runtime source evidence is never boolean truthiness. Unknown
+// WP_Error responses must not certify a read, Ability or selected folder.
+foreach ( array( new WP_Error('policy_unknown'), 1, 'true', null ) as $unknown ) {
+    $GLOBALS['site_read'] = $unknown;
+    insist( is_wp_error( MAD4B_SCP_Runtime_Obstacle_Resolution::plan( $input ) ),
+        'Nonboolean original WordPress read policy cannot authorize a runtime obstacle plan' );
+    insist( is_wp_error( MAD4B_SCP_Runtime_Obstacle_Resolution::selected_folder_proof() ),
+        'Nonboolean original WordPress read policy cannot certify a provider folder' );
+}
+$GLOBALS['site_read'] = true;
+foreach ( array( new WP_Error('ability_unknown'), 1, 'true', null ) as $unknown ) {
+    $GLOBALS['ability_override'] = $unknown;
+    $unknown_plan = MAD4B_SCP_Runtime_Obstacle_Resolution::reduce(
+        array( 'blockers' => array( 'approval_missing' ) ) );
+    insist( $unknown_plan['resolution_routes'][0]['read_available'] === false &&
+        $unknown_plan['resolution_routes'][0]['plan_available'] === false,
+        'Unverified WordPress Ability registration cannot be reported as ready' );
+}
+unset( $GLOBALS['ability_override'] );
+foreach ( array( new WP_Error('folder_unknown'), array('bad_folder'), true ) as $unknown ) {
+    $GLOBALS['folder_id_override'] = $unknown;
+    insist( is_wp_error( MAD4B_SCP_Runtime_Obstacle_Resolution::selected_folder_proof() ),
+        'Unverified original folder ID cannot certify exact selected provider source' );
+}
+unset( $GLOBALS['folder_id_override'] );
+foreach ( array( new WP_Error('count_unknown'), '12junk', true ) as $unknown ) {
+    $GLOBALS['file_count_override'] = $unknown;
+    insist( is_wp_error( MAD4B_SCP_Runtime_Obstacle_Resolution::selected_folder_proof() ),
+        'Unverified matching file count cannot become a valid provider scan' );
+}
+unset( $GLOBALS['file_count_override'] );
+foreach ( array( new WP_Error('post_type_unknown'), array('post_type'), 1 ) as $unknown ) {
+    insist( is_wp_error( MAD4B_SCP_Runtime_Obstacle_Resolution::reduce(
+        array( 'target_post_type' => $unknown ) ) ),
+        'Malformed original post type cannot crash the read-only resolver' );
+}
+foreach ( array( new WP_Error('probe_unknown'), 1, 'true', null ) as $unknown ) {
+    $unverified = MAD4B_SCP_Runtime_Obstacle_Resolution::plan(
+        array( 'blockers' => array( 'folder_missing' ), 'perform_safe_probes' => $unknown ) );
+    insist( is_wp_error( $unverified ) || (
+        is_array( $unverified ) &&
+        ! isset( $unverified['selected_folder_live_probe'] ) ),
+        'Unverified safe probe option cannot contact original context source' );
+}
+$GLOBALS['profile_digest'] = new WP_Error('profile_unknown');
+insist( is_wp_error( MAD4B_SCP_Runtime_Obstacle_Resolution::selected_folder_proof() ),
+    'Error-shaped original Site Profile digest is not a valid bounded site identity' );
+unset( $GLOBALS['profile_digest'] );
+$GLOBALS['site_read'] = true;
+$final = MAD4B_SCP_Runtime_Obstacle_Resolution::selected_folder_proof();
+insist( is_array( $final ) && $final['scope_verified'] === true &&
+    $final['mutation_performed'] === false,
+    'Valid original selected folder source remains read-only eligible after denials' );
 echo "PASS: selected folder scope, exact identity, Drive pending, mid-scan drift, route discovery, zero permission escalation\n";

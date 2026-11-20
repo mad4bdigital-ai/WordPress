@@ -12,6 +12,11 @@ class WP_Error {
 }
 function is_wp_error($v){return $v instanceof WP_Error;}
 function add_action(){}
+$GLOBALS['test_dispatched_actions'] = [];
+function do_action($name, $payload = null) {
+    // Failed transactions must never emit publish events.
+    $GLOBALS['test_dispatched_actions'][] = [$name, $payload];
+}
 function absint($n){return abs((int)$n);}
 function sanitize_key($s){return strtolower(preg_replace('/[^a-z0-9_-]/','',(string)$s));}
 function sanitize_text_field($s){return trim(strip_tags((string)$s));}
@@ -116,8 +121,15 @@ $r=MAD4B_SCP_Content_Jobs::create_job($input);
 assert_pass(is_wp_error($r)&&in_array('ROLLBACK',$wpdb->queries,true),'brand revision drift rolls back before commit');
 $GLOBALS['test_revise_at_audit']=false;
 
+assert_pass(count($GLOBALS['test_dispatched_actions'])===0,'failed or uncertain ContentJob transactions never emit created event');
 $wpdb=fresh_db();
 $r=MAD4B_SCP_Content_Jobs::create_job($input);
 assert_pass(!is_wp_error($r)&&$r['job']['tenant_id']===$GLOBALS['test_resolution']['scope']['tenant_ref'],'healthy job remains tenant-bound');
 assert_pass(in_array('COMMIT',$wpdb->queries,true),'healthy job commits');
+assert_pass(count($GLOBALS['test_dispatched_actions'])===1,'one ContentJob created event after commit');
+assert_pass($GLOBALS['test_dispatched_actions'][0][0]==='mad4b_scp_content_job_created',
+    'post-commit event identity preserved');
+assert_pass($GLOBALS['test_dispatched_actions'][0][1]['job_id']===$r['job']['job_id']
+    && $GLOBALS['test_dispatched_actions'][0][1]['state']==='NEW',
+    'event payload matches exact committed job');
 echo "PASS: synthetic ContentJob BEGIN/COMMIT/revocation/brand-revision fault matrix\n";

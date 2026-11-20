@@ -1,0 +1,83 @@
+{
+  "contract": "mad4b.wayfatours.gem-existing-library-editorial-reframe.v1",
+  "site": "https://wayfatours.com",
+  "status": "manually_applied_with_public_browser_and_photo_quality_readback",
+  "recorded_utc": "2026-11-16T01:21:32.570072+00:00",
+  "source": "existing_WordPress_media_library",
+  "image_original_sha256": "da3ed39c619be71d041689134f1507f0a5613e1b6b612595e9f1e9ff7ecbd777",
+  "image_dimensions": [
+    1600,
+    1067
+  ],
+  "visual_review": "triangular architectural entrance of Grand Egyptian Museum, illuminated at dusk, appropriate to museum visit",
+  "image_provenance_certified": false,
+  "source_rights_status": "metadata_pending_nonblocking",
+  "wpml_attachment_family": {
+    "en": 55107,
+    "es": 56582
+  },
+  "tour_ids": {
+    "en": 60629,
+    "es": 60655
+  },
+  "fields_changed": [
+    "grid_image_1_middle_upper",
+    "gallery",
+    "mad4b_media_frame_focus_v2"
+  ],
+  "changed_postmeta_rows": 6,
+  "gallery_items_before": 8,
+  "gallery_items_after": 9,
+  "existing_gallery_items_preserved": true,
+  "focal_point": {
+    "slot": "grid_image_1_middle_upper",
+    "focus_x": 50,
+    "focus_y": 50,
+    "fit": "cover",
+    "bound_original_sha256": "da3ed39c619be71d041689134f1507f0a5613e1b6b612595e9f1e9ff7ecbd777"
+  },
+  "quality_verdict": {
+    "gem_crop_open": 0,
+    "gallery_original_duplicates": 0,
+    "hero_original_duplicates": 0,
+    "complete_scan_utc": "2026-11-16T01:20:20+00:00",
+    "remaining_other_alerts_not_claimed_closed": true
+  },
+  "cache": {
+    "dependency_invalidation_status": "graph_overflow",
+    "exact_tour_paths_purged": 2,
+    "global_cache_flushed": false
+  },
+  "browser_validation": [
+    {
+      "lang": "en",
+      "url": "https://wayfatours.com/tours-and-activities/best-of-egypt-cairo-luxor-nile-cruise-red-sea-12-days/",
+      "http": 200,
+      "photo_visible_as_elementor_background": true,
+      "computed_background_position": "50% 50%"
+    },
+    {
+      "lang": "es",
+      "url": "https://wayfatours.com/es/tours-and-activities/lo-mejor-de-egipto-el-cairo-luxor-crucero-por-el-nilo-y-mar-rojo-12-dias/",
+      "http": 200,
+      "photo_visible_as_elementor_background": true,
+      "computed_background_position": "50% 50%"
+    }
+  ],
+  "attribution": {
+    "copyright_credit_fabricated": false,
+    "commons_candidate_unused": true,
+    "credits_page_auto_uses_published_jetengine_CCT": true,
+    "published_credits": 4,
+    "CCT_drafts_preserved": 181,
+    "active_review_drafts_preserved": 179
+  },
+  "rollback": {
+    "token": "1a619364-5584-4bac-9866-5fca29656ebe",
+    "option_prefix": "mad4b_gem_frame_local_cas_20261116_",
+    "original_values_preserved": true,
+    "vps_backup_dir": "/opt/mad4b-media-backups/wayfa-media-engine-hardening-20261116/gem-local-library-reframe"
+  },
+  "original313_signed_job_claimed": false,
+  "tours_dev_modified": false
+}

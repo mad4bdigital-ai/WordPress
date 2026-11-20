@@ -5,7 +5,16 @@ import textwrap
 
 root = Path(__file__).resolve().parents[1]
 transport = (root / "includes" / "class-mad4b-scp-transport-context.php").read_text(encoding="utf-8")
-abilities = (root / "includes" / "class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
+abilities_facade = (root / "includes" / "class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
+abilities_registration = (root / "includes" / "trait-mad4b-scp-abilities-registration.php").read_text(encoding="utf-8")
+# Exact first-party source binding: registration has moved, the governed
+# dispatcher implementation and its permission/target checks have not.
+if ("require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php';" not in abilities_facade
+        or "use MAD4B_SCP_Abilities_Registration_Trait;" not in abilities_facade
+        or "trait MAD4B_SCP_Abilities_Registration_Trait" not in abilities_registration
+        or "do_action( 'mad4b_scp_abilities_registered', $this );" not in abilities_registration):
+    raise SystemExit("write dispatcher registration source/entrypoint binding unavailable")
+abilities = abilities_facade + abilities_registration
 servers = (root / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 authorization = (root / "includes" / "class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
 decision_graph = (root / "includes" / "class-mad4b-scp-authorization-decision-graph.php").read_text(encoding="utf-8")
@@ -23,7 +32,11 @@ required_transport = [
     "MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name )",
     "hash_equals( hash( 'sha256', $encoded_schema ), $expected_schema_sha256 )",
     "$nested_dispatch = self::write_dispatch_target_matches( $ability_name );",
-    "! $nested_dispatch && ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability_name )",
+    # The stricter original mount gate rejects WP_Error and truthy values,
+    # rather than trusting boolean coercion from the provider registry.
+    "! $nested_dispatch && true !== MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability_name )",
+    "if ( ! is_bool( $external_write_candidate ) )",
+    "'mad4b-chatgpt' === $current && true === $external_write_candidate",
     "} finally {",
     "'write_dispatch_target_bound' => '' !== self::$write_dispatch_target",
 ]
@@ -77,7 +90,7 @@ for marker in required_dispatch:
     if marker not in abilities:
         raise SystemExit("write dispatcher target binding/governance invariant missing: " + marker)
 
-write_schema = abilities.split("$this->add( 'mad4b/write-execute'", 1)[1].split("$this->add( 'mad4b/developer-discover'", 1)[0]
+write_schema = abilities_registration.split("$this->add( 'mad4b/write-execute'", 1)[1].split("$this->add( 'mad4b/developer-discover'", 1)[0]
 for marker in [
     "'_mad4b_approval_ticket_id' => array( 'type' => 'string'",
     "'_mad4b_context_receipt' => array( 'type' => 'object', 'additionalProperties' => true )",

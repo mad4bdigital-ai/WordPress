@@ -1,0 +1,71 @@
+.mad4b-consent {--c-bg:#fff;--c-ink:#173847;--c-border:#d6e3e8;--c-cta:#0f5866;box-sizing:border-box;font-family:inherit;z-index:2147483000}
+.mad4b-consent *{box-sizing:border-box}
+.mad4b-consent [hidden]{display:none!important}
+.mad4b-consent-banner{position:fixed;bottom:16px;left:16px;width:min(480px,calc(100vw - 32px));max-height:min(75vh,650px);overflow:auto;z-index:2147483001;background:var(--c-bg);color:var(--c-ink);border:1px solid var(--c-border);border-radius:12px;padding:20px;box-shadow:0 12px 38px #071f2c44;font-size:14px;line-height:1.6}
+.mad4b-consent-banner h2{font-size:19px;font-weight:700;color:var(--c-ink);line-height:1.3;margin:0 0 8px}
+.mad4b-consent-banner p{font-size:14px;margin:0 0 12px;line-height:1.55;color:var(--c-ink)}
+.mad4b-consent-banner a{color:#176b80;text-decoration:underline;text-underline-offset:2px;display:inline-block;margin:0 0 12px}
+.mad4b-consent-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:8px}
+.mad4b-consent-actions button{appearance:none;border:1px solid var(--c-border);border-radius:7px;padding:10px 12px;background:#f2f7f8;color:var(--c-ink);min-height:42px;font-size:13px;line-height:1.2;font-weight:600;cursor:pointer;flex:1 1 41%}
+.mad4b-consent-actions [data-mad4b-choice="accept"]{background:var(--c-cta);color:#fff;border-color:var(--c-cta)}
+.mad4b-consent-actions button:focus-visible{outline:3px solid #c8a85b;outline-offset:3px}
+.mad4b-consent-option{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--c-border);cursor:pointer}
+.mad4b-consent-option input{height:18px;width:18px;flex:0 0 18px;margin:3px 0 0;accent-color:var(--c-cta)}
+.mad4b-consent-option strong,.mad4b-consent-option small{display:block;line-height:1.4}
+.mad4b-consent-option small{font-size:12px;font-weight:400;color:#566d78;margin-top:3px}
+.mad4b-consent-banner fieldset{padding:6px 0;margin:0 0 12px;border:0}
+.mad4b-consent-banner legend{font-size:13px;font-weight:700;margin:0 0 4px}
+.mad4b-consent .mad4b-consent-detail{font-size:11px;color:#64737e;margin:12px 0 0}
+.mad4b-consent[dir=rtl] .mad4b-consent-banner{left:auto;right:16px;direction:rtl;text-align:right}
+@media(max-width:620px){.mad4b-consent-banner{bottom:12px;left:10px;width:calc(100vw - 20px);padding:16px;max-height:75vh}.mad4b-consent[dir=rtl] .mad4b-consent-banner{right:10px}}
+
+/* The floating consent window appears only while a decision is needed or reopened
+   using the privacy link in the footer. No persistent floating launcher. */
+.mad4b-consent-actions [data-mad4b-choice="accept"] {
+  flex:1 0 100%;
+  order:0;
+  min-height:46px;
+  font-weight:700;
+  font-size:14px;
+}
+.mad4b-consent-actions [data-mad4b-choice="reject"],
+.mad4b-consent-actions [data-mad4b-choice="customize"] {
+  order:1;
+  flex:1 1 calc(50% - 5px);
+}
+.mad4b-consent-actions [data-mad4b-choice="save"] {
+  order:2;
+  flex:1 0 100%;
+  background:var(--c-cta);
+  border-color:var(--c-cta);
+  color:#fff;
+}
+.mad4b-consent-footer-link {
+  font-size:inherit;
+  font-weight:inherit;
+  text-decoration:underline;
+  text-underline-offset:2px;
+}
+.mad4b-consent-footer-link:focus-visible{
+  outline:2px solid #c8a85b;
+  outline-offset:3px;
+}
+
+/* Dynamic tenant color, popup dimensions and configurable placement. */
+.mad4b-consent .mad4b-consent-banner{
+  width:min(var(--c-width,480px),calc(100vw - 32px));
+  border-radius:var(--c-radius,12px);
+}
+.mad4b-consent[data-position="bottom_right"] .mad4b-consent-banner{
+  left:auto;right:16px;
+}
+.mad4b-consent[data-position="bottom_center"] .mad4b-consent-banner{
+  left:50%;right:auto;transform:translateX(-50%);
+}
+.mad4b-consent[dir="rtl"][data-position="bottom_center"] .mad4b-consent-banner{
+  left:50%;right:auto;transform:translateX(-50%);
+}
+@media(max-width:620px){
+  .mad4b-consent[data-position="bottom_right"] .mad4b-consent-banner{right:10px;left:auto;}
+  .mad4b-consent[data-position="bottom_center"] .mad4b-consent-banner{left:50%;right:auto;}
+}

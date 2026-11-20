@@ -2,7 +2,18 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ABILITIES = (ROOT / "includes" / "class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
+ABILITIES_FACADE = (ROOT / "includes" / "class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
+ABILITIES_REGISTRATION = (ROOT / "includes" / "trait-mad4b-scp-abilities-registration.php").read_text(encoding="utf-8")
+# Enforce the real bound Ability registration path, never count orphan source text.
+require_binding = (
+    "require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php';" in ABILITIES_FACADE
+    and "use MAD4B_SCP_Abilities_Registration_Trait;" in ABILITIES_FACADE
+    and "trait MAD4B_SCP_Abilities_Registration_Trait" in ABILITIES_REGISTRATION
+    and "$this->register_source_abilities();" in ABILITIES_FACADE
+)
+if not require_binding:
+    raise SystemExit("Core read/write Abilities registration trait is not loaded and used")
+ABILITIES = ABILITIES_FACADE + ABILITIES_REGISTRATION
 SERVERS = (ROOT / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 SERVERS += (ROOT / "includes" / "class-mad4b-scp-server-core-catalog.php").read_text(encoding="utf-8")
 GRANT_RECONCILE = (ROOT / "includes" / "class-mad4b-scp-staging-write-grant-reconciliation.php").read_text(encoding="utf-8")

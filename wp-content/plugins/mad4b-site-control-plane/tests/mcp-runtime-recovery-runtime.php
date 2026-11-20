@@ -1,5 +1,5 @@
 <?php
-$cases = array( 'authorized', 'transaction_contention', 'transaction_owner_replaced', 'filesystem_lock_busy', 'persistent_cache_stale', 'cli_generic_refresh', 'cron_generic_refresh', 'cli_direct_recovery_denied', 'cron_direct_recovery_denied', 'cron_conflict_auto_recovery', 'cron_conflict_auto_backup_failed', 'convergence_conflict_auto_recovery', 'production_conflict_auto_denied', 'auto_conflict_schedule', 'nonce', 'build', 'capability', 'post', 'production', 'protocol', 'diagnostic', 'integrity', 'audit_unavailable', 'audit_failed', 'lease_busy', 'stale_managed', 'unmanaged', 'receipt_managed', 'receipt_foreign_site', 'receipt_audit_failed', 'conflict_authorized', 'conflict_wrong_hash', 'conflict_wrong_confirmation', 'conflict_backup_failed', 'conflict_audit_failed', 'update_schedule', 'renamed_update_schedule', 'profile_schedule' );
+$cases = array( 'authorized', 'transaction_contention', 'transaction_owner_replaced', 'filesystem_lock_busy', 'persistent_cache_stale', 'cli_generic_refresh', 'cron_generic_refresh', 'cli_direct_recovery_denied', 'cron_direct_recovery_denied', 'cron_conflict_auto_recovery', 'cron_conflict_auto_backup_failed', 'convergence_conflict_auto_recovery', 'production_conflict_auto_denied', 'auto_conflict_schedule', 'nonce', 'build', 'capability', 'post', 'production', 'protocol', 'diagnostic', 'integrity', 'source_unverified', 'audit_unavailable', 'audit_failed', 'lease_busy', 'stale_managed', 'unmanaged', 'receipt_managed', 'receipt_foreign_site', 'receipt_audit_failed', 'conflict_authorized', 'conflict_wrong_hash', 'conflict_wrong_confirmation', 'conflict_backup_failed', 'conflict_audit_failed', 'update_schedule', 'renamed_update_schedule', 'profile_schedule' );
 if ( ! isset( $argv[1] ) ) {
 	foreach ( $cases as $case ) { passthru( escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __FILE__ ) . ' ' . escapeshellarg( $case ), $code ); if ( $code ) exit( $code ); }
 	echo 'mad4b.mcp-runtime-recovery.v1: ' . count( $cases ) . '/' . count( $cases ) . ' PASS' . PHP_EOL; exit;
@@ -65,7 +65,13 @@ class MAD4B_SCP_Site_Profile {
 	); }
 }
 class MAD4B_SCP_MCP_Request_Scope { static function current_request_is_protocol_hotpath() { return 'protocol' === $GLOBALS['case']; } static function current_request_is_endpoint_diagnostic_job() { return 'diagnostic' === $GLOBALS['case']; } }
-class MAD4B_SCP_Dependency_Manager { static function mcp_adapter_disk_integrity() { return array( 'ready' => 'integrity' !== $GLOBALS['case'] ); } static function mcp_adapter_plugin_identity( $refresh=false ) { return array( 'plugin_file' => 'renamed-mcp/mcp-adapter.php', 'ambiguous' => false, 'candidate_count' => 1 ); } }
+class MAD4B_SCP_Dependency_Manager { static function mcp_adapter_disk_integrity( $verify_official_release=false ) {
+    // Disk-integrity PASS is not independent official source verification.
+    $ready='integrity' !== $GLOBALS['case'];
+    return array( 'ready'=>$ready,
+        'source_verified'=>$ready && 'source_unverified' !== $GLOBALS['case']
+            && (bool) $verify_official_release );
+} static function mcp_adapter_plugin_identity( $refresh=false ) { return array( 'plugin_file' => 'renamed-mcp/mcp-adapter.php', 'ambiguous' => false, 'candidate_count' => 1 ); } }
 class MAD4B_SCP_Endpoint_Diagnostic { static function build_fingerprint() { return 'current-build'; } }
 class MAD4B_SCP_Runtime_Maintenance_Lease {
 	static function acquire( $owner ) { $GLOBALS['lease_acquired']=true; return 'lease_busy' === $GLOBALS['case'] ? new WP_Error( 'lease_busy' ) : 'fenced-token'; }
@@ -299,6 +305,12 @@ if ( in_array( $case, array( 'update_schedule', 'renamed_update_schedule' ), tru
 		check_recovery( ! empty( $receipt['ready'] ), 'successful recovery did not persist valid ownership receipt' );
 	} else {
 		check_recovery( is_wp_error( $result ), 'negative boundary accepted' );
+        if ( 'source_unverified' === $case ) {
+            check_recovery( 'mcp_adapter_official_source_unverified' === $result->get_error_code(),
+                'unverified official MCP Adapter source was allowed to reach Recovery' );
+            check_recovery( empty( $GLOBALS['lease_acquired'] ),
+                'unverified official source acquired a privileged maintenance lease' );
+        }
 		if ( 'stale_managed' === $case ) check_recovery( '<?php // mad4b.mcp-adapter-mu-bootstrap.v4'===file_get_contents( $destination ), 'marker-only bootstrap was treated as historical MAD4B ownership' );
 		elseif ( 'unmanaged' === $case ) check_recovery( '<?php // foreign owner'===file_get_contents( $destination ), 'unmanaged bootstrap overwritten' );
 		elseif ( 'receipt_foreign_site' === $case ) check_recovery( '<?php // site-owned prior loader'===file_get_contents( $destination ), 'foreign-site ownership receipt authorized MU replacement' );

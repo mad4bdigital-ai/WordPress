@@ -359,6 +359,10 @@ final class MAD4B_SCP_Connection_Status {
 					'deep_registration_deferred' => ! empty( $identity['deep_registration_deferred'] ),
 					'materialized' => ! empty( $row['materialized'] ),
 					'tool_count' => isset( $row['tool_count'] ) ? max( 0, (int) $row['tool_count'] ) : 0,
+					// Deep validation is deferred on admin GET; however observed
+					// descriptor quarantine must not be hidden as full coverage.
+					'capability_quarantined_count' => max( 0, (int) ( $row['descriptor_quarantined_count'] ?? 0 ) ),
+					'capability_registration_degraded' => ! empty( $row['descriptor_degraded'] ),
 					'route_registered' => null,
 					'permission_callback_match' => null,
 					'deep_route_validation_deferred' => true,
@@ -372,6 +376,9 @@ final class MAD4B_SCP_Connection_Status {
 			'mad4b-enrollment' => array( 'MAD4B_SCP_Servers', 'can_enrollment_transport' ),
 			'mad4b-content' => array( 'MAD4B_SCP_Servers', 'can_content_transport' ),
 			'mad4b-write' => array( 'MAD4B_SCP_Servers', 'can_write_transport' ),
+			// Local VPS stdio has a separately guarded callback. Checking its
+			// real identity does not admit HTTP or grant any execution authority.
+			'mad4b-vps-local' => array( 'MAD4B_SCP_Servers', 'can_vps_local_transport' ),
 			'mad4b-admin' => array( 'MAD4B_SCP_Servers', 'can_admin_transport' ),
 			'mad4b-developer' => array( 'MAD4B_SCP_Servers', 'can_developer_transport' ),
 			'mad4b-developer-breakglass' => array( 'MAD4B_SCP_Servers', 'can_developer_breakglass_transport' ),

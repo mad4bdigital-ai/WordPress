@@ -13,9 +13,9 @@ require_once __DIR__ . '/class-mad4b-scp-oauth-consent-projection-view.php';
  * publishes only public metadata/JWKS.
  *
  * Client registration supports exact pre-registered clients plus fail-closed
- * Client ID Metadata Documents (CIMD). The initial CIMD policy is deliberately
- * narrow: only ChatGPT's stable HTTPS client metadata URL is accepted. DCR is
- * not exposed.
+ * Client ID Metadata Documents (CIMD). The CIMD policy is deliberately narrow: only the stable ChatGPT client
+ * metadata URL and exact per-connector ChatGPT metadata URLs are accepted. DCR
+ * is not exposed; redirects are pinned to the exact matching client identity.
  */
 final class MAD4B_SCP_Local_OAuth_Server {
 	const CONTRACT = 'mad4b.local-oauth-server.v3';
@@ -1201,17 +1201,17 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			$has_developer_breakglass = in_array( MAD4B_SCP_OAuth_Resource_Bridge::DEVELOPER_BREAKGLASS_SCOPE, $scopes, true );
 
 			if ( $has_step_up ) {
-				if ( ! hash_equals( self::CHATGPT_CIMD_CLIENT_ID, $client_id ) ) return new WP_Error( 'invalid_scope', 'Authority step-up scope is reserved for the exact ChatGPT CIMD client.' );
+				if ( ! self::cimd_client_id_allowed( $client_id ) ) return new WP_Error( 'invalid_scope', 'Authority step-up scope is reserved for the exact ChatGPT CIMD client.' );
 				if ( ! hash_equals( $chatgpt, $resource ) ) return new WP_Error( 'invalid_scope', 'Authority step-up scope is valid only for the canonical ChatGPT resource.' );
 				if ( ! MAD4B_SCP_OAuth_Resource_Bridge::authority_step_up_scope_available() ) return new WP_Error( 'invalid_scope', 'Authority step-up scope is unavailable outside an exact eligible governed environment.' );
 			}
 			if ( $has_ai_auto_all ) {
-				if ( ! hash_equals( self::CHATGPT_CIMD_CLIENT_ID, $client_id ) || ! hash_equals( $chatgpt, $resource ) ) return new WP_Error( 'invalid_scope', 'AI auto-approval delegation is bound to the exact ChatGPT OAuth client and canonical MCP resource.' );
+				if ( ! self::cimd_client_id_allowed( $client_id ) || ! hash_equals( $chatgpt, $resource ) ) return new WP_Error( 'invalid_scope', 'AI auto-approval delegation is bound to the exact ChatGPT OAuth client and canonical MCP resource.' );
 				if ( 'staging' !== self::current_environment() || ! MAD4B_SCP_OAuth_Resource_Bridge::authority_step_up_scope_available() ) return new WP_Error( 'invalid_scope', 'AI auto-approval delegation is available only on an enrolled eligible Staging resource.' );
 			}
 			if ( $has_raw_breakglass ) {
 				if ( ! $has_step_up ) return new WP_Error( 'invalid_scope', 'Raw Breakglass scope requires the dedicated authority step-up scope.' );
-				if ( ! hash_equals( self::CHATGPT_CIMD_CLIENT_ID, $client_id ) ) return new WP_Error( 'invalid_scope', 'Raw Breakglass scope is reserved for the exact ChatGPT CIMD client.' );
+				if ( ! self::cimd_client_id_allowed( $client_id ) ) return new WP_Error( 'invalid_scope', 'Raw Breakglass scope is reserved for the exact ChatGPT CIMD client.' );
 				if ( ! hash_equals( $chatgpt, $resource ) ) return new WP_Error( 'invalid_scope', 'Raw Breakglass scope is valid only for the canonical ChatGPT resource.' );
 				if ( ! MAD4B_SCP_OAuth_Resource_Bridge::breakglass_scope_available() ) return new WP_Error( 'invalid_scope', 'Raw Breakglass scope is unavailable until the exact governed Staging Breakglass gate is effective.' );
 			}
@@ -1268,8 +1268,37 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		return strlen( self::CHATGPT_CIMD_CLIENT_ID ) <= self::MAX_CLIENT_ID_BYTES && self::valid_cimd_client_id( self::CHATGPT_CIMD_CLIENT_ID );
 	}
 
+	/** Exact ChatGPT CIMD identity. Syntax alone is NEVER an authentication credential. */
+	public static function trusted_chatgpt_client_id( $client_id ) {
+		return self::cimd_client_id_allowed( $client_id );
+	}
+
+	/** Both observers must refer to the SAME trusted OAuth client identity. */
+	public static function trusted_chatgpt_client_ids_match( $left, $right ) {
+		return self::trusted_chatgpt_client_id( $left )
+			&& self::trusted_chatgpt_client_id( $right )
+			&& hash_equals( $left, $right );
+	}
+
 	private static function cimd_client_id_allowed( $client_id ) {
-		return self::cimd_supported() && is_string( $client_id ) && hash_equals( self::CHATGPT_CIMD_CLIENT_ID, $client_id );
+		// ChatGPT sends both its legacy CIMD and per-connector CIMD identities.
+		// Allow only exact HTTPS chatgpt.com metadata URLs; no broad hosts,
+		// arbitrary redirect domains, DCR, query strings or wildcard paths.
+		if ( ! self::cimd_supported() || ! is_string( $client_id ) || ! self::valid_cimd_client_id( $client_id ) ) return false;
+		if ( hash_equals( self::CHATGPT_CIMD_CLIENT_ID, $client_id ) ) return true;
+		$parts = wp_parse_url( $client_id );
+		if ( ! is_array( $parts ) || 'chatgpt.com' !== strtolower( (string) ( $parts['host'] ?? '' ) ) || isset( $parts['port'] ) ) return false;
+		$path = (string) ( $parts['path'] ?? '' );
+		return $client_id === 'https://chatgpt.com' . $path
+			&& 1 === preg_match( '#^/oauth/[A-Za-z0-9_-]{8,96}/client\.json$#D', $path );
+	}
+
+	private static function chatgpt_expected_redirect_uri( $client_id ) {
+		if ( ! self::cimd_client_id_allowed( $client_id ) ) return '';
+		if ( hash_equals( self::CHATGPT_CIMD_CLIENT_ID, $client_id ) ) return 'https://chatgpt.com/connector_platform_oauth_redirect';
+		$path = (string) wp_parse_url( $client_id, PHP_URL_PATH );
+		return 1 === preg_match( '#^/oauth/([A-Za-z0-9_-]{8,96})/client\.json$#D', $path, $matches )
+			? 'https://chatgpt.com/connector/oauth/' . $matches[1] : '';
 	}
 
 	private static function valid_cimd_client_id( $client_id ) {
@@ -1327,6 +1356,11 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		}
 		$redirects = array_values( array_unique( $redirects ) );
 		if ( empty( $redirects ) ) return new WP_Error( 'invalid_client', 'Client ID Metadata Document has no valid redirect URI.' );
+		$expected_redirect = self::chatgpt_expected_redirect_uri( $client_id );
+		if ( '' === $expected_redirect || 1 !== count( $redirects ) || ! hash_equals( $expected_redirect, $redirects[0] ) ) {
+			return new WP_Error( 'invalid_client', 'ChatGPT CIMD redirect URI does not match its trusted connector identity.' );
+		}
+
 		if ( isset( $metadata['grant_types'] ) && ( ! is_array( $metadata['grant_types'] ) || ! in_array( 'authorization_code', $metadata['grant_types'], true ) ) ) return new WP_Error( 'invalid_client', 'Client ID Metadata Document does not support authorization_code.' );
 		if ( isset( $metadata['response_types'] ) && ( ! is_array( $metadata['response_types'] ) || ! in_array( 'code', $metadata['response_types'], true ) ) ) return new WP_Error( 'invalid_client', 'Client ID Metadata Document does not support code responses.' );
 

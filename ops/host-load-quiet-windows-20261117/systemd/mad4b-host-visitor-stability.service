@@ -1,0 +1,23 @@
+[Unit]
+Description=MAD4B real-visitor rolling host/latency SLO with 24-hour proof
+After=local-fs.target
+OnFailure=mad4b-alert-handler@%n.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261115/ops/host-load-quiet-windows-20261117/host-visitor-stability-slo.py
+TimeoutStartSec=30
+Nice=19
+CPUQuota=20%
+MemoryMax=128M
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/mad4b-company-provisioning/reports/host-visitor-stability-v1
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+LockPersonality=true
+CapabilityBoundingSet=
+UMask=0077

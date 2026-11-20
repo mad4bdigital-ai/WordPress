@@ -12,6 +12,18 @@ class MAD4B_SCP_AI_Approval {
     public static function catalog_eligible() { return empty( $GLOBALS['ai_denied'] ); }
 }
 class MAD4B_SCP_Servers {
+    // Mirror the dynamically derived required transport vs optional
+    // base-convenience boundary used by the live ChatGPT catalog.
+    public static function chatgpt_direct_read_transport_tools() {
+        return array( 'mad4b/site-info' );
+    }
+    public static function chatgpt_dispatch_transport_tools() {
+        return array( 'mad4b/write-execute' );
+    }
+    public static function chatgpt_base_tools() {
+        return array( 'mad4b/site-info', 'mad4b/write-execute',
+            'mad4b/approval-plan', 'mad4b/approval-ai-decide' );
+    }
     public static function ability_is_mounted( $server, $name ) {
         return $server === 'mad4b-write' && empty( $GLOBALS['mount_denied'] );
     }

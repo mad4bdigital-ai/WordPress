@@ -1,0 +1,15 @@
+{
+  "contract": "mad4b.native-source-operation-definition.v2",
+  "operation_id": "source.code.release",
+  "provider": "mad4b-source-release",
+  "approval_ability": "mad4b/native-source-release",
+  "source_family": "mad4b.native-source-release.v2",
+  "version": 1,
+  "evidence_schema": "source_code_release.v1",
+  "command": {
+    "format": "wpcli.argv.json.v1",
+    "mode": "plan_sha256",
+    "prefix": ["mad4b", "native-source-publisher", "apply"],
+    "flag": "--plan_sha256="
+  }
+}

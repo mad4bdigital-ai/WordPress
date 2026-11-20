@@ -1,0 +1,12 @@
+[Unit]
+Description=Automatically requalify Tours.dev Critical CSS on actual CSS/source changes
+
+[Timer]
+OnCalendar=*-*-* *:05,20,35,50:00 UTC
+RandomizedDelaySec=180
+AccuracySec=120s
+Persistent=true
+Unit=mad4b-critical-css-source.service
+
+[Install]
+WantedBy=timers.target

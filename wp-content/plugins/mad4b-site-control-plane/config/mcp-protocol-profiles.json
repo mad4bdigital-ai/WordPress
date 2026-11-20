@@ -2,12 +2,13 @@
   "contract": "mad4b.mcp-protocol-profile-catalog.v1",
   "certified_adapter": {
     "slug": "mcp-adapter",
-    "version": "0.7.0",
-    "upstream_ref": "v0.7.0",
+    "version": "0.7.1",
+    "upstream_ref": "v0.7.1",
     "exact_package_governed": true,
-    "version_source": "runtime_release_policy.target_adapter_version",
+    "version_source": "certified_provider_profile_reference",
     "compatibility_source": "certified-provider-profiles.mcp_adapter.<version>.transport_compatibility",
-    "evidence": "WordPress/mcp-adapter v0.7.0 exact release plus MAD4B certified provider protocol matrix"
+    "evidence": "Official WordPress MCP Adapter 0.7.1 archive SHA-256 matches certified-provider-profiles 0.7.1 and the existing protocol transport-compatibility matrix This version is a protocol test reference, not a minimum/required installed version.",
+    "version_gate": false
   },
   "supported_protocol_versions": [
     "2026-07-28",

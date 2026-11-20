@@ -1,0 +1,16 @@
+[Unit]
+Description=MAD4B first-party Wayfatours mobile CSS readiness continuity monitor
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261115/ops/dynamic-critical-css-20261116/performance-continuity-watchdog.py
+TimeoutStartSec=28
+Nice=17
+CPUQuota=20%
+MemoryMax=150M
+NoNewPrivileges=true
+UMask=0077
+StandardOutput=journal
+StandardError=journal

@@ -3,11 +3,43 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /** Request-local write catalog composition, using the facade's guarded caches. */
 trait MAD4B_SCP_Server_Write_Catalog {
+	// Keep runtime projection and hermetic provider regression on the same logic.
+	/**
+	 * Current live provider resolution in a single runtime snapshot.
+	 *
+	 * A deep governance projection must not call provider_for_ability()
+	 * separately for every Write tool: its uncached dynamic resolution
+	 * reconstructs and re-certifies the entire provider catalog per tool.
+	 * Use the SAME eligibility list (write_tools) and provider precedence
+	 * (core first, then certified registered adapter) as the single-tool
+	 * resolver; never cache this map across requests or changes.
+	 */
+	public static function live_write_provider_snapshot() {
+		$mounted = self::write_tools();
+		$core = array_fill_keys( self::core_write_candidates(), true );
+		$adapters = self::registered_adapter_write_candidates();
+		$result = array();
+		foreach ( $mounted as $ability ) {
+			$ability = (string) $ability;
+			if ( isset( $core[ $ability ] ) ) $result[ $ability ] = 'core';
+			elseif ( isset( $adapters[ $ability ] ) && '' !== $adapters[ $ability ] )
+				$result[ $ability ] = $adapters[ $ability ];
+		}
+		return $result;
+	}
+
 	private static function core_write_candidates() {
 		$candidates = array_merge(
 			array(
 				'mad4b/content-get-post', 'mad4b/content-update-post',
 				'mad4b/content-job-create', 'mad4b/content-job-transition', 'mad4b/content-job-cancel',
+                // Original Feature 007 Artifact Registry mutations were registered
+                // but not mounted on mad4b-write, making exact grants impossible.
+                // Mounting is not execution authority: transport, actor, grant,
+                // scoped policy and immutable registry validation still apply.
+                'mad4b/artifact-append',
+                // Staging-only, admin-scoped source sync request. Actual SCP Write authorization still applies.
+                'mad4b/hub-source-sync-request',
 				'mad4b/intent-registry-reconcile', 'mad4b/draft-apply', 'mad4b/data-processing-record-decision', 'mad4b/rights-record-apply', 'mad4b/data-processing-profile-apply', 'mad4b/data-processing-bound-decision-record', 'mad4b/rights-takedown-apply', 'mad4b/scheduler-backlog-enqueue', 'mad4b/scheduler-backlog-claim-next', 'mad4b/scheduler-backlog-heartbeat', 'mad4b/scheduler-backlog-complete', 'mad4b/scheduler-backlog-reconcile', 'mad4b/decommission-quiesce-apply', 'mad4b/decommission-resume-apply', 'mad4b/decommission-finalize-apply', 'mad4b/portability-import-quarantine-apply',
 			),
 			array(
@@ -20,6 +52,12 @@ trait MAD4B_SCP_Server_Write_Catalog {
                 // Staging-only media permission and the global write kill switch.
                 // Never surface this as an unreviewed direct ChatGPT step-up.
                 'mad4b/attachment-transfer',
+                // Provider connection refresh already has a reviewed Staging-only
+                // grant, but must also be mounted in the SAME governed Write
+                // inventory for ticket planning, central authorization and
+                // candidate binding to agree. This does NOT grant execution:
+                // approved one-time ticket + verified owner OAuth still required.
+                'mad4b/provider-connection-refresh',
                 'mad4b/native-recovery-start', 'mad4b/native-recovery-cleanup',
                 'mad4b/deployment-binding-setup-apply', 'mad4b/deployment-binding-native-apply',
                 // Exact Staging-native bootstrap was previously visible only
@@ -33,6 +71,14 @@ trait MAD4B_SCP_Server_Write_Catalog {
 				'mad4b/mutation-get', 'mad4b/mutation-undo', 'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
 			)
 		);
+		// Exact Site Profile-bound Company media-review settings mutation.
+		// Discovery/registration is not a grant, and company OAuth write
+		// still requires all existing Site Profile and runtime gates.
+		if(class_exists('MAD4B_Company_Media_MCP_V1',false)
+		   &&MAD4B_Company_Media_MCP_V1::company_site()
+		   &&function_exists('wp_has_ability')
+		   &&wp_has_ability(MAD4B_Company_Media_MCP_V1::APPLY_ABILITY))
+			$candidates[]=MAD4B_Company_Media_MCP_V1::APPLY_ABILITY;
 		if ( class_exists( 'MAD4B_SCP_Adaptive_Search_Intelligence' ) ) $candidates = array_merge( $candidates, MAD4B_SCP_Adaptive_Search_Intelligence::ability_names( 'write' ) );
 		if ( class_exists( 'MAD4B_SCP_Context_Authority' )
 			&& function_exists( 'wp_has_ability' )
@@ -43,6 +89,51 @@ trait MAD4B_SCP_Server_Write_Catalog {
 			&& function_exists( 'wp_has_ability' )
 			&& wp_has_ability( MAD4B_SCP_AI_Approval::ABILITY ) ) {
 			$candidates[] = MAD4B_SCP_AI_Approval::ABILITY;
+		}
+		// MAD4B Fleet Adaptive Intake: exact enrolled original Write abilities.
+		// This list is *catalogue only*: MAD4B Native Write Execute still
+		// independently verifies actor, grant, site scope, schema pin, approval
+		// and the target Ability's permission callback. Do not add arbitrary
+		// agent-proposed Ability names or secrets to this allowlist.
+		if ( class_exists( 'MAD4B_Fleet_Adaptive_Intake_V2', false )
+			&& class_exists( 'MAD4B_SCP_Site_Profile', false )
+			&& function_exists( 'wp_has_ability' )
+			&& MAD4B_SCP_Site_Profile::configured()
+			&& MAD4B_SCP_Site_Profile::origin_enrolled()
+			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
+			&& 'staging' === MAD4B_SCP_Site_Profile::current_environment() ) {
+			$origin = untrailingslashit( home_url( '/' ) );
+			$site_uuid = MAD4B_SCP_Site_Profile::site_uuid();
+			$binding = get_option( 'mad4b_fleet_adaptive_intake_site_v2', array() );
+			// Central identity is the exact enrolled local company source role;
+			// never rely on an embedded environment hostname or copied URL.
+			$central = class_exists( 'MAD4B_Company_Environment_Registry_V2', false )
+				&& 'tours-central' === (string) get_option( 'mad4b_source_profile_company_code_v1', '' )
+				&& hash_equals( (string) MAD4B_SCP_Site_Profile::site_origin(), (string) $origin );
+			$company = is_array( $binding )
+				&& ( $binding['origin'] ?? '' ) === $origin
+				&& ( $binding['environment'] ?? '' ) === 'staging'
+				&& is_string( $site_uuid ) && '' !== $site_uuid
+				&& ( $binding['site_uuid'] ?? '' ) === $site_uuid;
+			if ( $central || $company ) {
+				foreach ( array(
+					'mad4b/fleet-intake-auto',
+					'mad4b/fleet-intake-plan',
+					'mad4b/fleet-intake-save',
+				) as $intake_ability ) {
+					if ( wp_has_ability( $intake_ability ) ) $candidates[] = $intake_ability;
+				}
+			}
+		}
+		// Canonical classification only: the existing Universal VPS queue
+		// Ability retains its own permission callback, registered-contract
+		// validation, executor selection and receipt checks. This does NOT
+		// create an Agent Grant or authorize arbitrary shell operations.
+		if ( class_exists( 'MAD4B_Hub_Universal_VPS_V1' )
+			&& function_exists( 'wp_has_ability' )
+			&& MAD4B_Hub_Universal_VPS_V1::scoped()
+			&& wp_has_ability( 'mad4b/hub-universal-vps-enqueue' ) ) {
+			$candidates[] = 'mad4b/hub-universal-vps-enqueue';
 		}
 		// This one-purpose Ability is available only on the exact enrolled central
 		// Staging host. General mad4b/hub-bulk-enqueue stays unmounted.
@@ -82,29 +173,6 @@ trait MAD4B_SCP_Server_Write_Catalog {
 		ksort( $result, SORT_STRING );
 		if ( $cacheable ) self::$registered_adapter_write_candidates_cache = $result;
 		return $result;
-	}
-
-	/**
-	 * One read-only provider snapshot of the effective, currently mounted Write
-	 * inventory. An unregistered/uncertified Adapter cannot become a grant
-	 * target by supplying an Ability name alone.
-	 */
-	public static function live_write_provider_snapshot() {
-		$runtime = self::write_tools();
-		$core = array_fill_keys( self::core_write_candidates(), true );
-		$adapters = self::registered_adapter_write_candidates();
-		$providers = array();
-		foreach ( $runtime as $ability ) {
-			$ability = (string) $ability;
-			if ( isset( $core[ $ability ] ) ) {
-				$providers[ $ability ] = 'core';
-			} elseif ( isset( $adapters[ $ability ] ) && '' !== (string) $adapters[ $ability ] ) {
-				$providers[ $ability ] = (string) $adapters[ $ability ];
-			}
-			// Unknown provider remains unmounted; no invented grant authority.
-		}
-		ksort( $providers, SORT_STRING );
-		return $providers;
 	}
 
 	public static function catalog_external_write_tools() {

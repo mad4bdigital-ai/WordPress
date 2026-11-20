@@ -1,6 +1,18 @@
 {
   "contract": "mad4b.wordpress-addon-catalog.v1",
   "addons": [],
+  "pending_addon_candidates": [
+    {
+      "addon_id": "mad4b-company-management",
+      "previous_catalog_git_blob_sha": "096a8811878d0ce23d59c050268e0a54e3872603",
+      "source_root": "wp-content/plugins/mad4b-company-portfolio-manager",
+      "state": "REVIEW_REQUIRED_SOURCE_NOT_AT_THIS_HEAD",
+      "active_catalog_member": false,
+      "execution_eligible": false,
+      "production_authorized": false,
+      "reviewed_original_owner": "pending_verified_source_and_exact_pair"
+    }
+  ],
   "defaults": {
     "multisite_support": "unsupported_unless_manifest_explicit",
     "production_authorized": false,

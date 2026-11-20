@@ -77,8 +77,6 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'context/create-drive-asset',
 				'context/update-drive-asset',
 				'context/recreate-drive-asset',
-				'context/brand-draft-append',
-				'context/brand-draft-create',
 				'context/source-scan-apply',
 				'context/materialize-brand-draft',
 				'context/reconcile-brand-materialization',
@@ -244,6 +242,8 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'category' => array( 'type' => 'string', 'maxLength' => 64 ),
 				'artifact_id' => array( 'type' => 'string', 'maxLength' => 36 ),
 				'expected_plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+				'draft_preflight_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+				'evidence_digest' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 				'source_id' => array( 'type' => 'string', 'maxLength' => 64 ),
 			), array( 'lane' ) )
 		);
@@ -498,47 +498,6 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 					'format' => array( 'type' => 'string', 'enum' => array( 'google_doc', 'markdown', 'text' ), 'default' => 'google_doc' ),
 				),
 				array( 'asset_id', 'content' )
-			),
-			'write',
-			false,
-			true,
-			false
-		);
-		$this->add_ability(
-			'context/brand-draft-append',
-			'Append Evidence-Bound Brand Context Draft',
-			'brand_draft_append',
-			$write_permission,
-			$this->schema(
-				array(
-					'category' => array( 'type' => 'string', 'enum' => array( 'tone_of_voice', 'editorial_guidelines' ) ),
-					'content' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => MAD4B_SCP_Brand_Context_Builder::MAX_DRAFT_BYTES ),
-					'expected_plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
-					'evidence_digest' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
-					'draft_preflight_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
-					'include_rendered_frontend' => array( 'type' => 'boolean', 'default' => false ),
-				),
-				array( 'category', 'content', 'expected_plan_sha256', 'evidence_digest', 'draft_preflight_sha256' )
-			),
-			'write',
-			false,
-			true,
-			false
-		);
-		$this->add_ability(
-			'context/brand-draft-create',
-			'Create Evidence-Bound Brand Context Draft',
-			'brand_draft_create',
-			$write_permission,
-			$this->schema(
-				array(
-					'category' => array( 'type' => 'string', 'enum' => array( 'tone_of_voice', 'editorial_guidelines' ) ),
-					'content' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => MAD4B_SCP_Brand_Context_Builder::MAX_DRAFT_BYTES ),
-					'expected_plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
-					'evidence_digest' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
-					'include_rendered_frontend' => array( 'type' => 'boolean', 'default' => false ),
-				),
-				array( 'category', 'content', 'expected_plan_sha256', 'evidence_digest' )
 			),
 			'write',
 			false,

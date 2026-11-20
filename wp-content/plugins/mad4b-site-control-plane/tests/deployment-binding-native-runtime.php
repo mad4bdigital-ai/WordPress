@@ -123,7 +123,16 @@ $GLOBALS['options'][MAD4B_SCP_Site_Profile::OPTION] = array(
 );
 $original = $GLOBALS['options'][MAD4B_SCP_Site_Profile::OPTION];
 MAD4B_SCP_Deployment_Binding_Native::register_abilities();
-bn_assert( count( $GLOBALS['abilities'] ) === 6, 'Staging status/plan/apply/handoff/readback and read-only Production status' );
+bn_assert( count( $GLOBALS['abilities'] ) === 7,
+    'Six original native status/plan/readback/Production/handoff/apply abilities plus registered environment read' );
+$environment_ability = $GLOBALS['abilities'][ MAD4B_SCP_Deployment_Binding_Native::ENVIRONMENT_STATUS ] ?? array();
+bn_assert( is_array( $environment_ability )
+    && $environment_ability['execute_callback'] === array( 'MAD4B_SCP_Deployment_Binding_Native', 'production_status' )
+    && $environment_ability['permission_callback'] === array( 'MAD4B_SCP_Deployment_Binding_Native', 'can_read' )
+    && $environment_ability['meta']['annotations']['readonly'] === true
+    && $environment_ability['meta']['mcp']['surface'] === 'read'
+    && $environment_ability['meta']['mcp']['production_mutation_allowed'] === false,
+    'Native environment-status is registered as an exact private, read-only descriptor, not an implicit write.' );
 // The one-time approval ticket is minted AFTER approval-plan validates the
 // target schema. Requiring the ticket inside that schema is a cycle; runtime
 // apply still denies requests lacking the real ticket.
@@ -141,7 +150,7 @@ foreach ($GLOBALS['abilities'] as $name => $spec) {
 $handoff = MAD4B_SCP_Deployment_Binding_Native::handoff();
 bn_assert( $handoff['agent_public_id'] === '0b8f7c20-6f75-4401-b33e-a59a14c48895'
     && !$handoff['write_authority_ready']
-    && $handoff['next_read'] === 'mad4b/staging-write-grant-reconciliation-plan'
+    && $handoff['next_read'] === MAD4B_SCP_Deployment_Binding_Native::HANDOFF
     && !$handoff['owner_approval_generated'],
     'read-only handoff discovers exact scoped agent without ticket creation or bypass' );
 MAD4B_SCP_Staging_Write_Authority::$ready = true;

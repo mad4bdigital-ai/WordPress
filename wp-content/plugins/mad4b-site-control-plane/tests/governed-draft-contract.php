@@ -177,8 +177,13 @@ $check(is_wp_error($bad_qa) && 'mad4b_draft_qa_authority_invalid'===$bad_qa->get
 
 $source=file_get_contents(dirname(__DIR__) . '/includes/class-mad4b-scp-governed-draft.php');
 $servers=file_get_contents(dirname(__DIR__) . '/includes/class-mad4b-scp-servers.php');
-$check(false!==strpos($servers,"'mad4b/draft-plan'"),'draft plan is not mounted on content/read plane');
-$check(false!==strpos($servers,"'mad4b/draft-verify'"),'draft verify is not mounted on content/read plane');
+$core_catalog=file_get_contents(dirname(__DIR__) . '/includes/class-mad4b-scp-server-core-catalog.php');
+$check(false!==strpos($servers,"require_once __DIR__ . '/class-mad4b-scp-server-core-catalog.php';")
+    && false!==strpos($servers,'use MAD4B_SCP_Server_Core_Catalog;')
+    && false!==strpos($core_catalog,'trait MAD4B_SCP_Server_Core_Catalog'),
+    'original server core catalog is not loaded and bound');
+$check(false!==strpos($core_catalog,"'mad4b/draft-plan'"),'draft plan is not mounted on content/read plane');
+$check(false!==strpos($core_catalog,"'mad4b/draft-verify'"),'draft verify is not mounted on content/read plane');
 $write_catalog=file_get_contents(dirname(__DIR__) . '/includes/class-mad4b-scp-server-write-catalog.php');
 $check(false!==strpos($servers,'use MAD4B_SCP_Server_Write_Catalog;') && false!==strpos($write_catalog,"'mad4b/draft-apply'"),'draft apply is not mounted as governed write candidate');
 $check(false===strpos($servers,"'mad4b/draft-publish'"),'public draft publish capability unexpectedly exists');

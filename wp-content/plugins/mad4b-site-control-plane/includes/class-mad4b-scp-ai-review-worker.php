@@ -10,9 +10,12 @@ final class MAD4B_SCP_AI_Review_Worker {
     public static function preflight() {
         $cfg=MAD4B_SCP_AI_Model_Router::settings();
         $status=MAD4B_SCP_AI_Model_Router::provider_status();
+        $review=MAD4B_SCP_Context_Authority::ai_review_policy_status();
         $can=class_exists('MAD4B_SCP_AI_Only_Local_Activation')
             && MAD4B_SCP_AI_Only_Local_Activation::site_bound()
-            && MAD4B_SCP_Context_Authority::review_policy()['mode']==='ai_only';
+            && in_array((string)($review['mode']??'human_only'),array('human_and_ai','ai_only'),true)
+            && !empty($review['ready']) && !empty($review['exact_grant_ready'])
+            && !empty($review['catalog_eligible']);
         $auth=class_exists('MAD4B_SCP_AI_Only_Local_Activation')
             ?MAD4B_SCP_AI_Only_Local_Activation::status():array();
         $ready=$can && !empty($cfg['enabled']) && !empty($status['credential_ready'])

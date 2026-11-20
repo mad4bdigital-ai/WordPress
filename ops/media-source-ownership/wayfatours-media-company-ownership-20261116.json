@@ -1,0 +1,59 @@
+{
+  "contract": "mad4b.media.company-scoped-runtime-ownership.v1",
+  "site": "https://wayfatours.com",
+  "created_utc": "2026-11-16T00:30:40.512881+00:00",
+  "exceptions": [
+    {
+      "path": "mu-plugins/400-wayfa-above-fold-images.php",
+      "decision": "company_only",
+      "owner_scope": "wayfatours_only",
+      "live_sha256": "8b9b5e6e0aead7e7dd59fd581120c6b7c4d7cb0dc0981e2940052c104d355f45",
+      "common_candidate_sha256": null,
+      "source_site_expected_sha256": null,
+      "site_overlay_immutable_source": true,
+      "reason": "Wayfatours header-logo image eagerness only; absent from Tours.dev runtime"
+    },
+    {
+      "path": "mu-plugins/mad4b-unified-media-apply.php",
+      "decision": "company_runtime_version_pin_source_diverged",
+      "owner_scope": "wayfatours_only",
+      "live_sha256": "cae14ff1f3cb25e29bad0188282384a571d9fbc5762c67f57b557971d69c113f",
+      "common_candidate_sha256": "611efff631b853b2e2a5f118b01d9eb141e960b9e483bbb44b28a544fc3c9490",
+      "source_site_expected_sha256": "2bc6b81fe40120ae6e4d319abd91ea83a7ee7c9cc3d680f80d6eed15ad787814",
+      "site_overlay_immutable_source": true,
+      "reason": "Wayfatours production uses pinned v1.0.1 local-library metadata-optional policy. Shared Git has independently gated external licensed-import functionality; Tours.dev remains v1.0.0. Do not overwrite this Wayfatours runtime from shared Git without exact semantic reconciliation."
+    },
+    {
+      "path": "mu-plugins/portable-term-featured-media.php",
+      "decision": "company_only",
+      "owner_scope": "wayfatours_only",
+      "live_sha256": "f4531201b718470215828f92ef01e2295b31c0839c501738e046312725b43349",
+      "common_candidate_sha256": null,
+      "source_site_expected_sha256": null,
+      "site_overlay_immutable_source": true,
+      "reason": "Company runtime local uploaded taxonomy fallback; absent from Tours.dev runtime"
+    },
+    {
+      "path": "mu-plugins/product-navigation-media.php",
+      "decision": "company_only",
+      "owner_scope": "wayfatours_only",
+      "live_sha256": "2cb52f33a258b6aed33d46683cea069aff06feb34cafa83abbba59910e778e02",
+      "common_candidate_sha256": null,
+      "source_site_expected_sha256": null,
+      "site_overlay_immutable_source": true,
+      "reason": "Company navigation lazy-image behavior; absent from Tours.dev runtime"
+    }
+  ],
+  "source_basis": "actual exact SHA-256 on Wayfatours, shared Git, and Tours.dev",
+  "all_unlisted_live_media_files_must_exactly_match_common_git": true,
+  "common_candidate_changes_not_auto_deployed": true,
+  "signed_original313_authorization_not_claimed": true,
+  "copyright_clearance_not_claimed": true,
+  "no_wp_files_modified": false,
+  "pending_library_rights_release_manifest": "ops/site-company-overlays/wayfatours/media-release-candidates/library-rights-release-plan-20261116.json",
+  "last_verified_manual_release_utc": "2026-11-16T01:09:50.754945+00:00",
+  "last_owner_audit_utc": "2026-11-16T02:38:57.166454+00:00",
+  "source_integration_note": "Wayfatours attribution registry v1.9.1 manually applied with exact CAS+backup; now matches common Git and Tours.dev. Historical 5th company pin retired only after source/live equality. Four actual company-only or version-pinned differences remain. Original313 signed receipt still absent.",
+  "retired_manual_cct_runtime_version_pin_sha256": "2f069e26de321edea562ffd422fc9b5d44cd6d043b3b98f4925903ca9f8c4bc0",
+  "current_cct_live_sha256": "48fe73035c4f585ca330821707204219026b5b57b70b8dff7d5bdf00edd1e4db"
+}

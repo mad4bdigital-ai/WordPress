@@ -1,0 +1,48 @@
+{
+  "contract": "mad4b.admin-pages-ci-source-reviews.v1",
+  "authorizing": false,
+  "production_authorized": false,
+  "owner_attestation_provided": false,
+  "review_policy": "append_only_exact_git_blob_and_disposable_wordpress_regressions",
+  "successors": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
+      "prior_source_blob_sha": "0c0c2052254a5c893a79d45aa9d985b57d8361fd",
+      "source_blob_sha": "ae5fb3221fe82ac7629c300e2194e31465912af7",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
+      ],
+      "review_rationale": "Exact reviewed extension of the disposable WordPress admin-page smoke to five newly registered company pages; preserves authenticated and unauthenticated checks, malformed input checks, nonce checks and zero outbound requests. Non-authorizing source evidence only; neither historical delivery hashes nor runtime/write/Owner release policies changed."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
+      "prior_source_blob_sha": "ae5fb3221fe82ac7629c300e2194e31465912af7",
+      "source_blob_sha": "4cdee11733bc6c3b814855d7537cb1f70cd51153",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
+      ],
+      "review_rationale": "The exact successor adds the real, registered DFSB environment policy admin page to the existing disposable-WordPress smoke. Diff review confirms only two explanatory comments and one new page handler mapping; permission-denial checks, full page census, malformed request checks and zero outbound HTTP constraints remain intact. This is non-authorizing CI source evidence only; no historical Feature 007 hashes, runtime permissions or owner release policy are changed."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
+      "prior_source_blob_sha": "4cdee11733bc6c3b814855d7537cb1f70cd51153",
+      "source_blob_sha": "e35046d8f7d2058cc790845dea60cc9650827e6d",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
+      ],
+      "review_rationale": "Adds an isolated, authenticated Company Skills Operations read-only admin smoke with a temporary non-persistent user_has_cap fixture; separately exercises revoked actor denial and verifies the capability filter is removed. The real disposable WordPress PHP matrix remains required; no master_admin role, deployment grant, production authorization or historical audit hash is changed."
+    }
+  ]
+}

@@ -4,7 +4,8 @@ from pathlib import Path
 root=Path(__file__).resolve().parents[1]
 src=(root/"includes/class-mad4b-scp-context-authority.php").read_text()
 jobs=(root/"includes/class-mad4b-scp-content-jobs.php").read_text()
-server=(root/"includes/class-mad4b-scp-servers.php").read_text()
+server=((root/"includes/class-mad4b-scp-servers.php").read_text()
+        +(root/"includes/class-mad4b-scp-server-core-catalog.php").read_text())
 bootstrap=(root/"mad4b-site-control-plane.php").read_text()
 resolver=(root/"includes/class-mad4b-scp-deployment-mode-resolver.php").read_text()
 guard=(root/"includes/class-mad4b-scp-operational-scope-guard.php").read_text()

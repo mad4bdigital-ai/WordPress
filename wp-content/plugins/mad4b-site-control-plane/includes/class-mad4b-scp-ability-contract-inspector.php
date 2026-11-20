@@ -86,8 +86,47 @@ final class MAD4B_SCP_Ability_Contract_Inspector {
 		$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
 		$surface = isset( $mcp['surface'] ) ? sanitize_key( (string) $mcp['surface'] ) : '';
 		$mutation_lanes = array( 'write', 'developer', 'enrollment', 'internal', 'breakglass', 'developer-breakglass' );
+		// Dispatch transport metadata must not erase the four *original*
+		// readonly discover/info and Direct Read identities. Require exact names,
+		// the original read category and an explicitly authored descriptor marker.
+		// All execute/mutation and foreign declarations remain fail-closed.
+		$source_read_dispatch = $readonly_declared
+			&& true === $annotations['readonly']
+			&& 'mad4b-read' === $category
+			&& 'read' === ( $mcp['mad4b_descriptor_read_lane'] ?? null )
+			&& (
+				( 'developer-dispatch' === $surface && in_array( $ability_name, array( 'mad4b/developer-discover', 'mad4b/developer-info' ), true ) )
+				|| ( 'enrollment' === $surface && in_array( $ability_name, array( 'mad4b/enrollment-discover', 'mad4b/enrollment-info' ), true ) )
+				|| ( 'direct' === $surface && in_array( $ability_name, array( 'mad4b/direct-connection-status', 'mad4b/direct-list-posts', 'mad4b/direct-get-post' ), true ) )
+			);
+		// Seven named first-party readonly abilities are *either* the exact declared
+		// readonly source identity or unclassified. Never let an enrollment
+		// transport label override their read lane or confer a write lane.
+		// Special transport names are not generic write surfaces. Exact
+		// first-party execute/permission callback provenance and final execution
+		// admission must be proven from the registered WP_Ability itself.
+		$original_core_dispatch = class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
+			&& in_array( $ability_name, array( 'mad4b/write-execute', 'mad4b/developer-execute', 'mad4b/enrollment-execute' ), true )
+			&& MAD4B_SCP_Governed_Ability_Census::original_dispatch_transport_boundary_verified( $ability );
+		$original_direct_post = class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
+			&& in_array( $ability_name, array( 'mad4b/direct-create-post', 'mad4b/direct-update-post' ), true )
+			&& MAD4B_SCP_Governed_Ability_Census::original_direct_post_boundary_verified( $ability );
+		$native_discovery_name = in_array( $ability_name, array(
+			'mad4b/developer-discover', 'mad4b/developer-info',
+			'mad4b/enrollment-discover', 'mad4b/enrollment-info',
+			'mad4b/direct-connection-status', 'mad4b/direct-list-posts', 'mad4b/direct-get-post',
+		), true );
 		$lane = 'unclassified';
-		if ( in_array( $surface, $mutation_lanes, true ) || in_array( $surface, array( 'admin', 'content' ), true ) ) {
+		if ( $source_read_dispatch ) {
+			$lane = 'read';
+		} elseif ( $native_discovery_name ) {
+			$lane = 'unclassified';
+		} elseif ( $original_core_dispatch ) {
+			$lane = 'mad4b/write-execute' === $ability_name ? 'write'
+				: ( 'mad4b/developer-execute' === $ability_name ? 'developer' : 'enrollment' );
+		} elseif ( $original_direct_post ) {
+			$lane = 'content';
+		} elseif ( in_array( $surface, $mutation_lanes, true ) || in_array( $surface, array( 'admin', 'content' ), true ) ) {
 			$lane = $surface;
 		} elseif ( $readonly_declared && true === $annotations['readonly'] && in_array( $surface, array( '', 'read' ), true ) ) {
 			$lane = 'read';
@@ -100,10 +139,49 @@ final class MAD4B_SCP_Ability_Contract_Inspector {
 		$schema_digest = self::input_schema_sha256( $ability );
 		if ( '' === $schema_digest ) return new WP_Error( 'mad4b_chatgpt_projection_schema_invalid', 'Ability schema cannot be serialized.' );
 
+		// This single original governed Enrollment bootstrap has no generic
+		// MAD4B write wrapper by design. Its independent registered policy and
+		// exact first-party callback pair are verified from the *real* Ability.
+		// This is structural MCP binding only, never permission to run the
+		// callback or create a grant.
+		$original_operator_boundary = 'enrollment' === $lane
+			&& class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
+			&& MAD4B_SCP_Governed_Ability_Census::operator_grant_original_boundary_verified( $ability );
+		$original_owner_intent_boundary = 'enrollment' === $lane
+			&& class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
+			&& MAD4B_SCP_Governed_Ability_Census::staging_owner_intent_original_boundary_verified( $ability );
+		$original_projection_boundary = 'enrollment' === $lane
+			&& class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
+			&& MAD4B_SCP_Governed_Ability_Census::chatgpt_projection_original_boundary_verified( $ability );
+		// Other reviewed first-party enrollment Step-ups have their own exact
+		// permission/approval policies rather than the generic Authorization
+		// wrapper. Their registered callback pair must be proven by the census,
+		// and the actual WordPress callback must retain final execution admission.
+		// This is descriptor provenance only: it never authorizes a tools/call.
+		$direct_step_up_census = 'enrollment' === $lane && class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
+			? MAD4B_SCP_Governed_Ability_Census::structural_step_up() : array();
+		$reviewed_direct_step_up_boundary = 'enrollment' === $lane
+			&& ! $readonly
+			&& true === ( $mcp['chatgpt_direct_step_up'] ?? null )
+			&& true === ( $mcp['exact_chatgpt_client_required'] ?? null )
+			&& false === ( $mcp['generic_remote_admin'] ?? null )
+			&& isset( $direct_step_up_census[ $ability_name ] )
+			&& 'verified_first_party_php_callbacks' === ( $direct_step_up_census[ $ability_name ]['source'] ?? null )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $direct_step_up_census[ $ability_name ]['callback_pair_digest'] ?? '' ) )
+			&& class_exists( 'MAD4B_SCP_Execution_Fence' )
+			&& MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $ability_name );
+		// Runtime Gates Apply is a single *direct-only* exception to generic
+		// Staging broker projection. Its original per-call OAuth, site, plan and
+		// confirmation gates stay intact; only descriptor provenance is bound.
+		$original_runtime_gate_direct = 'enrollment' === $lane
+			&& 'mad4b/runtime-gates-apply' === $ability_name
+			&& class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
+			&& MAD4B_SCP_Governed_Ability_Census::original_runtime_gate_direct_boundary_verified( $ability );
+		$original_bounded_boundary = $original_operator_boundary || $original_owner_intent_boundary || $original_projection_boundary || $reviewed_direct_step_up_boundary || $original_core_dispatch || $original_direct_post || $original_runtime_gate_direct;
 		$provider = class_exists( 'MAD4B_SCP_Servers' )
 			? ( method_exists( 'MAD4B_SCP_Servers', 'provider_for_capability_descriptor' )
-				? MAD4B_SCP_Servers::provider_for_capability_descriptor( 'mad4b-' . $lane, $ability_name )
-				: MAD4B_SCP_Servers::provider_for_ability( 'mad4b-' . $lane, $ability_name ) )
+				? MAD4B_SCP_Servers::provider_for_capability_descriptor( $original_bounded_boundary ? 'mad4b-chatgpt' : 'mad4b-' . $lane, $ability_name )
+				: MAD4B_SCP_Servers::provider_for_ability( $original_bounded_boundary ? 'mad4b-chatgpt' : 'mad4b-' . $lane, $ability_name ) )
 			: null;
 		$breakglass = in_array( $lane, array( 'breakglass', 'developer-breakglass' ), true ) || in_array(
 			$ability_name,
@@ -119,7 +197,7 @@ final class MAD4B_SCP_Ability_Contract_Inspector {
 		if ( 'internal' === $lane ) $projection_blockers[] = 'internal_surface_not_direct';
 		$projection_eligible = empty( $projection_blockers );
 
-		$boundary_verified = class_exists( 'MAD4B_SCP_Authorization' ) && MAD4B_SCP_Authorization::execution_boundary_verified( $ability );
+		$boundary_verified = $original_bounded_boundary || ( class_exists( 'MAD4B_SCP_Authorization' ) && MAD4B_SCP_Authorization::execution_boundary_verified( $ability ) );
 		$execution_blocker = ! $projection_eligible
 			? 'ability_projection_policy_blocked'
 			: ( ! $readonly && ! $boundary_verified

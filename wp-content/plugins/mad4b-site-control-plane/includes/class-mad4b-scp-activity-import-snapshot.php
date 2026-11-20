@@ -5,7 +5,7 @@ if ( ! class_exists( 'MAD4B_SCP_Batch_Atomic_Mutex' ) ) require_once __DIR__ . '
 /**
  * IMP03 review-only storage and approval of an exact source snapshot.
  * No post creation/update, provider dispatch or WP All Import execution.
- * Staging only. Active snapshot is stored in a nonautoloaded option with
+ * Site-neutral, enrolled company only. Active snapshot is stored in a nonautoloaded option with
  * authenticated encryption, so review is bound to EXACT source bytes.
  */
 final class MAD4B_SCP_Activity_Import_Snapshot {
@@ -44,7 +44,7 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
             MAD4B_SCP_Site_Profile::configured() &&
             MAD4B_SCP_Site_Profile::origin_enrolled() &&
             MAD4B_SCP_Site_Profile::site_urls_match_enrollment() &&
-            MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ) );
+            !empty( MAD4B_SCP_Site_Profile::status()['authority_ready'] );
     }
     /**
      * One exact Profile source inbox reservation for append/approval/export
@@ -54,7 +54,7 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
         if ( ! self::environment_ready() ||
             ( 'append' !== $operation && ! current_user_can( 'manage_options' ) ) )
             return self::err( 'mad4b_import_source_operation_denied',
-                'Exact enrolled Staging source authority required.' );
+                'Exact enrolled site source authority required.' );
         $lock = MAD4B_SCP_Batch_Atomic_Mutex::acquire( $slug, $operation );
         if ( is_wp_error( $lock ) ) return $lock;
         try {
@@ -73,7 +73,7 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
         } );
     }
     private static function stage_unlocked( $slug, $input, $preview, $source_mode, $source_identity = '' ) {
-        if ( ! self::environment_ready() ) return self::err( 'mad4b_import_snapshot_staging_only', 'Staging enrolled site required.' );
+        if ( ! self::environment_ready() ) return self::err( 'mad4b_import_snapshot_site_unready', 'Enrolled company identity required.' );
         $key = self::data_key();
         if ( is_wp_error( $key ) ) return $key;
         if ( ! is_array( $input ) || ! is_array( $preview ) ||

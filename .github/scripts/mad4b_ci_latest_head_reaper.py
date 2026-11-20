@@ -2,6 +2,7 @@
 """Cancel only superseded PR CI runs, preserving exact-head workflow isolation."""
 import argparse
 import datetime
+import http.client
 import time
 import json
 import os
@@ -27,14 +28,24 @@ def api(method, repository, path, token):
         data=b"" if method == "POST" else None,
         method=method,
     )
-    try:
-        with urllib.request.urlopen(request, timeout=30) as response:
-            raw = response.read()
-            return json.loads(raw) if raw else {}
-    except urllib.error.HTTPError as exc:
-        if method == "POST" and exc.code in (409, 422):
-            return {"already_finished": True}
-        raise
+    # Large Actions listings can terminate mid-body with IncompleteRead.
+    # Retrying a GET is side-effect free; retrying POST /cancel is NOT.
+    # Exhausted reads still fail closed before any cancellation list applies.
+    for attempt in range(3 if method == "GET" else 1):
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                raw = response.read()
+                return json.loads(raw) if raw else {}
+        except urllib.error.HTTPError as exc:
+            if method == "POST" and exc.code in (409, 422):
+                return {"already_finished": True}
+            raise
+        except (http.client.IncompleteRead, ConnectionResetError,
+                TimeoutError, urllib.error.URLError):
+            if method != "GET" or attempt == 2:
+                raise
+            time.sleep(0.2 * (attempt + 1))
+    raise RuntimeError("ACTIONS_LISTING_READ_FAILED_CLOSED")
 
 
 def candidate(run, *, number, sha, branch):

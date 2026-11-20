@@ -109,8 +109,11 @@ final class MAD4B_SCP_Addon_Registry {
 		if ( empty( $manifest['extension_points'] ) || ! is_array( $manifest['extension_points'] ) ) return new WP_Error( 'mad4b_addon_manifest_extension_points_invalid', 'MAD4B add-on manifest must declare extension points.' );
 		if ( ! empty( $manifest['authority_impact']['inherits_production_authority'] ) || ! empty( $manifest['authority_impact']['adds_generic_shell'] ) || ! empty( $manifest['authority_impact']['adds_raw_sql'] ) ) return new WP_Error( 'mad4b_addon_manifest_authority_invalid', 'MAD4B add-on manifest may not inherit Production authority, generic shell, or raw SQL.' );
 		if ( ! isset( $manifest['portability']['vendor_files_modified'] ) || false !== $manifest['portability']['vendor_files_modified'] ) return new WP_Error( 'mad4b_addon_manifest_vendor_patch_denied', 'MAD4B add-ons may not modify vendor files.' );
-		if ( empty( $manifest['certification']['exact_provider_version_required'] ) || empty( $manifest['certification']['exact_addon_version_required'] ) ) return new WP_Error( 'mad4b_addon_manifest_exact_pair_required', 'MAD4B add-ons require exact provider/add-on pair certification.' );
-		if ( empty( $manifest['failure_policy']['reconcile_before_retry_after_uncertain_write'] ) ) return new WP_Error( 'mad4b_addon_manifest_uncertain_retry_invalid', 'MAD4B add-ons must reconcile before retry after an uncertain write.' );
+		if ( ( $manifest['certification']['exact_provider_version_required'] ?? null ) !== true
+			|| ( $manifest['certification']['exact_addon_version_required'] ?? null ) !== true )
+			return new WP_Error( 'mad4b_addon_manifest_exact_pair_required', 'MAD4B add-ons require explicit exact provider/add-on pair certification.' );
+		if ( ( $manifest['failure_policy']['reconcile_before_retry_after_uncertain_write'] ?? null ) !== true )
+			return new WP_Error( 'mad4b_addon_manifest_uncertain_retry_invalid', 'MAD4B add-ons must explicitly reconcile before retry after an uncertain write.' );
 		if ( ! isset( $manifest['network_access']['allowed_hosts'] ) || ! is_array( $manifest['network_access']['allowed_hosts'] ) ) return new WP_Error( 'mad4b_addon_manifest_network_policy_invalid', 'MAD4B add-on network policy must explicitly declare allowed_hosts.' );
 		return true;
 	}
@@ -120,15 +123,58 @@ final class MAD4B_SCP_Addon_Registry {
 		if ( '' === $plugin_file ) return array( 'installed' => false, 'active' => false, 'version' => '', 'sha256' => '' );
 		if ( ! function_exists( 'get_plugins' ) ) require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		$plugins = get_plugins();
-		$installed = isset( $plugins[ $plugin_file ] );
+		if ( ! is_array( $plugins ) ) $plugins = array();
+		$installed = isset( $plugins[ $plugin_file ] ) && is_array( $plugins[ $plugin_file ] );
 		$absolute = wp_normalize_path( WP_PLUGIN_DIR . '/' . $plugin_file );
 		return array(
 			'installed' => $installed,
-			'active' => $installed && function_exists( 'is_plugin_active' ) && is_plugin_active( $plugin_file ),
-			'network_active' => $installed && is_multisite() && function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( $plugin_file ),
+			'active' => $installed && function_exists( 'is_plugin_active' ) && true === is_plugin_active( $plugin_file ),
+			'network_active' => $installed && true === is_multisite() && function_exists( 'is_plugin_active_for_network' ) && true === is_plugin_active_for_network( $plugin_file ),
 			'version' => $installed && ! empty( $plugins[ $plugin_file ]['Version'] ) ? (string) $plugins[ $plugin_file ]['Version'] : '',
 			'sha256' => is_file( $absolute ) && is_readable( $absolute ) ? hash_file( 'sha256', $absolute ) : '',
 		);
+	}
+
+	/**
+	 * Identify the first-party Control Plane by its exact installed plugin
+	 * and live runtime, rather than querying the external-provider catalogue.
+	 * This read-only proof is NOT an add-on pair certificate or write grant.
+	 */
+	private static function base_provider_runtime_status( array $manifest ) {
+		$id = sanitize_key( (string) ( $manifest['base_provider']['provider_id'] ?? '' ) );
+		$core_file = 'mad4b-site-control-plane/mad4b-site-control-plane.php';
+		if ( 'mad4b-site-control-plane' === $id
+			&& $core_file === (string) ( $manifest['base_provider']['plugin_file'] ?? '' ) ) {
+			$core = self::plugin_state( $core_file );
+			$active = ! empty( $core['installed'] ) && ( ! empty( $core['active'] ) || ! empty( $core['network_active'] ) );
+			$bound = $active
+				&& defined( 'MAD4B_SCP_VERSION' )
+				&& hash_equals( (string) $core['version'], (string) MAD4B_SCP_VERSION )
+				&& class_exists( 'MAD4B_SCP_Operation_Registry', false )
+				&& class_exists( 'MAD4B_SCP_Site_Profile', false )
+				&& class_exists( 'MAD4B_SCP_Addon_Registry', false );
+			return array(
+				'status' => $bound ? 'native_core_runtime_bound' : 'native_core_runtime_unavailable',
+				'runtime_contract_ok' => (bool) $bound,
+				'native_core_runtime_bound' => (bool) $bound,
+				'installed_version' => (string) $core['version'],
+				'plugin_file' => $core_file,
+				'plugin_main_file_sha256' => (string) $core['sha256'],
+				'certification_authority' => 'native_runtime_inventory_only',
+				'production_authorized' => false,
+			);
+		}
+		$unverified = array( 'status' => 'provider_contract_unavailable',
+			'runtime_contract_ok' => false );
+		if ( ! class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) return $unverified;
+		try {
+			$observed = MAD4B_SCP_Provider_Contracts::runtime_status( $id );
+		} catch ( \Throwable $error ) {
+			return $unverified;
+		}
+		// WordPress provider source errors or unexpected scalar returns are
+		// neither a certificate nor a valid runtime profile.
+		return is_array( $observed ) ? $observed : $unverified;
 	}
 
 	private static function pair_status( array $manifest ) {
@@ -136,7 +182,7 @@ final class MAD4B_SCP_Addon_Registry {
 		if ( is_wp_error( $valid ) ) return array( 'state' => 'manifest_invalid', 'certified' => false, 'error_code' => $valid->get_error_code() );
 		$addon = self::plugin_state( $manifest['plugin_file'] );
 		$provider_id = sanitize_key( (string) $manifest['base_provider']['provider_id'] );
-		$provider = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::runtime_status( $provider_id ) : array( 'status' => 'provider_contract_unavailable', 'runtime_contract_ok' => false );
+		$provider = self::base_provider_runtime_status( $manifest );
 		$extension_points_sha256 = self::fingerprint( $manifest['extension_points'] );
 		$manifest_sha256 = self::fingerprint( $manifest );
 		$provider_version = isset( $provider['installed_version'] ) ? (string) $provider['installed_version'] : '';
@@ -144,7 +190,7 @@ final class MAD4B_SCP_Addon_Registry {
 			'provider' => $provider_id,
 			'version' => $provider_version,
 			'status' => isset( $provider['status'] ) ? (string) $provider['status'] : '',
-			'runtime_contract_ok' => ! empty( $provider['runtime_contract_ok'] ),
+			'runtime_contract_ok' => ( $provider['runtime_contract_ok'] ?? null ) === true,
 			'certification_authority' => isset( $provider['certification_authority'] ) ? (string) $provider['certification_authority'] : '',
 		) );
 		$pair = array(
@@ -166,16 +212,24 @@ final class MAD4B_SCP_Addon_Registry {
 			if ( $provider_version !== ( isset( $candidate['provider_version'] ) ? (string) $candidate['provider_version'] : '' ) ) continue;
 			if ( $addon['version'] !== ( isset( $candidate['addon_version'] ) ? (string) $candidate['addon_version'] : '' ) ) continue;
 			if ( $extension_points_sha256 !== ( isset( $candidate['extension_points_sha256'] ) ? strtolower( (string) $candidate['extension_points_sha256'] ) : '' ) ) continue;
-			if ( ! empty( $candidate['addon_main_file_sha256'] ) && $addon['sha256'] !== strtolower( (string) $candidate['addon_main_file_sha256'] ) ) continue;
+			// Installed add-on *bytes* are part of the exact signed provider
+			// pair. Version+extension declarations alone cannot authorize a write.
+			$expected_main_sha = $candidate['addon_main_file_sha256'] ?? null;
+			if ( ! is_string( $expected_main_sha )
+				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', strtolower( $expected_main_sha ) )
+				|| ! is_string( $addon['sha256'] )
+				|| ! hash_equals( strtolower( $expected_main_sha ), strtolower( $addon['sha256'] ) ) ) continue;
 			$certified_pair = true;
 			break;
 		}
 
-		$provider_certified = ! empty( $provider['runtime_contract_ok'] ) && isset( $provider['status'] ) && 'certified' === $provider['status'];
+		$provider_verified = ( $provider['runtime_contract_ok'] ?? null ) === true
+			&& is_string( $provider['status'] ?? null )
+			&& in_array( $provider['status'], array( 'certified', 'native_core_runtime_bound' ), true );
 		$state = 'pair_uncertified';
 		if ( ! $addon['installed'] ) $state = 'addon_unavailable';
 		elseif ( ! $addon['active'] && ! $addon['network_active'] ) $state = 'addon_inactive';
-		elseif ( ! $provider_certified ) $state = 'provider_uncertified';
+		elseif ( ! $provider_verified ) $state = 'provider_uncertified';
 		elseif ( $certified_pair ) $state = 'certified';
 
 		return array(
@@ -251,7 +305,9 @@ final class MAD4B_SCP_Addon_Registry {
 		$catalog = self::catalog();
 		if ( is_wp_error( $catalog ) ) return array( 'contract' => self::CONTRACT, 'ready' => false, 'state' => 'catalog_invalid', 'error_code' => $catalog->get_error_code(), 'production_authorized' => false );
 		$items = array();
-		$ready = true;
+		// An empty release catalog is not a certified registry. Historical
+		// source candidates cannot authorize an add-on execution binding.
+		$ready = ! empty( $catalog['addons'] );
 		foreach ( $catalog['addons'] as $manifest ) {
 			if ( ! is_array( $manifest ) ) { $ready = false; $items[] = array( 'state' => 'manifest_invalid', 'certified' => false ); continue; }
 			$row = self::pair_status( $manifest );
@@ -264,7 +320,8 @@ final class MAD4B_SCP_Addon_Registry {
 			'catalog_fingerprint' => self::fingerprint( $catalog ),
 			'registry_epoch' => (int) get_option( self::EPOCH_OPTION, 0 ),
 			'ready' => $ready,
-			'state' => $ready ? 'ready' : 'certification_required',
+			'state' => empty( $items ) ? 'no_registered_addons' : ( $ready ? 'ready' : 'certification_required' ),
+			'pending_candidate_count' => isset( $catalog['pending_addon_candidates'] ) && is_array( $catalog['pending_addon_candidates'] ) ? count( $catalog['pending_addon_candidates'] ) : 0,
 			'addons' => $items,
 			'count' => count( $items ),
 			'exact_pair_certification_required' => true,

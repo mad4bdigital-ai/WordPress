@@ -1,0 +1,205 @@
+{
+  "contract": "mad4b.native-lazy.auto-coverage-queue.v1",
+  "site_host": "tours.dev.mad4b.com",
+  "observed_market": {
+    "country": "DE",
+    "currency": "USD"
+  },
+  "configured_currencies": [
+    "EGP",
+    "EUR",
+    "GBP",
+    "USD"
+  ],
+  "configured_but_unobserved_currencies": [
+    "EGP",
+    "EUR",
+    "GBP"
+  ],
+  "coverage_rule": "Only first-party browser-reproducible WCML country/currency pairs may receive an AJAX certificate",
+  "language_count": 6,
+  "discovered_count": 12,
+  "statuses": {
+    "native_ssr_low_volume": 8,
+    "conditional_not_rendered": 1,
+    "certified_active": 2,
+    "requires_native_signed_ajax_evidence": 1
+  },
+  "queue": [
+    {
+      "locale": "it",
+      "url": "https://tours.dev.mad4b.com/it/",
+      "page_id": 43771,
+      "document_id": 39495,
+      "query_id": 291,
+      "listing_id": 45938,
+      "widget_id": "78d62e0",
+      "market": "de-usd",
+      "query_generation": "scoped:v1:12d1ac2d4fdf0181992a9331ac43cc4d1ef5763f6faa10f44a8ecce7dba9bed8",
+      "listing_sha256": "b67f5ca6a165df9690b246597510cde3d8b01ad98e2a186bf6835cd47c2dc499",
+      "listing_css_sha256": "989f4c7c13fd7000c3e138f3cbed43d0cceaf4cbb778449dc0c9fe04b29d638d",
+      "css_epoch": 123,
+      "mobile_breakpoint": 767
+    }
+  ],
+  "matrix": [
+    {
+      "locale": "ar",
+      "query_id": 291,
+      "listing_id": 45938,
+      "widget_id": "78d62e0",
+      "market": "de-usd",
+      "counts_390_1920": [
+        1,
+        1
+      ],
+      "status": "native_ssr_low_volume",
+      "source_revision": "scoped:v1:12d1ac2d4fdf0181992a9331ac43cc4d1ef5763f6faa10f44a8ecce7dba9bed8"
+    },
+    {
+      "locale": "ar",
+      "query_id": 290,
+      "listing_id": 45929,
+      "widget_id": "b51f7bd",
+      "market": "de-usd",
+      "counts_390_1920": [
+        null,
+        null
+      ],
+      "status": "conditional_not_rendered",
+      "source_revision": "scoped:v1:b6fb2ac999abfa56c485050e5cd7cda20c9a957348b71a2e9b959a2226ee6a26"
+    },
+    {
+      "locale": "de",
+      "query_id": 291,
+      "listing_id": 45938,
+      "widget_id": "78d62e0",
+      "market": "de-usd",
+      "counts_390_1920": [
+        8,
+        14
+      ],
+      "status": "native_ssr_low_volume",
+      "source_revision": "scoped:v1:12d1ac2d4fdf0181992a9331ac43cc4d1ef5763f6faa10f44a8ecce7dba9bed8"
+    },
+    {
+      "locale": "de",
+      "query_id": 361,
+      "listing_id": 45927,
+      "widget_id": "b51f7bd",
+      "market": "de-usd",
+      "counts_390_1920": [
+        2,
+        2
+      ],
+      "status": "native_ssr_low_volume",
+      "source_revision": "scoped:v1:1d59e61048f6bff116d4b75cf9053366072a48d045a99998cb49876cc58df9f4"
+    },
+    {
+      "locale": "en",
+      "query_id": 291,
+      "listing_id": 45938,
+      "widget_id": "78d62e0",
+      "market": "de-usd",
+      "counts_390_1920": [
+        45,
+        51
+      ],
+      "status": "certified_active",
+      "source_revision": "scoped:v1:12d1ac2d4fdf0181992a9331ac43cc4d1ef5763f6faa10f44a8ecce7dba9bed8"
+    },
+    {
+      "locale": "en",
+      "query_id": 290,
+      "listing_id": 45929,
+      "widget_id": "b51f7bd",
+      "market": "de-usd",
+      "counts_390_1920": [
+        7,
+        7
+      ],
+      "status": "native_ssr_low_volume",
+      "source_revision": "scoped:v1:b6fb2ac999abfa56c485050e5cd7cda20c9a957348b71a2e9b959a2226ee6a26"
+    },
+    {
+      "locale": "es",
+      "query_id": 291,
+      "listing_id": 45938,
+      "widget_id": "78d62e0",
+      "market": "de-usd",
+      "counts_390_1920": [
+        43,
+        49
+      ],
+      "status": "certified_active",
+      "source_revision": "scoped:v1:12d1ac2d4fdf0181992a9331ac43cc4d1ef5763f6faa10f44a8ecce7dba9bed8"
+    },
+    {
+      "locale": "es",
+      "query_id": 290,
+      "listing_id": 45929,
+      "widget_id": "b51f7bd",
+      "market": "de-usd",
+      "counts_390_1920": [
+        7,
+        7
+      ],
+      "status": "native_ssr_low_volume",
+      "source_revision": "scoped:v1:b6fb2ac999abfa56c485050e5cd7cda20c9a957348b71a2e9b959a2226ee6a26"
+    },
+    {
+      "locale": "fr",
+      "query_id": 291,
+      "listing_id": 45938,
+      "widget_id": "78d62e0",
+      "market": "de-usd",
+      "counts_390_1920": [
+        8,
+        14
+      ],
+      "status": "native_ssr_low_volume",
+      "source_revision": "scoped:v1:12d1ac2d4fdf0181992a9331ac43cc4d1ef5763f6faa10f44a8ecce7dba9bed8"
+    },
+    {
+      "locale": "fr",
+      "query_id": 361,
+      "listing_id": 45927,
+      "widget_id": "b51f7bd",
+      "market": "de-usd",
+      "counts_390_1920": [
+        2,
+        2
+      ],
+      "status": "native_ssr_low_volume",
+      "source_revision": "scoped:v1:1d59e61048f6bff116d4b75cf9053366072a48d045a99998cb49876cc58df9f4"
+    },
+    {
+      "locale": "it",
+      "query_id": 291,
+      "listing_id": 45938,
+      "widget_id": "78d62e0",
+      "market": "de-usd",
+      "counts_390_1920": [
+        43,
+        49
+      ],
+      "status": "requires_native_signed_ajax_evidence",
+      "source_revision": "scoped:v1:12d1ac2d4fdf0181992a9331ac43cc4d1ef5763f6faa10f44a8ecce7dba9bed8"
+    },
+    {
+      "locale": "it",
+      "query_id": 290,
+      "listing_id": 45929,
+      "widget_id": "b51f7bd",
+      "market": "de-usd",
+      "counts_390_1920": [
+        7,
+        7
+      ],
+      "status": "native_ssr_low_volume",
+      "source_revision": "scoped:v1:b6fb2ac999abfa56c485050e5cd7cda20c9a957348b71a2e9b959a2226ee6a26"
+    }
+  ],
+  "prepared_at_utc": "2026-11-16T08:41:33.900172+00:00",
+  "has_written_certificates": false
+}

@@ -100,6 +100,7 @@ class MAD4B_SCP_Unified_Capability_Gateway {
         return array( 'abilities' => $items );
     }
 }
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-global-runtime-lifecycle.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-adaptive-operation-router.php';
 MAD4B_SCP_Adaptive_Operation_Router::register_abilities();
 require_route( count( $GLOBALS['abilities'] ) === 2, 'two read-only router abilities' );
@@ -124,6 +125,11 @@ require_route( $write['state'] === 'ROUTE_SELECTED_REQUIRES_EXECUTION_REVALIDATI
     && !$write['production_auto_write_enabled']
     && $write['never_auto_executes'] === true,
     'write route metadata never issues permission or executes' );
+require_route( is_array($write['global_runtime_dispatch'])
+    && $write['global_runtime_dispatch']['state']==='WAITING_PREFLIGHT'
+    && !$write['global_runtime_dispatch']['dispatch_performed']
+    && !$write['global_runtime_dispatch']['alternate_mutation_authorized'],
+    'Lifecycle must only project a prepared write route without dispatch authority' );
 $auto = $router::plan( array( 'task' => 'create trip', 'intent' => 'auto' ) );
 require_route( $auto['selected']['ability_name'] === 'example/trip-plan',
     'automatic semantic selection prefers safe read planning when available' );
@@ -164,6 +170,10 @@ $in_doubt = $router::plan( array(
 require_route( $in_doubt['state'] === 'PREVIOUS_WRITE_REQUIRES_INDEPENDENT_READBACK'
     && $in_doubt['selected'] === null,
     'a fallback read may not silently convert a failed write into a replay' );
+require_route( is_array($in_doubt['global_runtime_dispatch'])
+    && $in_doubt['global_runtime_dispatch']['state']==='NEEDS_RECONCILIATION'
+    && !$in_doubt['global_runtime_dispatch']['blind_write_retry_allowed'],
+    'Uncertain write transport must reach durable Lifecycle reconciliation, not automatic retry' );
 $write_failed = $router::plan( array(
     'ability_name' => 'example/trip-apply', 'intent' => 'write',
     'failed_transport' => 'direct', 'failure_code' => 'tool_not_found' ) );

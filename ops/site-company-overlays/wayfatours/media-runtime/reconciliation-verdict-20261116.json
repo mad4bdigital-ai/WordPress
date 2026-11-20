@@ -1,0 +1,42 @@
+{
+  "contract": "mad4b.wayfa.media-reconciliation-verdict.v1",
+  "created_utc": "2026-11-16T00:41:02.760604+00:00",
+  "site": "https://wayfatours.com",
+  "source_authority": {
+    "php_modules_examined": 37,
+    "exact_shared_git_modules": 33,
+    "company_only_modules": 3,
+    "company_pinned_release_module": 1,
+    "exact_live_media_mirror_files": 49,
+    "company_owned_exception_verdict": "exact_company_source_ownership_reconciled",
+    "all_unclassified_runtime_differences": 0,
+    "no_unreviewed_common_candidate_auto_promoted": true
+  },
+  "manual_wayfa_release": {
+    "uael_stage_labels_deployed": true,
+    "test_cases": 7,
+    "git_test_commit": "685a0e8b50",
+    "company_overlay_reconciliation_commit": "231d51032a"
+  },
+  "native_313": {
+    "company_code_release_provider": 4,
+    "finalizer_connected": true,
+    "operational_ready": false,
+    "signed_release_grant_issued_here": false,
+    "must_not_be_overridden_from_source_parity": true
+  },
+  "editorial_rights": {
+    "active_drafts_missing_evidence": 179,
+    "historic_drafts": 2,
+    "published_credits": 4,
+    "gem_crop_review_count": 2,
+    "gem_candidate_source_evidence": "ops/site-company-overlays/wayfatours/media-review/gem-landscape-rights-review-20261116.json",
+    "gem_candidate_published": false,
+    "rights_verified_or_granted_here": false
+  },
+  "site_scope": {
+    "tours_dev_code_modified_by_this_migration": false,
+    "wayfatours_media_assignments_modified_by_this_migration": false
+  },
+  "source_release_is_not_original313_publication_authority": true
+}

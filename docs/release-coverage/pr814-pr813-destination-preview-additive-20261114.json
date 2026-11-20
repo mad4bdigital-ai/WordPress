@@ -1,0 +1,93 @@
+{
+  "contract": "mad4b.pr814.pr813-additive-destination-reconcile.v1",
+  "pr813_source_sha": "865538aaaf6819a863d32a80406dbe56a17b42da",
+  "pr814_original_base_sha": "fc0d6c49d43c6818f3da3e6de465d36e4a55050c",
+  "merge_method": "selected_additive_only_no_global_replacement",
+  "preserved_historical_review": "docs/release-coverage/pr814-pr813-tour-highlights-reconciled-20261113.json",
+  "files": [
+    {
+      "path": "config/elementor/destination-native-template-contract-v1.json",
+      "sha256": "4719e5ef4a20c29e9d79a215a7c13d1550b1bec00f757897973ba22a7b1fd553",
+      "bytes": 33833,
+      "source_only": true
+    },
+    {
+      "path": "scripts/migrations/destination-native-template-reconcile-v1.php",
+      "sha256": "9ee5076734503abe18aaac7abd819e6bc627589f0b1955bfbc342378eb2b3ac6",
+      "bytes": 14506,
+      "source_only": true
+    },
+    {
+      "path": "scripts/qa/destination-native-template-browser.py",
+      "sha256": "deb57f70c359161118d289c986b0132a77d8499515cd2a26f37e4af3aabc8911",
+      "bytes": 6081,
+      "source_only": true
+    },
+    {
+      "path": "scripts/qa/tour-destination-preview-browser.py",
+      "sha256": "dbd003de1a2621c2ba79653a076ec00c98d74adcc344c9edd1750dd1f2ada8f0",
+      "bytes": 9695,
+      "source_only": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/tour-destination-quick-preview.css",
+      "sha256": "dc0463e9d5ef42c117ea836ed9c6a33cf81b4b526939d81b9e781ba20a306257",
+      "bytes": 6807,
+      "source_only": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/tour-destination-quick-preview.js",
+      "sha256": "124a6dde0d9f708deb9fc488f0900f150e4b19b02955e77936d6b439f787db89",
+      "bytes": 15388,
+      "source_only": false
+    }
+  ],
+  "presentation": {
+    "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-tour-highlights-presentation-v1.php",
+    "historical_sha256": "0ecf5459324cca95314551f13d9d00ebcb0d78be31b8304fc0b2662be6beb125",
+    "historical_bytes": 11658,
+    "current_sha256": "877f1e1d93209bf292ac6f108936d0f0b40c887381ffaa25ac5508ff38fc41a1",
+    "current_bytes": 12612,
+    "insertion_line": 32,
+    "insertion_line_count": 12,
+    "insertion_sha256": "b4750708ea6dbccdc6e569ac2ebd43e3155ba15e65e75c8b6f7be6924673cabd"
+  },
+  "php_7_4_migration_compatibility_reviewed": true,
+  "brand_core_and_native_hooks_preserved": true,
+  "company_wordpress_source_mutated": false,
+  "production_release_approved": false,
+  "original313_signed_receipts_issued": false,
+  "original_plugin_entry": {
+    "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+    "historical_sha256": "fdc0a6c7be27604b531a8fc80f5dc08891f8b1e9c5aa6c67c749ae189f328d64",
+    "historical_bytes": 67371,
+    "current_sha256": "87007b03164b4de741920384431f22950870f9ff395654cbf28816ac1a5b6ef3",
+    "current_bytes": 67907,
+    "additions": [
+      {
+        "start_line": 17,
+        "line_count": 3,
+        "sha256": "d918465d53290378803d68b74f40ef0e896c5a38c91f7074c8adf6c99c04d6dd"
+      },
+      {
+        "start_line": 525,
+        "line_count": 3,
+        "sha256": "3407402ae44f103e4714ab7d514318ecabb3e78b3fbc049e302cb54f83d03d9f"
+      },
+      {
+        "start_line": 902,
+        "line_count": 1,
+        "sha256": "a5ccb7d32d66195b65a6d39e87e9b0fcfa080cfc58b000226bc8c2ec033ac160"
+      }
+    ],
+    "new_authority_granted": false,
+    "new_registered_publisher": false
+  },
+  "pr813_missing_early_private_cpt_and_readonly_reconcile_recovered": true,
+  "pr813_unsafe_wholesale_replacements_rejected": [
+    "Retain PR814 Tour Highlights register() zero-touch hook API guard and PHP7.4 strpos",
+    "Retain PR814 dynamic non-hardcoded itinerary QA group count",
+    "Retain PR814 WordPress Original305/313 and Native Source Review code paths",
+    "Retain current WordPress Core permissions, registration and Release policies"
+  ]
+}

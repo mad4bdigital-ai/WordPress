@@ -261,7 +261,35 @@ DELIVERY_REVIEWED_ANCESTORS = {
         "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
     "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php":
         "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "wp-content/plugins/mad4b-site-control-plane/config/remote-operation-catalog.php":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-elementor-adapter.php":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-litespeed-adapter.php":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-provider-connections.php":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "wp-content/plugins/mad4b-site-control-plane/README.md":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
+    "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-enrollment-runtime.php":
+        "68ce3a12bf1bcc476c7ca8ab58c696a7cdadb504",
 }
+
+# Only these three non-runtime archival paths use the separate CI-only
+# historical source-review ledger; no WordPress execution is authorized.
+HISTORIC_NON_RUNTIME_REVIEWABLE = frozenset({
+    "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt",
+    "wp-content/plugins/mad4b-site-control-plane/README.md",
+    "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-enrollment-runtime.php",
+})
 
 
 def is_exact_historical_delivery_successor(root, path, contents, historic_sha, historic_bytes):
@@ -295,7 +323,7 @@ def is_exact_historical_delivery_successor(root, path, contents, historic_sha, h
         reviews_path = (
             "specs/007-content-intelligence-workflow-platform/extensions/"
             "competitive-experience/historical-delivery-source-reviews.json"
-            if path.endswith("/competitive-experience/validate.py")
+            if path.endswith("/competitive-experience/validate.py") or path in HISTORIC_NON_RUNTIME_REVIEWABLE
             else "governance/production-readiness/capability-coverage.json"
         )
         registry = json.loads((root / reviews_path).read_text(encoding="utf-8"))
@@ -347,7 +375,8 @@ def is_exact_historical_delivery_successor(root, path, contents, historic_sha, h
         tests = entry.get("regression_tests")
         if (not isinstance(controls, list) or len(controls) < 2
                 or not isinstance(tests, list) or not tests
-                or not all(isinstance(t, str) and t.startswith(tests_prefix)
+                or not all(isinstance(t, str)
+                           and (t.startswith(tests_prefix) or t.startswith("tests/"))
                            and (root / t).is_file() and not (root / t).is_symlink()
                            for t in tests)):
             continue

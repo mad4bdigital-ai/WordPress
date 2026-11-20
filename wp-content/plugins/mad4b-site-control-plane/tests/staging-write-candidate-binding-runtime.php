@@ -51,6 +51,12 @@ final class MAD4B_SCP_Identity_Context {
 	}
 }
 final class MAD4B_SCP_Agent_Registry {
+    // Mirror the canonical Registry lookup used by the production candidate
+    // binding code, without granting the mocked subject any extra authority.
+    public static function get_agent_by_slug( $slug ) {
+        if ( 'chatgpt-governed-write' !== (string) $slug ) return null;
+        return self::resolve_agent( array() );
+    }
 	public static function resolve_agent( $identity ) {
 		return array(
 			'id' => 5,
@@ -113,6 +119,10 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		array( 'ability' => 'mad4b/plugin-activate', 'provider' => 'core', 'mounted' => true, 'exact_grant_present' => true, 'grant_state' => 'exact_current_environment' ),
 	);
 
+    public static function is_exact_delegated_oauth_agent( $resolved, $user_id ) {
+        // Fixture only: do not grant an untested delegation path.
+        return false;
+    }
 	public static function augment_write_ability( $args, $name ) { return $args; }
 	public static function bootstrap() { return get_option( self::OPTION, array() ); }
 	public static function reconcile() { ++self::$reconcile_calls; return new WP_Error( 'must_not_be_called' ); }

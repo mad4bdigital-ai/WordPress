@@ -2,7 +2,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Explicitly enrolled Staging attachment transfer via WordPress REST, intended
+ * Explicitly enrolled, site-scoped attachment transfer via WordPress REST, intended
  * for a ChatGPT MCP client able to send base64 chunks. Never fetches ChatGPT URLs.
  * No automatic publishing and no arbitrary filesystem target.
  */
@@ -21,14 +21,25 @@ final class MAD4B_SCP_ChatGPT_File_Transfer {
         add_action( 'init', array( __CLASS__, 'schedule_cleanup' ), 99 );
         add_action( 'mad4b_chatgpt_transfer_cleanup', array( __CLASS__, 'cleanup_expired' ) );
     }
-    /** Orphan cleanup is Staging-only and respects the global mutation kill switch. */
-    private static function cleanup_site_ready() {
+    /** Site Profile identity and its explicitly enabled write mode are
+     * required in every environment, including confirmed Production. */
+    private static function site_ready() {
         if ( ! class_exists( 'MAD4B_SCP_Site_Profile', false )
             || ! MAD4B_SCP_Site_Profile::configured()
-            || 'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
+            || ! in_array( sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ),
+                array( 'staging', 'production' ), true )
             || ! MAD4B_SCP_Site_Profile::origin_enrolled()
             || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
-            || ! class_exists( 'MAD4B_SCP_Policy', false ) ) return false;
+            || ! MAD4B_SCP_Site_Profile::write_enabled()
+            || '' === self::site_digest() )
+            return false;
+        return true;
+    }
+    /** Orphan cleanup never touches another site's transfer directory and
+     * respects the global mutation kill switch. */
+    private static function cleanup_site_ready() {
+        if ( ! self::site_ready() || ! class_exists( 'MAD4B_SCP_Policy', false ) )
+            return false;
         $gate = MAD4B_SCP_Policy::mutation_gate_status();
         return is_array( $gate ) && ! empty( $gate['effective'] )
             && empty( $gate['explicit_kill_switch'] );
@@ -72,17 +83,13 @@ final class MAD4B_SCP_ChatGPT_File_Transfer {
             && true === MAD4B_SCP_Policy::can_read()
             && self::attachment_transfer_granted()
             && true === MAD4B_SCP_Policy::can_connect_user( get_current_user_id() )
-            && class_exists( 'MAD4B_SCP_Site_Profile', false )
-            && MAD4B_SCP_Site_Profile::configured()
-            && 'staging' === sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
-            && MAD4B_SCP_Site_Profile::origin_enrolled()
-            && MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
+            && self::site_ready();
     }
     public static function register_ability() {
         if ( ! function_exists( 'wp_register_ability' ) || ! function_exists( 'wp_has_ability' ) || wp_has_ability( self::ABILITY ) ) return;
         wp_register_ability( self::ABILITY, array(
             'label' => 'ChatGPT Attachment Transfer',
-            'description' => 'Scoped, authenticated Staging file transfer into WordPress Media Library; no publishing.',
+            'description' => 'Scoped, authenticated site-bound file transfer into WordPress Media Library; no publishing.',
             'category' => 'mad4b-write',
             'execute_callback' => array( __CLASS__, 'execute_ability' ),
             'permission_callback' => array( __CLASS__, 'permitted' ),
@@ -124,10 +131,22 @@ final class MAD4B_SCP_ChatGPT_File_Transfer {
     private static function error( $code, $message, $status = 400 ) {
         return new WP_Error( $code, $message, array( 'status' => $status ) );
     }
+    private static function site_digest() {
+        if ( ! class_exists( 'MAD4B_SCP_Site_Profile', false ) ) return '';
+        $uuid = (string) MAD4B_SCP_Site_Profile::site_uuid();
+        $origin = (string) MAD4B_SCP_Site_Profile::site_origin();
+        return '' === $uuid || '' === $origin ? '' : hash( 'sha256', $uuid . '|' . $origin );
+    }
     private static function root() {
         $base = realpath( sys_get_temp_dir() );
         if ( false === $base || ! is_dir( $base ) || ! is_writable( $base ) ) return false;
-        $root = $base . '/mad4b-chatgpt-transfer-v1';
+        $parent = $base . '/mad4b-chatgpt-transfer-v1';
+        if ( ! is_dir( $parent ) && ! @mkdir( $parent, 0700 ) && ! is_dir( $parent ) )
+            return false;
+        if ( is_link( $parent ) || ! is_dir( $parent ) ) return false;
+        $site = self::site_digest();
+        if ( '' === $site ) return false;
+        $root = $parent . '/' . $site;
         if ( ! is_dir( $root ) && ! @mkdir( $root, 0700 ) && ! is_dir( $root ) ) return false;
         if ( is_link( $root ) || ! is_dir( $root ) ) return false;
         @chmod( $root, 0700 );
@@ -139,7 +158,7 @@ final class MAD4B_SCP_ChatGPT_File_Transfer {
         if ( ! preg_match( '/^[a-f0-9]{32}$/', $id ) ) return self::error( 'mad4b_transfer_id_invalid', 'Invalid transfer ID.' );
         $s = get_transient( self::key( $id ) );
         if ( ! is_array( $s ) || (int) $s['user'] !== get_current_user_id()
-            || ! hash_equals( (string) $s['site'], hash( 'sha256', home_url( '/' ) ) ) )
+            || ! hash_equals( (string) $s['site'], self::site_digest() ) )
             return self::error( 'mad4b_transfer_unknown', 'Transfer does not exist for this site and user.', 404 );
         return $s;
     }
@@ -165,7 +184,7 @@ final class MAD4B_SCP_ChatGPT_File_Transfer {
         if ( false === $handle ) return self::error( 'mad4b_transfer_temp', 'Cannot allocate private staging file.', 503 );
         @chmod( $path, 0600 );
         fclose( $handle );
-        $s = array( 'id' => $id, 'user' => get_current_user_id(), 'site' => hash( 'sha256', home_url( '/' ) ),
+        $s = array( 'id' => $id, 'user' => get_current_user_id(), 'site' => self::site_digest(),
             'size' => $size, 'sha256' => $hash, 'filename' => $name, 'offset' => 0,
             'created' => time(), 'status' => 'receiving' );
         set_transient( self::key( $id ), $s, self::TTL );
@@ -235,7 +254,7 @@ final class MAD4B_SCP_ChatGPT_File_Transfer {
         if ( ! is_array( $latest ) || 'receiving' !== $latest['status']
             || (int) $latest['offset'] !== (int) $s['size']
             || (int) $latest['user'] !== get_current_user_id()
-            || ! hash_equals( (string) $latest['site'], hash( 'sha256', home_url( '/' ) ) )
+            || ! hash_equals( (string) $latest['site'], self::site_digest() )
             || filesize( $path ) !== (int) $s['size']
             || ! hash_equals( $s['sha256'], hash_file( 'sha256', $path ) ) ) {
             flock( $f, LOCK_UN ); fclose( $f );
@@ -294,7 +313,7 @@ final class MAD4B_SCP_ChatGPT_File_Transfer {
         $latest = get_transient( self::key( $s['id'] ) );
         if ( ! is_array( $latest ) || 'receiving' !== $latest['status']
             || (int) $latest['user'] !== get_current_user_id()
-            || ! hash_equals( (string) $latest['site'], hash( 'sha256', home_url( '/' ) ) ) ) {
+            || ! hash_equals( (string) $latest['site'], self::site_digest() ) ) {
             flock( $f, LOCK_UN ); fclose( $f );
             return self::error( 'mad4b_transfer_conflict', 'Transfer state changed; query status.', 409 );
         }

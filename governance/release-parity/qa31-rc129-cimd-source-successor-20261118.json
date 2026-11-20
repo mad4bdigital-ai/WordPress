@@ -1,0 +1,26 @@
+{
+  "contract": "mad4b.qa31-rc129-cimd-source-successor.v1",
+  "authorizing": false,
+  "production_authorized": false,
+  "source_promotion_approved": false,
+  "source_review_only": true,
+  "is_build_provenance": false,
+  "live_evidence_required": true,
+  "release_gate": "BLOCKED_SOURCE_RECONCILIATION",
+  "base_source_commit": "6ee165ef798c1e37bdc0e09513d57e4dfcb224af",
+  "context_media_manifest": "governance/release-parity/qa31-rc129-context-media-successors-20261118.json",
+  "context_media_manifest_sha256": "04d37d3c6dfcdc66e74f42399a445161b98659a981c4f22afcd7a0dbdc54fa02",
+  "historical_qa31_ledger": "governance/release-parity/qa31-commerce-staging-source-parity.json",
+  "historical_qa31_sha256": "24f82e7898d4523bea658f4805329ea62cde807c54e63ecd0b8fe98b43fe1819",
+  "exact_source_files": 1,
+  "source_review_reference": "https://github.com/mad4bdigital-ai/WordPress/pull/865",
+  "source_reviewed_blob_sha": "0fd413ea1abb92a808c7372d41f001b447c0be2f",
+  "entry": {
+    "path": "includes/class-mad4b-scp-local-oauth-server.php",
+    "parent_blob_sha": "407a81c61bf5346d33d8206312bab0010f311fa4",
+    "parent_sha256": "8408f559be99bf92bdc1d42dc5abcbc831261a8e2d2dcbedf2dda9261935dab3",
+    "current_blob_sha": "0fd413ea1abb92a808c7372d41f001b447c0be2f",
+    "current_sha256": "d27f262e12993b2ed0574f1386762ac84ae55b6718ec0a7d572e382689547135",
+    "required_regression": "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-cimd-client-security-runtime.php"
+  }
+}

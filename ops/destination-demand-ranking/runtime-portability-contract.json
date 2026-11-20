@@ -1,0 +1,29 @@
+{
+  "contract": "mad4b.destination-demand-company-portability.v1",
+  "component_id": "mad4b-destination-demand-order",
+  "canonical_source_code": "wp-content/mu-plugins/mad4b-destination-demand-rank-v1.php",
+  "platform_module_bridge": "wp-content/plugins/mad4b-platform/modules/presentation/mad4b-destination-demand-rank-v1.php",
+  "company_profile_modes": {
+    "tours.dev.mad4b.com": "platform-module-bridge+mu",
+    "wayfatours.com": "standalone-mu"
+  },
+  "eligibility_owner": "native destination activation and sale qualification; rank never adds locations",
+  "published_tour_view": "JetEngine Query 273 WPML-aware WP_Query; include permitted missing-language fallbacks",
+  "presentation_consumers": [
+    "Elementor JetEngine Terms Query city/state_governorate",
+    "Native Elementor navigation country children",
+    "Native Elementor terms listing 67125"
+  ],
+  "dependency": [
+    "JetEngine Query Builder for query-list surfaces",
+    "WPML when enabled",
+    "Existing MAD4B safe public HTML invalidation broker"
+  ],
+  "on_tour_publish_status_change": "transition_post_status -> mad4b/public_html/safe_purge_all",
+  "on_term_change": "existing native destination term and sale activation owner purge; no new duplicate hook",
+  "on_company_activation_change": "existing service/destination activation owner purge; do not broaden eligibility",
+  "company_release": "reviewed MU component catalog + independent signed native release CAS; catalog is NOT permission",
+  "no_automatic_commerce_write": true,
+  "no_automatic_term_import": true,
+  "no_cross_company_data": true
+}

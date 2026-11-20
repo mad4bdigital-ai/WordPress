@@ -35,9 +35,18 @@ final class MAD4B_SCP_Operational_Integrity {
             ) );
         }
         $scope = $resolved['scope'];
+        // The original Deployment Resolver emits typed WordPress IDs and
+        // strings. Never cast WP_Error, booleans, objects or partial numeric
+        // values into a signed scope: that can produce a false matching CAS.
         foreach ( self::REQUIRED_SCOPE as $name ) {
-            if ( ! isset( $scope[ $name ] ) || (string) $scope[ $name ] === '' ) {
+            if ( ! array_key_exists( $name, $scope ) ) {
                 return new WP_Error( 'mad4b_integrity_scope_incomplete', 'Trusted scope lacks mandatory identity fields.' );
+            }
+            if ( in_array( $name, array( 'blog_id', 'network_id' ), true ) ) {
+                if ( ! is_int( $scope[ $name ] ) || $scope[ $name ] < 1 )
+                    return new WP_Error( 'mad4b_integrity_scope_invalid', 'Trusted WordPress scope IDs are not verified integers.' );
+            } elseif ( ! is_string( $scope[ $name ] ) || '' === $scope[ $name ] ) {
+                return new WP_Error( 'mad4b_integrity_scope_invalid', 'Trusted scope identity is not an exact string.' );
             }
         }
         if ( 'wordpress_dedicated' !== (string) $scope['deployment_mode'] ||
@@ -49,13 +58,18 @@ final class MAD4B_SCP_Operational_Integrity {
             return new WP_Error( 'mad4b_integrity_scope_invalid', 'Trusted scope is not a valid WordPress Dedicated binding.' );
         }
         $revisions = $resolved['dependency_revision'] ?? null;
-        if ( ! is_array( $revisions ) || (int) ( $revisions['site_profile'] ?? 0 ) < 1 ||
-            (int) ( $revisions['brand_profile'] ?? 0 ) < 1 ) {
+        if ( ! is_array( $revisions )
+            || ! is_int( $revisions['site_profile'] ?? null )
+            || ! is_int( $revisions['brand_profile'] ?? null )
+            || $revisions['site_profile'] < 1 || $revisions['brand_profile'] < 1 ) {
             return new WP_Error( 'mad4b_integrity_revision_missing', 'Exact Site and Brand profile revisions are required.' );
         }
-        if ( ! function_exists( 'get_current_blog_id' ) || ! function_exists( 'get_current_network_id' ) ||
-            (int) $scope['blog_id'] !== (int) get_current_blog_id() ||
-            (int) $scope['network_id'] !== (int) get_current_network_id() ) {
+        if ( ! function_exists( 'get_current_blog_id' ) || ! function_exists( 'get_current_network_id' ) )
+            return new WP_Error( 'mad4b_integrity_blog_context_drift', 'WordPress blog/network identity is unavailable.' );
+        $live_blog = get_current_blog_id();
+        $live_network = get_current_network_id();
+        if ( ! is_int( $live_blog ) || ! is_int( $live_network )
+            || $scope['blog_id'] !== $live_blog || $scope['network_id'] !== $live_network ) {
             return new WP_Error( 'mad4b_integrity_blog_context_drift', 'WordPress blog/network context changed.' );
         }
         // A WordPress interactive actor and an unprivileged cron actor are never
@@ -63,7 +77,11 @@ final class MAD4B_SCP_Operational_Integrity {
         if ( ! function_exists( 'get_current_user_id' ) ) {
             return new WP_Error( 'mad4b_integrity_actor_unavailable', 'Operation actor is unknown.' );
         }
-        $actor_id = (int) get_current_user_id();
+        $actor_id = get_current_user_id();
+        // WordPress may legitimately run cron/CLI without a logged-in user
+        // (ID 0). That is distinct from a noninteger or an unverified actor.
+        if ( ! is_int( $actor_id ) || $actor_id < 0 )
+            return new WP_Error( 'mad4b_integrity_actor_unverified', 'Original WordPress actor identity is unavailable.' );
         $identity = array(
             'scope' => array(
                 'tenant_ref' => (string) $scope['tenant_ref'],
@@ -106,8 +124,10 @@ final class MAD4B_SCP_Operational_Integrity {
             return new WP_Error( 'mad4b_integrity_checkpoint_stale', 'Site, brand, actor or revision changed during the operation.' );
         }
         if ( $mutation ) {
-            if ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! method_exists( 'MAD4B_SCP_Policy', 'can_mutate' ) ||
-                true !== MAD4B_SCP_Policy::can_mutate() ) {
+            if ( ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! method_exists( 'MAD4B_SCP_Policy', 'can_mutate' ) ||
+                true !== MAD4B_SCP_Policy::can_mutate() )
+                && !( class_exists( 'MAD4B_Native_Origin_Content_Jobs_V1', false )
+                    && MAD4B_Native_Origin_Content_Jobs_V1::checkpoint_admitted( $expected ) ) ) {
                 return new WP_Error( 'mad4b_integrity_authorization_revoked', 'Mutation authority is no longer effective.' );
             }
         }

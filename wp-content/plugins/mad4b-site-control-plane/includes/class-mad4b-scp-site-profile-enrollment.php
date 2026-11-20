@@ -116,7 +116,7 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 		$user_id = get_current_user_id();
 		if ( $user_id < 1 || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_subject_not_enrolled', 'The authenticated WordPress administrator is not enrolled in this Site Profile.' );
 		$environment = sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
-		if ( ! in_array( $environment, array( 'staging', 'production' ), true ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_environment_denied', 'Remote Site Profile enrollment is limited to Staging or Production.' );
+		if ( '' === $environment || ! preg_match( '/^[a-z][a-z0-9_-]{1,31}$/D', $environment ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_environment_invalid', 'A registered, exact Site Profile environment identifier is required.' );
 		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_profile_not_exact', 'The current origin, environment, home URL and site URL must exactly match the enrolled Site Profile.' );
 		if ( 'https' !== strtolower( (string) wp_parse_url( MAD4B_SCP_Site_Profile::current_origin(), PHP_URL_SCHEME ) ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_https_required', 'Remote Site Profile enrollment requires HTTPS.' );
 		return true;

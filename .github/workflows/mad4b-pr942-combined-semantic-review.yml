@@ -1,0 +1,64 @@
+name: MAD4B PR942 Composite Semantic Safety
+
+on:
+  pull_request:
+    paths:
+      - 'tests/source-reconciliation/pr942_*'
+      - 'docs/source-reconciliation/pr942-combined-collision-semantic-check-20261120.json'
+      - '.github/workflows/mad4b-pr942-combined-semantic-review.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'tests/source-reconciliation/pr942_*'
+      - 'docs/source-reconciliation/pr942-combined-collision-semantic-check-20261120.json'
+      - '.github/workflows/mad4b-pr942-combined-semantic-review.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-pr942-collision-review-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  non-authorizing-semantic-source-review:
+    name: Composite collision regression / PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Verify exact reviewed source blobs and non-authorizing report
+        run: |
+          python3 tests/source-reconciliation/pr942_combined_semantic_contract.py --verify-report
+          python3 -m unittest discover -s tests/source-reconciliation -p test_pr942_combined_semantics.py -v
+      - name: Verify exact source admission safety and CI execution allowlist
+        run: |
+          python3 tools/readiness_test_execution.py self-test
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/skill-runtime-certification-contract.py
+      - name: Enforce company operations and bounded Skill source access
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l tests/source-reconciliation/pr942_company_operations_denial.php
+          php tests/source-reconciliation/pr942_company_operations_denial.php
+          root=wp-content/plugins/mad4b-site-control-plane/tests
+          for fixture in tours-dev-provider-field-read-parity-runtime.php tours-dev-live-source-skills-parity-runtime.php tours-dev-live-catalog-read-runtime.php external-skill-sources-runtime.php external-skill-source-provider-runtime.php admin-route-registry-runtime.php admin-surface-coverage-runtime.php tours-dev-chatbotx-site-neutral-runtime.php skill-task-abilities-runtime.php; do
+            php "$root/$fixture"
+          done
+      - name: Preserve original site neutrality and host-boundary smoke
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py

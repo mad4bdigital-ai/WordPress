@@ -1,0 +1,34 @@
+/* Tour-story sections inside the existing Elementor All Photos modal. */
+body.single-tours-and-activities .elementor-popup-modal.mad4b-story-gallery-active .elementor-widget-uael-image-gallery.mad4b-story-gallery-superseded{display:none!important}
+body.single-tours-and-activities .elementor-popup-modal .mad4b-story-gallery{padding:0 0 12px;color:#153547;max-width:100%;font-family:inherit}
+.mad4b-story-gallery-heading h2{font-size:clamp(20px,2vw,28px);font-weight:700;margin:4px 0 6px;color:#153547;line-height:1.3}
+.mad4b-story-gallery-heading p{font-size:14px;color:#5d6b74;margin:0 0 18px}
+.mad4b-story-gallery-navigation{display:flex;gap:8px;overflow:auto;white-space:nowrap;scrollbar-width:thin;position:sticky;top:0;z-index:4;background:#fff;padding:10px 0 14px;border-bottom:1px solid #e4e7eb;margin-bottom:22px}
+.mad4b-story-gallery-tab{flex:none;border:1px solid #cad5d8;background:#fff;border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;font-weight:600;line-height:1.5;color:#174453;cursor:pointer}
+.mad4b-story-gallery-tab:hover,.mad4b-story-gallery-tab:focus-visible{border-color:#a98741;background:#fcf7ef;outline-offset:2px}
+.mad4b-story-gallery-chapter{scroll-margin-top:82px;margin:0 0 26px}
+.mad4b-story-gallery-section-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 12px}
+.mad4b-story-gallery-section-header h3{font-size:19px;font-weight:700;line-height:1.35;margin:0;color:#153547}
+.mad4b-story-gallery-days{font-size:12px;color:#627782;margin:2px 0 0}
+.mad4b-story-gallery-count{font-size:12px;color:#536a71;white-space:nowrap}
+.mad4b-story-gallery-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.mad4b-story-gallery-tile{display:block;width:100%;padding:0;border:0;background:#edf2f3;border-radius:10px;overflow:hidden;cursor:zoom-in;text-align:left;position:relative;min-width:0;aspect-ratio:4/3}
+.mad4b-story-gallery-tile img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .18s ease}
+.mad4b-story-gallery-tile:hover img{transform:scale(1.03)}
+.mad4b-story-gallery-tile:focus-visible{outline:3px solid #a98741;outline-offset:2px}
+.mad4b-story-gallery-photo-caption{position:absolute;bottom:0;left:0;right:0;padding:10px 9px 5px;background:linear-gradient(transparent,rgba(4,27,32,.75));font-size:12px;color:white;pointer-events:none}
+body.mad4b-story-lightbox-open{overflow:hidden!important}
+.mad4b-story-lightbox{position:fixed;inset:0;background:rgba(2,18,22,.92);display:grid;place-items:center;z-index:2147483647;padding:16px;box-sizing:border-box}
+.mad4b-story-lightbox-content{position:relative;display:flex;align-items:center;justify-content:center;max-width:100%;width:min(1200px,100%);height:min(94dvh,950px);padding:50px 48px 62px;box-sizing:border-box}
+.mad4b-story-lightbox-photo{object-fit:contain;max-height:100%;max-width:100%;width:auto;height:auto}
+.mad4b-story-lightbox button{border:1px solid rgba(255,255,255,.28);background:rgba(2,25,28,.8);color:#fff;border-radius:50%;width:42px;height:42px;position:absolute;cursor:pointer;font-size:30px;line-height:36px;display:grid;place-items:center}
+.mad4b-story-lightbox button:focus-visible{outline:3px solid #d9ad64;outline-offset:3px}
+.mad4b-story-lightbox-close{top:0;right:0;z-index:3}
+.mad4b-story-lightbox-prev{left:0;top:50%;transform:translateY(-50%)}
+.mad4b-story-lightbox-next{right:0;top:50%;transform:translateY(-50%)}
+.mad4b-story-lightbox-info{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:space-between;gap:12px;align-items:center;color:#fff;font-size:13px}
+.mad4b-story-lightbox-caption{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0;color:#f8f9fb}
+.mad4b-story-lightbox-counter{white-space:nowrap}
+@media(max-width:767px){.mad4b-story-gallery-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.mad4b-story-gallery-section-header h3{font-size:17px}.mad4b-story-gallery-heading h2{font-size:21px}.mad4b-story-gallery-photo-caption{font-size:11px}.mad4b-story-gallery-chapter{scroll-margin-top:72px}.mad4b-story-lightbox-content{padding:50px 28px 62px}.mad4b-story-lightbox button{width:34px;height:34px;font-size:25px}}
+@media(max-width:360px){.mad4b-story-gallery-grid{grid-template-columns:1fr 1fr;gap:5px}.mad4b-story-gallery-tab{padding:7px 9px;font-size:12px}}
+@media(prefers-reduced-motion:reduce){.mad4b-story-gallery-tile img{transition:none}.mad4b-story-gallery-tile:hover img{transform:none}}

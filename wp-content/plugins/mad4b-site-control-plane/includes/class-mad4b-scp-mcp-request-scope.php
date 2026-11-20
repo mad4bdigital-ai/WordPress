@@ -197,8 +197,8 @@ final class MAD4B_SCP_MCP_Request_Scope {
 		$mu = isset( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] ) && is_array( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] )
 			? $GLOBALS['mad4b_scp_mcp_mu_bootstrap']
 			: array();
-		if ( 'mad4b.mcp-adapter-mu-bootstrap.v6' !== ( isset( $mu['contract'] ) ? (string) $mu['contract'] : '' )
-			|| empty( $mu['diagnostic_mu_proof_valid'] ) ) return '';
+		if ( 'mad4b.mcp-adapter-mu-bootstrap.v6' !== ( $mu['contract'] ?? null )
+			|| ( $mu['diagnostic_mu_proof_valid'] ?? null ) !== true ) return '';
 		$candidate = isset( $mu['diagnostic_server_id'] ) && is_string( $mu['diagnostic_server_id'] )
 			? trim( $mu['diagnostic_server_id'] )
 			: '';
@@ -208,8 +208,10 @@ final class MAD4B_SCP_MCP_Request_Scope {
 
 	/** Arm only the proven official singleton, after the explicit job is authorized. */
 	public static function begin_endpoint_diagnostic( $server_id ) {
-		if ( ! class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false ) || ! MAD4B_SCP_Provider_Diagnostic_Policy::explicit_rest_materialization_allowed()
-			|| ! self::current_request_is_endpoint_diagnostic_job() || ! current_user_can( 'manage_options' )
+		if ( ! class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false )
+			|| true !== MAD4B_SCP_Provider_Diagnostic_Policy::explicit_rest_materialization_allowed()
+			|| ! self::current_request_is_endpoint_diagnostic_job()
+			|| true !== current_user_can( 'manage_options' )
 			|| ! in_array( $server_id, MAD4B_SCP_Servers::expected_server_ids(), true ) ) return new WP_Error( 'mad4b_endpoint_diagnostic_forbidden', 'An authorized endpoint job is required.', array( 'status' => 403 ) );
 		// Existing catalogs cannot prove which single target was materialized.
 		if ( did_action( 'rest_api_init' ) || did_action( 'mcp_adapter_init' ) || class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false ) && is_object( MAD4B_SCP_Provider_Diagnostic_Policy::current_rest_server() ) ) return new WP_Error( 'mad4b_endpoint_diagnostic_runtime_already_materialized', 'REST was initialized before the endpoint job.' );
@@ -418,7 +420,26 @@ final class MAD4B_SCP_MCP_Request_Scope {
 	private static function cli_mcp_opt_in() {
 		if ( ! ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) ) return false;
 		if ( defined( 'MAD4B_SCP_MCP_CLI_REQUEST' ) && constant( 'MAD4B_SCP_MCP_CLI_REQUEST' ) ) return true;
-		return '1' === (string) getenv( 'MAD4B_SCP_MCP_CLI_REQUEST' );
+		if ( '1' === (string) getenv( 'MAD4B_SCP_MCP_CLI_REQUEST' ) ) return true;
+		return self::cli_mcp_serve_requested();
+	}
+
+	/** An explicit MAD4B STDIO command is an MCP request without a flag. */
+	private static function cli_mcp_serve_requested() {
+		$args = isset( $_SERVER['argv'] ) && is_array( $_SERVER['argv'] ) ? $_SERVER['argv'] : array();
+		$names = array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-enrollment',
+			'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-vps-local',
+			'mad4b-developer', 'mad4b-developer-breakglass', 'mad4b-breakglass' );
+		for ( $i = 0; $i + 1 < count( $args ); $i++ ) {
+			if ( 'mcp-adapter' !== (string) $args[ $i ] || 'serve' !== (string) $args[ $i + 1 ] ) continue;
+			for ( $j = $i + 2; $j < count( $args ); $j++ ) {
+				$arg = (string) $args[ $j ];
+				$server = 0 === strpos( $arg, '--server=' ) ? substr( $arg, 9 ) : '';
+				if ( '--server' === $arg && isset( $args[ $j + 1 ] ) ) $server = (string) $args[ $j + 1 ];
+				if ( in_array( $server, $names, true ) ) return true;
+			}
+		}
+		return false;
 	}
 
 	public static function current_request_requires_mcp_runtime() {

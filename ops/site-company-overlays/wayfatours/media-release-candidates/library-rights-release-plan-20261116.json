@@ -1,0 +1,31 @@
+{
+  "contract": "mad4b.wayfatours.existing-library-rights-source-candidate.v1",
+  "site": "https://wayfatours.com",
+  "created_utc": "2026-11-16T01:02:22.234912+00:00",
+  "git_shared_rights_source": "wp-content/mu-plugins/mad4b-media-rights-extraction-intake.php",
+  "git_shared_rights_target_sha256": "584d76d845c239df82cf3333d6c8a2cdbda2c2f6f4c4b6b2ed24a9c6daa0137e",
+  "git_shared_unified_source": "wp-content/mu-plugins/mad4b-unified-media-apply.php",
+  "git_shared_unified_candidate_sha256": "611efff631b853b2e2a5f118b01d9eb141e960b9e483bbb44b28a544fc3c9490",
+  "company_pinned_unified_source": "ops/site-company-overlays/wayfatours/media-release-candidates/unified-media-apply-1.0.1.php",
+  "company_pinned_target_sha256": "cae14ff1f3cb25e29bad0188282384a571d9fbc5762c67f57b557971d69c113f",
+  "expected_live_before": {
+    "rights_intake": "5577cd85c9edc969ecb6e85edfab09d553e7757e3748ddd5a78878ddf63dbc57",
+    "unified_media_apply": "2bc6b81fe40120ae6e4d319abd91ea83a7ee7c9cc3d680f80d6eed15ad787814"
+  },
+  "dev_source_rights_intake_sha256": "e2a2e2b0fcb78aba845ad118e0c672701bdb4c8a3f76e051d511f4d36eda9c99",
+  "dev_source_unified_media_sha256": "2bc6b81fe40120ae6e4d319abd91ea83a7ee7c9cc3d680f80d6eed15ad787814",
+  "live_release_attempt_blocked": "historical_attempt_only",
+  "site_files_changed": true,
+  "original313_signed_release_claimed": false,
+  "rights_metadata_missing_is_nonblocking_for_existing_library_after_release": true,
+  "new_external_imports_still_separately_signed_and_licensed": true,
+  "rights_page_auto_shows_published_cct_credits": true,
+  "rights_page_does_not_invent_credit_for_missing_metadata": true,
+  "candidate_status": "manual_production_deployed_php_and_runtime_verified",
+  "later_manual_release_verified_at_utc": "2026-11-16T01:09:50.754945+00:00",
+  "verified_live_sha256_after": {
+    "rights_intake": "584d76d845c239df82cf3333d6c8a2cdbda2c2f6f4c4b6b2ed24a9c6daa0137e",
+    "unified_media_apply": "cae14ff1f3cb25e29bad0188282384a571d9fbc5762c67f57b557971d69c113f"
+  },
+  "backup_folder_on_vps": "/opt/mad4b-media-backups/wayfa-media-engine-hardening-20261116/library-rights-nonblocking-v1"
+}

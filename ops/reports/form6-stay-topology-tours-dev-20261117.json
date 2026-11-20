@@ -1,0 +1,1590 @@
+{
+    "contract": "mad4b.form6.stay-topology-readonly-audit.v1",
+    "site": "https://tours.dev.mad4b.com/",
+    "counts": {
+        "published_rates": 196,
+        "stay_rates": 186,
+        "simple_or": 186,
+        "multi_stage": 0,
+        "multi_property": 120,
+        "no_common_destination": 104,
+        "missing_destination_terms": 16,
+        "included": 0,
+        "inquiry": 186,
+        "additional": 0,
+        "other": 0
+    },
+    "candidates": [
+        {
+            "tour_id": 60645,
+            "rate_id": 61158,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "36481": [
+                    "luxor"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60673,
+            "rate_id": 61156,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "36481": [
+                    "luxor"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60633,
+            "rate_id": 61154,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "36481": [
+                    "luxor"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60657,
+            "rate_id": 61152,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "36481": [
+                    "luxor"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60645,
+            "rate_id": 61148,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36211": [
+                    "egypt",
+                    "luxor"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60673,
+            "rate_id": 61146,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36211": [
+                    "egypt",
+                    "luxor"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60633,
+            "rate_id": 61144,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36211": [
+                    "egypt",
+                    "luxor"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60657,
+            "rate_id": 61142,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36211": [
+                    "egypt",
+                    "luxor"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60645,
+            "rate_id": 61138,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "36481": [
+                    "luxor"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60673,
+            "rate_id": 61136,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "36481": [
+                    "luxor"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60633,
+            "rate_id": 61134,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "36481": [
+                    "luxor"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60657,
+            "rate_id": 61132,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "36481": [
+                    "luxor"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60645,
+            "rate_id": 61128,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36211": [
+                    "egypt",
+                    "luxor"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60673,
+            "rate_id": 61126,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36211": [
+                    "egypt",
+                    "luxor"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60633,
+            "rate_id": 61124,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36211": [
+                    "egypt",
+                    "luxor"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60657,
+            "rate_id": 61122,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36211": [
+                    "egypt",
+                    "luxor"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60565,
+            "rate_id": 61118,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35964": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 64852,
+            "rate_id": 61116,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35964": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60521,
+            "rate_id": 61114,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35964": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60611,
+            "rate_id": 61112,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35964": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60565,
+            "rate_id": 61108,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 64852,
+            "rate_id": 61106,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60521,
+            "rate_id": 61104,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60611,
+            "rate_id": 61102,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60565,
+            "rate_id": 61098,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35964": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 64852,
+            "rate_id": 61096,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35964": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60521,
+            "rate_id": 61094,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35964": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60611,
+            "rate_id": 61092,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35964": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60565,
+            "rate_id": 61088,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 64852,
+            "rate_id": 61086,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60521,
+            "rate_id": 61084,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60611,
+            "rate_id": 61082,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60563,
+            "rate_id": 61078,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35964": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 64853,
+            "rate_id": 61076,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35964": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60519,
+            "rate_id": 61074,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35964": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60609,
+            "rate_id": 61072,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35964": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60563,
+            "rate_id": 61068,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 64853,
+            "rate_id": 61066,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60519,
+            "rate_id": 61064,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60609,
+            "rate_id": 61062,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60563,
+            "rate_id": 61058,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35964": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 64853,
+            "rate_id": 61056,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35964": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60519,
+            "rate_id": 61054,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35964": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60609,
+            "rate_id": 61052,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35964": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60563,
+            "rate_id": 61048,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 64853,
+            "rate_id": 61046,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60519,
+            "rate_id": 61044,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60609,
+            "rate_id": 61042,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60561,
+            "rate_id": 61028,
+            "property_destinations": {
+                "36140": [
+                    "cairo",
+                    "egypt"
+                ],
+                "35807": []
+            },
+            "missing_terms": true,
+            "review_only": true
+        },
+        {
+            "tour_id": 64854,
+            "rate_id": 61026,
+            "property_destinations": {
+                "36140": [
+                    "cairo",
+                    "egypt"
+                ],
+                "35807": []
+            },
+            "missing_terms": true,
+            "review_only": true
+        },
+        {
+            "tour_id": 60517,
+            "rate_id": 61024,
+            "property_destinations": {
+                "36140": [
+                    "cairo",
+                    "egypt"
+                ],
+                "35807": []
+            },
+            "missing_terms": true,
+            "review_only": true
+        },
+        {
+            "tour_id": 60607,
+            "rate_id": 61022,
+            "property_destinations": {
+                "36140": [
+                    "cairo",
+                    "egypt"
+                ],
+                "35807": []
+            },
+            "missing_terms": true,
+            "review_only": true
+        },
+        {
+            "tour_id": 60561,
+            "rate_id": 61008,
+            "property_destinations": {
+                "36140": [
+                    "cairo",
+                    "egypt"
+                ],
+                "35807": []
+            },
+            "missing_terms": true,
+            "review_only": true
+        },
+        {
+            "tour_id": 64854,
+            "rate_id": 61006,
+            "property_destinations": {
+                "36140": [
+                    "cairo",
+                    "egypt"
+                ],
+                "35807": []
+            },
+            "missing_terms": true,
+            "review_only": true
+        },
+        {
+            "tour_id": 60517,
+            "rate_id": 61004,
+            "property_destinations": {
+                "36140": [
+                    "cairo",
+                    "egypt"
+                ],
+                "35807": []
+            },
+            "missing_terms": true,
+            "review_only": true
+        },
+        {
+            "tour_id": 60607,
+            "rate_id": 61002,
+            "property_destinations": {
+                "36140": [
+                    "cairo",
+                    "egypt"
+                ],
+                "35807": []
+            },
+            "missing_terms": true,
+            "review_only": true
+        },
+        {
+            "tour_id": 60553,
+            "rate_id": 60998,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35873": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 64855,
+            "rate_id": 60996,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35873": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60515,
+            "rate_id": 60994,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35873": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60601,
+            "rate_id": 60992,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35873": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60553,
+            "rate_id": 60988,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 64855,
+            "rate_id": 60986,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60515,
+            "rate_id": 60984,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60601,
+            "rate_id": 60982,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60553,
+            "rate_id": 60978,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35873": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 64855,
+            "rate_id": 60976,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35873": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60515,
+            "rate_id": 60974,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35873": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60601,
+            "rate_id": 60972,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35873": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60553,
+            "rate_id": 60968,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 64855,
+            "rate_id": 60966,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60515,
+            "rate_id": 60964,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60601,
+            "rate_id": 60962,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60651,
+            "rate_id": 60908,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60679,
+            "rate_id": 60906,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60639,
+            "rate_id": 60904,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60663,
+            "rate_id": 60902,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60651,
+            "rate_id": 60888,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60679,
+            "rate_id": 60886,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60639,
+            "rate_id": 60884,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60663,
+            "rate_id": 60882,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60649,
+            "rate_id": 60868,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60677,
+            "rate_id": 60866,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60637,
+            "rate_id": 60864,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60661,
+            "rate_id": 60862,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60649,
+            "rate_id": 60848,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60677,
+            "rate_id": 60846,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60637,
+            "rate_id": 60844,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60661,
+            "rate_id": 60842,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60643,
+            "rate_id": 60838,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35807": [],
+                "36243": [
+                    "egypt",
+                    "el-fayoum"
+                ]
+            },
+            "missing_terms": true,
+            "review_only": true
+        },
+        {
+            "tour_id": 60671,
+            "rate_id": 60836,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35807": [],
+                "36242": [
+                    "egypt",
+                    "marsa-alam"
+                ]
+            },
+            "missing_terms": true,
+            "review_only": true
+        },
+        {
+            "tour_id": 60631,
+            "rate_id": 60834,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35807": [],
+                "36241": [
+                    "egypt",
+                    "marsa-alam"
+                ]
+            },
+            "missing_terms": true,
+            "review_only": true
+        },
+        {
+            "tour_id": 60655,
+            "rate_id": 60832,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35807": [],
+                "36240": [
+                    "cairo",
+                    "egypt"
+                ]
+            },
+            "missing_terms": true,
+            "review_only": true
+        },
+        {
+            "tour_id": 60643,
+            "rate_id": 60828,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ],
+                "36121": [
+                    "egypt",
+                    "sharm-el-sheikh"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60671,
+            "rate_id": 60826,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ],
+                "36120": [
+                    "egypt",
+                    "hurghada"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60631,
+            "rate_id": 60824,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60655,
+            "rate_id": 60822,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ],
+                "36118": [
+                    "egypt",
+                    "siwa"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60643,
+            "rate_id": 60818,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35807": [],
+                "36239": [
+                    "egypt",
+                    "hurghada"
+                ]
+            },
+            "missing_terms": true,
+            "review_only": true
+        },
+        {
+            "tour_id": 60671,
+            "rate_id": 60816,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35807": [],
+                "36238": [
+                    "cairo",
+                    "egypt"
+                ]
+            },
+            "missing_terms": true,
+            "review_only": true
+        },
+        {
+            "tour_id": 60631,
+            "rate_id": 60814,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35807": [],
+                "36237": [
+                    "egypt",
+                    "sharm-el-sheikh"
+                ]
+            },
+            "missing_terms": true,
+            "review_only": true
+        },
+        {
+            "tour_id": 60655,
+            "rate_id": 60812,
+            "property_destinations": {
+                "36474": [
+                    "giza"
+                ],
+                "35807": [],
+                "36236": [
+                    "egypt",
+                    "marsa-alam"
+                ]
+            },
+            "missing_terms": true,
+            "review_only": true
+        },
+        {
+            "tour_id": 60643,
+            "rate_id": 60808,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ],
+                "36121": [
+                    "egypt",
+                    "sharm-el-sheikh"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60671,
+            "rate_id": 60806,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ],
+                "36120": [
+                    "egypt",
+                    "hurghada"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60631,
+            "rate_id": 60804,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        },
+        {
+            "tour_id": 60655,
+            "rate_id": 60802,
+            "property_destinations": {
+                "36475": [
+                    "giza"
+                ],
+                "36005": [
+                    "aswan-gov",
+                    "egypt"
+                ],
+                "36118": [
+                    "egypt",
+                    "siwa"
+                ]
+            },
+            "missing_terms": false,
+            "review_only": true
+        }
+    ],
+    "automatic_conversion": false,
+    "financial_policy_mutated": false,
+    "supplier_confirmations_created": false
+}

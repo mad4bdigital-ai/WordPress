@@ -1,0 +1,12 @@
+[Unit]
+Description=Discover new public listing cohorts daily, without hard-coded IDs
+
+[Timer]
+OnCalendar=*-*-* 00:20:00 UTC
+RandomizedDelaySec=1200
+AccuracySec=120s
+Persistent=true
+Unit=mad4b-native-lazy-auto-coverage-discovery.service
+
+[Install]
+WantedBy=timers.target

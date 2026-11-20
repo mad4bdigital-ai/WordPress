@@ -1,0 +1,136 @@
+{
+  "command": {
+    "bound_operation_id": "host.source.release",
+    "flag": "--plan_sha256=",
+    "format": "host.source.ref.v1",
+    "mode": "plan_sha256",
+    "prefix": [
+      "mad4b",
+      "host-source-release"
+    ]
+  },
+  "contract": "mad4b.dynamic-operation-provider.v1",
+  "dependencies": [
+    {
+      "path": "dynamic-operation-registry-v1/host_admission.py",
+      "sha256": "4ac80e2c4ba37d1a2faead65c8d9b1dc7806231baabaedc4e35a9ffbb4e7a310"
+    },
+    {
+      "path": "dynamic-operation-registry-v1/host312_original_issuer.py",
+      "sha256": "84fcef37b142cc39787d42ce026e76f2866fd5df5fbfa5c0c4e54a3452158a4b"
+    },
+    {
+      "path": "native-source-publisher-v1/host_original306_worker_lane.py",
+      "sha256": "a90d95826697ef0e88ea6c49d16fcbc514f5aea44b6f425d98669d3f999564c5"
+    },
+    {
+      "path": "native-source-publisher-v1/native_host_source_ownership.py",
+      "sha256": "03f3f1d30e016d15b40d142c35bcbbbf68a0fd65c2117b8e353c51dc1e372d8a"
+    },
+    {
+      "path": "native-source-publisher-v1/native_host_source_transaction.py",
+      "sha256": "cdc3795162bd5d444aff90d97b6c9e7d3e06d911be92dba02b69921e257f96d0"
+    },
+    {
+      "path": "native-source-publisher-v1/native_host_source_readback.py",
+      "sha256": "aab5e82d5a0da7a12b01bc5b7660f3e884efa9a824c80a16d1169c85b915cf39"
+    },
+    {
+      "path": "native-source-publisher-v1/native_host_source_final_receipt.py",
+      "sha256": "1dd0a08187702cc47e2e6183af157051a6e25de013c05723aead1fcbf3cebdf7"
+    },
+    {
+      "path": "native-source-publisher-v1/native_source_publisher.py",
+      "sha256": "32656d20a0729fd0c165a65b6b7d2ad51014a87e69c636fa568c5bfff51b7eae"
+    },
+    {
+      "path": "native-source-publisher-v1/host_source_activation_doctor.py",
+      "sha256": "2c14e9f64376d2a0f898b50e975eb5afebb7400c9dd2b4a06f54bd0a48d998cf"
+    },
+    {
+      "path": "native-source-publisher-v1/host_source_activation_doctor_v2.py",
+      "sha256": "4d7b5fafa0e6f7118268f5637e678aa3816909ea3b0b11b72166aedcc57b17c6"
+    },
+    {
+      "path": "native-source-publisher-v1/original305_host_unsigned_readiness_request.py",
+      "sha256": "f9664f49294e925d27260b8a1916eec7557139ef2d418efd8368c729cff080cf"
+    },
+    {
+      "path": "native-source-publisher-v1/original_broker_host_readiness_refresh.py",
+      "sha256": "a99a6daff8169892d7950d77da76d35637f591da48f8ff92878444b886d3bb14"
+    },
+    {
+      "path": "native-source-publisher-v1/original_313_host_source_finalizer.py",
+      "sha256": "55015922f37aab52a5b4eee355b6f00bba5427c9c67a22beee8b218e4cd6fe1f"
+    },
+    {
+      "path": "company-code-release-v1/company_code_release.py",
+      "sha256": "d922204de29a9a4380249094086d40cc0e7fbc5df947601103da7366112e7600"
+    },
+    {
+      "path": "native-source-publisher-v1/original_broker_host_readiness_refresh_v3.py",
+      "sha256": "25fb7a9c8a93766dbef483b265cab50fa7e0a1f56a400cbc1ea35a1c705aa49c"
+    },
+    {
+      "path": "native-source-publisher-v1/host_source_activation_doctor_v3.py",
+      "sha256": "cb16d1805e45235a36230e38bf747b3ff9c53d9f780f3ad53bc8d44b0d1eceb4"
+    },
+    {
+      "path": "native-source-publisher-v1/original305_host_unsigned_readiness_request_v4.py",
+      "sha256": "1063d15d81780d65b90327a6755007306732e30b0646f953539ad7671ceb5518"
+    },
+    {
+      "path": "native-source-publisher-v1/original_broker_host_readiness_refresh_v4.py",
+      "sha256": "75d3a27c082a3614c2fa7d6704c31026d79c69f22ed7f84b6a674c2eec3b8b21"
+    },
+    {
+      "path": "native-source-publisher-v1/host_source_activation_doctor_v4.py",
+      "sha256": "537c8ebdeb6480a128ee15827f6d912d81b4891b1faedb60e6e72711d18a44c5"
+    },
+    {
+      "path": "native-source-publisher-v1/original305_host_unsigned_readiness_request_v5.py",
+      "sha256": "ea03c7e6e0adea131c1335487045550ba358e3835397db87ac23a9a261994bf9"
+    },
+    {
+      "path": "native-source-publisher-v1/original_broker_host_readiness_refresh_v5.py",
+      "sha256": "32c000f55451cd4996795ff9ecc0bed2a2e01317264e5f9a59a94bd4c287bb12"
+    },
+    {
+      "path": "native-source-publisher-v1/original_broker_host_readiness_refresh_v6.py",
+      "sha256": "71126309bfd50303960dbf37a1c088ac6c4c9db65604c36b2b187545a7e24685"
+    },
+    {
+      "path": "native-source-publisher-v1/original_broker_host_readiness_refresh_v7.py",
+      "sha256": "4566050a6e3ac6f1ebcbe7ce8daf9debd26b4ba0b2a9f56bc64c65aef2c3b75d"
+    },
+    {
+      "path": "native-source-publisher-v1/original_broker_host_readiness_refresh_v8.py",
+      "sha256": "cf7489f3611aebe56c46717ee90cde3ff023e864cf0129c50f0d87f0f2c1166c"
+    }
+  ],
+  "evidence": {
+    "path": "dynamic-operation-registry-v1/providers/host.source.release/evidence-schema.json",
+    "sha256": "e9ccf945a2bd481b996fab6a45ab5f73656b7f3dab4cd81351f0c1089eb266fb"
+  },
+  "evidence_schema": "host_source_release.v1",
+  "finalizer": {
+    "path": "native-source-publisher-v1/original_313_host_source_finalizer.py",
+    "sha256": "55015922f37aab52a5b4eee355b6f00bba5427c9c67a22beee8b218e4cd6fe1f"
+  },
+  "handler": {
+    "path": "native-source-publisher-v1/original_313_host_source_handler.py",
+    "sha256": "68550005004e37099b665a580c11dcd91febbb2c3064e0f55235474203bf0c3d"
+  },
+  "job_type": "signed_vps_host_source",
+  "operation_id": "host.source.release",
+  "plan_contract": "mad4b.native-host-source-readonly-plan.v1",
+  "provider": "mad4b-host-source-release",
+  "resource_kind": "host_root_file",
+  "source_family": "mad4b.native-host-source-release.v1",
+  "target_scope": "host",
+  "verifier": {
+    "path": "native-source-publisher-v1/original_313_host_source_verifier.py",
+    "sha256": "2f776fe0e1e89a527ebf92af00c1815d5cade387f9e74ccd7f0f8377bed23ff1"
+  },
+  "version": 8
+}

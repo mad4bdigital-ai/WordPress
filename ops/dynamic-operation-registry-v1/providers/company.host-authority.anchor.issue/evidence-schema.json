@@ -1,0 +1,15 @@
+{
+  "contract": "mad4b.dynamic-evidence-schema.v1",
+  "fields": {
+    "anchor_revision": "integer",
+    "independent_highwater_verified": "boolean",
+    "job_id": "string",
+    "operation_id": "string",
+    "original313_proof_sha256": "sha256",
+    "original313_receipt_issued": "boolean",
+    "result_status": "string",
+    "signed_original312_verified": "boolean"
+  },
+  "schema_id": "host_anchor_issue.v2",
+  "success_state": "HOST_ANCHOR_SIGNED_ISSUE_PENDING_ORIGINAL313"
+}

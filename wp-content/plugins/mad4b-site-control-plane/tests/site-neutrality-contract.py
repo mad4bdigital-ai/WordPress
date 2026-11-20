@@ -17,6 +17,15 @@ commands = [
     [php, str(PLUGIN / "tests/elementor-site-neutral-runtime.php")],
     [php, str(PLUGIN / "tests/object-cache-diagnostics-runtime.php")],
     [php, str(PLUGIN / "tests/admin-file-workspace-runtime.php")],
+    [php, str(PLUGIN / "tests/original305-host-review-denial-runtime.php")],
+    [sys.executable, str(PLUGIN / "tests/host-agent-source-parity-contract.py")],
+    [php, str(PLUGIN / "tests/host-agent-fail-closed-runtime.php")],
+    [php, str(PLUGIN / "tests/tours-dev-cimd-client-security-runtime.php")],
+    [php, str(PLUGIN / "tests/tours-dev-chatbotx-site-neutral-runtime.php")],
+    [php, str(PLUGIN / "tests/context-scan-media-integrity/isolated-contract.php"),
+     str(PLUGIN / "includes/class-mad4b-scp-google-drive-context.php"),
+     str(PLUGIN / "includes/class-mad4b-scp-drive-scan-continuation.php"),
+     str(PLUGIN / "includes/class-mad4b-scp-brand-context-builder.php")],
 ]
 for command in commands:
     result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=30)

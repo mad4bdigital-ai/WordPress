@@ -1,0 +1,12 @@
+[Unit]
+Description=Assess rolling visitor latency and VPS CPU pressure every 30 minutes
+
+[Timer]
+OnCalendar=*-*-* *:18,48:00 UTC
+RandomizedDelaySec=60s
+AccuracySec=60s
+Persistent=true
+Unit=mad4b-host-visitor-stability.service
+
+[Install]
+WantedBy=timers.target

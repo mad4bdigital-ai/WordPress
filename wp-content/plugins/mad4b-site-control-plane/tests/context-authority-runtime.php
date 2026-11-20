@@ -41,17 +41,17 @@ function mad4b_context_assert( $condition, $message ) {
 
 $ref = new ReflectionClass( 'MAD4B_SCP_Google_Drive_Context' );
 $allowed = $ref->getMethod( 'scope_is_allowed' );
-$allowed->setAccessible( true );
+if ( PHP_VERSION_ID < 80100 ) $allowed->setAccessible( true );
 $write = $ref->getMethod( 'scope_allows_write' );
-$write->setAccessible( true );
+if ( PHP_VERSION_ID < 80100 ) $write->setAccessible( true );
 $read = $ref->getMethod( 'scope_allows_read' );
-$read->setAccessible( true );
+if ( PHP_VERSION_ID < 80100 ) $read->setAccessible( true );
 $matches = $ref->getMethod( 'scope_matches_requested_mode' );
-$matches->setAccessible( true );
+if ( PHP_VERSION_ID < 80100 ) $matches->setAccessible( true );
 $verify_parent = $ref->getMethod( 'verify_created_file_parent' );
-$verify_parent->setAccessible( true );
+if ( PHP_VERSION_ID < 80100 ) $verify_parent->setAccessible( true );
 $connection_blockers = $ref->getMethod( 'connection_blockers' );
-$connection_blockers->setAccessible( true );
+if ( PHP_VERSION_ID < 80100 ) $connection_blockers->setAccessible( true );
 
 $ro = MAD4B_SCP_Google_Drive_Context::READ_SCOPE;
 $rw = MAD4B_SCP_Google_Drive_Context::WRITE_SCOPE;

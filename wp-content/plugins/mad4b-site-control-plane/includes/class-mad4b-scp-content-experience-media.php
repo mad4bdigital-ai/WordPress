@@ -209,8 +209,28 @@ final class MAD4B_SCP_Content_Experience_Media {
 					$out[ $field ] = $value;
 					break;
 				case 'license':
-					$value = sanitize_key( (string) $item[ $field ] );
-					if ( '' === $value || ! in_array( $value, (array) $spec['licenses'], true ) ) return new WP_Error( 'mad4b_content_experience_media_usage_license_denied', 'Media usage license is outside the profile license allowlist.', array( 'key' => $key, 'license' => $value ) );
+					// License identifiers are the original bounded profile tokens,
+					// not WordPress option keys. sanitize_key() deletes the dot in
+					// valid terms such as cc-by-4.0; never reinterpret a license.
+					if ( ! is_string( $item[ $field ] ) || strlen( $item[ $field ] ) > 191 ) {
+						return new WP_Error( 'mad4b_content_experience_media_usage_license_denied', 'Media usage license must be an original bounded string.', array( 'key' => $key ) );
+					}
+					$value = strtolower( trim( $item[ $field ] ) );
+					if ( '' !== $value && ! preg_match( '/^[a-z0-9][a-z0-9._-]*$/D', $value ) ) {
+						return new WP_Error( 'mad4b_content_experience_media_usage_license_denied', 'Media usage license identifier contains unsupported characters.', array( 'key' => $key ) );
+					}
+					// A blank right is MISSING, not an invalid license, for a
+					// genuine local WordPress image. Preserve the blank in the
+					// canonical metadata; the publish guard warns without
+					// manufacturing ownership or a Creative Commons license.
+					if ( '' === $value ) {
+						$file = get_attached_file( $id );
+						if ( ! wp_attachment_is_image( $id ) || ! is_string( $file ) || ! is_file( $file ) )
+							return new WP_Error( 'mad4b_content_experience_media_usage_license_denied', 'Missing rights are advisory only for existing WordPress image files.', array( 'key' => $key, 'attachment_id' => $id ) );
+						$out[ $field ] = '';
+						break;
+					}
+					if ( ! in_array( $value, (array) $spec['licenses'], true ) ) return new WP_Error( 'mad4b_content_experience_media_usage_license_denied', 'Media usage license is outside the profile license allowlist.', array( 'key' => $key, 'license' => $value ) );
 					$out[ $field ] = $value;
 					break;
 				case 'license_expires_on':
@@ -329,6 +349,19 @@ final class MAD4B_SCP_Content_Experience_Media {
 			$expected = self::reference_ids( $normalized_meta[ $reference ], $field_specs[ $reference ] );
 			$actual = array_values( array_map( 'absint', array_column( (array) $normalized_meta[ $key ], 'attachment_id' ) ) );
 			if ( $expected !== $actual ) {
+				// An *entirely absent* usage list has no IDs to misattribute.
+				// For a genuine local image gallery it is an optional rights
+				// omission, not a broken attachment-to-license association.
+				$missing_local_image_usage = empty( $actual ) && ! empty( $expected )
+					&& (string) ( $spec['kind'] ?? '' ) === 'image_gallery_usage';
+				if ( $missing_local_image_usage ) foreach ( $expected as $id ) {
+					$file = get_attached_file( $id );
+					if ( ! wp_attachment_is_image( $id ) || ! is_string( $file ) || ! is_file( $file ) ) {
+						$missing_local_image_usage = false;
+						break;
+					}
+				}
+				if ( $missing_local_image_usage ) continue;
 				return new WP_Error(
 					'mad4b_content_experience_media_usage_reference_drift',
 					'Media usage attachment IDs/order do not exactly match the referenced gallery.',

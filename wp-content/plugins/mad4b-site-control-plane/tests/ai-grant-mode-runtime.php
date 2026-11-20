@@ -15,10 +15,16 @@ function wp_get_environment_type(){return $GLOBALS['env']??'local';}
 function sanitize_key($s){return strtolower(preg_replace('/[^a-z0-9_-]/','',(string)$s));}
 function add_action($hook,$call){}
 class MAD4B_SCP_Site_Profile {
+ public static $authority_ready=true;
+ public static $managed=true;
+ public static $writable=true;
+ public static function status(){return array('authority_ready'=>self::$authority_ready);}
+ public static function managed_runtime_enabled(){return self::$managed;}
+ public static function write_enabled(){return self::$writable;}
  public static function configured(){return true;}
  public static function origin_enrolled(){return true;}
  public static function site_urls_match_enrollment(){return true;}
- public static function current_environment(){return 'local';}
+ public static function current_environment(){return $GLOBALS['env']??'local';}
  public static function site_uuid(){return '123e4567-e89b-12d3-a456-426614174000';}
  public static function agent_slug(){return 'site-ai';}
  public static function user_is_enrolled($id){return $id===1;}
@@ -63,6 +69,22 @@ $pass=0;
 function ok($msg,$cond){global $pass;if(!$cond){fwrite(STDERR,"FAIL $msg\n");exit(1);}echo "$msg: PASS\n";++$pass;}
 $x=MAD4B_SCP_AI_Grant_Mode::status();
 ok('default_mode_is_off',$x['mode']==='off'&&!$x['ready']);
+// The real scope now checks three separate Site Profile authority facts.
+// A positive fixture must provide them explicitly, and denial remains tested.
+MAD4B_SCP_Site_Profile::$authority_ready=false;
+$x=MAD4B_SCP_AI_Grant_Mode::status();
+ok('missing_original_site_authority_denied',!$x['ready']
+   && in_array('mad4b_ai_grant_site_authority_required',$x['blockers'],true));
+MAD4B_SCP_Site_Profile::$authority_ready=true;
+MAD4B_SCP_Site_Profile::$managed=false;
+$x=MAD4B_SCP_AI_Grant_Mode::status();
+ok('unmanaged_site_grant_denied',!$x['ready']);
+MAD4B_SCP_Site_Profile::$managed=true;
+MAD4B_SCP_Site_Profile::$writable=false;
+$x=MAD4B_SCP_AI_Grant_Mode::status();
+ok('disabled_write_site_grant_denied',!$x['ready']);
+MAD4B_SCP_Site_Profile::$writable=true;
+
 ok('requires_enrolled_admin_nonce',is_wp_error(MAD4B_SCP_AI_Grant_Mode::apply('ai_agent_only','wrong')));
 ok('does_not_grant_on_status_only',count($GLOBALS['grants'])===0);
 $GLOBALS['admin']=false;
@@ -71,7 +93,7 @@ $GLOBALS['admin']=true;
 $GLOBALS['ai_mode']='human_only';
 ok('ai_only_review_policy_required',is_wp_error(MAD4B_SCP_AI_Grant_Mode::apply('ai_agent_only','correct-nonce')));
 $GLOBALS['ai_mode']='ai_only';$GLOBALS['env']='production';
-ok('production_denied',is_wp_error(MAD4B_SCP_AI_Grant_Mode::apply('ai_agent_only','correct-nonce')));
+ok('production_unbound_agent_denied',is_wp_error(MAD4B_SCP_AI_Grant_Mode::apply('ai_agent_only','correct-nonce')));
 $GLOBALS['env']='local';
 $GLOBALS['audit_ok']=false;
 ok('audit_required_before_grant',is_wp_error(MAD4B_SCP_AI_Grant_Mode::apply('ai_agent_only','correct-nonce')));

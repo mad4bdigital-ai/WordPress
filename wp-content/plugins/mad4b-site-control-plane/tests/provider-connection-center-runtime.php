@@ -55,6 +55,9 @@ mad4b_assert( ! is_wp_error( $plan ) && 'refresh' === $plan['action']
     && $plan['eligible_remote_refresh']
     && 64 === strlen( $plan['plan_sha256'] ) && $plan['one_time_approval_required_for_remote_refresh'],
     'Exact saved-grant refresh plan with owner approval.' );
+mad4b_assert( 0 === $plan['oauth_authorization_session_ttl_seconds']
+    && empty( $plan['production_mutation_allowed'] ),
+    'Legacy provider without OAuth session TTL cannot fabricate consent lifetime or remote authority.' );
 mad4b_assert( is_wp_error( $center::refresh( array( 'provider' => 'google_drive' ) ) ),
     'Remote refresh must deny missing one-time approval and exact bound plan.' );
 mad4b_assert( 0 === MAD4B_SCP_Google_Drive_Context::$refresh_calls,

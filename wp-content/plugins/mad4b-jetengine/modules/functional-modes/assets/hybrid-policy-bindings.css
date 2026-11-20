@@ -1,0 +1,34 @@
+#mad4b-policy-binding-root{max-width:1400px}
+.mad4b-hybrid-layout{display:grid;grid-template-columns:minmax(300px,1fr) minmax(280px,.9fr);gap:14px;margin-top:18px}
+.mad4b-hybrid-panel{background:#fff;border:1px solid #d0e1d9;border-radius:10px;padding:18px;min-width:0;display:grid;gap:12px;align-content:start}
+.mad4b-hybrid-panel>h2{margin:0;color:#145c50;font-size:17px}
+.mad4b-hybrid-note{font-size:12px;color:#4e6b60;line-height:1.6;margin:0}
+.mad4b-hybrid-field{display:grid;gap:4px;font-weight:600;color:#28554d;font-size:12px}
+.mad4b-hybrid-field input,.mad4b-hybrid-field select{width:100%;max-width:100%;min-height:36px}
+.mad4b-hybrid-lookup{display:flex;gap:7px;flex-wrap:wrap}
+.mad4b-hybrid-lookup input{flex:1 1 180px}
+.mad4b-hybrid-lookup select{flex:1 1 250px}
+.mad4b-hybrid-actions{display:flex;flex-wrap:wrap;gap:8px}
+.mad4b-hybrid-status{min-height:20px;margin:0;color:#1c6656;font-size:12px}
+.mad4b-hybrid-status.is-error{color:#9b4f23}
+.mad4b-hybrid-policies{border:1px solid #d5e6df;border-radius:8px;padding:12px;display:grid;gap:8px;min-width:0}
+.mad4b-hybrid-policies legend{font-weight:650;color:#23594b}
+.mad4b-hybrid-policy{display:flex;align-items:start;gap:8px;border-bottom:1px solid #e1ebe6;padding-bottom:6px;flex-wrap:wrap}
+.mad4b-hybrid-policy input{margin-top:4px}
+.mad4b-hybrid-policy small{color:#506d60}
+.mad4b-hybrid-preview p{line-height:1.45}
+.mad4b-hybrid-tier{border:1px solid #d4e4dc;border-radius:6px;margin-top:8px}
+.mad4b-hybrid-tier summary{cursor:pointer;padding:10px;background:#f1f8f4;color:#235b51;font-weight:650}
+.mad4b-hybrid-tier-content{padding:10px}
+.mad4b-hybrid-warning{border:1px solid #e9cfa3;background:#fff8e9;border-radius:7px;padding:10px;color:#88571d;margin-top:10px}
+.mad4b-hybrid-panel button:focus-visible,.mad4b-hybrid-panel input:focus-visible,.mad4b-hybrid-panel select:focus-visible{outline:2px solid #12685e;outline-offset:2px}
+@media(max-width:850px){.mad4b-hybrid-layout{grid-template-columns:1fr}}
+
+.mad4b-hybrid-resolution{grid-column:1/-1}
+.mad4b-hybrid-order{list-style:decimal;padding-left:22px;display:grid;gap:5px;margin:0}
+.mad4b-hybrid-priority-row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 12px;border:1px solid #deebe4;background:#fafdfb;border-radius:6px}
+.mad4b-hybrid-priority-row strong{font-size:12px;color:#234c43}
+.mad4b-hybrid-priority-buttons{display:flex;gap:5px}
+.mad4b-hybrid-tax-section{padding:10px;border:1px solid #dbe7e0;border-radius:7px}
+.mad4b-hybrid-tax-section summary{cursor:pointer;font-weight:600;color:#205b51}
+.mad4b-hybrid-tax-order{padding-top:10px}

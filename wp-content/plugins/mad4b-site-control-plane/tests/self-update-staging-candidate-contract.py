@@ -45,7 +45,10 @@ for marker in (
     "target_not_current_governed_release:",
     "self::fetch_manifest( true )",
     "'release_channel_bound' => ! $staging_candidate",
-    "'production_allowed' => false",
+    # Candidate-only staging remains denied, while production release uses
+    # the enrolled Site Profile/Governance dynamic policy rather than the
+    # retired blanket environment prohibition.
+    "'production_allowed' => (bool) ( ! $staging_candidate && self::environment_allowed( true ) )",
     "sort( $plan['blockers'], SORT_STRING );",
 ):
     expect(marker in plan, "planning missing " + marker)

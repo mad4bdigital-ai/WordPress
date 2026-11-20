@@ -25,6 +25,11 @@ COVERAGE = GOV + "/capability-coverage.json"
 CONTROLS = GOV + "/controls.json"
 SHA = re.compile(r"^[a-f0-9]{40}$")
 CAP = re.compile(r"['\"](mad4b/[a-z0-9][a-z0-9._/-]{1,120})['\"]")
+# Literal PHP prefixes concatenated to a runtime Ability name are not
+# complete registered WordPress Abilities. Keep all other static names.
+PHP_ABILITY_PREFIX = re.compile(
+    r"""(?P<q>['"])(?P<id>mad4b/[a-z0-9][a-z0-9._/-]{1,120})(?P=q)\s*\."""
+)
 PHP_DECLARATION = re.compile(
     r"wp_register_ability\s*\(|(?:self|static)::register\s*\(|"
     r"\$this->add\s*\(|register_abilities\s*\(|ability_definitions\s*\(", re.I
@@ -43,8 +48,28 @@ REQUIRED_EXTENSIONS = frozenset((".php", ".js", ".css", ".json"))
 REQUIRED_SUBTREES = frozenset(("includes/", "assets/", "config/"))
 ALLOWED_EXCLUSIONS = frozenset(("tests/", "docs/", "languages/"))
 REST_ROUTE = re.compile(r"""register_rest_route\s*\(\s*['"]([a-z0-9._/-]+)['"]\s*,\s*['"]([^'"]+)['"]""", re.I)
+# A REST namespace may be declared in a local PHP variable before use.
+# It is not a WordPress Ability simply because the same class also registers
+# an unrelated Ability. Resolve only exact single literal assignments; do not
+# evaluate PHP expressions, constants or dynamic provider-generated routes.
+REST_LITERAL_ASSIGNMENT = re.compile(
+    r"""(?<![\w$])\$(?P<var>[a-zA-Z_]\w*)[ \t]*=[ \t]*(?P<q>['"])(?P<value>[^'"]+)(?P=q)[ \t]*;"""
+)
+REST_VARIABLE_ROUTE = re.compile(
+    r"""register_rest_route\s*\(\s*\$(?P<namespace>[a-zA-Z_]\w*)\s*,\s*"""
+    r"""\$(?P<base>[a-zA-Z_]\w*)\s*(?:\.\s*(?P<q>['"])(?P<suffix>/[a-z0-9_/-]+)(?P=q))?\s*,""",
+    re.I,
+)
+HOOK_FIRST_ARG = re.compile(
+    r"""add_(?:action|filter)\s*\(\s*(?P<q>['"])(?P<hook>mad4b/[a-z0-9._/-]+)(?P=q)""",
+    re.I,
+)
 AJAX_ROUTE = re.compile(r"""add_action\s*\(\s*['"](wp_ajax_(?:nopriv_)?[a-z0-9_-]+)['"]""", re.I)
-CRON_SCHEDULE = re.compile(r"""wp_schedule_(?:single_)?event\s*\(\s*[^,]+,\s*(?:[^,]+,\s*)?['"]([a-z0-9_-]+)['"]""", re.I)
+CRON_CALL = re.compile(r"wp_schedule_(?P<single>single_)?event\s*\(", re.I)
+CRON_CONST = re.compile(
+    r"""\bconst\s+(?P<name>[A-Z][A-Z0-9_]*)\s*=\s*(?P<q>['"])(?P<value>[a-z0-9_-]+)(?P=q)\s*;""",
+    re.I,
+)
 
 
 def git(*args, checked=True):
@@ -123,38 +148,290 @@ def changed_paths(base, head):
     return rows
 
 
+def rest_variable_surfaces(src):
+    """Prove local REST declarations from unambiguous literal PHP bindings.
+
+    Only a literal variable namespace and literal path/suffix can be safely
+    mapped. Unknown expressions must never silently be treated as known URLs.
+    This read-only inventory grants no REST permission.
+    """
+    assignments = {}
+    for row in REST_LITERAL_ASSIGNMENT.finditer(src):
+        assignments.setdefault(row.group("var"), []).append((row.group("value"),
+                                                               row.start("value"), row.end("value")))
+    # If the variable was reassigned, its runtime value is uncertain.
+    singular = {name: values[0] for name, values in assignments.items()
+                if len(values) == 1}
+    detected, aliases = set(), set()
+    for row in REST_VARIABLE_ROUTE.finditer(src):
+        namespace, base = row.group("namespace"), row.group("base")
+        if namespace not in singular or base not in singular:
+            continue
+        ns, start, end = singular[namespace]
+        path = singular[base][0] + (row.group("suffix") or "")
+        if (re.fullmatch(r"[a-z0-9._/-]+", ns, re.I) and
+                re.fullmatch(r"/[a-z0-9._/-]+", path, re.I)):
+            detected.add(identifier("rest", ns + "/" + path.lstrip("/")))
+            aliases.add((namespace, start, end))
+    return detected, aliases
+
+
+
+def split_php_call_argument_spans(src, start):
+    """Parse top-level PHP arguments and their exact source ranges.
+
+    This shared parser treats nested function/array arguments as opaque.
+    Incomplete syntax has no provable arguments.
+    """
+    spans, segment, depth, quote, escaped = [], start, 0, None, False
+    for pos in range(start, len(src)):
+        char = src[pos]
+        if quote is not None:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+            continue
+        if char in ("'", '"'):
+            quote = char
+        elif char in "([":
+            depth += 1
+        elif char in ")]":
+            if depth == 0:
+                if char != ")":
+                    return []
+                spans.append((src[segment:pos].strip(), segment, pos))
+                return spans
+            depth -= 1
+        elif char == "," and depth == 0:
+            spans.append((src[segment:pos].strip(), segment, pos))
+            segment = pos + 1
+    return []
+
+
+def split_php_call_arguments(src, start):
+    """Retain original Cron scanner API using shared source boundaries."""
+    return [value for value, _, _ in split_php_call_argument_spans(src, start)]
+
+
+AUDIT_EVENT_CALL = re.compile(
+    r"(?:\b(?:self|static)::audited_registry_result|"
+    r"\bMAD4B_SCP_Audit::record)\s*\(", re.I
+)
+
+
+def mask_audit_event_literals(src):
+    """Only mask the proven event arg of a known audit writer.
+
+    WordPress Ability registration anywhere else in the same PHP source
+    stays visible. Ambiguous nested calls or dynamic strings remain unmasked.
+    """
+    masks = []
+    for call in AUDIT_EVENT_CALL.finditer(src):
+        spans = split_php_call_argument_spans(src, call.end())
+        index = 1 if "audited_registry_result" in call.group(0) else 0
+        if len(spans) <= index:
+            continue
+        literal, start, end = spans[index]
+        if re.fullmatch(r"""['"]mad4b/[a-z0-9][a-z0-9._/-]{1,120}['"]""", literal):
+            masks.append((start,end))
+    for start, end in reversed(masks):
+        src = src[:start] + "'__audit_event_only__'" + src[end:]
+    return src
+
+
+def cron_event_candidates(src):
+    """Inventory actual hook argument, not recurrence, for WordPress Cron."""
+    constants = {}
+    for entry in CRON_CONST.finditer(src):
+        constants.setdefault(entry.group("name"), set()).add(entry.group("value"))
+    rows = set()
+    for call in CRON_CALL.finditer(src):
+        args = split_php_call_arguments(src, call.end())
+        hook_index = 1 if call.group("single") else 2
+        if len(args) <= hook_index:
+            continue
+        expression = args[hook_index]
+        literal = re.fullmatch(r"""['"]([a-z0-9_-]+)['"]""", expression, re.I)
+        if literal:
+            rows.add(identifier("cron", literal.group(1)))
+            continue
+        const = re.fullmatch(r"(?:self|static)::([A-Z][A-Z0-9_]*)", expression)
+        if const and len(constants.get(const.group(1), set())) == 1:
+            rows.add(identifier("cron", next(iter(constants[const.group(1)]))))
+    return rows
+
+
 def php_capabilities(ref, path):
     src = git_text(ref, path)
-    if not src:
+    if not src or not PHP_DECLARATION.search(src):
         return set()
-    if not PHP_DECLARATION.search(src):
-        return set()
-    # Conservative static surface. This is a candidate extractor, not an
-    # authoritative WordPress Ability census or proof of runtime registration.
-    # REST namespaces are not WordPress Abilities. Mask only the namespace
-    # argument of a static register_rest_route() call, not other literal
-    # ability strings in the same provider source. Actual REST endpoints are
-    # separately inventoried by registered_surfaces().
+    # Conservative static surface, not an authoritative WordPress Ability
+    # census. A REST namespace literal is not an Ability. This covers direct
+    # REST route strings and single-variable local REST declarations, while
+    # preserving genuine Ability literals in the same source file.
     def mask_rest_namespace(match):
         start = match.start(1) - match.start()
         end = match.end(1) - match.start()
         whole = match.group(0)
         return whole[:start] + "__rest_namespace__" + whole[end:]
 
-    ability_source = REST_ROUTE.sub(mask_rest_namespace, src)
+    ability_source = REST_ROUTE.sub(mask_rest_namespace,
+                                    mask_audit_event_literals(src))
+    # WordPress event/filter hooks are not wp_register_ability registrations.
+    # Mask only the first argument in add_action/add_filter, not same-named
+    # Ability literals which may still appear elsewhere in this source.
+    ability_source = HOOK_FIRST_ARG.sub(
+        lambda match: match.group(0).replace(match.group("hook"), "__event_hook__", 1),
+        ability_source,
+    )
+    # The literal fragment in "prefix" . suffix cannot be approved as an
+    # independently registered Ability. Preserve real static names nearby.
+    ability_source = PHP_ABILITY_PREFIX.sub(
+        lambda m: m.group(0).replace(m.group("id"), "__dynamic_ability_prefix__", 1),
+        ability_source,
+    )
+    _, aliases = rest_variable_surfaces(src)
+    for name, start, end in sorted(aliases, key=lambda x: x[1], reverse=True):
+        # Do not suppress if the same PHP variable is directly used as an
+        # Ability registration argument. In that case its role is ambiguous
+        # and must remain a source-review candidate.
+        if re.search(r"wp_register_ability\s*\(\s*\$" + re.escape(name) + r"\b",
+                     src, re.I):
+            continue
+        # Direct REST matching above never alters this assignment's offset
+        # for simple source with no static REST calls ahead of the binding.
+        # Mask the specific assignment using matched text rather than offsets
+        # into a modified string when source contains both declarations.
+        token = src[start:end]
+        assignment = re.compile(
+            r"(?P<pre>\$" + re.escape(name) +
+            r"[ \t]*=[ \t]*['\"])" + re.escape(token) +
+            r"(?P<post>['\"][ \t]*;)"
+        )
+        ability_source = assignment.sub(
+            lambda m: m.group("pre") + "__rest_namespace__" + m.group("post"),
+            ability_source, count=1,
+        )
     return {identifier("ability", m) for m in CAP.findall(ability_source)}
 
 
 def registered_surfaces(ref, path):
-    """Static candidate REST, AJAX and Cron interfaces; never runtime proof."""
+    """Conservative REST, AJAX and Cron candidate surfaces; no runtime proof."""
     src = git_text(ref, path)
     if not src:
         return set()
     rows = {identifier("rest", ns + "/" + route.lstrip("/"))
             for ns, route in REST_ROUTE.findall(src)}
+    variables, _ = rest_variable_surfaces(src)
+    rows.update(variables)
     rows.update(identifier("ajax", x) for x in AJAX_ROUTE.findall(src))
-    rows.update(identifier("cron", x) for x in CRON_SCHEDULE.findall(src))
+    rows.update(cron_event_candidates(src))
     return rows
+
+
+def registered_constant_map_owner(src, const_name):
+    """Recognize an existing literal-keyed Ability map, not a catalog ref.
+
+    This matches the first-party definitions -> foreach -> WordPress
+    registration contract with no operation-name hardcoding.
+    """
+    if not re.search(r"\bfunction\s+register_abilities\s*\(", src):
+        return False
+    if len(re.findall(r"\$definitions\s*=\s*(?:array\s*\(|\[)", src)) != 1:
+        return False
+    return all((
+        re.search(r"(?:self|static)::" + re.escape(const_name) + r"\s*=>", src),
+        re.search(r"foreach\s*\(\s*\$definitions\s+as\s+"
+                  r"\$ability\s*=>\s*\$definition\s*\)", src),
+        re.search(r"wp_register_ability\s*\(\s*\$ability\s*,", src),
+    ))
+
+
+def registered_first_party_add_owner(ref, path, src, ability_name):
+    """Prove that an exact first-party $this->add() is a real WP Ability.
+
+    Neither a catalog string nor an orphan trait is sufficient: the canonical
+    facade must contain the WordPress registration sink and bind the method.
+    This is structural source evidence, never execution/grant authority.
+    """
+    facade_path = PLUGIN + "includes/class-mad4b-scp-abilities.php"
+    trait_path = PLUGIN + "includes/trait-mad4b-scp-abilities-registration.php"
+    if path not in (facade_path, trait_path):
+        return False
+    facade = src if path == facade_path else git_text(ref, facade_path)
+    if (not facade or "final class MAD4B_SCP_Abilities {" not in facade
+            or "private function add( $name, $label, $category" not in facade
+            or not re.search(r"wp_register_ability\s*\(\s*\$name\s*,\s*\$args\s*\)", facade)):
+        return False
+    if path == facade_path:
+        # Before extraction: registration and the add() sink share this class.
+        start, end = "\tpublic function register_abilities() {", "\n\tprivate function add("
+        if start not in facade or end not in facade:
+            return False
+        body = facade.split(start, 1)[1].split(end, 1)[0]
+    else:
+        # After extraction: require exact facade loader, trait use and wrapper.
+        if ("require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php';" not in facade
+                or "use MAD4B_SCP_Abilities_Registration_Trait;" not in facade
+                or not re.search(r"public function register_abilities\s*\(\s*\)\s*\{\s*\$this->register_source_abilities\s*\(\s*\)\s*;", facade)
+                or "trait MAD4B_SCP_Abilities_Registration_Trait {" not in src
+                or "private function register_source_abilities() {" not in src
+                or "do_action( 'mad4b_scp_abilities_registered', $this );" not in src):
+            return False
+        body = src.split("private function register_source_abilities() {", 1)[1]
+    return bool(re.search(r"\$this->add\s*\(\s*['\"]" +
+                          re.escape(ability_name) + r"['\"]\s*,", body))
+
+
+def registered_ability_owner(ref, ability):
+    """Prove a distinct registered Ability still exists elsewhere in Git.
+
+    A string mention or catalog pointer alone is insufficient: require a
+    registration call that uses either the exact literal or a local immutable
+    class constant. This suppresses only *false retirements*, not genuinely
+    removed registrations, changed-source behavior review or permissions.
+    """
+    if not ability.startswith("ability:mad4b/"):
+        return None
+    identifier_value = ability[len("ability:"):]
+    needle = "'" + identifier_value + "'"
+    hits = git("grep", "-l", "-F", "-e", identifier_value,
+               ref, "--", PLUGIN + "includes/", checked=False)
+    if hits.returncode not in (0, 1):
+        raise ValueError("Ambiguous Git ability registration inventory")
+    for entry in hits.stdout.decode().splitlines():
+        _, separator, path = entry.partition(":")
+        if not separator or not path.endswith(".php"):
+            continue
+        src = git_text(ref, path)
+        if not src:
+            continue
+        if registered_first_party_add_owner(ref, path, src, identifier_value):
+            return path
+        if re.search(r"wp_register_ability\s*\(\s*['\"]" +
+                     re.escape(identifier_value) + r"['\"]", src):
+            return path
+        for const_name in re.findall(
+                r"\bconst\s+([A-Z][A-Z0-9_]*)\s*=\s*['\"]" +
+                re.escape(identifier_value) + r"['\"]\s*;", src):
+            if re.search(r"wp_register_ability\s*\(\s*(?:self|static)::" +
+                         re.escape(const_name) + r"\b", src):
+                return path
+            # The first-party Adapter Base delegates literal/constant
+            # registrations through $this->add_ability(...), ultimately
+            # calling wp_register_ability($name). Only recognize a constant
+            # passed as the FIRST argument in an actual register_abilities()
+            # owner, never a catalog, metadata pointer or generic mention.
+            if (re.search(r"\bfunction\s+register_abilities\s*\(", src)
+                    and re.search(r"\$this->add_ability\s*\(\s*(?:self|static)::" +
+                                  re.escape(const_name) + r"\b", src)):
+                return path
+            if registered_constant_map_owner(src, const_name):
+                return path
+    return None
 
 
 def is_reviewed_runtime_path(path, coverage):
@@ -180,7 +457,7 @@ def current_blob_sha(commit, path):
     return sha
 
 
-def new_source_ids(base, head, changed):
+def new_source_ids(base, head, changed, preserve_reviewed=frozenset()):
     old = catalog_snapshot(base)
     new = catalog_snapshot(head)
     added = {k: new[k] for k in new.keys() - old.keys()}
@@ -213,6 +490,23 @@ def new_source_ids(base, head, changed):
                 added["admin_asset:" + path] = path
             if status == "D":
                 removed["admin_asset:" + path] = path
+    # A string reference disappearing from one changed file is not
+    # decommissioning if a separate WordPress Ability owner still registers
+    # it in both exact source trees. Retain the recorded source diff for
+    # independent behavior review; do not rewrite historical lifecycle data.
+    for cap in list(removed):
+        if (cap.startswith("ability:") and
+                registered_ability_owner(base, cap) and
+                registered_ability_owner(head, cap)):
+            removed.pop(cap)
+    for cap in list(added):
+        # Preserve same-PR CI-only source reviews that already carry explicit
+        # tests and controls. An older registered owner can explain why a
+        # reference is NOT new, but cannot silently erase a reviewed
+        # capability entry or its independent test obligation.
+        if (cap.startswith("ability:") and cap not in preserve_reviewed
+                and registered_ability_owner(base, cap)):
+            added.pop(cap)
     return old, new, added, removed
 
 
@@ -232,6 +526,17 @@ def classify(path, cap, coverage):
         if rule["id"] != "platform" and re.search(rule["pattern"], text):
             return rule
     return next(r for r in rules if r["id"] == "platform")
+
+
+def same_pr_regression_coverage(tests, changed_set):
+    """Keep historical tests; require one changed, real regression in this PR."""
+    if not isinstance(tests, list) or not tests:
+        return False
+    if not all(isinstance(test, str)
+               and (test.startswith(PLUGIN + "tests/") or test.startswith("tests/"))
+               and (ROOT / test).is_file() for test in tests):
+        return False
+    return any(test in changed_set for test in tests)
 
 
 def validate_coverage(coverage, controls, base, head, changed, added, removed):
@@ -418,8 +723,8 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
             ensure(isinstance(ctl, list) and len(ctl) >= 2 and
                    len(set(ctl)) == len(ctl) and set(ctl) <= ctl_ids,
                    "Insufficient / unknown control coverage: " + capability)
-            ensure(set(ctl) & set(rule["controls"]),
-                   "Coverage does not address mapped impact: " + capability)
+            if not (set(ctl) & set(rule["controls"])):
+                missing.append("review_controls_do_not_cover_mapped_impact")
             needs_new = rec.get("needs_new_control")
             ensure(type(needs_new) is bool,
                    "New capability requires explicit checklist growth decision: " + capability)
@@ -432,12 +737,15 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
                        "Reused checklist coverage requires rationale: " + capability)
             ensure(isinstance(tests, list) and tests,
                    "A newly introduced capability must provide regression tests")
-            for test in tests:
-                ensure(isinstance(test, str) and (test.startswith(PLUGIN + "tests/") or
-                       test.startswith("tests/")) and test in changed_set and
-                       (ROOT / test).is_file(),
-                       "Test evidence must be committed with capability: " + capability)
-            accepted.append(capability)
+            # Persistent capability reviews retain their original tests. A
+            # current-PR source change needs at least one NEW executable
+            # regression, not the impossible demand that every historical
+            # reviewed test was also edited in this PR. All retained paths
+            # must still resolve to real repository-owned regression files.
+            if not same_pr_regression_coverage(tests, changed_set):
+                missing.append("same_pr_capability_regression_missing")
+            if not missing:
+                accepted.append(capability)
         if missing:
             failures.append({"id": capability, "source": path,
                              "risk": rule["risk"], "controls": rule["controls"],
@@ -510,17 +818,45 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
                              "reasons": ["exact_source_change_review_missing"]})
             continue
         rule = classify(path, path, coverage)
-        ensure(set(rec["control_ids"]) & set(rule["controls"]),
-               "Behavior review does not address impacted area: " + path)
-        if identity not in old_map:
-            ensure(all(isinstance(test, str) and
-                       (test.startswith("tests/") or test.startswith(PLUGIN + "tests/"))
-                       and test in changed_set and (ROOT / test).is_file()
-                       for test in rec["regression_tests"]),
-                   "Changed behavior requires a regression test in same PR: " + path)
-        reviewed_behavior.append({"path": path, "git_blob": identity[1],
-                                  "control_ids": rec["control_ids"]})
+        behavior_missing = []
+        if not (set(rec["control_ids"]) & set(rule["controls"])):
+            behavior_missing.append("review_controls_do_not_cover_mapped_impact")
+        if identity not in old_map and not all(
+                isinstance(test, str)
+                and (test.startswith("tests/") or test.startswith(PLUGIN + "tests/"))
+                and test in changed_set and (ROOT / test).is_file()
+                for test in rec["regression_tests"]):
+            behavior_missing.append("same_pr_behavior_regression_missing")
+        if behavior_missing:
+            failures.append({"id": "behavior:" + path, "source": path,
+                             "risk": rule["risk"], "controls": rule["controls"],
+                             "reasons": behavior_missing})
+        else:
+            reviewed_behavior.append({"path": path, "git_blob": identity[1],
+                                      "control_ids": rec["control_ids"]})
     return failures, accepted, reviewed_behavior
+
+
+def current_behavior_regressions(coverage, reviewed_behavior):
+    """Use the exact current Git blob, never superseded historical reviews.
+
+    An append-only review history can contain several versions of the same
+    source path. Retain ALL records for audit integrity but execute the suite
+    attached to the blob actually in this PR. The independent runtime gates
+    still apply and the current mapping remains fail-closed if absent.
+    """
+    records = coverage.get("reviewed_changes", [])
+    tests = set()
+    for item in reviewed_behavior:
+        matches = [x for x in records
+                   if (x.get("path"), x.get("source_blob_sha")) ==
+                   (item["path"], item["git_blob"])]
+        ensure(len(matches) == 1, "Exact current source lacks one reviewed regression mapping: " + item["path"])
+        names = matches[0].get("regression_tests", [])
+        ensure(isinstance(names, list) and bool(names),
+               "Missing current source regression tests: " + item["path"])
+        tests.update(names)
+    return tests
 
 
 def impact_rows(changed, coverage, added, removed):
@@ -552,7 +888,12 @@ def evaluate(base, head):
     changed = changed_paths(base, head)
     controls = json.loads((ROOT / CONTROLS).read_text(encoding="utf-8"))
     coverage = json.loads((ROOT / COVERAGE).read_text(encoding="utf-8"))
-    old, current, added, removed = new_source_ids(base, head, changed)
+    reviewed_ids = frozenset(
+        row["id"] for row in coverage.get("reviewed_capabilities", [])
+        if isinstance(row, dict) and isinstance(row.get("id"), str)
+    )
+    old, current, added, removed = new_source_ids(
+        base, head, changed, preserve_reviewed=reviewed_ids)
     failures, reviewed, behavior = validate_coverage(
         coverage, controls, base, head, changed, added, removed)
     impact = impact_rows(changed, coverage, added, removed)
@@ -569,12 +910,8 @@ def evaluate(base, head):
         "retired": [{"id": k, "source": v} for k, v in sorted(removed.items())],
         "reviewed_for_ci_only": reviewed,
         "reviewed_behavior_changes": behavior,
-        "required_regression_tests": sorted({
-            test
-            for record in coverage.get("reviewed_changes", [])
-            if record["path"] in {item["path"] for item in behavior}
-            for test in record.get("regression_tests", [])
-        } | {
+        "required_regression_tests": sorted(current_behavior_regressions(
+            coverage, behavior) | {
             test
             for record in coverage.get("reviewed_capabilities", [])
             if record["id"] in reviewed
@@ -598,6 +935,10 @@ def evaluate(base, head):
                    "coverage_gaps": len(failures),
                    "impacted_files": len(impact),
                    "reviewed_behavior_changes": len(behavior)},
+        "coverage_gap_reasons": {
+            reason: sum(reason in gap["reasons"] for gap in failures)
+            for reason in sorted({reason for gap in failures for reason in gap["reasons"]})
+        },
     }
 
 
@@ -629,6 +970,22 @@ def emit(report, out):
     target.mkdir(parents=True, exist_ok=True)
     (target / "capability-impact.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    # Independent, bounded review queue. This is NOT permission, trust,
+    # evidence sufficiency or an automatically approved operation registry.
+    (target / "capability-coverage-gaps.json").write_text(
+        json.dumps({
+            "contract": "mad4b.readiness-uncovered-changes.v1",
+            "exact_head_sha": report["exact_head_sha"],
+            "base_sha": report["source_base_sha"],
+            "decision": report["decision"],
+            "authorizing": False,
+            "production_authorized": False,
+            "independent_owner_approval_present": False,
+            "uncovered_count": len(report["coverage_gaps"]),
+            "reason_counts": report["coverage_gap_reasons"],
+            "items": report["coverage_gaps"],
+        }, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8")
     with (target / "capability-impact.csv").open("w", newline="", encoding="utf-8-sig") as fh:
         w = safe_writer(fh)
         w.writerow(("Path", "Change", "Area", "Risk", "Suggested control IDs",
@@ -741,6 +1098,10 @@ def emit(report, out):
     for k, v in report["counts"].items():
         lines.append("| {} | {} |".format(k, v))
     if report["coverage_gaps"]:
+        lines += ["", "### Gap reasons (full exact-head inventory in artifact)", ""]
+        for reason, amount in sorted(report["coverage_gap_reasons"].items()):
+            lines.append("- {}: {}".format(reason, amount))
+    if report["coverage_gaps"]:
         lines += ["", "### Uncovered capability / lifecycle changes", ""]
         for g in report["coverage_gaps"]:
             lines.append("- {}: {} ({})".format(
@@ -769,6 +1130,23 @@ def self_test():
                    "<?php self::register( 'mad4b/example', 'Title')"):
         assert PHP_DECLARATION.search(source)
     assert not SHA.fullmatch("incorrect")
+    historical = {"reviewed_changes": [
+        {"path": "includes/mcp.php", "source_blob_sha": "a" * 40,
+         "regression_tests": ["tests/old-integration-only.php"]},
+        {"path": "includes/mcp.php", "source_blob_sha": "b" * 40,
+         "regression_tests": ["tests/new-tested-source.py"]},
+    ]}
+    assert current_behavior_regressions(historical, [
+        {"path": "includes/mcp.php", "git_blob": "b" * 40}
+    ]) == {"tests/new-tested-source.py"}
+    try:
+        current_behavior_regressions(historical, [
+            {"path": "includes/mcp.php", "git_blob": "c" * 40}
+        ])
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Missing current source regression mapping accepted")
     sample = {"controls": [{"id": "GOVERNANCE-01", "priority": "P0"}]}
     assert control_delta(sample, sample)[0]["state"] == "UNCHANGED"
     assert control_delta(sample, {"controls": [

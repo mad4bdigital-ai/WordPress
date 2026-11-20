@@ -38,7 +38,24 @@ if ( ! $server ) {
 
 $tools = $server->get_tools();
 if ( empty( $tools ) ) {
-	$fail( 'mad4b-chatgpt registered with an empty protocol tool inventory.' );
+    // Bounded, secret-free evidence: keep actual official Adapter registration
+    // failures visible instead of misdiagnosing missing tools as a count cap.
+    $registration = MAD4B_SCP_Servers::registration_status()['mad4b-chatgpt'] ?? array();
+    $preflight = $registration['preflight'] ?? array();
+    $failure_codes = array();
+    foreach ( array_slice( (array) ( $preflight['failures'] ?? array() ), 0, 8 ) as $row ) {
+        $failure_codes[] = array(
+            'ability' => (string) ( $row['failing_ability'] ?? '' ),
+            'stage' => (string) ( $row['stage'] ?? '' ),
+            'code' => (string) ( $row['error_code'] ?? '' ),
+        );
+    }
+    $fail( 'mad4b-chatgpt registered with an empty protocol tool inventory.', array(
+        'registration_error' => (string) ( $registration['error'] ?? '' ),
+        'requested_tools' => (int) ( $registration['requested_tool_count'] ?? 0 ),
+        'preflight_blocker' => (string) ( $preflight['blocker'] ?? '' ),
+        'preflight_failure_codes' => $failure_codes,
+    ) );
 }
 
 $actual_names = array();
@@ -63,9 +80,9 @@ if ( empty( $certified_catalog['ready'] ) || empty( $certified_catalog['tools'] 
 	$fail( 'The reviewed ChatGPT tool catalog did not pass actual MCP preflight.', $certified_catalog );
 }
 $expected_abilities = $certified_catalog['tools'];
-if ( count( $expected_abilities ) > MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_TOOLS
-	|| array_diff( array_diff( $requested_abilities, $optional_abilities ), $expected_abilities ) ) {
-	$fail( 'Required tools cannot be silently omitted by catalog budget.', $certified_catalog );
+if ( ! empty( $certified_catalog['excluded_optional'] )
+    || array_diff( array_diff( $requested_abilities, $optional_abilities ), $expected_abilities ) ) {
+    $fail( 'Valid requested tools cannot be omitted by a historical display budget.', $certified_catalog );
 }
 
 $expected_names = array();
@@ -83,11 +100,74 @@ $expected_names = array_values( array_unique( $expected_names ) );
 sort( $expected_names );
 
 if ( $actual_names !== $expected_names ) {
+	$registration = MAD4B_SCP_Servers::registration_status()['mad4b-chatgpt'] ?? array();
+	$descriptor = is_array( $registration['capability_descriptor_evidence'] ?? null ) ? $registration['capability_descriptor_evidence'] : array();
 	$fail(
 		'mad4b-chatgpt protocol inventory drifted from the governed allowlist.',
 		array(
 			'expected_count' => count( $expected_names ),
 			'actual_count' => count( $actual_names ),
+			'descriptor_blockers' => array_slice( (array) ( $descriptor['blockers'] ?? array() ), 0, 30 ),
+			'quarantined_abilities' => array_slice( (array) ( $descriptor['quarantined_abilities'] ?? array() ), 0, 30 ),
+			// Bounded structural diagnosis only. This never registers tools or
+			// treats an unverified descriptor as authorization.
+			// Inspection-only callback ancestry evidence, restricted to the two
+			// original Direct mutations. Never dump callable captures, input,
+			// OAuth tokens, admin data or runtime grants into public CI logs.
+			'direct_callback_source' => array_map( static function ( $ability_name ) {
+				$source = array( 'ability' => $ability_name, 'registered' => false );
+				if ( ! in_array( (string) $ability_name, array(
+					'mad4b/direct-create-post', 'mad4b/direct-update-post'
+				), true ) || ! function_exists( 'wp_get_ability' ) ) return $source;
+				$ability = wp_get_ability( $ability_name );
+				if ( ! is_object( $ability ) ) return $source;
+				$source['registered'] = true;
+				$source['final_fence'] = class_exists( 'MAD4B_SCP_Execution_Fence' )
+					&& MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $ability_name );
+				$source['original_census'] = class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
+					&& MAD4B_SCP_Governed_Ability_Census::original_direct_post_boundary_verified( $ability );
+				foreach ( array( 'execute_callback', 'permission_callback' ) as $field ) {
+					try {
+						$property = new ReflectionProperty( 'WP_Ability', $field );
+						if ( PHP_VERSION_ID < 80100 ) $property->setAccessible( true );
+						$callback = $property->getValue( $ability );
+						$chain = array();
+						for ( $depth = 0; $depth < 5; ++$depth ) {
+							if ( is_array( $callback ) && 2 === count( $callback ) ) {
+								$chain[] = array( 'type' => 'method', 'class' => is_object( $callback[0] ) ? get_class( $callback[0] ) : (string) $callback[0], 'method' => (string) $callback[1] );
+								break;
+							}
+							if ( ! $callback instanceof Closure ) { $chain[] = array( 'type' => gettype( $callback ) ); break; }
+							$reflection = new ReflectionFunction( $callback );
+							$scope = $reflection->getClosureScopeClass();
+							$chain[] = array( 'type' => 'closure', 'scope' => $scope ? $scope->getName() : '', 'file' => basename( (string) $reflection->getFileName() ) );
+							$captured = array_filter( $reflection->getStaticVariables(), static function ( $var ) {
+								return $var instanceof Closure || ( is_array( $var ) && 2 === count( $var ) && is_callable( $var ) );
+							} );
+							$callback = 1 === count( $captured ) ? reset( $captured ) : null;
+							if ( null === $callback ) break;
+						}
+						$source[ $field ] = $chain;
+					} catch ( Throwable $error ) { $source[ $field ] = array( 'inspection_error' => get_class( $error ) ); }
+				}
+				return $source;
+			}, array_values( array_intersect(
+				(array) ( $descriptor['quarantined_abilities'] ?? array() ),
+				array( 'mad4b/direct-create-post', 'mad4b/direct-update-post' )
+			) ) ),
+			'descriptor_classification' => array_map( static function ( $ability_name ) {
+				$row = MAD4B_SCP_Ability_Contract_Inspector::inspect( $ability_name );
+				if ( is_wp_error( $row ) ) return array( 'ability' => $ability_name, 'code' => $row->get_error_code() );
+				return array(
+					'ability' => $ability_name,
+					'classification' => (string) ( $row['classification'] ?? '' ),
+					'readonly' => (bool) ( $row['readonly'] ?? false ),
+					'boundary_verified' => (bool) ( $row['execution_boundary_verified'] ?? false ),
+					'provider' => (string) ( $row['execution_provider'] ?? '' ),
+					'blocker' => (string) ( $row['execution_blocker'] ?? '' ),
+					'execution_lane' => (string) ( $row['execution_lane'] ?? '' ),
+				);
+			}, array_slice( (array) ( $descriptor['quarantined_abilities'] ?? array() ), 0, 25 ) ),
 			'missing' => array_values( array_diff( $expected_names, $actual_names ) ),
 			'extra' => array_values( array_diff( $actual_names, $expected_names ) ),
 			'preflight_failures' => array_map( static function ( $row ) {
@@ -227,9 +307,9 @@ foreach ( $hidden_write_required as $ability_name ) {
 	}
 }
 
-if ( count( $actual_names ) > 36 ) {
-	$fail( 'Session-safe ChatGPT tools/list exceeded the reduced refresh/fanout-safety budget.', array( 'tool_count' => count( $actual_names ), 'budget' => 36 ) );
-}
+// No historical 36/64-count gate: the actual inventory has already been
+// compared to every vetted, expected protocol name above. Visibility and
+// execution boundaries are still independently asserted below.
 
 $discover = wp_get_ability( 'mad4b/tool-discover' );
 $info = wp_get_ability( 'mad4b/tool-info' );

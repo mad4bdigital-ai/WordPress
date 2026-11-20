@@ -22,7 +22,22 @@ jobs:
   production-matrix-contract:
     name: Production readiness matrix contract
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -111,21 +126,147 @@ jobs:
             test -n "$BASE_SHA"
           fi
           echo "Readiness compared exact head $EXACT_HEAD against fork $BASE_SHA"
+          # On missing coverage, retain the exact-head gap report artifact,
+          # preserve nonzero exit status, and never continue to certification.
+          set +e
           python3 tools/production_readiness_registry.py evaluate \
             --base-sha "$BASE_SHA" \
             --head-sha "$EXACT_HEAD" \
             --out artifacts/production-readiness
-          cat artifacts/production-readiness/capability-impact.md >> "$GITHUB_STEP_SUMMARY"
+          COVERAGE_RESULT=$?
+          set -e
+          if test -f artifacts/production-readiness/capability-impact.md; then
+            cat artifacts/production-readiness/capability-impact.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$COVERAGE_RESULT"
       - name: Setup PHP for mapped WordPress runtime regressions
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
           coverage: none
+      - name: Provision authentic isolated WordPress for mapped native source tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-readiness-wordpress
+          curl --fail --location --silent --show-error \
+            https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
+          mkdir -p "$WP_PATH"
+          php /tmp/wp-cli.phar core download --path="$WP_PATH" --version=latest
+          php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress \
+            --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
+          php /tmp/wp-cli.phar core install --path="$WP_PATH" \
+            --url='https://readiness-ci.example.invalid' --title='MAD4B CI Readiness' \
+            --admin_user=mad4b-ci-admin --admin_password='disposable-ci-only' \
+            --admin_email='ci@example.invalid' --skip-email
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py \
+            --archive wp-content/plugins/mcp-adapter.zip \
+            --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
+          cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/"
+          php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
+          php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+          # Isolated OAuth-only Site Profile; leave all Write/production grants off.
+          php /tmp/wp-cli.phar eval '
+          $result = MAD4B_SCP_Site_Profile::save_current_site( array(
+            "expected_revision" => 0,
+            "display_name" => "MAD4B Readiness CI",
+            "chatgpt_app_id" => "",
+            "oauth_user_ids" => array( get_current_user_id() ),
+            "oauth_enabled" => true,
+            "skills_enabled" => false,
+            "write_enabled" => false,
+            "production_write_confirmed" => false,
+            "provider_isolation_enabled" => false,
+            "managed_runtime_enabled" => false,
+            "acceptance_enabled" => false
+          ) );
+          if ( is_wp_error( $result ) || empty( $result["configured"] )
+            || empty( $result["origin_match"] ) || empty( $result["environment_match"] ) )
+            throw new RuntimeException("Disposable OAuth Site Profile binding failed");
+          if ( MAD4B_SCP_Staging_Write_Authority::eligible() )
+            throw new RuntimeException("OAuth-only CI unexpectedly gained Write authority");
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar eval '
+          $status = MAD4B_SCP_Staging_OAuth_Autoconfig::bootstrap();
+          if ( empty( $status["configured"] ) || ! empty( $status["blocker"] )
+            || (int) ( $status["wp_user_id"] ?? 0 ) !== 1 )
+            throw new RuntimeException("Disposable OAuth bootstrap denied: ".wp_json_encode($status));
+          if ( MAD4B_SCP_Staging_Write_Authority::eligible() )
+            throw new RuntimeException("OAuth bootstrap must not grant Write");
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
+          # Explicit fixture identity for Brand Integrity positive checks on
+          # this ephemeral DB only. No source approvals, assets, or grants.
+          php /tmp/wp-cli.phar eval '
+          $site = MAD4B_SCP_Site_Profile::status();
+          if ( empty($site["configured"]) || empty($site["origin_match"])
+            || empty($site["environment_match"]) || empty($site["site_uuid"])
+            || wp_get_environment_type() !== "staging" )
+            throw new RuntimeException("Unbound CI site cannot construct Brand fixture");
+          if ( get_option(MAD4B_SCP_Context_Authority::PROFILE_OPTION, false) !== false )
+            throw new RuntimeException("Existing Brand identity must never be replaced");
+          $record = array(
+            "contract" => MAD4B_SCP_Context_Authority::PROFILE_CONTRACT,
+            "site_uuid" => $site["site_uuid"],
+            "brand_id" => "readiness-test-brand",
+            "brand_name" => "MAD4B Readiness TEST",
+            "revision" => 1,
+            "status" => "test_only",
+            "context_policy" => "staging_test_only_no_external_authority",
+            "context_fingerprint" => MAD4B_SCP_Context_Authority::context_fingerprint(),
+            "review_policy" => array("mode"=>"human_only"),
+          );
+          if ( ! add_option(MAD4B_SCP_Context_Authority::PROFILE_OPTION, $record, "", false)
+            || MAD4B_SCP_Context_Authority::profile() !== $record )
+            throw new RuntimeException("Disposable Brand identity failed exact readback");
+          if ( MAD4B_SCP_Context_Authority::assets() !== array()
+            || MAD4B_SCP_Staging_Write_Authority::eligible()
+            || get_option("mad4b_scp_context_sources_v1", array()) !== array() )
+            throw new RuntimeException("CI Brand fixture acquired unexpected source or Write authority");
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
+          # Only this disposable CI site gets a synthetic tour post-type/record.
+          # The tested Brand Integrity engine remains the real original plugin.
+          mkdir -p "$WP_PATH/wp-content/mu-plugins"
+          cat > "$WP_PATH/wp-content/mu-plugins/ci-tour-type.php" <<'PHP_TOUR'
+          <?php
+          add_action('init', static function() {
+              if (!post_type_exists('tours-and-activities')) {
+                  register_post_type('tours-and-activities', array('public'=>true));
+              }
+          }, 1);
+          PHP_TOUR
+          php /tmp/wp-cli.phar post create --path="$WP_PATH" \
+            --post_type=tours-and-activities --post_status=publish \
+            --post_title='Discover Egypt and the Giza Pyramids' --porcelain >/dev/null
+          php /tmp/wp-cli.phar plugin is-active mcp-adapter --path="$WP_PATH"
+          php /tmp/wp-cli.phar plugin is-active mad4b-site-control-plane --path="$WP_PATH"
+          echo 'READINESS_DISPOSABLE_WORDPRESS_PROVISIONED: PASS'
+
       - name: Execute required mapped regression tests, not merely check filenames
         env:
           EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
+          # Materialize only the certified, already-vendored official Adapter.
+          # Exact archive size + SHA256 are required before offline DTO tests.
+          python3 - <<'PY_MCP_CERT'
+          import hashlib, json
+          from pathlib import Path
+          root=Path("wp-content/plugins/mad4b-site-control-plane")
+          cert=json.loads((root/"config/certified-providers.json").read_text())["providers"]["mcp_adapter"]
+          archive=Path("wp-content/plugins/mcp-adapter.zip")
+          if archive.is_symlink() or not archive.is_file():
+              raise SystemExit("Bundled MCP Adapter archive unavailable or symlinked")
+          if archive.stat().st_size != int(cert["release_asset_bytes"]):
+              raise SystemExit("Bundled MCP Adapter archive byte length differs from certified source")
+          if hashlib.sha256(archive.read_bytes()).hexdigest()!=cert["archive_sha256"]:
+              raise SystemExit("Bundled MCP Adapter SHA256 differs from certified source")
+          print("READINESS_MCP_OFFICIAL_ARCHIVE_PIN: PASS")
+          PY_MCP_CERT
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py \
+            --archive wp-content/plugins/mcp-adapter.zip \
+            --plugins-dir /tmp/mad4b-readiness-certified-mcp-adapter --slug mcp-adapter
+          test -f /tmp/mad4b-readiness-certified-mcp-adapter/mcp-adapter/vendor/autoload.php
           python3 tools/readiness_test_execution.py self-test
           python3 tools/readiness_test_execution.py evaluate \
             --head-sha "$EXACT_HEAD" \

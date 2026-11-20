@@ -49,6 +49,11 @@ check(
     "remote_refresh_reviewed",
     "production_mutation_allowed' => false",
     "owner_handoff_url",
+    "native_oauth_session_ttl_seconds()",
+    "is_callable( array( 'MAD4B_SCP_Google_Drive_Context', 'authorization_session_ttl_seconds' ) )",
+    "mad4b_provider_oauth_session_policy_unavailable",
+    "'mutation_performed' => false",
+    "'oauth_authorization_session_ttl_seconds' => self::native_oauth_session_ttl_seconds()",
 )
 check(
     INC / "class-mad4b-scp-provider-connections-admin-ui.php",

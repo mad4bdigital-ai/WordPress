@@ -1,0 +1,130 @@
+/* MAD4B Native Field System v1 — all JetEngine Modern Options Pages.
+   Original controls, repeaters, inputs and JetEngine Save remain canonical. */
+.jet-engine-options-page-wrap.mad4b-ws-visual .mad4b-ws-original {
+  --mad4b-field-border:#d7e7dc;
+  --mad4b-field-ink:#234c3b;
+  --mad4b-field-muted:#60776b;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual .mad4b-ws-original #settings_top {
+  padding:0;
+  border:0;
+  background:transparent;
+}
+/* Native settings section title becomes the header of the actual form, not
+   another inset white box with detached spacing. */
+.jet-engine-options-page-wrap.mad4b-ws-visual .mad4b-ws-original #settings_top
+  :is(.cx-settings__title,.cx-ui-kit__title,.cx-component__title) {
+  color:#1e5842;
+  font-weight:750;
+  letter-spacing:-.01em;
+}
+/* Cards use the same visual grammar as the dimensional targeting panels. */
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top .mad4b-ws-control:not(.mad4b-ws-filtered):not(.mad4b-source-cards-mode):not([data-control-name="shared_price_source_mode_rows"]) {
+  border:1px solid var(--mad4b-field-border);
+  border-radius:9px;
+  background:#fff;
+  padding:16px 18px;
+  margin:8px 0;
+  min-width:0;
+  box-shadow:0 1px 3px rgba(26,81,54,.035);
+  transition:border-color .15s,background-color .15s,box-shadow .15s;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top .mad4b-ws-control:not(.mad4b-ws-filtered):not(.mad4b-source-cards-mode):not([data-control-name="shared_price_source_mode_rows"]):hover {
+  background:#fcfefd;
+  border-color:#a9d0b9;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top .mad4b-ws-control:not(.mad4b-source-cards-mode):not([data-control-name="shared_price_source_mode_rows"]):focus-within {
+  border-color:#5aab84;
+  box-shadow:0 0 0 2px rgba(45,131,86,.12);
+}
+/* Original JetEngine two-column rows remain native; only the label hierarchy,
+   control surface and helper text are refined. */
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top .mad4b-ws-control
+  :is(.cx-control__title,.cx-control__label) {
+  color:var(--mad4b-field-ink);
+  font-size:13px;
+  font-weight:700;
+  line-height:1.45;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top .mad4b-ws-control
+  :is(.cx-control__description,.cx-control__desc) {
+  color:var(--mad4b-field-muted);
+  font-size:11px;
+  line-height:1.6;
+  max-width:68ch;
+  overflow-wrap:anywhere;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top .mad4b-ws-control
+  :is(select,textarea,input[type=text],input[type=number],input[type=url],input[type=email]) {
+  min-height:38px;
+  border:1px solid #c6dcce;
+  border-radius:7px;
+  background-color:#fff;
+  color:#294939;
+  padding:7px 11px;
+  max-width:100%;
+  box-sizing:border-box;
+  box-shadow:none;
+  font-size:12px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top .mad4b-ws-control
+  :is(select,textarea,input[type=text],input[type=number]):focus-visible {
+  border-color:#438e69;
+  outline:2px solid rgba(57,142,98,.2);
+  outline-offset:1px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top .mad4b-ws-control
+  :is(input[type=checkbox],input[type=radio]) {
+  accent-color:#206e50;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top .mad4b-ws-control
+  :is(.cx-control__switcher,.cx-switcher) {
+  accent-color:#206e50;
+}
+/* The native submit bar is a distinct anchored footer, integrated with the
+   field cards and without changing native POST/validation. */
+.jet-engine-options-page-wrap.mad4b-ws-visual .cx-component.dialog-save.mad4b-ws-native-save-bar {
+  background:#f7fbf8;
+  border:1px solid #b7d5c1;
+  border-top:3px solid #2b8460;
+  border-radius:10px;
+  padding:13px 16px;
+  box-shadow:0 5px 18px rgba(23,70,48,.085);
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual .mad4b-ws-native-save-help {
+  color:#416b54;
+  font-size:12px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual .cx-component.dialog-save
+  .cx-button.mad4b-ws-native-save-button {
+  background:#16694b;
+  border-color:#16694b;
+  min-width:140px;
+  min-height:42px;
+  border-radius:8px;
+  font-size:12px;
+  box-shadow:0 2px 4px rgba(13,75,49,.12);
+}
+
+/* Shared component treatment for specialized source/rule repeaters.
+   Keep existing vendor display, flex basis, collapse classes and field nodes. */
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top
+ .mad4b-ws-control:is(.mad4b-source-cards-mode,[data-control-name="shared_price_source_mode_rows"]){
+ border:1px solid #d7e7dc;
+ border-radius:9px;
+ background:#fcfefd;
+ padding:12px;
+ margin:8px 0;
+ box-sizing:border-box;
+ min-width:0;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual #settings_top
+ .mad4b-ws-control:is(.mad4b-source-cards-mode,[data-control-name="shared_price_source_mode_rows"]):focus-within{
+ border-color:#5aab84;
+ box-shadow:0 0 0 2px rgba(45,131,86,.12);
+}
+@media(max-width:720px){
+ .jet-engine-options-page-wrap.mad4b-ws-visual #settings_top
+ .mad4b-ws-control:not(.mad4b-ws-filtered){padding:12px}
+ .jet-engine-options-page-wrap.mad4b-ws-visual .cx-component.dialog-save.mad4b-ws-native-save-bar{padding:10px}
+}

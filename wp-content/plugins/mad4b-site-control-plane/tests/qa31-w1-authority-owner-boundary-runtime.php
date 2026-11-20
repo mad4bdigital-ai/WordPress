@@ -18,10 +18,23 @@ function get_current_user_id(): int { return $GLOBALS['qa31_user']; }
 function wp_get_session_token(): string { return 'hermetic-session'; }
 function wp_verify_nonce($nonce, $action): bool { return $GLOBALS['qa31_nonce_valid'] && $nonce === 'fixture-nonce-not-real' && $action === 'wp_rest'; }
 function add_action($hook,$callback,$priority=10,$args=1): bool{return true;}
+// Real owner admission now requires the *existing* enrolled Site Profile
+// authority-ready evidence in addition to the WordPress cookie and nonce.
+// This test-only fixture never modifies Production policy or the source owner.
+class MAD4B_SCP_Site_Profile {
+    public static $ready = true;
+    public static function status(): array {
+        return array('authority_ready' => self::$ready &&
+            $GLOBALS['qa31_env'] === 'staging');
+    }
+}
 require_once dirname(__DIR__).'/includes/class-mad4b-scp-company-owner-activation.php';
 function qa31_assert(bool $condition, string $name): void { if(!$condition){fwrite(STDERR,"FAIL $name\n");exit(1);}echo "PASS $name\n"; }
 $c='MAD4B_SCP_Company_Owner_Activation';
 qa31_assert($c::browserOwnerAuthorized(),'matching logged-in owner with nonce accepted in staging');
+MAD4B_SCP_Site_Profile::$ready=false;
+qa31_assert(!$c::browserOwnerAuthorized(),'unready Site Profile denied despite matching browser identity');
+MAD4B_SCP_Site_Profile::$ready=true;
 $GLOBALS['qa31_env']='production';
 qa31_assert(!$c::browserOwnerAuthorized(),'production denied');
 $GLOBALS['qa31_env']='staging';

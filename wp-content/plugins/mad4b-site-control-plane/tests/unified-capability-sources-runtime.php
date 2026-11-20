@@ -18,7 +18,7 @@ class MAD4B_SCP_Operation_Registry {
 }
 class MAD4B_SCP_Skill_Registry {
     const MAX_SCAN_SKILLS = 500;
-    public static function status() { ++$GLOBALS['skill_scans']; return array( 'skill_count' => 500 ); }
+    public static function status() { ++$GLOBALS['skill_scans']; return array( 'skill_count' => (int) ( $GLOBALS['fixture_skill_count'] ?? 500 ) ); }
 }
 class MAD4B_SCP_Remote_Operation_Parity {
     public static function status() {
@@ -46,7 +46,18 @@ $lookup = array();
 foreach ( $x['sources'] as $row ) $lookup[$row['source_id']] = $row;
 $assert( $lookup['wordpress_abilities']['observed_count'] === 2, 'WordPress source count was omitted' );
 $assert( $lookup['operation_registry']['coverage_state'] === 'PARTIAL_OR_UNAVAILABLE', 'Operation registry gaps were hidden' );
-$assert( $lookup['managed_skills']['coverage_state'] === 'TRUNCATED_OR_UNKNOWN', 'Skill scan ceiling was hidden' );
+$assert( $lookup['managed_skills']['coverage_state'] === 'INVENTORIED_NOT_CERTIFIED'
+    && 500 === $lookup['managed_skills']['observed_count'],
+    'Full Skills census must not claim certification or fabricate a truncation ceiling' );
+// A larger current registry is counted without inventing a static capability
+// boundary. Authorization and certification remain separate.
+$GLOBALS['fixture_skill_count'] = 700;
+$large_skills = MAD4B_SCP_Capability_Source_Inventory::inspect( array( 'source_id' => 'managed_skills' ) );
+$assert( 700 === ( $large_skills['sources'][0]['observed_count'] ?? -1 )
+    && 'INVENTORIED_NOT_CERTIFIED' === ( $large_skills['sources'][0]['coverage_state'] ?? '' )
+    && empty( $large_skills['complete_federation_proven'] )
+    && empty( $large_skills['mutation_performed'] ),
+    'Large Skills registry must remain inventoried without becoming execution authority' );
 $assert( $lookup['remote_operation_parity']['coverage_state'] === 'PARTIAL_OR_REJECTED', 'Rejected operation registration was hidden' );
 $assert( $lookup['host_authorized_external_federation']['coverage_state'] === 'EXTERNAL_ATTESTATION_REQUIRED', 'Unconnected external federation was invented' );
 $assert( !$x['complete_federation_proven'] && !$x['mutation_performed'], 'Source inventory claimed authorization' );

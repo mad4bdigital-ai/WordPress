@@ -1,0 +1,14 @@
+{
+  "contract": "mad4b.secondary-lazy-source-successor.v1",
+  "original_record": "ops/site-company-overlays/wayfatours/performance-runtime/secondary-native-lazy-source-forward-port-20261116.json",
+  "original_candidate_fixture": "ops/site-company-overlays/wayfatours/performance-runtime/evidence/secondary-native-lazy-original-candidate-20261116.php.source",
+  "original_candidate_sha256": "cc35c5d045f302f2bd69a1169ec9a6d93fb48c73fad5d6dc5b82c74ad12f5411",
+  "original_candidate_git_blob_sha1": "7fa4b51d909c2dc66aa849705bb1108547923564",
+  "current_candidate_relative_path": "wp-content/mu-plugins/mad4b-secondary-listing-lazy.php",
+  "current_candidate_sha256": "a14c09227888d9854593e16841e358ad9969a121d214a7d95e9793f01e49a547",
+  "site_source_readiness_only": true,
+  "company_release_authorized": false,
+  "wayfatours_live_reverified": false,
+  "automatic_promotion_enabled": false,
+  "notes": "Original 2026-11-16 candidate is retained byte-for-byte as non-executing historical source fixture; later CI source is checked independently. No production release or permission implied."
+}

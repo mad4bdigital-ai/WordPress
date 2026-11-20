@@ -74,7 +74,7 @@ enrollment_case( 'provider_feedback_bound_to_current_revision_operation_and_sess
 	$render = static function () { ob_start(); MAD4B_SCP_Search_Provider_Connections::render(); return ob_get_clean(); };
 	enrollment_check( false === strpos( $render(), 'notice-success' ), 'query flags cannot manufacture successful feedback' );
 	$_GET['mad4b_notice_receipt'] = MAD4B_SCP_Admin_Experience::notice_receipt( 'mad4b-search-intelligence', 'provider_save', $binding );
-	enrollment_check( false !== strpos( $render(), 'Provider settings saved and verified.' ), 'current signed save receipt renders useful feedback' );
+	enrollment_check( false !== strpos( $render(), 'Provider credentials saved or securely retained. Account certification and budgets are separate.' ), 'current signed save receipt renders useful feedback' );
 	$GLOBALS['enrollment_session'] = 'different-fixture-session';
 	enrollment_check( false === strpos( $render(), 'notice-success' ), 'receipt cannot move to a different session' );
 	unset( $GLOBALS['enrollment_session'] );
@@ -156,7 +156,13 @@ enrollment_case( 'credential_rotation_probe_race_revision_conflict_and_tombstone
 	enrollment_check( 2 === $s['revision'] && 'NOT_CHECKED' === $s['connection_state'] && empty( $s['quota'] ), 'winning new credentials retain no old account evidence' );
 	enrollment_check( null === apply_filters( 'mad4b_scp_search_secret_resolve', null, $old_handle, 'serpapi' ), 'old secret handle revoked' );
 	enrollment_check( 'fixture-rotated-key' === apply_filters( 'mad4b_scp_search_secret_resolve', null, $a->descriptor()['secret_handle'], 'serpapi' ), 'new handle resolves rotated credential' );
-	enrollment_check( is_wp_error( enrollment_action( 'serpapi', 'test', 1 ) ) && 1 === count( $GLOBALS['fixture_http'] ), 'stale repeated submit denied before network' );
+	$stale_probe = enrollment_action( 'serpapi', 'test', 1 );
+	enrollment_check( is_wp_error( $stale_probe )
+		&& 'mad4b_search_connection_revision_conflict' === $stale_probe->get_error_code()
+		&& 1 === count( $GLOBALS['fixture_http'] ),
+		'stale repeated account check must deny before touching a rotated key' );
+	enrollment_check( 2 === MAD4B_SCP_Search_Provider_Connections::status( 'serpapi' )['revision'],
+		'stale probe cannot alter the current credential revision or observation' );
 	$removed = enrollment_action( 'serpapi', 'remove', 2 );
 	enrollment_check( ! $removed['configured'] && 3 === $removed['revision'] && 'NOT_CONFIGURED' === $removed['connection_state'], 'removal persists a CAS tombstone' );
 	enrollment_check( is_wp_error( enrollment_action( 'serpapi', 'save', 0, array( 'api_key' => 'stale-replay' ) ) ), 'tombstone prevents stale form replay' );
@@ -206,4 +212,5 @@ enrollment_case( 'local_authorization_nonce_and_strict_post_admission', static f
 } );
 $failed = array_filter( $results, static function ( $r ) { return 'FAIL' === $r['status']; } );
 echo json_encode( array( 'contract' => 'mad4b.search-provider-enrollment-fixtures.v1', 'evidence_class' => 'hermetic_local_admin_account_enrollment', 'fixtures' => $results, 'fixture_count' => count( $results ), 'assertions' => $assertions, 'status' => $failed ? 'FAIL' : 'PASS', 'authorizing' => false ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n";
+if ( ! $failed && $assertions > 0 && in_array( '--readiness-pass', $argv, true ) ) echo "ADAPTIVE_SEARCH_PROVIDER_ENROLLMENT: PASS\n";
 exit( $failed ? 1 : 0 );

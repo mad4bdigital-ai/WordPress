@@ -59,9 +59,12 @@ class MAD4B_SCP_Site_Profile {
     public static function current_environment(){ return self::$environment; }
 }
 class MAD4B_SCP_Provider_Circuit_Breaker {
+    public static $override = null;
     public static $applicable = true;
     public static function target_context($surface,$target){
-        return array('applicable'=>self::$applicable,'provider_id'=>'google_drive_context');
+        return self::$override === null
+            ? array('applicable'=>self::$applicable,'provider_id'=>'google_drive_context')
+            : self::$override;
     }
 }
 class MAD4B_SCP_Provider_Compatibility_Certification {
@@ -70,11 +73,13 @@ class MAD4B_SCP_Provider_Compatibility_Certification {
     const LEVEL_FULL = 'FULL_CERTIFIED';
     const LEVEL_QUARANTINED = 'QUARANTINED';
     public static $status = null;
+    public static $status_error = null;
     public static $level = 'DISCOVERED';
     public static $stage = 'shadow';
     public static $ring = '';
     public static $bound = true;
     public static function ability_status($provider,$ability){
+        if(self::$status_error!==null)return self::$status_error;
         if (is_array(self::$status)) return self::$status;
         return array('certification_level'=>self::$level,'activation_stage'=>self::$stage,
             'release_ring'=>self::$ring,'structural_compatible'=>true,
@@ -121,9 +126,15 @@ $check(!$not_applicable['applicable'] && !$not_applicable['evidence_available']
 MAD4B_SCP_Provider_Circuit_Breaker::$applicable=true;
 MAD4B_SCP_Site_Profile::$environment='staging';
 class MAD4B_SCP_Policy {
- static $kill=false; static $allowed=true;
- static function mutation_gate_status() { return array( 'environment'=>'staging', 'explicit_kill_switch'=>self::$kill ); }
- static function can_mutate() { return self::$allowed; }
+ static $kill=false; static $allowed=true; static $gate_error=null;
+ static function mutation_gate_status() {
+  return self::$gate_error!==null?self::$gate_error
+   :array( 'environment'=>'staging', 'explicit_kill_switch'=>self::$kill );
+ }
+ static function can_mutate() {
+  if(self::$allowed==='throw')throw new RuntimeException('original policy unavailable');
+  return self::$allowed;
+ }
 }
 $good_status=array( 'certification_level'=>'REVERSIBLE_WRITE_CERTIFIED', 'activation_stage'=>'active', 'structural_compatible'=>true, 'artifact_authority_bound'=>true );
 foreach ( array( 'kill_switch','authority','quarantine','certification','release_ring','breaker' ) as $gate ) {
@@ -144,4 +155,39 @@ foreach ( array( 'kill_switch','authority','quarantine','certification','release
  $check( false === strpos($result->get_error_message(),'SECRET-MUST-NOT-LEAK'), 'provider context leaked into visible error' );
 }
 
+// Independent Policy / original target context / breaker outcomes must be
+// exact first-party typed facts; WP_Error is not a positive transport proof.
+MAD4B_SCP_Policy::$kill=false;
+MAD4B_SCP_Policy::$allowed=true;
+MAD4B_SCP_Provider_Compatibility_Certification::$status=$good_status;
+foreach(array(new WP_Error('policy_unknown'), null, 1) as $policy) {
+ MAD4B_SCP_Policy::$allowed=$policy;
+ $result=MAD4B_SCP_Provider_Transport_Eligibility::preflight_mutation('write','fixture/scan');
+ $check(is_wp_error($result), 'Uncertain original policy was used as transport authorization');
+}
+MAD4B_SCP_Policy::$allowed='throw';
+$thrown=MAD4B_SCP_Provider_Transport_Eligibility::preflight_mutation('write','fixture/scan');
+$check(is_wp_error($thrown),'Original Policy exception must fail closed rather than dispatch');
+MAD4B_SCP_Policy::$allowed=true;
+MAD4B_SCP_Policy::$gate_error=new WP_Error('policy_source_unavailable');
+$gate_unknown=MAD4B_SCP_Provider_Transport_Eligibility::preflight_mutation('write','fixture/scan');
+$check(is_wp_error($gate_unknown),'Original Policy gate status cannot be a WP_Error proof');
+MAD4B_SCP_Policy::$gate_error=null;
+MAD4B_SCP_Provider_Compatibility_Certification::$status_error=new WP_Error('provider_schema_unknown');
+$cert_unknown=MAD4B_SCP_Provider_Transport_Eligibility::preflight_mutation('write','fixture/scan');
+$check(is_wp_error($cert_unknown),'Original certification error never yields provider transport');
+MAD4B_SCP_Provider_Compatibility_Certification::$status_error=null;
+foreach(array(new WP_Error('context_unknown'),false,[],['applicable'=>new WP_Error('applicable_unknown')]) as $context) {
+ MAD4B_SCP_Provider_Circuit_Breaker::$override=$context;
+ $result=MAD4B_SCP_Provider_Transport_Eligibility::preflight_mutation('write','fixture/scan');
+ $check(is_wp_error($result), 'Malformed original context was silently labeled not-applicable and allowed');
+}
+MAD4B_SCP_Provider_Circuit_Breaker::$override=null;
+$ready=MAD4B_SCP_Provider_Transport_Eligibility::preflight_mutation('write','fixture/scan');
+$check(is_array($ready) && $ready['transport_eligible']===true, 'Original eligible preflight did not pass');
+foreach(array(new WP_Error('breaker_unknown'),['transport_eligible'=>new WP_Error('breaker_unknown')],['transport_eligible'=>1],[]) as $breaker) {
+ if(!is_array($breaker))$breaker=['transport_eligible'=>$breaker];
+ $finished=MAD4B_SCP_Provider_Transport_Eligibility::finalize_breaker($ready,$breaker);
+ $check(is_wp_error($finished), 'Unknown original breaker result must never finalize positive transport');
+}
 echo "mad4b.provider-transport-eligibility.runtime.v1: PASS\n";

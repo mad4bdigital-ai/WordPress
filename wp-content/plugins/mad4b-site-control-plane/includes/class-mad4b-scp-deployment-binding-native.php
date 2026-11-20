@@ -14,6 +14,7 @@ final class MAD4B_SCP_Deployment_Binding_Native {
     const PLAN = 'mad4b/deployment-binding-native-plan';
     const READBACK = 'mad4b/deployment-binding-native-readback';
     const PRODUCTION_STATUS = 'mad4b/deployment-binding-production-status';
+    const ENVIRONMENT_STATUS = 'mad4b/deployment-binding-environment-status';
     const HANDOFF = 'mad4b/deployment-binding-owner-handoff';
     const APPLY = 'mad4b/deployment-binding-native-apply';
     const CONFIRM = 'CREATE HOST-LOCAL STAGING BINDING';
@@ -64,6 +65,7 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             array( self::PLAN, 'plan', $read_schema, true ),
             array( self::READBACK, 'readback', $verify_schema, true ),
             array( self::PRODUCTION_STATUS, 'production_status', $read_schema, true ),
+            array( self::ENVIRONMENT_STATUS, 'production_status', $read_schema, true ),
             array( self::HANDOFF, 'handoff', $read_schema, true ),
             array( self::APPLY, 'apply', $write_schema, false ),
         ) as $ability ) {
@@ -80,7 +82,7 @@ final class MAD4B_SCP_Deployment_Binding_Native {
                 'meta' => array( 'public' => false, 'show_in_rest' => false,
                     'mcp' => array( 'public' => false, 'type' => 'tool',
                         'surface' => $ability[3] ? 'read' : 'write',
-                        'production_mutation_allowed' => false ),
+                        'production_mutation_allowed' => ! $ability[3] ),
                     'annotations' => array( 'readonly' => $ability[3],
                         'destructive' => ! $ability[3], 'idempotent' => $ability[3] ) ),
             ) );
@@ -138,6 +140,22 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             || $parent === $document
             || 0 === strpos( $parent . DIRECTORY_SEPARATOR, $document . DIRECTORY_SEPARATOR ) )
             return array();
+        // Optional, separately mounted, persistent host-private parent.  Never
+        // select a writable path beneath DocumentRoot or accept request input.
+        // The mount MUST be private (0700), owned by the effective PHP user,
+        // and resolved without symlinks.  No key is created by this lookup.
+        $dedicated = '/var/www/.mad4b-private-host';
+        $resolved = realpath( $dedicated );
+        $euid = function_exists( 'posix_geteuid' ) ? posix_geteuid() : false;
+        $mode = $resolved ? @fileperms( $resolved ) : false;
+        $owner = $resolved ? @fileowner( $resolved ) : false;
+        if ( $resolved === $dedicated && ! is_link( $dedicated )
+            && is_dir( $dedicated ) && is_writable( $dedicated )
+            && false !== $mode && ( $mode & 0077 ) === 0
+            && false !== $euid && $owner === $euid
+            && $resolved !== $document
+            && 0 !== strpos( $resolved . DIRECTORY_SEPARATOR, $document . DIRECTORY_SEPARATOR ) )
+            $parent = $resolved;
         $subdir = '.mad4b-host-' . substr( hash( 'sha256', $site_uuid . '|' . $root ), 0, 24 );
         return array( 'parent' => $parent, 'dir' => $parent . DIRECTORY_SEPARATOR . $subdir,
             'file' => $parent . DIRECTORY_SEPARATOR . $subdir . DIRECTORY_SEPARATOR . self::FILENAME,
@@ -148,9 +166,9 @@ final class MAD4B_SCP_Deployment_Binding_Native {
         $site = MAD4B_SCP_Site_Profile::status();
         $stored = get_option( MAD4B_SCP_Site_Profile::OPTION, null );
         if ( ! is_array( $site ) || ! is_array( $stored ) ||
-            'staging' !== ( $site['configured_environment'] ?? '' )
-            || 'staging' !== ( $site['wordpress_environment'] ?? '' )
-            || 'staging' !== ( $stored['environment'] ?? '' )
+            '' === (string) ( $site['configured_environment'] ?? '' )
+            || (string) ( $site['configured_environment'] ?? '' ) !== (string) ( $site['wordpress_environment'] ?? '' )
+            || (string) ( $site['configured_environment'] ?? '' ) !== (string) ( $stored['environment'] ?? '' )
             || empty( $site['origin_match'] ) || empty( $site['environment_match'] )
             || empty( $site['authority_ready'] ) || ! empty( $site['mutation_pending_audit'] )
             || (string) ( $site['site_uuid'] ?? '' ) !== (string) ( $stored['site_uuid'] ?? '' )
@@ -158,7 +176,7 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             || (int) ( $site['revision'] ?? 0 ) < 1
             || (int) $site['revision'] !== (int) ( $stored['revision'] ?? 0 )
             || 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) ( $site['profile_digest'] ?? '' ) ) )
-            return self::error( 'foreign_or_unready_staging' );
+            return self::error( 'foreign_or_unready_registered_site' );
         $location = self::private_location( (string) $site['site_uuid'] );
         if ( ! $location ) return self::error( 'safe_host_directory_unavailable',
             'WordPress root is not provably separate from the public document root.' );
@@ -225,10 +243,10 @@ final class MAD4B_SCP_Deployment_Binding_Native {
         $site = MAD4B_SCP_Site_Profile::status();
         $stored = get_option( MAD4B_SCP_Site_Profile::OPTION, null );
         if ( ! is_array( $site ) || ! is_array( $stored )
-            || 'production' !== (string) ( $site['configured_environment'] ?? '' )
-            || 'production' !== (string) ( $site['wordpress_environment'] ?? '' )
-            || 'production' !== (string) ( $stored['environment'] ?? '' ) )
-            return self::error( 'production_exact_environment_required' );
+            || '' === (string) ( $site['configured_environment'] ?? '' )
+            || (string) ( $site['configured_environment'] ?? '' ) !== (string) ( $site['wordpress_environment'] ?? '' )
+            || (string) ( $site['configured_environment'] ?? '' ) !== (string) ( $stored['environment'] ?? '' ) )
+            return self::error( 'registered_site_environment_identity_required' );
         $exact = ! empty( $site['origin_match'] )
             && ! empty( $site['environment_match'] )
             && empty( $site['mutation_pending_audit'] )
@@ -243,19 +261,21 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             && 1 === preg_match( '/^[a-f0-9]{64}$/D', $stored_digest )
             && 1 === preg_match( '/^[a-f0-9]{64}$/D', $observed_digest )
             && hash_equals( $stored_digest, $observed_digest );
-        $state = ! $exact ? 'PRODUCTION_PROFILE_IDENTITY_MISMATCH'
-            : ( '' === $stored_digest ? 'PRODUCTION_HOST_BINDING_NOT_ENROLLED'
-            : ( $verified ? 'PRODUCTION_HOST_BINDING_VERIFIED'
-                : 'PRODUCTION_HOST_BINDING_MISMATCH' ) );
+        $prefix = (string) $site['configured_environment'] === 'production' ? 'PRODUCTION' : 'REGISTERED_SITE';
+        $state = ! $exact ? $prefix . '_PROFILE_IDENTITY_MISMATCH'
+            : ( '' === $stored_digest ? $prefix . '_HOST_BINDING_NOT_ENROLLED'
+            : ( $verified ? $prefix . '_HOST_BINDING_VERIFIED'
+                : $prefix . '_HOST_BINDING_MISMATCH' ) );
         return array(
             'contract' => self::CONTRACT . '.production-read.v1',
             'state' => $state, 'ready' => $verified,
             'site_uuid' => (string) ( $site['site_uuid'] ?? '' ),
             'profile_revision' => (int) ( $site['revision'] ?? 0 ),
+            'registered_environment' => (string) ( $site['configured_environment'] ?? '' ),
             'site_identity_preserved' => $exact,
             'next_action' => $verified
-                ? 'separately_approved_production_readiness_review'
-                : 'independent_owner_approved_production_host_binding_release',
+                ? 'separately_approved_registered_site_readiness_review'
+                : 'independent_owner_approved_registered_site_host_binding_release',
             'secret_exposed' => false, 'host_path_exposed' => false,
             'production_mutation_authorized' => false,
             'staging_setup_available' => false, 'read_only' => true,
@@ -334,9 +354,9 @@ final class MAD4B_SCP_Deployment_Binding_Native {
         if ( is_wp_error( $binding ) ) return $binding;
         $profile = class_exists( 'MAD4B_SCP_Site_Profile' )
             ? MAD4B_SCP_Site_Profile::status() : array();
-        if ( ! is_array( $profile ) || 'staging' !== ( $profile['environment'] ?? '' )
+        if ( ! is_array( $profile ) || '' === (string) ( $profile['environment'] ?? '' )
             || empty( $profile['origin_match'] ) || empty( $profile['environment_match'] ) )
-            return self::error( 'handoff_site_not_exact_staging' );
+            return self::error( 'handoff_site_profile_not_exact' );
         $authority = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
             ? MAD4B_SCP_Staging_Write_Authority::status() : array();
         if ( is_wp_error( $authority ) ) return $authority;
@@ -351,7 +371,7 @@ final class MAD4B_SCP_Deployment_Binding_Native {
         $binding_eligible = 'READY_FOR_OWNER_APPROVAL' === ( $binding['state'] ?? '' );
         $next = ! $binding_eligible ? 'mad4b/deployment-binding-native-status'
             : ( $write_ready ? 'mad4b/approval-plan'
-                : 'mad4b/staging-write-grant-reconciliation-plan' );
+                : 'mad4b/deployment-binding-owner-handoff' );
         return array(
             'contract' => self::CONTRACT . '.owner-handoff.v1',
             'site_uuid' => (string) ( $profile['site_uuid'] ?? '' ),
@@ -634,7 +654,7 @@ final class MAD4B_SCP_Deployment_Binding_Native {
         // non-passive request. The full remediation page owns the POST+nonce.
         $links['mad4b_host_setup'] = '<a href="' . esc_url( admin_url(
             'admin.php?page=mad4b-operational-remediation#mad4b-staging-deployment-identity' ) )
-            . '">' . esc_html__( 'Complete Staging host setup', 'mad4b-site-control-plane' )
+            . '">' . esc_html__( 'Review Host binding setup', 'mad4b-site-control-plane' )
             . '</a>';
         return $links;
     }
@@ -664,7 +684,7 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             || ! hash_equals( (string) ( $plan['plan_sha256'] ?? '' ),
                 (string) ( $recheck['plan_sha256'] ?? '' ) ) )
             return self::error( 'activation_plan_drift' );
-        return self::commit_new_binding( $snap, $audit_action, true );
+        return self::error( 'original_governed_site_binding_ticket_required' );
     }
 
     /** One auditable, compensating implementation shared by ticket and activation paths. */
@@ -682,7 +702,7 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             $before, $after, $audit_action,
             array( 'site_uuid' => $before['site_uuid'], 'host_file_outside_webroot' => true,
                 'no_plaintext_logged' => true, 'identity_preserved' => true,
-                'staging_only' => true, 'activation_bootstrap' => $activation ), 'mad4b_native_deployment_binding' );
+                'registered_environment' => (string) $before['environment'], 'activation_bootstrap' => $activation ), 'mad4b_native_deployment_binding' );
         if ( is_wp_error( $committed ) ) {
             self::rollback( $snap['location'], $key );
             return $committed;
@@ -713,7 +733,7 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             'full_brand_acceptance_certified' => false,
             'plaintext_secret_returned' => false,
             'secret_written_to_wordpress_database' => false,
-            'production_mutation' => false,
+            'production_mutation' => (string) $before['environment'] === 'production',
             'activation_bootstrap' => $activation,
             'next_readback' => self::READBACK,
             'new_request_readback_input' => array(

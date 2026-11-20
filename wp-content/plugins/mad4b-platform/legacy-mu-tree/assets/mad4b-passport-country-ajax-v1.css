@@ -1,0 +1,96 @@
+/* The FF select remains the original required, submitted, translatable field. */
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-native-hidden {
+ position:absolute!important;width:1px!important;height:1px!important;
+ overflow:hidden!important;opacity:0!important;pointer-events:none!important;
+ clip-path:inset(50%)!important;
+}
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-inline {
+ position:relative;width:100%;min-width:0;margin:0;
+ direction:inherit;box-sizing:border-box;
+}
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-trigger {
+ display:block;width:100%;min-height:43px;box-sizing:border-box;
+ padding:9px 34px 9px 12px;border:1px solid #d0d8df;border-radius:7px;
+ color:#263e49;background:#fff;text-align:start;
+ font-family:inherit;font-size:14px;line-height:1.5;font-weight:400;
+ cursor:pointer;position:relative;
+}
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-trigger::after {
+ content:"⌄";position:absolute;right:12px;top:50%;transform:translateY(-55%);
+ font-size:20px;color:#506873;
+}
+body[dir="rtl"].single-tours-and-activities form.fluent_form_6 .mad4b-passport-trigger {
+ padding:9px 12px 9px 34px;
+}
+body[dir="rtl"].single-tours-and-activities form.fluent_form_6 .mad4b-passport-trigger::after {
+ right:auto;left:12px;
+}
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-trigger:focus-visible {
+ outline:2px solid #b78d44;outline-offset:2px;
+}
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-dropdown[hidden] {display:none;}
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-dropdown {
+ display:flex;flex-direction:column;position:relative;
+ width:100%;min-width:0;box-sizing:border-box;
+ margin:4px 0 8px;padding:10px;
+ background:#fff;color:#173b47;
+ border:1px solid #c9d8df;border-radius:8px;
+ box-shadow:0 6px 18px rgba(14,39,53,.10);
+}
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-search-input {
+ display:block;width:100%;min-width:0;box-sizing:border-box;
+ min-height:42px;margin:0 0 8px;padding:8px 12px;
+ font-family:inherit;font-size:16px;font-weight:400;line-height:1.5;
+ background:#fff;color:#173b47;border:1px solid #9fb7c1;border-radius:6px;
+}
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-results {
+ display:block;box-sizing:border-box;max-height:min(238px,30dvh);min-height:42px;
+ overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;
+ -webkit-overflow-scrolling:touch;
+}
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-result {
+ display:block;width:100%;min-height:40px;box-sizing:border-box;
+ margin:0 0 2px;padding:9px 11px;text-align:start;
+ border:0;border-radius:5px;box-shadow:none;
+ background:#fff;color:#173b47;
+ font-family:inherit;font-size:14px;line-height:1.4;font-weight:400;
+ cursor:pointer;white-space:normal;
+}
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-result:hover,
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-result:focus-visible,
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-result[aria-selected="true"] {
+ background:#edf3f5;color:#123a46;outline:1px solid #a7bec7;
+}
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-status {
+ min-height:12px;margin:3px 0;padding:0;color:#647883;
+ font-family:inherit;font-size:12px;font-weight:400;
+}
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-actions {
+ display:flex;align-items:center;justify-content:space-between;
+ gap:6px;flex-wrap:wrap;padding-top:8px;border-top:1px solid #e6eff1;
+}
+body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-actions button {
+ min-height:32px;padding:6px 8px;background:transparent;
+ color:#28515a;border:1px solid #d5e0e5;border-radius:6px;
+ font-family:inherit;font-size:12px;font-weight:400;line-height:1.4;
+ cursor:pointer;
+}
+@media(max-width:650px) {
+ body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-results {
+  max-height:min(190px,25dvh);
+ }
+ body.single-tours-and-activities form.fluent_form_6 .mad4b-passport-result {
+  min-height:44px;font-size:14px;
+ }
+}
+
+
+/* Fluent Form #6: keep first/last names top aligned even when one
+   column becomes taller after Fluent Forms inserts a validation error.
+   No form schema or native validator changes. */
+@media (min-width:768px) {
+ body.single-tours-and-activities form.fluent_form_6
+ .ff-t-container:has(> .ff-t-cell input[name="names[first_name]"]) > .ff-t-cell {
+  justify-content:flex-start;
+ }
+}

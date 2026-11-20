@@ -1,0 +1,13 @@
+[Unit]
+Description=MAD4B Original305 first-party signed readiness renewal (no Host release)
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+ExecStart=/usr/bin/python3 /opt/mad4b-company-transport/native-313-independent/host-source-v1/original305_readiness_supervisor_v6.py
+TimeoutStartSec=360
+NoNewPrivileges=true
