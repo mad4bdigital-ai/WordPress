@@ -19,3 +19,9 @@ This split necessarily changes the Brand Integrity facade SHA and introduces a n
 ## Review axes
 
 Correctness: byte-exact reconstruction, six unchanged methods and runtime link-preflight fixture. Readability/architecture: cohesive Term Meta scanning extracted into one owning Trait, not a new service or global writer. Security: same exact site-bound brand identity checks, foreign URLs denied, no raw WordPress write. Performance: one extra PHP `require_once` only when this already optional service is loaded, no extra network/DB path in the extracted method bodies. No site-specific flags, activation or runtime mode changes.
+
+## Dynamic Readiness source coverage and executed test (additive)
+
+The new PHP Trait introduces a `service:` capability in the existing catalog, and the exact facade/trait Git SHA changes are two independently reviewed behaviors. The append-only `governance/production-readiness/capability-coverage.json` now includes **one CI-only capability review and two CI-only exact blob change records**, all mapped to original AI, localization, provider and security controls and to the new exact reconstruction test. Every entry is `reviewed_for_ci_only`, `production_authorized=false`, `live_evidence_required=true`; the Registry's global non-authorizing flags remain unchanged. Prior historical review records were not rewritten.
+
+On exact source head `129dc9a79e5fcd49de1ae236a0281d84dc367392`, with PR #977 as base, the Dynamic Readiness inventory returned `PASS_COVERAGE_ONLY` with **zero gaps**, followed by the actual trusted test executor reporting **`PASS_ALL_MAPPED_TESTS 1/1`** for `tests/test_brand_integrity_term_trait_exact_source.py`. This does not validate the two known pre-existing source-closure test SHA disagreements, PR942 composite signoffs, full WordPress behavior or Feature 007 new-parent baseline; those remain separately gated and are not considered resolved by this isolated proof.
