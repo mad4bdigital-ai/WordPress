@@ -1,0 +1,275 @@
+{
+  "activation": {
+    "original318_write_allowed": false,
+    "owner_endpoint_registered": false,
+    "production_deployment_allowed": false,
+    "requires_current_master_ci": true,
+    "requires_exact_owner_attestation_for_future_release_head": true,
+    "requires_separate_runtime_parity": true,
+    "root_worker_installed": false,
+    "systemd_timer_installed": false,
+    "wordpress_plugin_installed": false
+  },
+  "base_master_commit": "c34b93fb485c33608a0d1cd3681ac97dd25e18cf",
+  "candidate_kind": "preserved-source-not-commissioned",
+  "contract": "mad4b.host-authority.master-scope-source-only.v124",
+  "explicitly_excluded": [
+    "wp-content/plugins/mad4b-platform/**",
+    "wp-content/plugins/mad4b-site-control-plane/**",
+    "wp-content/mu-plugins/**",
+    ".github/workflows/**",
+    "original313/private-signing-keys",
+    "Root stored original signed receipts",
+    "all unrelated site changes"
+  ],
+  "items": [
+    {
+      "candidate_path": "deploy/host-authority/v81/current_revision_gate.py",
+      "kind": "script",
+      "runtime_activation": false,
+      "sha256": "8d45990df6a1cdc75c2f3399f4490eea2c775466cc5de104f73c97d6903b2dd6",
+      "source_path": "deploy/host-authority/v81/current_revision_gate.py"
+    },
+    {
+      "candidate_path": "ops/host-anchor-v86/original306_typed_claim.py",
+      "kind": "script",
+      "runtime_activation": false,
+      "sha256": "84d209b40144fe04fe19d7db3ea869e7335c06694c76d286bf0b2f3e26d68b5f",
+      "source_path": "ops/host-anchor-v86/original306_typed_claim.py"
+    },
+    {
+      "candidate_path": "ops/host-anchor-v95/original306_claim_only.py",
+      "kind": "script",
+      "runtime_activation": false,
+      "sha256": "ebb3fb1efe58a1506516b7d8b76f2ff4281b3f2b0c0ee8361b606dcfa3240b64",
+      "source_path": "ops/host-anchor-v95/original306_claim_only.py"
+    },
+    {
+      "candidate_path": "ops/host-anchor-v99/original313_postwrite_transaction.py",
+      "kind": "script",
+      "runtime_activation": false,
+      "sha256": "1b42065db70e224a889c969d28d9b8119e1dceba8003d43e05dc0b0111f0c00d",
+      "source_path": "ops/host-anchor-v99/original313_postwrite_transaction.py"
+    },
+    {
+      "candidate_path": "ops/host-anchor-v100/original312_first_issue_bundle.py",
+      "kind": "script",
+      "runtime_activation": false,
+      "sha256": "1a49a50046b19a3076b63fbaf1757d2f8d19982e86bd7c990b36b65af458277d",
+      "source_path": "ops/host-anchor-v100/original312_first_issue_bundle.py"
+    },
+    {
+      "candidate_path": "ops/host-anchor-v105/original313_first_owner_enrollment_issuer.py",
+      "kind": "script",
+      "runtime_activation": false,
+      "sha256": "9abf86765eed1f7128258c997a474aecc6c872ad0552079189c61e5a6c1f3b71",
+      "source_path": "ops/host-anchor-v105/original313_first_owner_enrollment_issuer.py"
+    },
+    {
+      "candidate_path": "ops/host-anchor-v111/prepare_first_root_plan.py",
+      "kind": "script",
+      "runtime_activation": false,
+      "sha256": "22f914d2cca0666be7b97a49e11a976350d8782808577277dbfc699f91505973",
+      "source_path": "ops/host-anchor-v111/prepare_first_root_plan.py"
+    },
+    {
+      "candidate_path": "ops/host-anchor-v118/queued_original_capture.py",
+      "kind": "script",
+      "runtime_activation": false,
+      "sha256": "b76778a5ecc786c74a02b5bd0a9c42f9256a17a7f46b4089ff1bd72368b0ecb2",
+      "source_path": "ops/host-anchor-v118/queued_original_capture.py"
+    },
+    {
+      "candidate_path": "ops/host-anchor-v118/patch_original306_worker.py",
+      "kind": "script",
+      "runtime_activation": false,
+      "sha256": "cf9873a988396e83aa4110c6eec8b439729c8bc382beff31eb9a020b7c06bf57",
+      "source_path": "ops/host-anchor-v118/patch_original306_worker.py"
+    },
+    {
+      "candidate_path": "ops/host-anchor-v119/first_anchor_runner.py",
+      "kind": "script",
+      "runtime_activation": false,
+      "sha256": "8ad2faf22c7ee9f72e7aa9ac8cf645d176a18a24ef4b21ab1bed6a3adb7ccff6",
+      "source_path": "ops/host-anchor-v119/first_anchor_runner.py"
+    },
+    {
+      "candidate_path": "ops/host-anchor-v119/prewrite_admission.py",
+      "kind": "script",
+      "runtime_activation": false,
+      "sha256": "197af611ba0587bdb8ad86c9e00dbb6ab2c3533d2b305c2412150b35064dcd90",
+      "source_path": "ops/host-anchor-v119/prewrite_admission.py"
+    },
+    {
+      "candidate_path": "ops/host-anchor-v120/broker_row_witness.py",
+      "kind": "script",
+      "runtime_activation": false,
+      "sha256": "336ef367637ce1edbef4debbec4317b3b839d3d71e2e3135e0690eb40d96331f",
+      "source_path": "ops/host-anchor-v120/broker_row_witness.py"
+    },
+    {
+      "candidate_path": "ops/host-anchor-v120/broker_signed_admission.py",
+      "kind": "script",
+      "runtime_activation": false,
+      "sha256": "949f8afce20faf6d2fba1cf713ee45e2ed3c6b967bdf2567c7144ac0d08f0793",
+      "source_path": "ops/host-anchor-v120/broker_signed_admission.py"
+    },
+    {
+      "candidate_path": "ops/host-anchor-v120/patch_firstparty_worker.py",
+      "kind": "script",
+      "runtime_activation": false,
+      "sha256": "05c85b2084dbafb60db042aaa80679c1c83b0ca9fb082a1b5fc09fc63ee81828",
+      "source_path": "ops/host-anchor-v120/patch_firstparty_worker.py"
+    },
+    {
+      "candidate_path": "ops/host-anchor-v121/first_anchor_coordinator.py",
+      "kind": "script",
+      "runtime_activation": false,
+      "sha256": "a4e7dad6638be30a492bf27202d99bb27d2b74a2cfc116fbe17269da4fc2a6b3",
+      "source_path": "ops/host-anchor-v121/first_anchor_coordinator.py"
+    },
+    {
+      "candidate_path": "ops/host-anchor-v121/patch_original306_first_anchor_runner.py",
+      "kind": "script",
+      "runtime_activation": false,
+      "sha256": "772521dc1539169438795950b7b57b2e7784cdacf442781d91484463f50bbac9",
+      "source_path": "ops/host-anchor-v121/patch_original306_first_anchor_runner.py"
+    },
+    {
+      "candidate_path": "ops/host-anchor-v121/claimed-job-worker.v121.py",
+      "kind": "script",
+      "runtime_activation": false,
+      "sha256": "fff6357ccff200b405fd60e403f2bac0dc6b868de0df79df00b37126a47f1787",
+      "source_path": "ops/host-anchor-v121/claimed-job-worker.v121.py"
+    },
+    {
+      "candidate_path": "ops/host-anchor-v121/publish_owner_readiness.py",
+      "kind": "script",
+      "runtime_activation": false,
+      "sha256": "aab21410d3053ab451b16beac17eb1dc4c71c33591f2ed07d964c8fc9969879a",
+      "source_path": "ops/host-anchor-v121/publish_owner_readiness.py"
+    },
+    {
+      "candidate_path": "ops/host-anchor-v121/systemd/mad4b-first-anchor-scoped-readiness-v121.service",
+      "kind": "script",
+      "runtime_activation": false,
+      "sha256": "7bd315eda75a2b6656ea7fede9d2a446404ebeaf8b8b07a5f2981319cd094074",
+      "source_path": "ops/host-anchor-v121/systemd/mad4b-first-anchor-scoped-readiness-v121.service"
+    },
+    {
+      "candidate_path": "ops/host-anchor-v121/systemd/mad4b-first-anchor-scoped-readiness-v121.timer",
+      "kind": "script",
+      "runtime_activation": false,
+      "sha256": "6ff9adbfba67bd30ad2e2590d3a26346f381ac30ba61781ecd1d05c10e05a2a3",
+      "source_path": "ops/host-anchor-v121/systemd/mad4b-first-anchor-scoped-readiness-v121.timer"
+    },
+    {
+      "candidate_path": "ops/host-anchor-v122/original313_first_owner_enrollment_issuer.py",
+      "kind": "script",
+      "runtime_activation": false,
+      "sha256": "a282028d152594c23c34c243ecaab45b2834298c0925e5f46e9b098156573800",
+      "source_path": "ops/host-anchor-v122/original313_first_owner_enrollment_issuer.py"
+    },
+    {
+      "candidate_path": "ops/host-anchor-v123/publish_final_certificate.py",
+      "kind": "script",
+      "runtime_activation": false,
+      "sha256": "1f82f05637decb571b3b7ddc5c34f580311fa961b1a2649c80f7a181fd3bcf45",
+      "source_path": "ops/host-anchor-v123/publish_final_certificate.py"
+    },
+    {
+      "candidate_path": "ops/host-anchor-v123/reconcile_historical_claim.py",
+      "kind": "script",
+      "runtime_activation": false,
+      "sha256": "9568b09d9b0adf997dec89c0d79d24723b522736192a2780974db100beb813b1",
+      "source_path": "ops/host-anchor-v123/reconcile_historical_claim.py"
+    },
+    {
+      "candidate_path": "docs/host-v121/first-anchor-root-issuance.md",
+      "kind": "reference_doc",
+      "runtime_activation": false,
+      "sha256": "153bfe636c0e849ba584dac64441e1fea0b7884787c1904140f6e2f463196d16",
+      "source_path": "docs/host-v121/first-anchor-root-issuance.md"
+    },
+    {
+      "candidate_path": "docs/host-v122-original313-wpcli-clock.md",
+      "kind": "reference_doc",
+      "runtime_activation": false,
+      "sha256": "d6de6ba3e12f428ef771379585036cd01f42d533baf97ec3476dc0cd2c16e08a",
+      "source_path": "docs/host-v122-original313-wpcli-clock.md"
+    },
+    {
+      "candidate_path": "docs/host-v123/signed-final-owner-ui.md",
+      "kind": "reference_doc",
+      "runtime_activation": false,
+      "sha256": "539121fb85f4ccc5712c63394fdc557b5fbc80a8c4e7bde0d19e8882c41ed557",
+      "source_path": "docs/host-v123/signed-final-owner-ui.md"
+    },
+    {
+      "candidate_path": "deploy/host-authority/review/v124/393-mad4b-host-authority-owner-console.php",
+      "kind": "quarantined_review_asset",
+      "runtime_activation": false,
+      "sha256": "92751271a1910b508e785940f2642af84d714e0f2d7bf9e5c2812db0441a440f",
+      "source_path": "wp-content/mu-plugins/393-mad4b-host-authority-owner-console.php"
+    },
+    {
+      "candidate_path": "deploy/host-authority/review/v124/signed-final-certificate.php",
+      "kind": "quarantined_review_asset",
+      "runtime_activation": false,
+      "sha256": "6afdbdb7d0905b8b476ad10b6cab577e041b6b7a7a336387fc2b022e53a38b34",
+      "source_path": "wp-content/mu-plugins/mad4b-host-authority-owner-ui/signed-final-certificate.php"
+    },
+    {
+      "candidate_path": "deploy/host-authority/review/v124/host-authority.js",
+      "kind": "quarantined_review_asset",
+      "runtime_activation": false,
+      "sha256": "4636048cae57b9882799b8fb32c2343f5d6e09d7531da3fd7da2576b27a17aa0",
+      "source_path": "wp-content/mu-plugins/mad4b-host-authority-owner-ui/host-authority.js"
+    }
+  ],
+  "missing_original_runtime_deps": [
+    {
+      "feature_path": "wp-content/plugins/mad4b-platform/modules/compat/305-mad4b-central-ssh-command-intake.php",
+      "master_file_exists": false,
+      "source_file_exists": true,
+      "symbol": "MAD4B_Central_SSH_Command_Intake_V1"
+    },
+    {
+      "feature_path": "wp-content/plugins/mad4b-platform/modules/compat/306-mad4b-central-vps-broker.php",
+      "master_file_exists": false,
+      "source_file_exists": true,
+      "symbol": "MAD4B_Central_VPS_Broker_V1"
+    },
+    {
+      "feature_path": "wp-content/plugins/mad4b-platform/modules/authority/318-mad4b-native-host-exact-grant.php",
+      "master_file_exists": false,
+      "source_file_exists": true,
+      "symbol": "MAD4B_Native_Host_Exact_Grant_V1"
+    },
+    {
+      "feature_path": "wp-content/plugins/mad4b-platform/modules/authority/325-mad4b-company-native-wpcli-enrollment.php",
+      "master_file_exists": false,
+      "source_file_exists": true,
+      "symbol": "MAD4B_Company_Native_WPCLI_Enrollment_V1"
+    },
+    {
+      "feature_path": "wp-content/plugins/mad4b-platform/modules/authority/327-mad4b-original-remote-hostinger-328.php",
+      "master_file_exists": false,
+      "source_file_exists": true,
+      "symbol": "MAD4B_Original_Remote_Hostinger_328_V1"
+    }
+  ],
+  "scope": [
+    "all-royal-egypt",
+    "staging",
+    "hosting-2"
+  ],
+  "source_commit": "ba644d24aa5c0a0750e35cc61b5e558a5a6a6401",
+  "validation": [
+    "all listed files byte-equal to exact source head SHA",
+    "no WordPress auto-load paths changed on master",
+    "no production deployment or root state mutation",
+    "PHP/JS/Python syntax checks on review assets",
+    "original runtime dependencies must be separately reconciled"
+  ]
+}
