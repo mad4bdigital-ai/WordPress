@@ -18,7 +18,7 @@ class RendererRebuild(unittest.TestCase):
             self.assertTrue((dest/'public-ordered-critical-admission.py').is_file())
             self.assertIn('public-css-manifest-observer.py',(dest/'run-public-route.py').read_text())
             self.assertEqual((dest/'run-public-route.py').read_bytes(),
-                             (MANIFEST.parent.parent/'dynamic-critical-css-20261116/run-public-route.py').read_bytes())
+                             (MANIFEST.parent/'renderer-v15-overrides/run-public-route.py').read_bytes())
             self.assertIn('MAD4B_CSS_PROBE_ONLY',(dest/'run-site.sh').read_text())
             self.assertFalse(any(p.is_symlink() for p in dest.rglob('*')))
             import re
