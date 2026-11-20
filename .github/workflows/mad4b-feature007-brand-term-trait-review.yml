@@ -1,0 +1,45 @@
+name: MAD4B Feature007 Brand Term Trait Review
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mad4b-feature007-brand-term-trait-review.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-integrity.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-brand-integrity-term-meta.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-integrity-term-trait-source-review.php'
+      - 'tests/test_brand_integrity_term_trait_exact_source.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-brand-term-trait-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  source-only-parity:
+    name: Term Meta exact extraction / PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Verify original source identity and negative tamper conditions
+        run: |
+          set -euo pipefail
+          PYTHONDONTWRITEBYTECODE=1 python3 tests/test_brand_integrity_term_trait_exact_source.py -v
+          php wp-content/plugins/mad4b-site-control-plane/tests/brand-integrity-term-trait-source-review.php
+      - name: Verify WordPress-free term-linked brand security fixture
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-integrity.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-brand-integrity-term-meta.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/brand-integrity-destination-term-links-runtime.php
