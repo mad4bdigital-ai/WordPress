@@ -15,8 +15,40 @@ class SourceCandidate(unittest.TestCase):
  def test_canonical_wordpress_deploy_target_matches_reviewed_candidate(self):
   target=BASE.parents[1]/'wp-content/plugins/mad4b-platform/modules/authority/318-mad4b-native-host-exact-grant.php'
   self.assertTrue(target.is_file(), 'canonical WordPress deploy target must exist')
-  self.assertEqual(target.read_bytes(),SOURCE.read_bytes(),
-      'deploy target must exactly equal the reviewed Original318 v82 candidate')
+  # A later independently reviewed v83 current-anchor reader adds exactly
+  # two blocks to original v82. Keep v82 bit-for-bit and explicitly pin the
+  # successor, instead of overwriting a signed readback the root reader uses.
+  data=target.read_bytes()
+  self.assertEqual(hashlib.sha256(data).hexdigest(),
+      '1c80391b15c750238339cf43c248dfd6c4017ec80102ddc01e210b9e8ec26b0b')
+  text=data.decode('utf-8')
+  start=text.index(' /**\n  * Fresh signed Original318 snapshot for the *independent* Original313 reader.')
+  end=text.index(' public static function cli($args,$assoc) {',start)
+  addon=text[start:end]
+  for expected in (
+      'public static function current_anchor_readback_v2(string $company,string $environment):array',
+      "'write_authorized'=>false", "'grant_created'=>false",
+      "'fresh_central_highwater_verified'=>false",
+      "'original313_certified'=>false",
+      'self::dynamic_anchor($company,$environment)',
+      'self::independent_revoked_anchor_observation_v2($company,$environment)',
+  ):
+   self.assertIn(expected,addon)
+  for forbidden in ('update_option(', 'add_option(', 'wp_insert_post(', 'wp_remote_post('):
+   self.assertNotIn(forbidden,addon)
+  original_cli="  $action=(string)($args[0]??'');\n"
+  extra_cli=("  if($action==='anchor-current-readback') {\n"
+      "   if(array_keys($assoc)!==['company','environment'])\n"
+      "     WP_CLI::error('EXACT_COMPANY_ENVIRONMENT_REQUIRED');\n"
+      "   WP_CLI::line(wp_json_encode(self::current_anchor_readback_v2(\n"
+      "     (string)$assoc['company'],(string)$assoc['environment']),JSON_UNESCAPED_SLASHES));\n"
+      "   return;\n"
+      "  }\n")
+  self.assertEqual(text.count(extra_cli),1,'Exactly one bounded readback CLI route')
+  reconstructed=text[:start]+text[end:]
+  reconstructed=reconstructed.replace(original_cli+extra_cli,original_cli,1)
+  self.assertEqual(reconstructed.encode('utf-8'),SOURCE.read_bytes(),
+      'v83 deploy must retain all v82 code unchanged except reviewed readback additions')
  def test_source_requires_distinct_signed_anchor(self):
   s=SOURCE.read_text()
   for t in ["const DYNAMIC_ANCHOR_CONTRACT='mad4b.company-host-authority-anchor.v2'",
