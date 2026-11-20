@@ -41,6 +41,9 @@ def current_blob(path):
 # explicit non-authorizing security metadata. Unknown future bytes stay denied.
 GOVERNANCE_REVIEWED_SUCCESSOR = '0f4930fe976ff604f30c600c044812fdb7de3fa7'
 GOVERNANCE_CWV_REVIEWED_SUCCESSOR = '18df447206263ee9bd79772068376dc24ebf9400'
+GOVERNANCE_CWV_BRAND_REVIEWED_SUCCESSOR = 'b9c72b2fe98f20ba990247c8d701202835609246'
+BRAND_TRAIT_REVIEWED_FACADE = '188c7c00411834785f3d00fcd05541d10037f12a'
+BRAND_TRAIT_REVIEWED_HELPER = 'dedbbb99e50d819009e994ad245a412c738d5f28'
 CWV_REVIEWED_BOOTSTRAP = '97887a449a3abf473a043d2da0737a3c2f2ab7ae'
 CWV_REVIEWED_HELPER = '366b5b085976f87a633aa4a7737596eea14dcd6b'
 
@@ -69,6 +72,33 @@ def require_cwv_review(coverage):
                    and 'wp-content/plugins/mad4b-site-control-plane/tests/cwv-site-admission-hermetic.php'
                        in entry.get('regression_tests', [])]
         check(len(matches) == 1, 'CWV exact-source CI-only provenance missing: '+path)
+
+
+def require_brand_trait_review(coverage):
+    facade=P+'includes/class-mad4b-scp-brand-integrity.php'
+    trait=P+'includes/trait-mad4b-scp-brand-integrity-term-meta.php'
+    identity='service:'+trait
+    test='tests/test_brand_integrity_term_trait_exact_source.py'
+    check(current_blob(facade)==BRAND_TRAIT_REVIEWED_FACADE,
+          'Unreviewed Brand Integrity facade SHA')
+    check(current_blob(trait)==BRAND_TRAIT_REVIEWED_HELPER,
+          'Unreviewed Brand Integrity extracted Trait SHA')
+    cap=[r for r in coverage.get('reviewed_capabilities',[])
+         if r.get('id')==identity
+         and r.get('status')=='reviewed_for_ci_only'
+         and r.get('production_authorized') is False
+         and r.get('live_evidence_required') is True
+         and test in r.get('regression_tests',[])]
+    check(len(cap)==1,'Brand Trait Service CI-only review missing')
+    for path,sha in ((facade,BRAND_TRAIT_REVIEWED_FACADE),
+                     (trait,BRAND_TRAIT_REVIEWED_HELPER)):
+        matches=[r for r in coverage.get('reviewed_changes',[])
+                 if r.get('path')==path and r.get('source_blob_sha')==sha
+                 and r.get('status')=='reviewed_for_ci_only'
+                 and r.get('production_authorized') is False
+                 and r.get('live_evidence_required') is True
+                 and test in r.get('regression_tests',[])]
+        check(len(matches)==1,'Brand Trait exact source review missing: '+path)
 
 
 def validate_governance_successor(coverage):
@@ -133,12 +163,17 @@ def validate(supplement, source_text):
         check(r['semantic_review_completed'] is False, 'Unexpected functional signoff: ' + path)
         current = current_blob(path)
         if path == GOVERNANCE_PATH and current != r['followup_964']:
-            check(current in (GOVERNANCE_REVIEWED_SUCCESSOR, GOVERNANCE_CWV_REVIEWED_SUCCESSOR),
+            check(current in (GOVERNANCE_REVIEWED_SUCCESSOR,
+                              GOVERNANCE_CWV_REVIEWED_SUCCESSOR,
+                              GOVERNANCE_CWV_BRAND_REVIEWED_SUCCESSOR),
                   'Unreviewed Governance successor SHA: ' + current)
             coverage = json.loads(source_text(path))
             validate_governance_successor(coverage)
-            if current == GOVERNANCE_CWV_REVIEWED_SUCCESSOR:
+            if current in (GOVERNANCE_CWV_REVIEWED_SUCCESSOR,
+                           GOVERNANCE_CWV_BRAND_REVIEWED_SUCCESSOR):
                 require_cwv_review(coverage)
+            if current == GOVERNANCE_CWV_BRAND_REVIEWED_SUCCESSOR:
+                require_brand_trait_review(coverage)
         elif path == 'tools/readiness_test_execution.py' and current != r['followup_964']:
             check(current == RUNNER_CWV_REVIEWED_SUCCESSOR,
                   'Unreviewed CI runner successor SHA: ' + current)

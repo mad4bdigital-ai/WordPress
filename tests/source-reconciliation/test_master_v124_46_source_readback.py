@@ -2,6 +2,7 @@
 """Review-only source SHA, live-mount provenance and activation-denial guards."""
 import copy
 import hashlib
+import importlib.util
 import json
 import pathlib
 import unittest
@@ -11,6 +12,28 @@ P=ROOT/'docs/source-reconciliation/master-v124-pr974-forty-six-source-readback-2
 
 def git_blob(raw):
     return hashlib.sha1(b'blob '+str(len(raw)).encode('ascii')+b'\0'+raw).hexdigest()
+
+def exact_reviewed_brand_trait_reconstruction(root, item):
+    # Historic 46-file inventory is immutable, including the source SHA and
+    # the two live-mount observations. Only the full byte-for-byte inverse
+    # of the reviewed 339-line Term Meta Trait may satisfy that old identity.
+    original='9169abd2dbce76dfbe087337799dd475eced8a66'
+    facade='wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-integrity.php'
+    trait='wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-brand-integrity-term-meta.php'
+    if item['path']!=facade or item['candidate_git_blob']!=original:
+        return False
+    source=root/'tests/test_brand_integrity_term_trait_exact_source.py'
+    if not source.is_file() or source.is_symlink():
+        return False
+    spec=importlib.util.spec_from_file_location('reviewed_brand_term_trait_exact',source)
+    module=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    try:
+        prior=module.reconstruct((root/facade).read_bytes(),(root/trait).read_bytes())
+    except (AssertionError,OSError,ValueError):
+        return False
+    return git_blob(prior)==original
+
 
 def verify(record, root=ROOT):
     assert record['contract']=='mad4b.46-pr920-collisions-live-mount-source-review.non-authorizing.v1'
@@ -26,7 +49,9 @@ def verify(record, root=ROOT):
         paths.add(path)
         assert item['pr920_git_blob']==item['candidate_git_blob']
         assert item['semantic_signoff'] is False and item['runtime_accepted'] is False
-        assert git_blob((root/path).read_bytes())==item['candidate_git_blob'],path
+        current=git_blob((root/path).read_bytes())
+        assert current==item['candidate_git_blob'] or \
+            exact_reviewed_brand_trait_reconstruction(root,item),path
         for site in ('toursdev_staging','wayfatours_production'):
             state=item['mounted'][site]['state']
             assert state in ('exact','different','absent'),(path,state)
