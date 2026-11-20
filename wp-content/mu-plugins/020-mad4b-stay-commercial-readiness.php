@@ -67,12 +67,32 @@ final class MAD4B_Stay_Commercial_Readiness_V1 {
         $kind=(string)get_post_meta($unit,'unit_kind',true);
         $capacity=(int)get_post_meta($unit,'unit_max_occupancy',true);
         $inventory=(int)get_post_meta($unit,'unit_inventory_quantity',true);
+        $stockRequired=!class_exists('MAD4B_Stay_Unmanaged_Stock_Policy_V1',false)
+            || MAD4B_Stay_Unmanaged_Stock_Policy_V1::stock_quantity_required();
         $readiness=(string)get_post_meta($unit,'unit_readiness',true);
         $available=(string)get_post_meta($unit,'unit_available',true);
         $gallery=get_post_meta($unit,'unit_gellery',true);
         $hasImage=(int)get_post_thumbnail_id($unit)>0
             || (is_string($gallery)&&trim($gallery)!=='')
             || (is_array($gallery)&&count($gallery)>0);
+        // Only a consistent, source-traced owner-approved visual receipt
+        // qualifies as relaxed coverage. It NEVER certifies exact room imagery.
+        $visual=get_post_meta($unit,'_mad4b_stay_visual_coverage_v1',true);
+        $visualMode='none';
+        if($hasImage && is_array($visual)
+            &&($visual['schema']??'')==='mad4b.stay-relaxed-visual-coverage.v1'
+            &&(int)($visual['unit_id']??0)===$unit
+            &&(int)($visual['attachment_id']??0)===(int)get_post_thumbnail_id($unit)
+            &&(string)get_post_meta($unit,'unit_gellery',true)
+                ===(string)get_post_thumbnail_id($unit)
+            &&($visual['exact_room_match_unverified']??false)===true
+            &&($visual['rights_independently_verified']??true)===false){
+            $candidate=(string)($visual['strategy']??'');
+            if(in_array($candidate,[
+                'shared_official_asset_across_room_categories',
+                'partner_nearest_room_with_pool_view'
+            ],true))$visualMode=$candidate;
+        }
         $title=(string)get_the_title($unit);
         $qa=(bool)preg_match('/\b(QA\s+ONLY|fixture|demo|test)\b/i',$title)
             || in_array((string)get_post_meta($unit,'_mad4b_is_test_data',true),['1','yes','true'],true);
@@ -83,7 +103,8 @@ final class MAD4B_Stay_Commercial_Readiness_V1 {
         if(!in_array($kind,['room','suite','cabin'],true))$catalog[]='room_kind_needs_review';
         if($capacity<1)$catalog[]='occupancy_not_verified';
         if(!$hasImage)$catalog[]='unit_images_missing';
-        if($inventory<1)$catalog[]='physical_inventory_unverified';
+        if($visualMode!=='none')$catalog[]='relaxed_visual_exact_room_unverified';
+        if($stockRequired && $inventory<1)$catalog[]='physical_inventory_unverified';
         if($readiness!=='validated')$catalog[]='unit_readiness_not_validated';
         $commercial=$catalog;
         if($status!=='publish')$commercial[]='unit_unpublished';
@@ -94,7 +115,7 @@ final class MAD4B_Stay_Commercial_Readiness_V1 {
             && !($propertyDirect && $propertyDirect['sell_configured']))
             $commercial[]='direct_sell_price_not_configured';
         // Unit and Property Direct prices remain indicative until a certified
-        // native rate and inventory/age/financial policy can produce a shadow quote.
+        // native rate and occupancy/age/financial policy can produce a shadow quote.
         $commercial[]='native_rate_or_booking_receipt_required';
         return [
             'unit_id'=>$unit,'title'=>html_entity_decode($title,ENT_QUOTES,'UTF-8'),'unit_status'=>$status,
@@ -105,7 +126,12 @@ final class MAD4B_Stay_Commercial_Readiness_V1 {
             'catalog_ready_for_review'=>count($catalog)===0,
             'checkout_ready'=>false,'qa_only'=>$qa,
             'unit_kind'=>$kind,'capacity_set'=>$capacity>0,
-            'inventory_set'=>$inventory>0,'unit_media_present'=>$hasImage,
+            'inventory_set'=>$inventory>0,'stock_quantity_required'=>$stockRequired,
+            'unit_media_present'=>$hasImage,
+            'unit_media_quality_status'=>$visualMode==='none'
+                ?($hasImage?'standard_or_unclassified':'missing'):'relaxed_visual_only',
+            'unit_media_visual_mode'=>$visualMode,
+            'unit_media_exact_room_match_verified'=>$visualMode==='none'?null:false,
             'unit_readiness'=>$readiness,'unit_available'=>$available,
             'unit_direct'=>$unitDirect,'property_direct'=>$propertyDirect,
             'edit_unit_url'=>$withLinks && current_user_can('edit_post',$unit)
@@ -118,7 +144,7 @@ final class MAD4B_Stay_Commercial_Readiness_V1 {
         if(!self::authorized())return new WP_Error('stay_readiness_forbidden');
         $search=sanitize_text_field(substr((string)($input['search']??''),0,85));
         $scope=(string)($input['scope']??'all');
-        $allowed=['all','priority','draft_parent','published','qa','missing_capacity','missing_images'];
+        $allowed=['all','priority','draft_parent','published','qa','missing_capacity','missing_images','relaxed_images'];
         if(!in_array($scope,$allowed,true))return new WP_Error('stay_readiness_scope_invalid');
         $page=filter_var($input['paged']??1,FILTER_VALIDATE_INT,
             ['options'=>['min_range'=>1,'max_range'=>100]]);
@@ -145,6 +171,7 @@ final class MAD4B_Stay_Commercial_Readiness_V1 {
             'total'=>0,'published'=>0,'draft_published_property'=>0,
             'draft_draft_property'=>0,'qa'=>0,'catalog_ready_for_review'=>0,
             'missing_capacity'=>0,'missing_unit_images'=>0,
+            'relaxed_visual_coverage'=>0,
             'missing_inventory'=>0,'direct_sell_configured'=>0,
             'commercially_ready'=>0,
         ];
@@ -164,6 +191,8 @@ final class MAD4B_Stay_Commercial_Readiness_V1 {
             if($row['catalog_ready_for_review'])$summary['catalog_ready_for_review']++;
             if(!$row['capacity_set'])$summary['missing_capacity']++;
             if(!$row['unit_media_present'])$summary['missing_unit_images']++;
+            if($row['unit_media_quality_status']==='relaxed_visual_only')
+                $summary['relaxed_visual_coverage']++;
             if(!$row['inventory_set'])$summary['missing_inventory']++;
             if($row['unit_direct']['sell_configured'])$summary['direct_sell_configured']++;
             if($search!=='' && stripos($row['title'].' '.$row['property_title'],$search)===false)continue;
@@ -173,6 +202,8 @@ final class MAD4B_Stay_Commercial_Readiness_V1 {
             if($scope==='qa'&&!$row['qa_only'])continue;
             if($scope==='missing_capacity'&&$row['capacity_set'])continue;
             if($scope==='missing_images'&&$row['unit_media_present'])continue;
+            if($scope==='relaxed_images'
+                &&$row['unit_media_quality_status']!=='relaxed_visual_only')continue;
             $all[]=$row;
         }
         $found=count($all);$slice=array_slice($all,($page-1)*self::LIMIT,self::LIMIT);
@@ -184,6 +215,11 @@ final class MAD4B_Stay_Commercial_Readiness_V1 {
                 ?get_edit_post_link($row['property_id'],''):null;
         }
         unset($row);
+        $stockPolicy=class_exists('MAD4B_Stay_Unmanaged_Stock_Policy_V1',false)
+            ?MAD4B_Stay_Unmanaged_Stock_Policy_V1::status():null;
+        $summary['stock_quantity_required']=!is_array($stockPolicy)
+            || ($stockPolicy['stock_quantity_required']??true)!==false;
+        $summary['inventory_sales_mode']=$stockPolicy['mode']??'legacy';
         $supplierPolicy=class_exists('MAD4B_Stay_Secondary_Self_Supplier_V1',false)
             ?MAD4B_Stay_Secondary_Self_Supplier_V1::status():null;
         $supplierConflict=!is_array($supplierPolicy)

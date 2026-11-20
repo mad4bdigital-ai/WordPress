@@ -30,5 +30,13 @@ assert "'wp_ajax_'.self::ACTION" in php and "wp_ajax_nopriv" not in php
 assert "public static function handoff" in php and "abk_accommodation_shadow_quote" in php
 assert "checkout_ready'=>false" in php and "mutation_performed'=>false" in php
 assert not re.search(r"\b(wp_update_post|wp_insert_post|update_post_meta|delete_post_meta|wp_delete_post|wc_create_order)\s*\(",php), "unexpected mutation"
+assert 'value="relaxed_images"' in html
+assert "relaxed_visual_exact_room_unverified" in js
+assert "Visual-only photos" in js
+assert "shared_official_asset_across_room_categories" in js
+assert "partner_nearest_room_with_pool_view" not in js or "Partner hotel room photo" in js
+assert "'relaxed_images'" in php and "'relaxed_visual_coverage'" in php
+assert "'unit_media_quality_status'" in php
+assert "'checkout_ready'=>false" in php
 assert ".mad4b-stay-readiness" in css and "@media(max-width:580px)" in css
 print(f"PASS readiness UI: {len(p.bindings)} unique data bindings, {len(p.buttons)} safe buttons, native API and no-write policy")

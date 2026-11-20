@@ -1,0 +1,227 @@
+name: MAD4B Stay Unit Media + Unmanaged Stock Contract
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/mu-plugins/020-mad4b-stay-commercial-readiness.php'
+      - 'wp-content/mu-plugins/021-mad4b-stay-unmanaged-stock.php'
+      - 'wp-content/mu-plugins/mad4b-stay-readiness/admin.js'
+      - 'wp-content/mu-plugins/mad4b-stay-readiness/panel.html'
+      - 'scripts/mad4b-stay-unit-photo-curation-cli.php'
+      - 'scripts/mad4b-stay-unit-photo-rollback-cli.php'
+      - 'scripts/mad4b-stay-fourseasons-exact-room-source-admission.php'
+      - 'scripts/mad4b-stay-tolip-exact-room-source-admission.php'
+      - 'scripts/mad4b-stay-accor-reviewed-room-source-v2.php'
+      - 'scripts/mad4b-stay-sheraton-gallery-room-source-admission.php'
+      - 'scripts/mad4b-stay-hilton-golf-gallery-source-admission.php'
+      - 'scripts/mad4b-stay-hilton-cairo-gallery-source-admission.php'
+      - 'scripts/mad4b-stay-barcelo-room-source-admission.php'
+      - 'scripts/mad4b-stay-sofitel-executive-gallery-source-v2.php'
+      - 'scripts/mad4b-stay-sonesta-partner-exact-room-source-v2.php'
+      - 'scripts/mad4b-stay-sonesta-photo-gap-resolution-cli.php'
+      - 'scripts/mad4b-stay-relaxed-visual-coverage-v1-cli.php'
+      - 'scripts/mad4b-stay-editorial-publication-v1-cli.php'
+      - 'scripts/mad4b-stay-original-18-hotel-publication-audit.php'
+      - 'scripts/mad4b-stay-wayfatours-es18-editorial-cli.php'
+      - 'scripts/mad4b-stay-saray-owner-identity-and-rooms-cli.php'
+      - 'scripts/mad4b-stay-saray-room-source-media-evidence-v1-cli.php'
+      - 'scripts/mad4b-stay-saray-supplier-evidence-request-v1-cli.php'
+      - 'scripts/mad4b-stay-eight-packages-hotel-component-discovery-cli.php'
+      - 'scripts/mad4b-stay-pyramids-park-owner-google-five-star-cli.php'
+      - 'scripts/mad4b-package-eight-accommodation-source-plan-cli.php'
+      - 'scripts/mad4b-package-eight-component-source-admission-cli.php'
+      - 'scripts/mad4b-package-eight-room-and-cruise-program-bindings-cli.php'
+      - 'scripts/mad4b-package-cruise-day-sequence-audit-cli.php'
+      - 'scripts/mad4b-cruise-operator-web-amenities-editorial-cli.php'
+      - 'scripts/mad4b-cruise-web-operator-amenities-batch2-cli.php'
+      - 'scripts/mad4b-cruise-web-sun-nile-goddess-cli.php'
+      - 'tests/stay-cruise-web-sun-nile-goddess-contract.py'
+      - 'scripts/mad4b-cruise-operator-pattern-reference-cli.php'
+      - 'tests/stay-cruise-operator-pattern-reference-contract.py'
+      - 'scripts/mad4b-package8-booking-v2-failclosed-cli.php'
+      - 'tests/stay-package8-booking-v2-failclosed-contract.py'
+      - 'tests/stay-cruise-web-batch2-amenities-contract.py'
+      - 'tests/stay-cruise-web-amenities-editorial-contract.py'
+      - 'tests/stay-package-cruise-day-sequence-audit-contract.py'
+      - 'tests/stay-package-eight-room-and-cruise-program-bindings-contract.py'
+      - 'tests/stay-package-eight-component-source-admission-contract.py'
+      - 'scripts/mad4b-package-60441-bilingual-exact-dedup-cli.php'
+      - 'tests/stay-package-eight-accommodation-source-plan-contract.py'
+      - 'tests/stay-pyramids-park-google-five-star-contract.py'
+      - 'scripts/mad4b-stay-package-hotel-tour-zone-area-fix.py'
+      - 'tests/stay-eight-packages-hotel-component-discovery-contract.py'
+      - 'tests/stay-saray-supplier-evidence-request-contract.py'
+      - 'tests/stay-saray-room-source-media-contract.py'
+      - 'tests/stay-saray-identity-rooms-contract.py'
+      - 'tests/stay-wayfa-es18-editorial-contract.py'
+      - 'scripts/mad4b-stay-invalid-import-quarantine-36260-cli.php'
+      - 'scripts/mad4b-stay-unresolved-official-room-photo-gaps-cli.php'
+      - 'scripts/mad4b-stay-triumph-exact-room-source-admission.php'
+      - 'scripts/mad4b-stay-triumph-room-gallery-cli.php'
+      - 'tests/stay-unmanaged-stock-policy-contract.php'
+      - 'tests/stay-commercial-readiness-contract.php'
+      - 'tests/stay-owner-approved-room-media-contract.py'
+      - 'tests/stay-final-room-photo-quarantine-contract.py'
+      - 'tests/stay-relaxed-visual-coverage-contract.py'
+      - 'tests/stay-editorial-publication-contract.py'
+      - 'tests/stay-original-18-hotel-publication-contract.py'
+      - 'tests/stay-commercial-readiness-ui-check.py'
+      - '.github/workflows/mad4b-stay-media-stock-policy.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'wp-content/mu-plugins/020-mad4b-stay-commercial-readiness.php'
+      - 'wp-content/mu-plugins/021-mad4b-stay-unmanaged-stock.php'
+      - 'wp-content/mu-plugins/mad4b-stay-readiness/admin.js'
+      - 'wp-content/mu-plugins/mad4b-stay-readiness/panel.html'
+      - 'scripts/mad4b-stay-unit-photo-curation-cli.php'
+      - 'scripts/mad4b-stay-unit-photo-rollback-cli.php'
+      - 'scripts/mad4b-stay-fourseasons-exact-room-source-admission.php'
+      - 'scripts/mad4b-stay-tolip-exact-room-source-admission.php'
+      - 'scripts/mad4b-stay-accor-reviewed-room-source-v2.php'
+      - 'scripts/mad4b-stay-sheraton-gallery-room-source-admission.php'
+      - 'scripts/mad4b-stay-hilton-golf-gallery-source-admission.php'
+      - 'scripts/mad4b-stay-hilton-cairo-gallery-source-admission.php'
+      - 'scripts/mad4b-stay-barcelo-room-source-admission.php'
+      - 'scripts/mad4b-stay-sofitel-executive-gallery-source-v2.php'
+      - 'scripts/mad4b-stay-sonesta-partner-exact-room-source-v2.php'
+      - 'scripts/mad4b-stay-sonesta-photo-gap-resolution-cli.php'
+      - 'scripts/mad4b-stay-relaxed-visual-coverage-v1-cli.php'
+      - 'scripts/mad4b-stay-editorial-publication-v1-cli.php'
+      - 'scripts/mad4b-stay-original-18-hotel-publication-audit.php'
+      - 'scripts/mad4b-stay-wayfatours-es18-editorial-cli.php'
+      - 'scripts/mad4b-stay-saray-owner-identity-and-rooms-cli.php'
+      - 'scripts/mad4b-stay-saray-room-source-media-evidence-v1-cli.php'
+      - 'scripts/mad4b-stay-saray-supplier-evidence-request-v1-cli.php'
+      - 'scripts/mad4b-stay-eight-packages-hotel-component-discovery-cli.php'
+      - 'scripts/mad4b-stay-pyramids-park-owner-google-five-star-cli.php'
+      - 'scripts/mad4b-package-eight-accommodation-source-plan-cli.php'
+      - 'scripts/mad4b-package-eight-component-source-admission-cli.php'
+      - 'scripts/mad4b-package-eight-room-and-cruise-program-bindings-cli.php'
+      - 'scripts/mad4b-package-cruise-day-sequence-audit-cli.php'
+      - 'scripts/mad4b-cruise-operator-web-amenities-editorial-cli.php'
+      - 'scripts/mad4b-cruise-web-operator-amenities-batch2-cli.php'
+      - 'scripts/mad4b-cruise-web-sun-nile-goddess-cli.php'
+      - 'tests/stay-cruise-web-sun-nile-goddess-contract.py'
+      - 'scripts/mad4b-cruise-operator-pattern-reference-cli.php'
+      - 'tests/stay-cruise-operator-pattern-reference-contract.py'
+      - 'scripts/mad4b-package8-booking-v2-failclosed-cli.php'
+      - 'tests/stay-package8-booking-v2-failclosed-contract.py'
+      - 'tests/stay-cruise-web-batch2-amenities-contract.py'
+      - 'tests/stay-cruise-web-amenities-editorial-contract.py'
+      - 'tests/stay-package-cruise-day-sequence-audit-contract.py'
+      - 'tests/stay-package-eight-room-and-cruise-program-bindings-contract.py'
+      - 'tests/stay-package-eight-component-source-admission-contract.py'
+      - 'scripts/mad4b-package-60441-bilingual-exact-dedup-cli.php'
+      - 'tests/stay-package-eight-accommodation-source-plan-contract.py'
+      - 'tests/stay-pyramids-park-google-five-star-contract.py'
+      - 'scripts/mad4b-stay-package-hotel-tour-zone-area-fix.py'
+      - 'tests/stay-eight-packages-hotel-component-discovery-contract.py'
+      - 'tests/stay-saray-supplier-evidence-request-contract.py'
+      - 'tests/stay-saray-room-source-media-contract.py'
+      - 'tests/stay-saray-identity-rooms-contract.py'
+      - 'tests/stay-wayfa-es18-editorial-contract.py'
+      - 'scripts/mad4b-stay-invalid-import-quarantine-36260-cli.php'
+      - 'scripts/mad4b-stay-unresolved-official-room-photo-gaps-cli.php'
+      - 'scripts/mad4b-stay-triumph-exact-room-source-admission.php'
+      - 'scripts/mad4b-stay-triumph-room-gallery-cli.php'
+      - 'tests/stay-unmanaged-stock-policy-contract.php'
+      - 'tests/stay-commercial-readiness-contract.php'
+      - 'tests/stay-owner-approved-room-media-contract.py'
+      - 'tests/stay-final-room-photo-quarantine-contract.py'
+      - 'tests/stay-relaxed-visual-coverage-contract.py'
+      - 'tests/stay-editorial-publication-contract.py'
+      - 'tests/stay-original-18-hotel-publication-contract.py'
+      - 'tests/stay-commercial-readiness-ui-check.py'
+      - '.github/workflows/mad4b-stay-media-stock-policy.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-stay-media-stock-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    name: Unit photo & stock scope (PHP ${{ matrix.php }})
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify exact head checkout
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Lint native policy and bounded media migration
+        run: |
+          php -l wp-content/mu-plugins/020-mad4b-stay-commercial-readiness.php
+          php -l wp-content/mu-plugins/021-mad4b-stay-unmanaged-stock.php
+          php -l scripts/mad4b-stay-unit-photo-curation-cli.php
+          php -l scripts/mad4b-stay-unit-photo-rollback-cli.php
+          php -l scripts/mad4b-stay-fourseasons-exact-room-source-admission.php
+          php -l scripts/mad4b-stay-tolip-exact-room-source-admission.php
+          php -l scripts/mad4b-stay-accor-reviewed-room-source-v2.php
+          php -l scripts/mad4b-stay-sheraton-gallery-room-source-admission.php
+          php -l scripts/mad4b-stay-hilton-golf-gallery-source-admission.php
+          php -l scripts/mad4b-stay-hilton-cairo-gallery-source-admission.php
+          php -l scripts/mad4b-stay-barcelo-room-source-admission.php
+          php -l scripts/mad4b-stay-sofitel-executive-gallery-source-v2.php
+          php -l scripts/mad4b-stay-sonesta-partner-exact-room-source-v2.php
+          php -l scripts/mad4b-stay-sonesta-photo-gap-resolution-cli.php
+          php -l scripts/mad4b-stay-relaxed-visual-coverage-v1-cli.php
+          php -l scripts/mad4b-stay-editorial-publication-v1-cli.php
+          php -l scripts/mad4b-stay-original-18-hotel-publication-audit.php
+          php -l scripts/mad4b-stay-wayfatours-es18-editorial-cli.php
+          php -l scripts/mad4b-stay-saray-owner-identity-and-rooms-cli.php
+          php -l scripts/mad4b-stay-saray-room-source-media-evidence-v1-cli.php
+          php -l scripts/mad4b-stay-saray-supplier-evidence-request-v1-cli.php
+          php -l scripts/mad4b-stay-eight-packages-hotel-component-discovery-cli.php
+          php -l scripts/mad4b-stay-pyramids-park-owner-google-five-star-cli.php
+          php -l scripts/mad4b-package-eight-accommodation-source-plan-cli.php
+          php -l scripts/mad4b-package-eight-component-source-admission-cli.php
+          php -l scripts/mad4b-package-eight-room-and-cruise-program-bindings-cli.php
+          php -l scripts/mad4b-package-cruise-day-sequence-audit-cli.php
+          php -l scripts/mad4b-cruise-operator-web-amenities-editorial-cli.php
+          php -l scripts/mad4b-cruise-web-operator-amenities-batch2-cli.php
+          php -l scripts/mad4b-cruise-web-sun-nile-goddess-cli.php
+          php -l scripts/mad4b-cruise-operator-pattern-reference-cli.php
+          php -l scripts/mad4b-package8-booking-v2-failclosed-cli.php
+          php -l scripts/mad4b-package-60441-bilingual-exact-dedup-cli.php
+          php -l scripts/mad4b-stay-invalid-import-quarantine-36260-cli.php
+          php -l scripts/mad4b-stay-unresolved-official-room-photo-gaps-cli.php
+          php -l scripts/mad4b-stay-triumph-exact-room-source-admission.php
+          php -l scripts/mad4b-stay-triumph-room-gallery-cli.php
+      - name: Hermetic stock and readiness assertions
+        run: |
+          php tests/stay-unmanaged-stock-policy-contract.php
+          php tests/stay-commercial-readiness-contract.php
+          python3 tests/stay-owner-approved-room-media-contract.py
+          python3 tests/stay-final-room-photo-quarantine-contract.py
+          python3 tests/stay-relaxed-visual-coverage-contract.py
+          python3 tests/stay-editorial-publication-contract.py
+          python3 tests/stay-original-18-hotel-publication-contract.py
+          python3 tests/stay-wayfa-es18-editorial-contract.py
+          python3 tests/stay-saray-identity-rooms-contract.py
+          python3 tests/stay-saray-room-source-media-contract.py
+          python3 tests/stay-saray-supplier-evidence-request-contract.py
+          python3 tests/stay-eight-packages-hotel-component-discovery-contract.py
+          python3 tests/stay-pyramids-park-google-five-star-contract.py
+          python3 tests/stay-package-eight-accommodation-source-plan-contract.py
+          python3 tests/stay-package-eight-component-source-admission-contract.py
+          python3 tests/stay-package-eight-room-and-cruise-program-bindings-contract.py
+          python3 tests/stay-package-cruise-day-sequence-audit-contract.py
+          python3 tests/stay-cruise-web-amenities-editorial-contract.py
+          python3 tests/stay-cruise-web-batch2-amenities-contract.py
+          python3 tests/stay-cruise-web-sun-nile-goddess-contract.py
+          python3 tests/stay-cruise-operator-pattern-reference-contract.py
+          python3 tests/stay-package8-booking-v2-failclosed-contract.py
+          python3 tests/stay-commercial-readiness-ui-check.py
+          node --check wp-content/mu-plugins/mad4b-stay-readiness/admin.js

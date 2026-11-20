@@ -32,6 +32,7 @@
     room_kind_needs_review:'Confirm Room / Cabin type',
     occupancy_not_verified:'Verify maximum occupancy',
     unit_images_missing:'Add verified room photos',
+    relaxed_visual_exact_room_unverified:'Photo is visual-only · exact room not certified',
     physical_inventory_unverified:'Confirm physical inventory',
     unit_readiness_not_validated:'Review and validate the Unit',
     unit_unpublished:'Unit is still Draft',
@@ -46,7 +47,8 @@
       ['Priority Draft',summary.draft_published_property],
       ['Draft Property',summary.draft_draft_property],
       ['QA / Test',summary.qa],
-      ['Physical inventory set',summary.total-summary.missing_inventory],
+      ['Visual-only photos',summary.relaxed_visual_coverage||0],
+      ['Stock management',summary.stock_quantity_required?'Required':'Off · accommodation'],
       ['Selling price configured',summary.direct_sell_configured],
       ['Commercial ready',summary.commercially_ready]
     ];
@@ -65,6 +67,12 @@
     card.append(head,node('small','',
       'Property: '+item.property_title+' · Unit '+item.unit_status+
       ' / Property '+item.property_status));
+    if(item.unit_media_quality_status==='relaxed_visual_only'){
+      const visualLabel=item.unit_media_visual_mode==='shared_official_asset_across_room_categories'
+        ?'Official photo reused across room categories · not unique'
+        :'Partner hotel room photo · representative, exact variant unverified';
+      card.append(node('p','mad4b-stay-readiness__status',visualLabel));
+    }
     const blockers=node('div','mad4b-stay-readiness__blockers');
     (item.catalog_blockers||[]).forEach(code=>blockers.append(
       node('span','mad4b-stay-readiness__blocker',labels[code]||code)));

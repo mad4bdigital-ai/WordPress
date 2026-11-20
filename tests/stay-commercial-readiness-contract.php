@@ -10,6 +10,7 @@ class WP_Error {
 }
 function is_wp_error($v){return $v instanceof WP_Error;}
 function add_action(){return true;}
+function add_filter(){return true;}
 function current_user_can($cap,$id=null){return $GLOBALS['allowed'];}
 function get_post_status($id){
     return $GLOBALS['status'][(int)$id]??false;
@@ -34,7 +35,11 @@ function get_posts($args){
     return [];
 }
 function sanitize_text_field($v){return trim(strip_tags((string)$v));}
-function get_option($name,$default=null){return $default;}
+function get_option($name,$default=null){
+    if($name==='mad4b_stay_inventory_sales_policy_v1')
+        return $GLOBALS['stock_policy']??$default;
+    return $default;
+}
 function absint($value){return abs((int)$value);}
 function admin_url($value){return 'https://demo.test/wp-admin/'.$value;}
 function plugin_dir_url($path){return 'https://demo.test/wp-content/mu-plugins/';}
@@ -88,6 +93,7 @@ $GLOBALS['meta']=[
         'unit_available'=>'true','unit_start_price'=>'165','unit_base_currency'=>'USD',
         'unit_direct_price_unit'=>'per_room_night','unit_direct_price_kind'=>'sell']
 ];
+require __DIR__.'/../wp-content/mu-plugins/021-mad4b-stay-unmanaged-stock.php';
 require __DIR__.'/../wp-content/mu-plugins/020-mad4b-stay-commercial-readiness.php';
 $c='MAD4B_Stay_Commercial_Readiness_V1';
 $checks=[];
@@ -100,7 +106,21 @@ $assert('review draft not eligible for commercial use',!$a['checkout_ready']);
 $assert('draft is attached to published Property',$a['property_status']==='publish');
 $assert('missing images detected',in_array('unit_images_missing',$a['catalog_blockers'],true));
 $assert('missing occupancy detected',in_array('occupancy_not_verified',$a['catalog_blockers'],true));
-$assert('missing physical inventory detected',in_array('physical_inventory_unverified',$a['catalog_blockers'],true));
+$assert('missing physical inventory detected under legacy mode',
+    in_array('physical_inventory_unverified',$a['catalog_blockers'],true));
+$GLOBALS['stock_policy']=[
+ 'schema'=>'mad4b.stay-inventory-sales-policy.v1','domain'=>'accommodation',
+ 'site'=>'https://demo.test','mode'=>'unmanaged','stock_quantity_required'=>false,
+ 'enforce_occupancy_capacity'=>true,'honor_stop_sale'=>true,
+ 'do_not_decrement_stock'=>true,'requires_supplier_availability_confirmation'=>true,
+ 'checkout_ready'=>false
+];
+$noStock=$c::evaluate(200,[100]);
+$assert('no stock barrier for accommodation',
+    !in_array('physical_inventory_unverified',$noStock['catalog_blockers'],true));
+$assert('guest occupancy stays required',
+    in_array('occupancy_not_verified',$noStock['catalog_blockers'],true));
+$assert('no stock policy grants checkout',$noStock['checkout_ready']===false);
 $assert('pending unit not validated',in_array('unit_readiness_not_validated',$a['catalog_blockers'],true));
 $assert('parent direct indicative price recognized',$a['property_direct']['sell_configured']);
 $b=$c::evaluate(201,[101]);
@@ -114,6 +134,39 @@ $assert('unit direct sale terms validated',$ready['unit_direct']['sell_configure
 $assert('unit edit uses native link',strpos($ready['edit_unit_url'],'post.php')!==false);
 $candidate=$c::evaluate(202,[100,101]);
 $assert('multiple relation blocked',in_array('property_relation_unverified',$candidate['catalog_blockers'],true));
+// A visually covered Unit is not a certified exact-room image.
+$GLOBALS['thumbnail'][202]=77;
+$GLOBALS['meta'][202]['unit_gellery']='77';
+$GLOBALS['meta'][202]['_mad4b_stay_visual_coverage_v1']=[
+ 'schema'=>'mad4b.stay-relaxed-visual-coverage.v1','unit_id'=>202,
+ 'attachment_id'=>77,'strategy'=>'shared_official_asset_across_room_categories',
+ 'exact_room_match_unverified'=>true,'rights_independently_verified'=>false
+];
+$visual=$c::evaluate(202,[100]);
+$assert('relaxed shared photo recognized as visual-only',
+    $visual['unit_media_quality_status']==='relaxed_visual_only');
+$assert('relaxed category preserved',
+    $visual['unit_media_visual_mode']==='shared_official_asset_across_room_categories');
+$assert('relaxed visual photo never grants editorial readiness',
+    in_array('relaxed_visual_exact_room_unverified',$visual['catalog_blockers'],true)
+    && !$visual['catalog_ready_for_review']);
+$assert('relaxed visual photo never grants checkout',
+    $visual['checkout_ready']===false);
+$visualAudit=$c::audit(['scope'=>'relaxed_images']);
+$assert('scoped visual filter returns one Unit',
+    $visualAudit['found']===1 && $visualAudit['items'][0]['unit_id']===202
+    && $visualAudit['summary']['relaxed_visual_coverage']===1);
+$GLOBALS['meta'][202]['_mad4b_stay_visual_coverage_v1']['strategy']='partner_nearest_room_with_pool_view';
+$partner=$c::evaluate(202,[100]);
+$assert('partner photo described as provisional',
+    $partner['unit_media_visual_mode']==='partner_nearest_room_with_pool_view');
+unset($GLOBALS['meta'][202]['_mad4b_stay_visual_coverage_v1'],
+    $GLOBALS['meta'][202]['unit_gellery']);
+$GLOBALS['thumbnail'][202]=20;
+$restored=$c::evaluate(202,[100]);
+$assert('original standard image mode unaffected',
+    $restored['unit_media_quality_status']==='standard_or_unclassified'
+    && $restored['catalog_ready_for_review']);
 $GLOBALS['allowed']=false;
 $denied=$c::audit(['scope'=>'all']);
 $assert('unprivileged audit refused',is_wp_error($denied)
