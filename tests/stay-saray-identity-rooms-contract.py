@@ -22,6 +22,9 @@ for text in [
 ]:
     assert text in s,text
 assert s.count("'slug'=>'") == 3
+assert 'esUnwantedAllowed' in s
+assert 'wp_update_term_count_now' in s
+assert 'failed_to_remove_wrong_language_es_term' in s
 for forbidden in [
     'wp_create_user(', 'wc_create_order(', 'wp_schedule_event(',
     "update_post_meta($uid,'unit_start_price'", 'unit_inventory_quantity',
