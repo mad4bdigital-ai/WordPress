@@ -21,6 +21,7 @@ on:
       - 'scripts/mad4b-stay-sonesta-photo-gap-resolution-cli.php'
       - 'scripts/mad4b-stay-relaxed-visual-coverage-v1-cli.php'
       - 'scripts/mad4b-stay-editorial-publication-v1-cli.php'
+      - 'scripts/mad4b-stay-original-18-hotel-publication-audit.php'
       - 'scripts/mad4b-stay-invalid-import-quarantine-36260-cli.php'
       - 'scripts/mad4b-stay-unresolved-official-room-photo-gaps-cli.php'
       - 'scripts/mad4b-stay-triumph-exact-room-source-admission.php'
@@ -31,6 +32,7 @@ on:
       - 'tests/stay-final-room-photo-quarantine-contract.py'
       - 'tests/stay-relaxed-visual-coverage-contract.py'
       - 'tests/stay-editorial-publication-contract.py'
+      - 'tests/stay-original-18-hotel-publication-contract.py'
       - 'tests/stay-commercial-readiness-ui-check.py'
       - '.github/workflows/mad4b-stay-media-stock-policy.yml'
   push:
@@ -54,6 +56,7 @@ on:
       - 'scripts/mad4b-stay-sonesta-photo-gap-resolution-cli.php'
       - 'scripts/mad4b-stay-relaxed-visual-coverage-v1-cli.php'
       - 'scripts/mad4b-stay-editorial-publication-v1-cli.php'
+      - 'scripts/mad4b-stay-original-18-hotel-publication-audit.php'
       - 'scripts/mad4b-stay-invalid-import-quarantine-36260-cli.php'
       - 'scripts/mad4b-stay-unresolved-official-room-photo-gaps-cli.php'
       - 'scripts/mad4b-stay-triumph-exact-room-source-admission.php'
@@ -64,6 +67,7 @@ on:
       - 'tests/stay-final-room-photo-quarantine-contract.py'
       - 'tests/stay-relaxed-visual-coverage-contract.py'
       - 'tests/stay-editorial-publication-contract.py'
+      - 'tests/stay-original-18-hotel-publication-contract.py'
       - 'tests/stay-commercial-readiness-ui-check.py'
       - '.github/workflows/mad4b-stay-media-stock-policy.yml'
 
@@ -110,6 +114,7 @@ jobs:
           php -l scripts/mad4b-stay-sonesta-photo-gap-resolution-cli.php
           php -l scripts/mad4b-stay-relaxed-visual-coverage-v1-cli.php
           php -l scripts/mad4b-stay-editorial-publication-v1-cli.php
+          php -l scripts/mad4b-stay-original-18-hotel-publication-audit.php
           php -l scripts/mad4b-stay-invalid-import-quarantine-36260-cli.php
           php -l scripts/mad4b-stay-unresolved-official-room-photo-gaps-cli.php
           php -l scripts/mad4b-stay-triumph-exact-room-source-admission.php
@@ -122,5 +127,6 @@ jobs:
           python3 tests/stay-final-room-photo-quarantine-contract.py
           python3 tests/stay-relaxed-visual-coverage-contract.py
           python3 tests/stay-editorial-publication-contract.py
+          python3 tests/stay-original-18-hotel-publication-contract.py
           python3 tests/stay-commercial-readiness-ui-check.py
           node --check wp-content/mu-plugins/mad4b-stay-readiness/admin.js
