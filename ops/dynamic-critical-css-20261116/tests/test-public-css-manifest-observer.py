@@ -22,14 +22,17 @@ with tempfile.TemporaryDirectory() as td:
  html='<html><head><link href="/wp-content/plugins/sample/style.css" rel="stylesheet"></head><body><h1>Test</h1></body></html>'
  headers={'X-MAD4B-Public-CCSS-Market':'base','X-MAD4B-Public-CCSS-Currency':'USD'}
  fetch=lambda host,path:(html,headers)
- result,manifest,compiled=m.observe(cat,route,content,expected_host='company.example',fetch=fetch)
+ result,manifest,compiled,original_html=m.observe(cat,route,content,expected_host='company.example',fetch=fetch,include_html=True)
  test('first-party source-only proof built',result['css_source_proven'] and result['decision']=='awaiting_multi_css_route_qa')
  test('source proof cannot grant public HTML readiness',not result['browser_fcp_lcp_cls_qa_complete']
    and not result['public_css_route_certificate_issued'] and not result['fastcgi_ready_for_promotion'])
  test('server-resolved base USD pinned',result['market_country']=='base' and result['currency']=='USD')
- m.store(pathlib.Path(td),result,manifest,compiled)
+ m.store(pathlib.Path(td),result,manifest,compiled,original_html)
  test('immutable chunk output stored only in selected private report', (pathlib.Path(td)/(compiled['chunks'][0]['sha256']+'.css')).is_file())
  test('source SHA readback',json.loads((pathlib.Path(td)/'css-dependencies.json').read_text())['manifest_sha256']==manifest['manifest_sha256'])
+ test('HTML source fingerprint is bound to private CSS snapshot',
+      (pathlib.Path(td)/'source.html').read_text()==html
+      and result['original_html_sha256']==m.ordered.sha(html.encode()))
  wrong=dict(cat,host='foreign.example')
  expect_fail('foreign host cannot borrow source catalog identity',lambda:m.observe(wrong,route,content,expected_host='company.example',fetch=fetch))
  expect_fail('missing WCML identity fails closed',lambda:m.observe(cat,route,content,expected_host='company.example',fetch=lambda *args:(html,{})))

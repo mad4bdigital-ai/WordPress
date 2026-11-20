@@ -186,7 +186,9 @@ def approved_browser_network(site,env,script):
     # use host egress; keep capabilities removed and original browser locks.
     # All other tenant/workload combinations retain their original network.
     if site=='tours.dev.mad4b.com' and env=='staging' and script in (
-        'capture.js','verify.js','probe-public.js'):
+        'capture.js','verify.js','probe-public.js',
+        'capture-ordered-critical.js','verify-native-ordered-critical.js',
+        'verify-ordered-css.js'):
         # Original Source LiteSpeed CSS directory is www-data:www-data
         # (0770). With all Linux capabilities dropped, root-in-container
         # cannot traverse it without group 33. Grant ONLY the supplemental
@@ -497,6 +499,24 @@ def run_core(site):
             print('MULTICSS_ROUTE_QUALITY_AWAITING',site,lang,jobpath,
                   'files',observed['css_files'],
                   'slots',observed['cascade_slots'],flush=True)
+            # Existing CPU/Chrome guard and one original route job own this
+            # bounded, sequential QA. Explicit opt-in admits evidence
+            # generation, NEVER public promotion or FastCGI invalidation.
+            if os.environ.get('MAD4B_MULTI_CSS_SOURCE_QA','0')=='1':
+                try:
+                    browser(route,wp,host,env,'capture-ordered-critical.js',
+                      jobdir/'ordered-critical-capture.log',{},limit=390)
+                    browser(route,wp,host,env,'verify-ordered-css.js',
+                      jobdir/'ordered-full-cascade-qa.log',
+                      {'MAD4B_WIDTHS':'320,390,414,767,768'},limit=260)
+                    browser(route,wp,host,env,'verify-native-ordered-critical.js',
+                      jobdir/'ordered-native-performance.log',{},limit=880)
+                    print(run(['python3',str(TOOLS/'public-ordered-critical-admission.py'),
+                               str(jobdir)],timeout=20))
+                except (subprocess.CalledProcessError,subprocess.TimeoutExpired,
+                        ValueError,OSError) as exc:
+                    print('HOLD_MULTI_CSS_QUALITY_PROOF',site,lang,jobpath,
+                          str(exc)[:220],flush=True)
             record('hold','multi_css_route_qa_pending')
             return
     except (subprocess.CalledProcessError,subprocess.TimeoutExpired,OSError,ValueError) as exc:

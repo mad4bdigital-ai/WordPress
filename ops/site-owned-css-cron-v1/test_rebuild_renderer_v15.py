@@ -9,15 +9,16 @@ class RendererRebuild(unittest.TestCase):
             dest=Path(tmp)/'renderer'
             build(dest)
             records=json.loads(MANIFEST.read_text())
-            self.assertEqual(len(records['files']),124)
+            self.assertEqual(len(records['files']),129)
             self.assertEqual(tree_digest(dest),records['tree_sha256'])
             self.assertTrue((dest/'public-css-manifest-observer.py').is_file())
             self.assertTrue((dest/'public-css-dependency-manifest.py').is_file())
             self.assertTrue((dest/'tools/verify-ordered-css.js').is_file())
+            self.assertTrue((dest/'tools/verify-native-ordered-critical.js').is_file())
+            self.assertTrue((dest/'public-ordered-critical-admission.py').is_file())
             self.assertIn('public-css-manifest-observer.py',(dest/'run-public-route.py').read_text())
             self.assertEqual((dest/'run-public-route.py').read_bytes(),
                              (MANIFEST.parent.parent/'dynamic-critical-css-20261116/run-public-route.py').read_bytes())
-            self.assertIn('multi_css_route_qa_pending',(dest/'public-route-queue.py').read_text())
             self.assertIn('MAD4B_CSS_PROBE_ONLY',(dest/'run-site.sh').read_text())
             self.assertFalse(any(p.is_symlink() for p in dest.rglob('*')))
             import re
@@ -36,9 +37,9 @@ class RendererRebuild(unittest.TestCase):
     def test_manifest_contract_and_tree_pin(self):
         data=json.loads(MANIFEST.read_text())
         self.assertEqual(data['contract'],'mad4b.css.site-owned-renderer.v1')
-        self.assertEqual(len(data['files']),124)
+        self.assertEqual(len(data['files']),129)
         self.assertEqual(data['tree_sha256'],
-            '79f2ee6db6cf575136164a20945bb55a6a953afe1e3f5967c8e81f441fe98f71')
+            '6b797c6c8de6c4e4de9102344167cad36eb1cc92cdd16feb6424d32eaf43b24a')
 
 if __name__=='__main__':
     unittest.main(verbosity=2)

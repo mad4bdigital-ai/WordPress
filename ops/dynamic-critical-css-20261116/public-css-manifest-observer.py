@@ -45,7 +45,7 @@ def public_fetch(host,path):
           'X-MAD4B-Public-CCSS-Market')}
         return body.decode('utf-8'),safe
 
-def observe(catalog,route,root,*,expected_host,fetch=public_fetch):
+def observe(catalog,route,root,*,expected_host,fetch=public_fetch,include_html=False):
     host=catalog.get('host')
     if (catalog.get('contract')!='mad4b.public-critical-css.routes.v1'
         or not isinstance(host,str) or host!=expected_host
@@ -75,6 +75,7 @@ def observe(catalog,route,root,*,expected_host,fetch=public_fetch):
         'market_country':market,'currency':currency,
         'css_files':len(manifest['files']),'cascade_slots':len(compiled['chunks']),
         'manifest_sha256':manifest['manifest_sha256'],
+        'original_html_sha256':ordered.sha(html.encode()),
         'compiled_sha256':compiled['compiled_sha256'],
         'compiled_bytes':compiled['compiled_bytes'],
         'css_source_proven':True,
@@ -82,9 +83,9 @@ def observe(catalog,route,root,*,expected_host,fetch=public_fetch):
         'public_css_route_certificate_issued':False,
         'fastcgi_ready_for_promotion':False,
         'decision':'awaiting_multi_css_route_qa'}
-    return report,manifest,compiled
+    return (report,manifest,compiled,html) if include_html else (report,manifest,compiled)
 
-def store(root,report,manifest,compiled):
+def store(root,report,manifest,compiled,html=None):
     output=Path(root)
     if output.is_symlink() or not output.is_dir():
         raise ValueError('untrusted-private-output-root')
@@ -101,6 +102,15 @@ def store(root,report,manifest,compiled):
             f.write(blob);name=f.name
         Path(name).replace(dest)
         dest.chmod(0o600)
+    if html is not None:
+        if ordered.sha(html.encode())!=report.get('original_html_sha256'):
+            raise ValueError('html-snapshot-source-identity-drift')
+        target=output/'source.html'
+        if target.is_symlink():raise ValueError('untrusted-private-html-path')
+        with tempfile.NamedTemporaryFile(mode='wb',dir=output,delete=False) as f:
+            f.write(html.encode());name=f.name
+        Path(name).replace(target)
+        target.chmod(0o600)
     for chunk in compiled['chunks']:
         target=output/(chunk['sha256']+'.css')
         if target.is_symlink():raise ValueError('untrusted-output-css-path')
@@ -115,8 +125,9 @@ def main():
     cat,route,wp,out=sys.argv[1:]
     catalog=json.loads(Path(cat).read_text())
     job=json.loads(Path(route).read_text())
-    report,manifest,compiled=observe(catalog,job,wp,expected_host=os.environ.get('MAD4B_EXPECTED_SITE_HOST'))
-    store(out,report,manifest,compiled)
+    report,manifest,compiled,html=observe(catalog,job,wp,
+        expected_host=os.environ.get('MAD4B_EXPECTED_SITE_HOST'),include_html=True)
+    store(out,report,manifest,compiled,html)
     print('MULTICSS_SOURCE_ONLY',json.dumps(report,sort_keys=True))
 
 if __name__=='__main__':

@@ -2,7 +2,7 @@
 const fs=require('fs'),path=require('path'),crypto=require('crypto');
 const out=process.env.MAD4B_OUTPUT||'/out';
 const sha=x=>crypto.createHash('sha256').update(x).digest('hex');
-const index=JSON.parse(fs.readFileSync(path.join(out,'capture-index.json'),'utf8'));
+
 function unionRanges(ranges){
  ranges=ranges.filter(x=>Number.isInteger(x.start)&&Number.isInteger(x.end)&&x.end>x.start).sort((a,b)=>a.start-b.start);
  let r=[];for(const x of ranges){let p=r.at(-1);if(p&&x.start<=p.end){p.end=Math.max(p.end,x.end)}else r.push({start:x.start,end:x.end});}return r;
@@ -72,6 +72,9 @@ function assemble(source,rangeSet){
  const css=scan(0,source.length).join('\n');
  return {css,stats:{sourceBytes:Buffer.byteLength(source),usedRanges:used.length,selected,atRules,all,failed}};
 }
+module.exports={assemble,unionRanges};
+if(require.main===module){
+const index=JSON.parse(fs.readFileSync(path.join(out,'capture-index.json'),'utf8'));
 let candidates=[],errors=[];
 const groups={};
 for(const row of index.scenarios){
@@ -108,3 +111,5 @@ const manifest={contract:'mad4b.mobile-critical.candidates.v1',host:index.host,c
 fs.writeFileSync(path.join(out,'candidates.json'),JSON.stringify(manifest,null,2));
 console.log('ASSEMBLE_DONE',JSON.stringify({candidates:candidates.length,errors:errors.length}));
 if(errors.length)process.exitCode=2;
+
+}

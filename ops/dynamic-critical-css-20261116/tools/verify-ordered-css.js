@@ -40,7 +40,7 @@ function rewrite(document) {
   return transformed+tail;
 }
 const rewritten=rewrite(source);
-if(process.env.MAD4B_VALIDATE_ONLY==='1'){
+if(require.main===module && process.env.MAD4B_VALIDATE_ONLY==='1'){
  console.log('PASS_SOURCE_HTML_ORDER',JSON.stringify({files:manifest.files.length,chunks:summary.chunks.length}));process.exit(0);
 }
 const styleUrls=new Map(summary.chunks.map(x=>['/__mad4b_qa_compiled_'+x.sha256+'.css',path.join(OUT,x.sha256+'.css')]));
@@ -95,6 +95,8 @@ function diff(base,candidate){
           checked:base.fold.length,violations,overflow:[base.overflow,candidate.overflow],
           failed: candidate.failed,errors: candidate.errors};
 }
+module.exports={rewrite,manifest,summary,source,origin,pathname,OUT,styleUrls,sha};
+if(require.main===module){
 (async()=>{
   const browser=await chromium.launch({args:['--no-sandbox','--disable-dev-shm-usage']});
   const results=[];
@@ -113,3 +115,5 @@ function diff(base,candidate){
   fs.writeFileSync(path.join(OUT,'browser-parity.json'),JSON.stringify(report,null,2));
   if(!report.pass)process.exitCode=2;
 })().catch(e=>{console.error('ORDERED_CSS_QA_HOLD',String(e).slice(0,300));process.exitCode=4});
+
+}

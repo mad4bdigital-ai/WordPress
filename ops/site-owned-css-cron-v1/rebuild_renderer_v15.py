@@ -34,15 +34,14 @@ def build(out):
     if ledger['contract']!='mad4b.css.site-owned-renderer.v1':
         raise ValueError('renderer_manifest_contract')
     records=ledger['files']
-    if len(records)!=124:raise ValueError('renderer_manifest_file_count')
+    if len(records)!=129:raise ValueError('renderer_manifest_file_count')
     out.mkdir(mode=0o700)
     try:
         for name,expected in sorted(records.items()):
             path=Path(name)
             if path.is_absolute() or '..' in path.parts or not path.parts:
                 raise ValueError('renderer_unsafe_relative_file')
-            # v15 must include the original runner's multi-CSS source observer.
-            original=(BASE/path if path.as_posix()=='run-public-route.py'
+            original=(BASE/path if path.as_posix() in ('public-route-queue.py','public-source-families.py','run-public-route.py','tests/test-public-route-queue.py','tests/test-public-source-families.py','tools/assemble.js')
                       else OVERRIDES/path if (OVERRIDES/path).is_file()
                       else BASE/path)
             if path.as_posix()=='run-site.sh':
