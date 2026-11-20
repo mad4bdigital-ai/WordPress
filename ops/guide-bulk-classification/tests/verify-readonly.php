@@ -24,7 +24,8 @@ echo "PAGE_1 ".wp_json_encode([
 ],JSON_UNESCAPED_UNICODE)."\n";
 $hourly=$core::source(60475);
 if(is_wp_error($hourly)||count($hourly['days'])!==1||
-    $hourly['day_unit_basis']!=='explicit_one_day_aggregated_stages')
+    !in_array($hourly['day_unit_basis'],
+        ['explicit_one_day_aggregated_stages','explicit_single_day_duration_taxonomy'],true))
  WP_CLI::error('Seven hourly stages not aggregated into one guide day');
 echo "PASS hourly_stages_aggregated_as_one_day\n";
 $source=$core::source(60627);

@@ -3,7 +3,8 @@ if(!defined('ABSPATH') || !defined('WP_CLI')) exit(1);
 $cls='MAD4B_Guide_Service_Composition_V1';
 $oneDay=$cls::source(60475);
 if (is_wp_error($oneDay) || count($oneDay['days'])!==1 ||
-    $oneDay['day_unit_basis']!=='explicit_one_day_aggregated_stages')
+    !in_array($oneDay['day_unit_basis'],
+        ['explicit_one_day_aggregated_stages','explicit_single_day_duration_taxonomy'],true))
  WP_CLI::error('One-day tour hourly stages were charged as multiple days');
 WP_CLI::log('PASS hourly_stages_aggregated_into_one_day');
 $source=$cls::source(60627);

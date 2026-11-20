@@ -29,3 +29,33 @@ No HIGH classifier suggestions should be auto-approved by deployment itself; onl
 
 ## Commercial boundary
 The classification layer may store source-day statuses after a human operator approves. Incomplete/Unknown day coverage blocks Guide cost. Complete Guide cost remains internal EGP cost, not a direct adjustment to the customer Form #6 selling price, the native Tour Rate, or Checkout. Full cost composition still needs hotel, transport, extra supplier evidence, pricing policy and currency/occupancy validation.
+
+## 2026-11-20: Five-source day-unit recovery and scoped Guide-day approvals
+
+Both Tours.dev Staging and Wayfatours Production were evaluated separately, preserving each site's live source fingerprints.
+
+- 55113 Sound and Light Show: 2.5-hour Duration term proves 3 activity stops form one day. Guide in Included, but no approved half-day cost factor or assigned Guide Language. Day status remains unknown.
+- 55260 Private Nile Dinner Cruise: Half Day Duration term proves 5 activity stops form one day. No explicit Guide inclusion proven. Day status remains unknown.
+- 60443 Best of Egypt: NBSP and plural Days 7 recognized. Exactly 8 actual days; guide presence, duration and assignment per day are not certified, so eight unknown statuses.
+- 60451 Best of Cairo: one-day Duration, explicit professional Egyptologist in Included, and guided sightseeing.
+- 60455 Saqqara & Memphis: one day / nine hours, explicit Egyptologist and guided visit.
+- Additional equally evidenced single-day tours 60457 (7 hours) and 60461 (8.5 hours) have separately listed Guides and guided visits.
+
+All five previously blocked sources in each site now pass day-unit preflight (zero blocked). No original itinerary, Duration taxonomy terms or Included content was overwritten.
+
+Four one-day tours 60451, 60455, 60457, 60461 were reviewed and approved on each site with one full_day status per source. These were explicitly delegated chat-operator approvals using authorized WP-CLI, NOT human browser clicks: approval_channel=delegated_wp_cli_operator, evidence notes, source SHA, reviewer and append-only audit metadata. Internal English base-cost readback is EGP 2,500 each. Available languages must be checked independently for other languages.
+
+Before-write backup files:
+  /opt/mad4b-company-provisioning/backups/guide-five-source-20261120/{tours-dev,wayfatours}-preapproval-snapshot.json
+
+Source divergence preserved: Tour 60451 has different itinerary description/HTML encoding in Wayfatours and Tours.dev, although Guide inclusion evidence is equivalent. Each site's approval was based on its own live SHA. Never blindly copy source-day postmeta across sites.
+
+Source hash now covers Included services, ordered itinerary row content, source title and duration taxonomy proof. Subsequent edits invalidate review. No Rate states, retail prices, Checkout or bookings changed. Wayfatours remains at 106 Draft and 2 Auto-draft Tour Rates.
+
+Regression:
+- tests/verify-five-source-recovery.php: recovered sources, HIGH evidence, weak evidence excluded, inclusion edit invalidates source hash.
+- tests/verify-high-mockwrite.php: delegated HIGH mock review with audit, without real Tour writes, regardless of pre-approved status.
+- tests/verify-approved-readback.php: postrelease four reviews and three unresolved sources.
+- apply-evidenced-one-day-guides.php: scoped ID whitelist, dry-run by default, fresh hash checks, backups and no Rate changes.
+
+Commercially unresolved: guided evening show needs half-day cost factor and Guide Language assignments; yacht guide service is not proven; Best of Egypt's eight-day guide assignment/durations still require service-level review. Unknown is NEVER interpreted as no guide.

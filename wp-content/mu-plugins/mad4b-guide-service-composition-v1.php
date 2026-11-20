@@ -82,8 +82,11 @@ final class MAD4B_Guide_Service_Composition_V1 {
             // excursion may contain many hourly stops. Require an explicit
             // "Day/Jour/Día/Tag/Giorno N" label on EVERY multi-row stage.
             $unescaped=html_entity_decode($title,ENT_QUOTES|ENT_HTML5,'UTF-8');
-            if (preg_match('/\b(?:day|jour|d[ií]a|tag|giorno)\s*[:#\-]?\s*[0-9]{1,3}\b/iu',$unescaped)
-                || preg_match('/اليوم\s*(?:[0-9٠-٩]+|الأول|الثاني|الثالث|الرابع|الخامس|السادس|السابع|الثامن|التاسع|العاشر)/u',$unescaped)) {
+            $normalized=preg_replace('/[\x{00A0}\x{202F}\x{2007}\s]+/u',' ',$unescaped);
+            // Source content commonly uses non-breaking spaces and sometimes
+            // "Days 7". Both represent a numbered day, not an unlabeled stop.
+            if (preg_match('/\b(?:days?|jour|d[ií]a|tag|giorno)\s*[:#\-]?\s*[0-9]{1,3}\b/iu',$normalized)
+                || preg_match('/اليوم\s*(?:[0-9٠-٩]+|الأول|الثاني|الثالث|الرابع|الخامس|السادس|السابع|الثامن|التاسع|العاشر)/u',$normalized)) {
                 ++$explicitDays;
             }
             // The classifier and a past human review both depend on the
@@ -95,27 +98,53 @@ final class MAD4B_Guide_Service_Composition_V1 {
         }
         if (!$days) return new WP_Error('guide_itinerary_days_missing');
         $basis=count($days)>1?'explicit_day_labels':'single_itinerary_row';
+        $durationProof=null;
         if (count($days)>1 && $explicitDays!==count($days)) {
-            // Repeater order is not duration. Group all hourly stops as one
-            // guide day ONLY when the Tour title explicitly says one day,
-            // half day, full day, or a bounded number of hours.
+            // WPML/JetEngine activity repeater rows are itinerary STOPS.
+            // A single-day classification must be sourced from an explicit
+            // Tour title OR an exact Duration taxonomy term, not row count.
             $title=html_entity_decode(wp_strip_all_tags((string)get_the_title($tour)),
                 ENT_QUOTES|ENT_HTML5,'UTF-8');
-            $oneDay=$owner==='post' && $explicitDays===0 &&
-                preg_match('/\b(?:half[- ]day|full[- ]day|(?:1|one|single)[- ]day|(?:[1-9]|1[0-9])[- ]hours?)(?:\b|$)/iu',$title);
-            if (!$oneDay) return new WP_Error('guide_itinerary_day_units_unverified');
+            $titleSingle=preg_match('/\b(?:half[- ]day|full[- ]day|(?:1|one|single)[- ]day|(?:[1-9]|1[0-9])[- ]hours?)(?:\b|$)/iu',$title);
+            $termProof=[];
+            $terms=$owner==='post' ? wp_get_post_terms($tour,'duration-options',['fields'=>'all']) : [];
+            if (is_array($terms)) foreach ($terms as $term) {
+                if (!($term instanceof WP_Term)) continue;
+                $label=trim(html_entity_decode($term->name,ENT_QUOTES|ENT_HTML5,'UTF-8'));
+                $isOneDay=(bool)preg_match('/^(?:half[- ]day|full[- ]day|(?:1|one)[- ]day)$/iu',$label);
+                $isHours=false;
+                if (preg_match('/^([0-9]+(?:\.[0-9]+)?)\s*(?:hours?|hrs?)$/iu',$label,$m)) {
+                    $hours=(float)$m[1];
+                    $isHours=$hours>0 && $hours<=24;
+                }
+                if ($isOneDay || $isHours) {
+                    $termProof[]=['term_id'=>(int)$term->term_id,'label'=>$label];
+                }
+            }
+            usort($termProof,static fn($a,$b)=>$a['term_id']<=>$b['term_id']);
+            if ($owner!=='post' || $explicitDays!==0 || (!$titleSingle && !$termProof)) {
+                return new WP_Error('guide_itinerary_day_units_unverified');
+            }
+            $durationProof=$termProof;
             $days=['day-1'=>[
                 'key'=>'day-1','number'=>'1',
                 'title'=>'Single-day itinerary ('.count($days).' activity stages)',
             ]];
-            $basis='explicit_one_day_aggregated_stages';
-            $signatures[]=['single_day_source_title',$title];
+            $basis=$termProof?'explicit_single_day_duration_taxonomy':'explicit_one_day_aggregated_stages';
+            $signatures[]=['single_day_source_title',$title,'duration_terms'=>$durationProof];
+        }
+        if ($owner==='post') {
+            // A reviewed decision may rely on explicit Included Guide text.
+            // Invalidating that text must also invalidate old day approvals.
+            $signatures[]=['tour_included_service_hash',
+                hash('sha256',wp_json_encode(get_post_meta($tour,'includes',true)))];
         }
         return [
             'tour_id'=>$tour,'program_id'=>$program?:null,
             'source_kind'=>$owner,'source_id'=>$id,'source_taxonomy'=>$kind,
             'days'=>$days, 'source_hash'=>hash('sha256',wp_json_encode($signatures)),
             'day_unit_basis'=>$basis,
+            'duration_proof'=>$durationProof,
             'source_scope'=>'canonical_en_wpml_family','program_selection_required'=>false,
         ];
     }

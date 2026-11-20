@@ -131,6 +131,41 @@ final class MAD4B_Guide_Bulk_Classification_V1 {
         if ($transfer && !$sightseeing) return self::proposal('none','low','arrival_or_transfer_without_explicit_guide',$transfer);
         return self::proposal('unknown','none','guide_service_not_explicit',$title?:mb_substr($desc,0,100));
     }
+    /**
+     * Independent source proof for exactly ONE day. Both the published
+     * Included services and the duration taxonomy must establish a full
+     * guided one-day program. A mere activity title or mentions of a
+     * guide are not enough to approve a billable full day.
+     */
+    private static function includedGuideDay(array $source,array $candidate): array {
+        if ($source['source_kind']!=='post' ||
+            $source['day_unit_basis']!=='explicit_single_day_duration_taxonomy' ||
+            in_array($candidate['confidence'],['high','conflict'],true)) return $candidate;
+        $duration=array_map(static fn($p)=>strtolower(trim((string)($p['label']??''))),
+            (array)($source['duration_proof']??[]));
+        $full=array_filter($duration,static fn($v)=>
+            in_array($v,['1 day','one day','full-day','full day'],true));
+        if (!$full || in_array('half day',$duration,true) ||
+            in_array('half-day',$duration,true)) return $candidate;
+        $includes=get_post_meta((int)$source['tour_id'],'includes',true);
+        if (!is_array($includes)) return $candidate;
+        $guide=null;$guided=null;
+        foreach ($includes as $item) {
+            if (!is_array($item))continue;
+            $text=self::plain((string)($item['included_item']??''));
+            if ($text==='')continue;
+            if (preg_match('~\b(?:professional|licensed|egyptologist)\b.{0,55}\bguide\b~iu',$text)) {
+                $guide=$text;
+            }
+            if (preg_match('~\bguided\s+(?:tour|visit|excursion|sightseeing)\b~iu',$text)) {
+                $guided=$text;
+            }
+        }
+        if ($guide===null || $guided===null) return $candidate;
+        return self::proposal('full_day','high','guide_and_guided_visit_included_with_one_day_duration',
+            'Duration: '.implode(', ',$duration).' | Included: '.$guide.' | '.$guided);
+    }
+
     private static function proposal(string $status,string $confidence,string $reason,string $evidence): array {
         return [
             'suggested_status'=>$status,'confidence'=>$confidence,'reason'=>$reason,
@@ -150,7 +185,7 @@ final class MAD4B_Guide_Bulk_Classification_V1 {
         $raw=$source['source_kind']==='term'
             ?get_term_meta($source['source_id'],'program_itinerary',true)
             :get_post_meta($source['source_id'],'itinerary_item',true);
-        if ($source['day_unit_basis']==='explicit_one_day_aggregated_stages') {
+        if (in_array($source['day_unit_basis'],['explicit_one_day_aggregated_stages', 'explicit_single_day_duration_taxonomy'],true)) {
             $stageText=[];
             foreach ((array)$raw as $stage) {
                 if (!is_array($stage)) continue;
@@ -165,6 +200,7 @@ final class MAD4B_Guide_Bulk_Classification_V1 {
         $rows=[];$high=0;$unresolved=0;
         foreach ($source['days'] as $key=>$day) {
             $proposal=self::classify($day,(array)($raw[$key]??[]));
+            $proposal=self::includedGuideDay($source,$proposal);
             if ($proposal['bulk_eligible'] && ($states[$key]??'unknown')==='unknown') $high++;
             if (($states[$key]??'unknown')==='unknown') $unresolved++;
             $rows[]=$day+$proposal+['saved_status'=>$states[$key]??'unknown'];
@@ -174,6 +210,7 @@ final class MAD4B_Guide_Bulk_Classification_V1 {
             'tour_id'=>$tour,'program_id'=>$program,'source_key'=>$source['source_kind'].':'.$source['source_id'],
             'source_hash'=>$source['source_hash'],'source_kind'=>$source['source_kind'],
             'source_id'=>$source['source_id'],'day_unit_basis'=>$source['day_unit_basis'],
+            'duration_proof'=>$source['duration_proof']??null,
             'revision'=>is_wp_error($saved)?0:(int)$saved['revision'],
             'half_day_factor'=>is_wp_error($saved)?null:$saved['half_day_factor'],
             'days'=>$rows,'day_count'=>count($rows),
@@ -307,6 +344,19 @@ final class MAD4B_Guide_Bulk_Classification_V1 {
                 if ($note!=='') $evidence['_review_note']=mb_substr($note,0,500);
             }
             if (!$changed) return new WP_Error('guide_bulk_no_eligible_changes');
+            // A delegated WP-CLI source review is NOT falsely described as
+            // a personal approval in the admin browser. Record both channel
+            // and evidence so reviewers know where the decision originated.
+            $approvalChannel=(defined('WP_CLI') && WP_CLI)
+                ?'delegated_wp_cli_operator':'wordpress_admin_ajax';
+            $delegationNote=trim(sanitize_textarea_field(
+                (string)($request['review_note']??'')));
+            if ($mode==='high_only' && $delegationNote!=='') {
+                if (mb_strlen($delegationNote)<12) {
+                    return new WP_Error('guide_bulk_delegation_note_too_short');
+                }
+                $evidence['_delegation_note']=mb_substr($delegationNote,0,500);
+            }
             if (in_array('half_day',$statuses,true) && $factor===null) {
                 return new WP_Error('guide_bulk_half_day_factor_required');
             }
@@ -318,6 +368,7 @@ final class MAD4B_Guide_Bulk_Classification_V1 {
                 'reviewed_at'=>gmdate('c'),
                 'status'=>in_array('unknown',$statuses,true)?'bulk_partial_review':'bulk_reviewed',
                 'review_method'=>$mode,
+                'approval_channel'=>$approvalChannel,
                 'review_evidence'=>$evidence,
                 'prior_review_hash'=>is_wp_error($old)?null:hash('sha256',wp_json_encode($old)),
                 'source_classification_contract'=>'mad4b.guide-bulk.v1',
@@ -338,6 +389,7 @@ final class MAD4B_Guide_Bulk_Classification_V1 {
                 'revision'=>$record['revision'],'operator_id'=>get_current_user_id(),
                 'at'=>$record['reviewed_at'],'changes'=>$changed,
                 'evidence'=>$evidence,'mode'=>$mode,
+                'approval_channel'=>$approvalChannel,
             ];
             $auditKey='_mad4b_guide_day_review_audit_v1';
             if ($isTerm) add_term_meta($id,$auditKey,$audit);
