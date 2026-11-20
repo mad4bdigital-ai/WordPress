@@ -13,6 +13,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: mad4b-cwv-per-site-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   hermetic-tenant-activation:
     name: Site-bound activation / PHP ${{ matrix.php }}
