@@ -1,0 +1,25 @@
+{
+  "contract": "mad4b.host-v125.anonymous-staging-authorization-readback.v1",
+  "date_utc": "2026-11-20",
+  "interpretation": "Anonymous read/admin permission denied by original Portfolio Manager",
+  "limitations": [
+    "Only original live Staging policy was tested, not a new candidate runtime",
+    "Does not test all 13 REST route callbacks or all 379 bootstrap entries",
+    "Staging identity verified is not anonymous authority"
+  ],
+  "owner_token_used": false,
+  "permission_writes": false,
+  "request_replayed": false,
+  "source": "WPCLI after standard authenticated platform bootstrap then wp_set_current_user(0)",
+  "staging_readback": {
+    "anonymous_admin_denied_code": "mad4b_manager_admin_required",
+    "anonymous_read_denied_code": "mad4b_manager_login_required",
+    "company_manager_loaded": true,
+    "context": "Tours.dev Staging WPCLI anonymous, no writes",
+    "manager_staging_identity": true,
+    "no_write_actions": true,
+    "route_discovery_count": 13,
+    "site_env": "staging",
+    "user_id": 0
+  }
+}

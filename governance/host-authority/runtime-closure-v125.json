@@ -1,0 +1,926 @@
+{
+  "activation": {
+    "mu_bootstrap": false,
+    "new_signed_owner_approval_needed_for_live_release": true,
+    "original306_worker_replaced": false,
+    "original318_write_allowed": false,
+    "production_deployment": false,
+    "wordpress_plugin_installed": false
+  },
+  "base_master_sha": "1ed359a52ecd1c94574ddfd31c9327de5779b856",
+  "class_graph": {
+    "MAD4B_Broker_Exact_SSH_Authority_V1": [
+      "MAD4B_Central_Dual_Lane_Registry_V1",
+      "MAD4B_Central_Host_Scope_V1",
+      "MAD4B_Central_SSH_Command_Intake_V1",
+      "MAD4B_Central_VPS_Broker_V1",
+      "MAD4B_Company_Environment_Registry_V2",
+      "MAD4B_Company_Operation_Admission_V1",
+      "MAD4B_Company_Portfolio_Manager_V1",
+      "MAD4B_Manager_Auto_Write_V1",
+      "MAD4B_Native_VPS_Principal_V1",
+      "MAD4B_Original_Native_Operation_Providers_V1",
+      "MAD4B_Original_Remote_Hostinger_328_V1",
+      "MAD4B_Original_Verified_WPCLI_Transport_V1",
+      "MAD4B_Staging_Manager_Admission_Bridge_V1"
+    ],
+    "MAD4B_Broker_Remote_SSH_Receipt_V1": [
+      "MAD4B_Broker_Exact_SSH_Authority_V1",
+      "MAD4B_Central_Dual_Lane_Registry_V1",
+      "MAD4B_Central_VPS_Broker_V1",
+      "MAD4B_Native_WPCLI_Receipt_Verifier_V1"
+    ],
+    "MAD4B_Central_Company_REST_V1": [
+      "MAD4B_Company_Site_Replacement_V1"
+    ],
+    "MAD4B_Central_Dual_Lane_Registry_V1": [
+      "MAD4B_Company_Recovery_Ladder_V1",
+      "MAD4B_SCP_Site_Profile"
+    ],
+    "MAD4B_Central_Host_Scope_V1": [
+      "MAD4B_Central_Dual_Lane_Registry_V1",
+      "MAD4B_SCP_Site_Profile"
+    ],
+    "MAD4B_Central_PK_Pairing_V1": [
+      "MAD4B_Central_Company_REST_V1"
+    ],
+    "MAD4B_Central_SSH_Command_Intake_V1": [
+      "MAD4B_Central_Dual_Lane_Registry_V1",
+      "MAD4B_Central_Host_Scope_V1",
+      "MAD4B_Central_VPS_Broker_V1",
+      "MAD4B_Company_Environment_Registry_V2",
+      "MAD4B_Company_Manager_Unified_Administrator_Principal",
+      "MAD4B_Company_Native_WPCLI_Enrollment_V1",
+      "MAD4B_Company_Operation_Admission_V1",
+      "MAD4B_Company_Portfolio_Manager_V1",
+      "MAD4B_MU_File_Resolver_V1",
+      "MAD4B_Manager_Auto_Write_V1",
+      "MAD4B_Original_Native_Operation_Providers_V1",
+      "MAD4B_Original_Remote_Hostinger_328_V1",
+      "MAD4B_Original_Sealed_Command_Rebind_V1",
+      "MAD4B_Original_Verified_WPCLI_Transport_V1",
+      "MAD4B_Original_WPCLI_Sealed_Command_V2",
+      "MAD4B_SCP_Site_Profile"
+    ],
+    "MAD4B_Central_Signed_Profile_V4": [
+      "MAD4B_Company_Environment_Registry_V2",
+      "MAD4B_Environment_Signed_Identity_V4"
+    ],
+    "MAD4B_Central_Simple_Connections_V1": [
+      "MAD4B_Central_Company_REST_V1"
+    ],
+    "MAD4B_Central_VPS_Broker_V1": [
+      "MAD4B_Broker_Exact_SSH_Authority_V1",
+      "MAD4B_Central_Dual_Lane_Registry_V1",
+      "MAD4B_Central_Host_Scope_V1",
+      "MAD4B_Central_SSH_Command_Intake_V1",
+      "MAD4B_Company_Native_WPCLI_Enrollment_V1",
+      "MAD4B_Company_Operation_Admission_V1",
+      "MAD4B_Company_Portfolio_Manager_V1",
+      "MAD4B_MU_File_Resolver_V1",
+      "MAD4B_Manager_Auto_Write_V1",
+      "MAD4B_Native_VPS_Principal_V1",
+      "MAD4B_Original_Native_Operation_Providers_V1",
+      "MAD4B_Original_Remote_Hostinger_328_V1",
+      "MAD4B_Original_Verified_WPCLI_Transport_V1",
+      "MAD4B_Tourism_Workflow_REST"
+    ],
+    "MAD4B_Company_Environment_Registry_V2": [
+      "MAD4B_Central_Company_REST_V1",
+      "MAD4B_Central_Simple_Connections_V1",
+      "MAD4B_Company_Portfolio_Manager_V1",
+      "MAD4B_Company_Site_Replacement_V1",
+      "MAD4B_Environment_Signed_Identity_V4",
+      "MAD4B_Native_VPS_Principal_V1"
+    ],
+    "MAD4B_Company_Execution_Resolver_V1": [
+      "MAD4B_Central_Company_REST_V1",
+      "MAD4B_Central_PK_Pairing_V1",
+      "MAD4B_Central_Simple_Connections_V1",
+      "MAD4B_Company_Environment_Registry_V2",
+      "MAD4B_Company_Host_Topology_Registry_V1",
+      "MAD4B_Company_Native_Write_Executor_V1",
+      "MAD4B_Company_Operation_Admission_V1",
+      "MAD4B_SCP_Company_Reconcile_Skill_Set_V1"
+    ],
+    "MAD4B_Company_Native_WPCLI_Enrollment_V1": [
+      "MAD4B_Central_VPS_Broker_V1",
+      "MAD4B_Company_Environment_Registry_V2",
+      "MAD4B_Company_Operation_Admission_V1",
+      "MAD4B_Company_Portfolio_Manager_V1",
+      "MAD4B_Company_Site_Replacement_V1",
+      "MAD4B_Native_VPS_Principal_V1",
+      "MAD4B_Original_Remote_Hostinger_305_V1"
+    ],
+    "MAD4B_Company_Native_Write_Executor_V1": [
+      "MAD4B_Broker_Remote_SSH_Receipt_V1",
+      "MAD4B_Central_VPS_Broker_V1",
+      "MAD4B_Company_Environment_Registry_V2",
+      "MAD4B_Company_Native_Scoped_Write_Handler_V1",
+      "MAD4B_Company_Operation_Admission_V1",
+      "MAD4B_Manager_Auto_Write_V1",
+      "MAD4B_Native_WPCLI_Receipt_Verifier_V1",
+      "MAD4B_Original_Verified_WPCLI_Transport_V1"
+    ],
+    "MAD4B_Company_Operation_Admission_V1": [
+      "MAD4B_Company_Portfolio_Manager_V1",
+      "MAD4B_Manager_Auto_Write_V1",
+      "MAD4B_SCP_Company_Reconcile_Skill_Set_V1",
+      "MAD4B_SCP_Site_Profile",
+      "MAD4B_Staging_Manager_Admission_Bridge_V1"
+    ],
+    "MAD4B_Company_Recovery_Ladder_V1": [
+      "MAD4B_Company_Operation_Admission_V1",
+      "MAD4B_Manager_Auto_Write_V1"
+    ],
+    "MAD4B_Company_Site_Replacement_V1": [
+      "MAD4B_Central_VPS_Broker_V1",
+      "MAD4B_Company_Environment_Registry_V2",
+      "MAD4B_Company_Native_WPCLI_Enrollment_V1",
+      "MAD4B_SCP_Audit"
+    ],
+    "MAD4B_Dynamic_313_Proof_V1": [],
+    "MAD4B_Dynamic_WP_313_Readback_V1": [
+      "MAD4B_Broker_Exact_SSH_Authority_V1",
+      "MAD4B_Broker_Remote_SSH_Receipt_V1",
+      "MAD4B_Central_VPS_Broker_V1",
+      "MAD4B_Dynamic_313_Proof_V1",
+      "MAD4B_Native_WPCLI_Receipt_Verifier_V1"
+    ],
+    "MAD4B_Environment_Signed_Identity_V4": [
+      "MAD4B_Central_Company_REST_V1",
+      "MAD4B_Central_PK_Pairing_V1",
+      "MAD4B_Central_Signed_Profile_V4",
+      "MAD4B_Central_VPS_Broker_V1",
+      "MAD4B_Native_VPS_Principal_V1"
+    ],
+    "MAD4B_Generic_Native_Clone_V1": [
+      "MAD4B_Company_Environment_Registry_V2",
+      "MAD4B_Company_Portfolio_Manager_V1",
+      "MAD4B_Tourism_Workflow_REST"
+    ],
+    "MAD4B_Manager_Auto_Write_V1": [
+      "MAD4B_Company_Bootstrap_Contract",
+      "MAD4B_Company_ContentJob_Skill_Preflight_V1",
+      "MAD4B_Company_Execution_Resolver_V1",
+      "MAD4B_Company_Operation_Admission_V1",
+      "MAD4B_Company_Portfolio_Manager_V1",
+      "MAD4B_Company_Site_Replacement_V1",
+      "MAD4B_SCP_Site_Profile",
+      "MAD4B_Staging_Manager_Admission_Bridge_V1"
+    ],
+    "MAD4B_Native_Host_Exact_Grant_V1": [
+      "MAD4B_Central_Dual_Lane_Registry_V1",
+      "MAD4B_Central_SSH_Command_Intake_V1",
+      "MAD4B_Central_VPS_Broker_V1",
+      "MAD4B_Company_Environment_Registry_V2",
+      "MAD4B_Company_Native_WPCLI_Enrollment_V1",
+      "MAD4B_Environment_Signed_Identity_V4",
+      "MAD4B_Original_Remote_Hostinger_328_V1"
+    ],
+    "MAD4B_Native_VPS_Principal_V1": [
+      "MAD4B_Central_Host_Scope_V1",
+      "MAD4B_Central_SSH_Command_Intake_V1",
+      "MAD4B_Central_VPS_Broker_V1"
+    ],
+    "MAD4B_Native_WPCLI_Receipt_Verifier_V1": [
+      "MAD4B_Broker_Exact_SSH_Authority_V1",
+      "MAD4B_Broker_Remote_SSH_Receipt_V1",
+      "MAD4B_Central_SSH_Command_Intake_V1",
+      "MAD4B_Central_VPS_Broker_V1",
+      "MAD4B_Dynamic_WP_313_Readback_V1"
+    ],
+    "MAD4B_Original_Core_Recovery_V1": [
+      "MAD4B_Central_Dual_Lane_Registry_V1",
+      "MAD4B_Central_SSH_Command_Intake_V1",
+      "MAD4B_Central_VPS_Broker_V1",
+      "MAD4B_Manager_Auto_Write_V1",
+      "MAD4B_Original_Native_Operation_Providers_V1"
+    ],
+    "MAD4B_Original_Native_Operation_Providers_V1": [
+      "MAD4B_Central_Dual_Lane_Registry_V1",
+      "MAD4B_Central_VPS_Broker_V1"
+    ],
+    "MAD4B_Original_Remote_Hostinger_305_V1": [
+      "MAD4B_Central_Dual_Lane_Registry_V1",
+      "MAD4B_Central_VPS_Broker_V1",
+      "MAD4B_Company_Environment_Portfolio_Evidence_V1",
+      "MAD4B_Company_Environment_Registry_V2",
+      "MAD4B_Company_Execution_Resolver_V1",
+      "MAD4B_Company_Native_WPCLI_Enrollment_V1",
+      "MAD4B_Company_Operation_Admission_V1",
+      "MAD4B_Company_Portfolio_Manager_V1",
+      "MAD4B_Native_Host_Exact_Grant_V1"
+    ],
+    "MAD4B_Original_Remote_Hostinger_328_V1": [
+      "MAD4B_Central_Dual_Lane_Registry_V1",
+      "MAD4B_Central_VPS_Broker_V1",
+      "MAD4B_Company_Environment_Registry_V2",
+      "MAD4B_Company_Execution_Resolver_V1",
+      "MAD4B_Company_Native_WPCLI_Enrollment_V1",
+      "MAD4B_Original_Remote_Hostinger_305_V1"
+    ],
+    "MAD4B_Original_Sealed_Command_Rebind_V1": [
+      "MAD4B_Central_Dual_Lane_Registry_V1",
+      "MAD4B_Central_SSH_Command_Intake_V1",
+      "MAD4B_Central_VPS_Broker_V1",
+      "MAD4B_Original_Core_Recovery_V1",
+      "MAD4B_Original_Remote_Hostinger_328_V1",
+      "MAD4B_Original_WPCLI_Sealed_Command_V2"
+    ],
+    "MAD4B_Original_WPCLI_Sealed_Command_V2": [
+      "MAD4B_Central_Dual_Lane_Registry_V1",
+      "MAD4B_Central_SSH_Command_Intake_V1",
+      "MAD4B_Central_VPS_Broker_V1",
+      "MAD4B_Original_Core_Recovery_V1",
+      "MAD4B_Original_Remote_Hostinger_328_V1"
+    ],
+    "MAD4B_Staging_Manager_Admission_Bridge_V1": [
+      "MAD4B_Company_Environment_Portfolio_Evidence_V1",
+      "MAD4B_Company_Execution_Resolver_V1",
+      "MAD4B_Company_Operation_Admission_V1",
+      "MAD4B_Company_Portfolio_Manager_V1",
+      "MAD4B_Manager_Auto_Write_V1"
+    ],
+    "MAD4B_Tourism_Workflow_REST": [
+      "MAD4B_Central_VPS_Broker_V1",
+      "MAD4B_Company_Portfolio_Manager_V1",
+      "MAD4B_Generic_Native_Clone_V1",
+      "MAD4B_SCP_Audit",
+      "MAD4B_SCP_Company_Domain_Cloudflare",
+      "MAD4B_SCP_Site_Profile"
+    ]
+  },
+  "collision_definitions": [
+    {
+      "alternate_sha256": {
+        "modules/compat/305-mad4b-original-wpcli-seal-v2.php": "914daddf1a832175e7127ec603635cef999eebb4c64f33c2a32f0abd17d687d7"
+      },
+      "candidate_rule": "select only exactly-one ordered-map source; hold runtime until reviewed",
+      "class": "MAD4B_Original_WPCLI_Sealed_Command_V2",
+      "mapped": "modules/compat/305-mad4b-original-sealed-rebind.php",
+      "not_mapped": [
+        "modules/compat/305-mad4b-original-wpcli-seal-v2.php"
+      ]
+    }
+  ],
+  "contract": "mad4b.host-authority.runtime-closure-review.v125",
+  "eligibility": "HOLD_RUNTIME_ACTIVATION",
+  "files": [
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Central_PK_Pairing_V1"
+      ],
+      "git_blob": "78dc58dec7ee438dfdbdb1a64a6940989936a8db",
+      "hooks": {
+        "add_action": 1,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 1
+      },
+      "sha256": "af5c9bad7576a4a563bb3ec4bff79344bbdf5c8fd459382d1793e5a9c2e4103e",
+      "source": "wp-content/plugins/mad4b-platform/modules/authority/170-mad4b-central-company-public-key-pairing.php",
+      "source_load_order_index": 55,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/authority/170-mad4b-central-company-public-key-pairing.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Environment_Signed_Identity_V4"
+      ],
+      "git_blob": "06e08113feaa56bf4ac0ff63d3c084a98885996e",
+      "hooks": {
+        "add_action": 1,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 1
+      },
+      "sha256": "0105cac59f2eafc347010b9b9fd57da09fd633a501973a35ed70e3b6d2f2a284",
+      "source": "wp-content/plugins/mad4b-platform/modules/authority/299-mad4b-environment-signed-identity-v4.php",
+      "source_load_order_index": 101,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/authority/299-mad4b-environment-signed-identity-v4.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Broker_Exact_SSH_Authority_V1"
+      ],
+      "git_blob": "23cf1168ede1e2ab4a670937fde85fab0ce06d5c",
+      "hooks": {
+        "add_action": 0,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 0
+      },
+      "sha256": "b7d0c27029b3b19ad58a5ab6356cc525065f062d6ef346bab0966c4d0aebc8af",
+      "source": "wp-content/plugins/mad4b-platform/modules/authority/312-mad4b-broker-exact-ssh-authority.php",
+      "source_load_order_index": 124,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/authority/312-mad4b-broker-exact-ssh-authority.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Native_Host_Exact_Grant_V1"
+      ],
+      "git_blob": "3893d1bbb6a23b46027d3d530512a12946b483b6",
+      "hooks": {
+        "add_action": 0,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 0
+      },
+      "sha256": "76ba920416dec16db8f6f53c63bfa749a7eb6277dd5190cc6ce6c74ebb49fc23",
+      "source": "wp-content/plugins/mad4b-platform/modules/authority/318-mad4b-native-host-exact-grant.php",
+      "source_load_order_index": 132,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/authority/318-mad4b-native-host-exact-grant.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Company_Native_WPCLI_Enrollment_V1"
+      ],
+      "git_blob": "b9fe4e2d09670f20df82be1d1eb8255a43ca0fed",
+      "hooks": {
+        "add_action": 0,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 0
+      },
+      "sha256": "cb4ad044807063eb8f898e1f12c3119349dea3e5fb6ad8ed5287ff1f75558cae",
+      "source": "wp-content/plugins/mad4b-platform/modules/authority/325-mad4b-company-native-wpcli-enrollment.php",
+      "source_load_order_index": 144,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/authority/325-mad4b-company-native-wpcli-enrollment.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Original_Remote_Hostinger_305_V1"
+      ],
+      "git_blob": "742f79bc98af28c1578db8d80d827fc13dd61692",
+      "hooks": {
+        "add_action": 0,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 0
+      },
+      "sha256": "520d26fd092351b48afd49d7549a9b981021a38a285d48cd9e0681cbb9b65147",
+      "source": "wp-content/plugins/mad4b-platform/modules/authority/326-mad4b-original-remote-hostinger-305.php",
+      "source_load_order_index": null,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/authority/326-mad4b-original-remote-hostinger-305.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Original_Remote_Hostinger_328_V1"
+      ],
+      "git_blob": "ebfc1b4d10ec858193ce3e1a1e13969246687d7e",
+      "hooks": {
+        "add_action": 0,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 0
+      },
+      "sha256": "4f22bc789f860d3a96165775e888afbdc9f5a3fb2deaf49a3ad4f87a9bd03972",
+      "source": "wp-content/plugins/mad4b-platform/modules/authority/327-mad4b-original-remote-hostinger-328.php",
+      "source_load_order_index": null,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/authority/327-mad4b-original-remote-hostinger-328.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Company_Native_Write_Executor_V1"
+      ],
+      "git_blob": "21fe266d650929486ecb9eab2c8c37c6415cf7c6",
+      "hooks": {
+        "add_action": 1,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 0
+      },
+      "sha256": "09dee514840cffe92dbbce47bb8eea968c527a6458c2cb12c5920aa6ba194e0d",
+      "source": "wp-content/plugins/mad4b-platform/modules/authority/333-mad4b-company-native-write-adapter.php",
+      "source_load_order_index": 158,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/authority/333-mad4b-company-native-write-adapter.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Dynamic_313_Proof_V1"
+      ],
+      "git_blob": "bd28eac1e7fc7746a762ebf1bae46202fe659bae",
+      "hooks": {
+        "add_action": 0,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 0
+      },
+      "sha256": "6fab2c8de06969c0d3f822bc061c67f05237669e52869c00becc6622cb4dd8fd",
+      "source": "wp-content/plugins/mad4b-platform/modules/authority/dynamic313/class-mad4b-dynamic-313-verifier.php",
+      "source_load_order_index": null,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/authority/dynamic313/class-mad4b-dynamic-313-verifier.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Dynamic_WP_313_Readback_V1"
+      ],
+      "git_blob": "e60374c221d68038cd28ba51e7e21b147ae4ed37",
+      "hooks": {
+        "add_action": 0,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 0
+      },
+      "sha256": "106d74b496b11978fd5aec90cdb0542aea825866ca0dacecbb525e88e077e5e1",
+      "source": "wp-content/plugins/mad4b-platform/modules/authority/dynamic313/class-mad4b-dynamic-313-wordpress.php",
+      "source_load_order_index": null,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/authority/dynamic313/class-mad4b-dynamic-313-wordpress.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Tourism_Workflow_REST"
+      ],
+      "git_blob": "cd151b280868da379e48227c4cbe1c8d61ab569a",
+      "hooks": {
+        "add_action": 1,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 1
+      },
+      "sha256": "01b60f6fccdb99d15d9de14b5fa76f46605768558a0023cc7a64336e656a21c6",
+      "source": "wp-content/plugins/mad4b-platform/modules/compat/230-mad4b-tourism-workflow-rest.php",
+      "source_load_order_index": 64,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/compat/230-mad4b-tourism-workflow-rest.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Central_SSH_Command_Intake_V1"
+      ],
+      "git_blob": "9ad1f00f2a1f12ad2dc46cb3d83ff8908d6516af",
+      "hooks": {
+        "add_action": 1,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 5
+      },
+      "sha256": "24f78c1a6837b72e362574b8ceabd4307642a57eb4afe634db12fa970147dfb2",
+      "source": "wp-content/plugins/mad4b-platform/modules/compat/305-mad4b-central-ssh-command-intake.php",
+      "source_load_order_index": 111,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/compat/305-mad4b-central-ssh-command-intake.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Original_Sealed_Command_Rebind_V1",
+        "MAD4B_Original_WPCLI_Sealed_Command_V2"
+      ],
+      "git_blob": "fae691319531c80aec21b4d44a1055e151c49d66",
+      "hooks": {
+        "add_action": 0,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 0
+      },
+      "sha256": "89346f56b544f66f5fab26d3c863839801a633db20916f971d033766f514a601",
+      "source": "wp-content/plugins/mad4b-platform/modules/compat/305-mad4b-original-sealed-rebind.php",
+      "source_load_order_index": 113,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/compat/305-mad4b-original-sealed-rebind.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Central_VPS_Broker_V1"
+      ],
+      "git_blob": "b2d705bef1b3a0c913fba989abc06c96e9345a91",
+      "hooks": {
+        "add_action": 1,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 3
+      },
+      "sha256": "ac9c89d13e31541234af8d5e072eb3bbc2b1b7f64d634f29cdd0400a74e08f4b",
+      "source": "wp-content/plugins/mad4b-platform/modules/compat/306-mad4b-central-vps-broker.php",
+      "source_load_order_index": 114,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/compat/306-mad4b-central-vps-broker.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Original_Core_Recovery_V1"
+      ],
+      "git_blob": "cc3ec98a49d99bef17ee5f514a1c89f213ab4d0c",
+      "hooks": {
+        "add_action": 1,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 3
+      },
+      "sha256": "e8e95596f7eed044f64ef63f327783298fe6ac547568ef406b408594c5127b29",
+      "source": "wp-content/plugins/mad4b-platform/modules/compat/306-mad4b-original-core-recovery.php",
+      "source_load_order_index": 115,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/compat/306-mad4b-original-core-recovery.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Broker_Remote_SSH_Receipt_V1"
+      ],
+      "git_blob": "52fcd0f93124abf397651a74a57b846c77c95701",
+      "hooks": {
+        "add_action": 0,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 0
+      },
+      "sha256": "d16632b39a9876afc6910a3d8003f01da6b5de6cf18f819ccb490c8f73589036",
+      "source": "wp-content/plugins/mad4b-platform/modules/diagnostics/313-mad4b-broker-remote-ssh-diagnostic.php",
+      "source_load_order_index": 125,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/diagnostics/313-mad4b-broker-remote-ssh-diagnostic.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Original_Native_Operation_Providers_V1"
+      ],
+      "git_blob": "76e3240dfd9c3276033c67d9e2340e8aca6862d6",
+      "hooks": {
+        "add_action": 0,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 0
+      },
+      "sha256": "b1af8347413d8f3342b5eeaf3259b698d542e717501f82ec049377f088a6a7b2",
+      "source": "wp-content/plugins/mad4b-platform/modules/integrations/344-mad4b-original-native-operation-providers.php",
+      "source_load_order_index": 170,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/integrations/344-mad4b-original-native-operation-providers.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Company_Site_Replacement_V1"
+      ],
+      "git_blob": "1d9325e0659d0db3473525b4de20007fcb07a1d6",
+      "hooks": {
+        "add_action": 0,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 0
+      },
+      "sha256": "ee8b76fdab62c65c7dead1bc26ea7bb82dfb5bce69b213be866d4ead1c685083",
+      "source": "wp-content/plugins/mad4b-platform/modules/operations/159-mad4b-company-site-replacement-v1.php",
+      "source_load_order_index": 53,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/operations/159-mad4b-company-site-replacement-v1.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Central_Company_REST_V1"
+      ],
+      "git_blob": "56b2c6b4a8f699e2ec3a77215f488622b6094718",
+      "hooks": {
+        "add_action": 1,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 3
+      },
+      "sha256": "5652008a0e0ea2c9cb07528ff8e67ccada09d7f777e0beb195fa952e6520485c",
+      "source": "wp-content/plugins/mad4b-platform/modules/operations/160-mad4b-central-companies-rest.php",
+      "source_load_order_index": 54,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/operations/160-mad4b-central-companies-rest.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Central_Simple_Connections_V1"
+      ],
+      "git_blob": "25096fcfd14a4222c3a9e6334c0a200bd723797d",
+      "hooks": {
+        "add_action": 3,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 2
+      },
+      "sha256": "93fce03bf78107775bbe2704695f22188c06d6565b5a88d374bdedb15cd3fefb",
+      "source": "wp-content/plugins/mad4b-platform/modules/operations/240-mad4b-central-simple-connections.php",
+      "source_load_order_index": 65,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/operations/240-mad4b-central-simple-connections.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Central_Signed_Profile_V4"
+      ],
+      "git_blob": "9b649d675db5620fbb3ea0cfe5baec9dec699dfd",
+      "hooks": {
+        "add_action": 1,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 1
+      },
+      "sha256": "f6ac2cc37a01e8f212a46ffa39f7846fef68fe1051a38f1d98d984ffd54d8f20",
+      "source": "wp-content/plugins/mad4b-platform/modules/operations/291-mad4b-central-signed-site-profile-v4.php",
+      "source_load_order_index": 90,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/operations/291-mad4b-central-signed-site-profile-v4.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Company_Environment_Registry_V2"
+      ],
+      "git_blob": "f3355db1897653226dbc2c2fc09de6394ebf3776",
+      "hooks": {
+        "add_action": 1,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 2
+      },
+      "sha256": "4dd3972b1c13515d7d7a01ab84c26e2b7c84eae9299be745f7739327aa5cf07d",
+      "source": "wp-content/plugins/mad4b-platform/modules/operations/297-mad4b-company-environment-registry-v2.php",
+      "source_load_order_index": 99,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/operations/297-mad4b-company-environment-registry-v2.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Company_Execution_Resolver_V1"
+      ],
+      "git_blob": "6b26cc934a140200e42d71a624411a7b28e6af3b",
+      "hooks": {
+        "add_action": 7,
+        "add_filter": 1,
+        "register_activation_hook": 0,
+        "register_rest_route": 4
+      },
+      "sha256": "1003a118fabc3c61f3481c194e8806c530bb0af2913dd6950cbd2d49a82bb1d3",
+      "source": "wp-content/plugins/mad4b-platform/modules/operations/298-mad4b-company-execution-resolver.php",
+      "source_load_order_index": 100,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/operations/298-mad4b-company-execution-resolver.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Company_Operation_Admission_V1"
+      ],
+      "git_blob": "c592cc173fd5b73aab2793fef71440ac2ff2b92c",
+      "hooks": {
+        "add_action": 1,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 2
+      },
+      "sha256": "c1081a7edb6a38c952e825d13a773f4f0d2e22c83c41728a07ad985fc3fc5970",
+      "source": "wp-content/plugins/mad4b-platform/modules/operations/301-mad4b-company-operation-admission.php",
+      "source_load_order_index": 103,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/operations/301-mad4b-company-operation-admission.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Company_Recovery_Ladder_V1"
+      ],
+      "git_blob": "e9b2bbc13f51a0d687a97110a0b6d27eb3cdf1cd",
+      "hooks": {
+        "add_action": 1,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 2
+      },
+      "sha256": "0599daa4aadc14b571b823dcd67277afdb3c0dc1895c7f27641947aa182ecd10",
+      "source": "wp-content/plugins/mad4b-platform/modules/operations/303-mad4b-company-recovery-ladder.php",
+      "source_load_order_index": 108,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/operations/303-mad4b-company-recovery-ladder.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Central_Dual_Lane_Registry_V1"
+      ],
+      "git_blob": "79c6c3f4c71124137c95508f282023de74e5b55f",
+      "hooks": {
+        "add_action": 1,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 2
+      },
+      "sha256": "57fb5c32ae767e944146c64802592330ed1d7e8b40f0edd07f034efeab7ebd41",
+      "source": "wp-content/plugins/mad4b-platform/modules/operations/304-mad4b-central-dual-lane-registry.php",
+      "source_load_order_index": 110,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/operations/304-mad4b-central-dual-lane-registry.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Staging_Manager_Admission_Bridge_V1"
+      ],
+      "git_blob": "71343c9370a36d5990a115dd79f1fc3b6c1e02ab",
+      "hooks": {
+        "add_action": 0,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 0
+      },
+      "sha256": "6240df7d6e72dcba4707defe27c932fe74cca33309b961d7ffde81dace18ba8f",
+      "source": "wp-content/plugins/mad4b-platform/modules/operations/318-mad4b-staging-manager-admission-bridge.php",
+      "source_load_order_index": 133,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/operations/318-mad4b-staging-manager-admission-bridge.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Central_Host_Scope_V1"
+      ],
+      "git_blob": "0c6c874a25b4afcad21b853ab744ddaedec7512f",
+      "hooks": {
+        "add_action": 0,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 0
+      },
+      "sha256": "1293acba833d41b893692c92c96ae5d68672ff58ba25aa10bdee93e29c390820",
+      "source": "wp-content/plugins/mad4b-platform/modules/operations/319-mad4b-central-host-scope.php",
+      "source_load_order_index": 134,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/operations/319-mad4b-central-host-scope.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Manager_Auto_Write_V1"
+      ],
+      "git_blob": "e4ac08dd275d2b1ada17de35021e5e9acd030cd1",
+      "hooks": {
+        "add_action": 3,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 1
+      },
+      "sha256": "ffdeac30214446b5169922bdae9fe8f9591af6a32766368b82d64b8b645484a0",
+      "source": "wp-content/plugins/mad4b-platform/modules/services/300-mad4b-manager-auto-write.php",
+      "source_load_order_index": 102,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/services/300-mad4b-manager-auto-write.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Native_WPCLI_Receipt_Verifier_V1"
+      ],
+      "git_blob": "3f278195c29473a8ff45ece224ef9f6349beffb9",
+      "hooks": {
+        "add_action": 0,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 0
+      },
+      "sha256": "0b15f17c578a5e4ca706cfe3c81203019f03d452312f5b176e572902ec82a685",
+      "source": "wp-content/plugins/mad4b-platform/modules/services/313b-mad4b-native-independent-verifier.php",
+      "source_load_order_index": 126,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/services/313b-mad4b-native-independent-verifier.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Native_VPS_Principal_V1"
+      ],
+      "git_blob": "bb8787aceba8a6bcdebe951ae5165e15cfb01bc0",
+      "hooks": {
+        "add_action": 1,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 1
+      },
+      "sha256": "a3953f5691353fb21e7218c232561fec56fa974ef805ef00bcf30b677ae5a97a",
+      "source": "wp-content/plugins/mad4b-platform/modules/services/323-mad4b-native-vps-principal.php",
+      "source_load_order_index": 140,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/services/323-mad4b-native-vps-principal.php"
+    },
+    {
+      "autoloaded": false,
+      "declares": [
+        "MAD4B_Generic_Native_Clone_V1"
+      ],
+      "git_blob": "3d764476f9be78ad39ed8ea66ec601a8c38cbb6b",
+      "hooks": {
+        "add_action": 0,
+        "add_filter": 0,
+        "register_activation_hook": 0,
+        "register_rest_route": 0
+      },
+      "sha256": "7bfd42ab3e1242ec29031b9a8eb77079ec170767416e47004068e7b33200e82e",
+      "source": "wp-content/plugins/mad4b-platform/modules/services/342-mad4b-generic-native-clone.php",
+      "source_load_order_index": null,
+      "target": "deploy/host-authority/reconciliation/v125/wordpress-platform/modules/services/342-mad4b-generic-native-clone.php"
+    }
+  ],
+  "mode": "INERT_RUNTIME_SOURCE_NOT_DEPLOYABLE",
+  "outside_plugin_classes": [
+    {
+      "master_class_definition_found": false,
+      "name": "MAD4B_Company_Bootstrap_Contract",
+      "resolved": false,
+      "runtime_gate": "BLOCKED_UNTIL_IDENTITY_AND_LOADER_VERIFIED"
+    },
+    {
+      "master_class_definition_found": false,
+      "name": "MAD4B_Company_ContentJob_Skill_Preflight_V1",
+      "resolved": false,
+      "runtime_gate": "BLOCKED_UNTIL_IDENTITY_AND_LOADER_VERIFIED"
+    },
+    {
+      "master_class_definition_found": false,
+      "name": "MAD4B_Company_Environment_Portfolio_Evidence_V1",
+      "resolved": false,
+      "runtime_gate": "BLOCKED_UNTIL_IDENTITY_AND_LOADER_VERIFIED"
+    },
+    {
+      "master_class_definition_found": false,
+      "name": "MAD4B_Company_Host_Topology_Registry_V1",
+      "resolved": false,
+      "runtime_gate": "BLOCKED_UNTIL_IDENTITY_AND_LOADER_VERIFIED"
+    },
+    {
+      "master_class_definition_found": false,
+      "name": "MAD4B_Company_Manager_Unified_Administrator_Principal",
+      "resolved": false,
+      "runtime_gate": "BLOCKED_UNTIL_IDENTITY_AND_LOADER_VERIFIED"
+    },
+    {
+      "master_class_definition_found": false,
+      "name": "MAD4B_Company_Native_Scoped_Write_Handler_V1",
+      "resolved": false,
+      "runtime_gate": "BLOCKED_UNTIL_IDENTITY_AND_LOADER_VERIFIED"
+    },
+    {
+      "master_class_definition_found": false,
+      "name": "MAD4B_Company_Portfolio_Manager_V1",
+      "resolved": false,
+      "runtime_gate": "BLOCKED_UNTIL_IDENTITY_AND_LOADER_VERIFIED"
+    },
+    {
+      "master_class_definition_found": false,
+      "name": "MAD4B_MU_File_Resolver_V1",
+      "resolved": false,
+      "runtime_gate": "BLOCKED_UNTIL_IDENTITY_AND_LOADER_VERIFIED"
+    },
+    {
+      "master_class_definition_found": false,
+      "name": "MAD4B_Original_Verified_WPCLI_Transport_V1",
+      "resolved": false,
+      "runtime_gate": "BLOCKED_UNTIL_IDENTITY_AND_LOADER_VERIFIED",
+      "source_other_plugin": "wp-content/plugins/mad4b-commerce/modules/commerce/304-mad4b-original-verified-wpcli-transport.php"
+    },
+    {
+      "master_class_definition_found": true,
+      "master_path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-audit.php",
+      "name": "MAD4B_SCP_Audit",
+      "resolved": false,
+      "runtime_gate": "MASTER_DEFINITION_EXISTS_BUT_LOAD_ORDER_AND_AUTHORIZATION_UNVERIFIED"
+    },
+    {
+      "master_class_definition_found": false,
+      "name": "MAD4B_SCP_Company_Domain_Cloudflare",
+      "resolved": false,
+      "runtime_gate": "BLOCKED_UNTIL_IDENTITY_AND_LOADER_VERIFIED"
+    },
+    {
+      "master_class_definition_found": false,
+      "name": "MAD4B_SCP_Company_Reconcile_Skill_Set_V1",
+      "resolved": false,
+      "runtime_gate": "BLOCKED_UNTIL_IDENTITY_AND_LOADER_VERIFIED"
+    },
+    {
+      "master_class_definition_found": true,
+      "master_path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+      "name": "MAD4B_SCP_Site_Profile",
+      "resolved": false,
+      "runtime_gate": "MASTER_DEFINITION_EXISTS_BUT_LOAD_ORDER_AND_AUTHORIZATION_UNVERIFIED"
+    }
+  ],
+  "referenced_class_count": 46,
+  "roots": {
+    "Original305": "MAD4B_Central_SSH_Command_Intake_V1",
+    "Original306": "MAD4B_Central_VPS_Broker_V1",
+    "Original313": "MAD4B_Company_Native_WPCLI_Enrollment_V1",
+    "Original318": "MAD4B_Native_Host_Exact_Grant_V1",
+    "Original328": "MAD4B_Original_Remote_Hostinger_328_V1"
+  },
+  "scope": {
+    "company": "all-royal-egypt",
+    "environment": "staging",
+    "host": "hosting-2"
+  },
+  "selected_file_count": 32,
+  "source_load_order_map_sha256": "e4686205bfe51cf6fbe3e29866ad9dd971eca5d729cec2a0229ad797ee6de17a",
+  "source_platform_php_count": 360,
+  "source_sha": "ba644d24aa5c0a0750e35cc61b5e558a5a6a6401",
+  "unresolved_gates": [
+    "missing external classes and boot order",
+    "unknown transitive runtime hooks/dynamic requires",
+    "no complete WordPress plugin entrypoint on master",
+    "independent host authority / owner attestation",
+    "live staging read-only acceptance required before separately approved deployment"
+  ],
+  "unverified_external_runtime_classes": 13,
+  "verified_master_class_definitions": 2
+}
