@@ -28,6 +28,9 @@ on:
       - 'scripts/mad4b-stay-saray-supplier-evidence-request-v1-cli.php'
       - 'scripts/mad4b-stay-eight-packages-hotel-component-discovery-cli.php'
       - 'scripts/mad4b-stay-pyramids-park-owner-google-five-star-cli.php'
+      - 'scripts/mad4b-package-eight-accommodation-source-plan-cli.php'
+      - 'scripts/mad4b-package-60441-bilingual-exact-dedup-cli.php'
+      - 'tests/stay-package-eight-accommodation-source-plan-contract.py'
       - 'tests/stay-pyramids-park-google-five-star-contract.py'
       - 'scripts/mad4b-stay-package-hotel-tour-zone-area-fix.py'
       - 'tests/stay-eight-packages-hotel-component-discovery-contract.py'
@@ -76,6 +79,9 @@ on:
       - 'scripts/mad4b-stay-saray-supplier-evidence-request-v1-cli.php'
       - 'scripts/mad4b-stay-eight-packages-hotel-component-discovery-cli.php'
       - 'scripts/mad4b-stay-pyramids-park-owner-google-five-star-cli.php'
+      - 'scripts/mad4b-package-eight-accommodation-source-plan-cli.php'
+      - 'scripts/mad4b-package-60441-bilingual-exact-dedup-cli.php'
+      - 'tests/stay-package-eight-accommodation-source-plan-contract.py'
       - 'tests/stay-pyramids-park-google-five-star-contract.py'
       - 'scripts/mad4b-stay-package-hotel-tour-zone-area-fix.py'
       - 'tests/stay-eight-packages-hotel-component-discovery-contract.py'
@@ -147,6 +153,8 @@ jobs:
           php -l scripts/mad4b-stay-saray-supplier-evidence-request-v1-cli.php
           php -l scripts/mad4b-stay-eight-packages-hotel-component-discovery-cli.php
           php -l scripts/mad4b-stay-pyramids-park-owner-google-five-star-cli.php
+          php -l scripts/mad4b-package-eight-accommodation-source-plan-cli.php
+          php -l scripts/mad4b-package-60441-bilingual-exact-dedup-cli.php
           php -l scripts/mad4b-stay-invalid-import-quarantine-36260-cli.php
           php -l scripts/mad4b-stay-unresolved-official-room-photo-gaps-cli.php
           php -l scripts/mad4b-stay-triumph-exact-room-source-admission.php
@@ -166,5 +174,6 @@ jobs:
           python3 tests/stay-saray-supplier-evidence-request-contract.py
           python3 tests/stay-eight-packages-hotel-component-discovery-contract.py
           python3 tests/stay-pyramids-park-google-five-star-contract.py
+          python3 tests/stay-package-eight-accommodation-source-plan-contract.py
           python3 tests/stay-commercial-readiness-ui-check.py
           node --check wp-content/mu-plugins/mad4b-stay-readiness/admin.js
