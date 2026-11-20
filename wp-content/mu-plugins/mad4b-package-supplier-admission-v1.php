@@ -10,6 +10,69 @@ final class MAD4B_Package_Supplier_Admission_V1 {
     const CONTRACT='mad4b.package-supplier-admission.read.v1';
     const LINK_META='_mad4b_package_stay_verified_room_program_links_v1';
 
+    public const AJAX='mad4b_package_supplier_admission_review_v1';
+
+    public static function ajax():void {
+        if(!current_user_can('commerce_manage_pricing') ||
+           !current_user_can('manage_woocommerce'))
+            wp_send_json_error(['code'=>'package_admission_forbidden'],403);
+        if(!check_ajax_referer(self::AJAX,'nonce',false))
+            wp_send_json_error(['code'=>'package_admission_nonce_invalid'],403);
+        $id=filter_var($_POST['tour_id']??null,FILTER_VALIDATE_INT);
+        $adults=filter_var($_POST['adults']??null,FILTER_VALIDATE_INT);
+        $children=filter_var($_POST['children']??null,FILTER_VALIDATE_INT);
+        $infants=filter_var($_POST['infants']??null,FILTER_VALIDATE_INT);
+        $rawDate=$_POST['date']??'';
+        $rawCurrency=$_POST['currency']??'EGP';
+        if(!is_string($rawDate)||!is_string($rawCurrency))
+            wp_send_json_error(['code'=>'package_admission_dimensions_invalid'],422);
+        $date=sanitize_text_field(wp_unslash($rawDate));
+        $currency=strtoupper(sanitize_key(wp_unslash($rawCurrency)));
+        if($id===false||$adults===false||$children===false||$infants===false)
+            wp_send_json_error(['code'=>'package_admission_dimensions_invalid'],422);
+        $result=self::inspect((int)$id,$date,$currency,(int)$adults,(int)$children,(int)$infants);
+        if(is_wp_error($result))
+            wp_send_json_error(['code'=>$result->get_error_code()],422);
+        wp_send_json_success(['result'=>$result,'original_source'=>'read_only',
+            'edit_tour_url'=>current_user_can('edit_post',(int)$id)
+                ?get_edit_post_link((int)$id,'raw'):null,
+            'saved'=>false]);
+    }
+
+    public static function enqueue():void {
+        if(!is_admin()||
+            !in_array((string)($_GET['page']??''),
+                ['dynamic-pricing-controls','etg-dynamic-pricing-controls'],true)||
+            !current_user_can('commerce_manage_pricing')||
+            !current_user_can('manage_woocommerce'))return;
+        $file=WPMU_PLUGIN_DIR.'/assets/mad4b-package-supplier-admission-review-v1.js';
+        if(!is_readable($file))return;
+        $tours=get_posts(['post_type'=>'tours-and-activities',
+            'post_status'=>'publish','posts_per_page'=>500,
+            'fields'=>'ids','orderby'=>'title','order'=>'ASC',
+            'suppress_filters'=>true]);
+        $rows=[];
+        foreach($tours as $id){
+            $id=(int)$id;
+            $rows[]=['id'=>$id,'title'=>wp_strip_all_tags(
+                html_entity_decode(get_the_title($id),ENT_QUOTES,'UTF-8'))];
+        }
+        $style=WPMU_PLUGIN_DIR.'/assets/mad4b-package-supplier-admission-review-v1.css';
+        if(is_readable($style))
+            wp_enqueue_style('mad4b-package-supplier-admission-review-v1',
+                content_url('mu-plugins/assets/mad4b-package-supplier-admission-review-v1.css'),
+                [],(string)filemtime($style));
+        wp_enqueue_script('mad4b-package-supplier-admission-review-v1',
+            content_url('mu-plugins/assets/mad4b-package-supplier-admission-review-v1.js'),
+            [],(string)filemtime($file),true);
+        wp_add_inline_script('mad4b-package-supplier-admission-review-v1',
+            'window.MAD4BPackageSupplierAdmissionReview='.wp_json_encode([
+                'url'=>admin_url('admin-ajax.php'),'action'=>self::AJAX,
+                'nonce'=>wp_create_nonce(self::AJAX),'tours'=>$rows,
+                'today'=>gmdate('Y-m-d'),
+            ],JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT).';','before');
+    }
+
     public static function inspect(int $tour,string $date,string $currency='EGP',
         int $adults=2,int $children=0,int $infants=0):array|WP_Error {
         if(!current_user_can('commerce_manage_pricing')||
@@ -131,3 +194,7 @@ final class MAD4B_Package_Supplier_Admission_V1 {
         ];
     }
 }
+add_action('wp_ajax_'.MAD4B_Package_Supplier_Admission_V1::AJAX,
+    [MAD4B_Package_Supplier_Admission_V1::class,'ajax']);
+add_action('admin_enqueue_scripts',
+    [MAD4B_Package_Supplier_Admission_V1::class,'enqueue'],80);

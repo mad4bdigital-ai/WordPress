@@ -60,3 +60,11 @@ Remaining gates: real approved dated hotel/boat unit costs, verified transport v
 ### Additional rendered JetEngine admin markup acceptance
 
 Both sites passed tests/verify-native-jetengine-form-markup.php using the real native JetEngine page factory. One original form and Save button exist, and the actual Mode/Package Repeater input-name patterns match. Staging has no stored Package rows and Production has six; both are supported. Option source revision is identical before and after HTML rendering. The previous busy staging rerun later succeeded. Browser-authenticated click/Save and responsive testing remain separately open.
+
+
+### 20 November addendum: UI review source visibility and HTTP method guard
+
+- Reproduced a native JetEngine Save bypass: the original vendor save action accepts a GET REQUEST action, while the first custom CAS guard only inspected POST. The guard now intercepts all requests that name the vendor save action, rejects any non-POST request before the vendor action, and enforces signed source revision for POST.
+- Tests/run-native-cas-request-regression.sh and tests/verify-native-pricing-cas-request.php passed on Tours.dev and Wayfatours for GET, unsigned POST, stale POST and current signed POST. All tests call only the pre-save guard, not the vendor write operation. No original pricing option changed. Live code and local Git SHA matched after the deployment.
+- A new read-only admin panel displays native supplier eligibility from original Stay, Transport Self, Guide and Extras sources. Available in Pricing Controls for authorized managers. It requires an admin nonce and never writes a Rate or source field. User can select Tour/date/currency/occupancy; blocker details and source Tour edit link are displayed on demand.
+- Files deployed with backups on both sites and accepted by tests/verify-package-supplier-admin-ui.php plus tests/verify-package-supplier-admin-ui-dom.js. This is not a completed authenticated-browser UX inspection.

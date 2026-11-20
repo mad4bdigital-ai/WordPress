@@ -39,6 +39,14 @@ Snapshot date: 20 November 2026. Primary source: Tours.dev staging; target: Wayf
 - CP5: mad4b-pricing-entity-picker-v1.php plus JS lookup, accessible search and results without named form controls or additional save actions. Native number input receives the actual selected term/post ID and input+change events. Taxonomy WPML canonical ID displayed for inspection, but stored ID remains the selected native ID. Native 21-field policy form gets progressive disclosure of advanced fields in visual mode only; non-default overrides start expanded. Source and production hashes matched.
 - CP5 tests: verify-entity-picker.php, verify-entity-picker-dom.js, verify-conditional-jetengine-mode.js passed. This **does not certify** that controls appear in a real admin browser: selectors and logged-in native Save still need independent test.
 
+## 20 November review-only supplier admin UI
+- Added an authorized lazy AJAX panel for Supplier Cost Readiness on the existing native Pricing Controls admin page. It does not wrap, replace, or submit the JetEngine form.
+- Authorized managers can inspect any selected published Tour, service date, currency (EGP/USD/EUR/GBP), adults, children and infants. Each original component source reports pending proof and accommodation stage-level blockers. The optional Tour edit link is only accepted when same-origin and authorized.
+- Files: MU mad4b-package-supplier-admission-v1.php; assets/mad4b-package-supplier-admission-review-v1.js and .css. PHP source and assets deployed to Tours.dev and Wayfatours with backup and read-only tests.
+- Server checks verify private AJAX endpoint, authenticated JS/CSS load, guest denial and no change to native Save. JS DOM mock verifies panel is outside original JetEngine form, input/control names never conflict, AJAX request is signed and no second Save is created.
+- Tests: tests/verify-package-supplier-admin-ui.php, tests/verify-package-supplier-admin-ui-dom.js. Live authenticated browser click/visual acceptance is still OPEN.
+- No supplier costs are approved or created by this UI. Real dates, contract amounts, room/cabin selection, verified guide days, extras eligibility and signed FX/tax remain required.
+
 ## Native form server-side rendering verification
 - Both sites rendered the real original JetEngine Pricing Controls form via its own page factory, with one form, native Save submit, settings_top, existing 21-field Mode repeater and correct original Package Level Repeater structure.
 - Wayfatours has stored Package rows such as shared_package_pricing_rows[item-0][package_term_id]. Tours.dev has the registered Repeater container but no saved Package row; test accepts this legitimate difference rather than inventing a row.
