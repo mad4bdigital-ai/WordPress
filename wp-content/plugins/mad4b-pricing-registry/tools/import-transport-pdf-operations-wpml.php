@@ -99,7 +99,9 @@ foreach($selected as $row) {
         $detail=apply_filters('wpml_post_language_details',null,(int)$id);
         $lang=$detail['language_code']??null;
         if (!$lang || isset($byLang[$lang]) ||
-            get_post_status($id)!=='draft' ||
+            (!in_array(get_post_status($id),array('draft','publish'),true) ||
+             (get_post_status($id)==='publish' &&
+               get_post_meta($id,'_mad4b_pdf_editorial_publication_v1',true)!=='mad4b.transport-pdf-editorial.v1')) ||
             get_post_meta($id,'_mad4b_transfer_pdf_2026_sha256',true)!==$data['source_sha256'])
             WP_CLI::error('existing_content_conflict_'.$sourceKey.'_'.(string)$lang);
         $byLang[$lang]=(int)$id;
@@ -130,7 +132,9 @@ foreach($selected as $row) {
                 WP_CLI::error('wpml_language_assignment_failed_'.$sourceKey.'_'.$lang);
             wp_set_object_terms($id,array((int)$road),'transportation-types',false);
             wp_set_object_terms($id,array((int)$term),'destinations',false);
-            update_post_meta($id,'trans_mode',(int)$road);
+            // Native Tour Component identity requires the canonical EN mode
+            // cache; localized WPML taxonomy is stored separately.
+            update_post_meta($id,'trans_mode',568);
             update_post_meta($id,'_mad4b_transfer_pdf_2026_source_key',$sourceKey);
             update_post_meta($id,'_mad4b_transfer_pdf_2026_sha256',$data['source_sha256']);
             update_post_meta($id,'_mad4b_transfer_pdf_2026_source_ar',$row['source_ar']);
@@ -145,6 +149,10 @@ foreach($selected as $row) {
             update_post_meta($id,'_mad4b_transfer_pdf_2026_review_status','unverified_supplier_contract_draft');
             update_post_meta($id,'_mad4b_transfer_pdf_2026_editorial_language',$lang);
             update_post_meta($id,'_mad4b_transfer_pdf_2026_not_sellable',1);
+            // Trusted PDF operations are explicitly enrolled for a future
+            // regenerated Tour Rate composition. They remain Draft, so
+            // component selection and commerce stay independently gated.
+            update_post_meta($id,'trans_use_in_tour_rate_generation','1');
             // Do not set trans_start_price / trans_base_currency / trans_type:
             // each PDF row spans multiple vehicle categories; no source currency.
             $created[$lang]=($created[$lang]??0)+1;
@@ -156,7 +164,9 @@ foreach($selected as $row) {
     $trids=array();
     foreach($byLang as $lang=>$id) {
         $trids[]=apply_filters('wpml_element_trid',null,$id,'post_transportations');
-        if (get_post_status($id)!=='draft' ||
+        if ((!in_array(get_post_status($id),array('draft','publish'),true) ||
+              (get_post_status($id)==='publish' &&
+                 get_post_meta($id,'_mad4b_pdf_editorial_publication_v1',true)!=='mad4b.transport-pdf-editorial.v1')) ||
             get_post_meta($id,'_mad4b_transfer_pdf_2026_not_sellable',true)!=1)
             WP_CLI::error('post_not_protected_'.$sourceKey.'_'.$lang);
     }

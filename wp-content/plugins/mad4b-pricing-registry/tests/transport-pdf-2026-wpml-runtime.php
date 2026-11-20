@@ -55,7 +55,10 @@ foreach($active as $lang) {
         $details=apply_filters('wpml_post_language_details',null,$id);
         $check('row_'.$lang.'_'.$key,
             $id>0 && $entry['draft_count']===1 &&
-            get_post_status($id)==='draft' &&
+            in_array(get_post_status($id),array('draft','publish'),true) &&
+            (get_post_status($id)==='draft' ||
+                (get_post_meta($id,'_mad4b_pdf_editorial_publication_v1',true)==='mad4b.transport-pdf-editorial.v1' &&
+                 in_array('noindex',(array)get_post_meta($id,'rank_math_robots',true),true))) &&
             ($details['language_code']??null)===$lang &&
             get_post_meta($id,'_mad4b_transfer_pdf_2026_not_sellable',true)==1 &&
             get_post_meta($id,'trans_start_price',true)==='' &&
@@ -84,7 +87,7 @@ $check('drafts_not_public',!$source['published_rates_authorized']);
 $failed=array_keys(array_filter($checks,static fn($pass)=>!$pass));
 echo wp_json_encode(array('site'=>$site,'total'=>count($checks),
     'passed'=>count($checks)-count($failed),'failed'=>$failed,
-    'active_languages'=>$active,'created_locale_drafts'=>$totalLocalRows,
+    'active_languages'=>$active,'source_locale_posts'=>$totalLocalRows,
     'vehicle_media_physical_files'=>count(array_unique($media)),
     'source_prices_approved'=>false,'checkout_activated'=>false),
     JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."\n";

@@ -399,3 +399,422 @@ Verification:
 Next commercial step: configure the PDF's actual currency and whether its values are
 company self-cost or self-selling base in the new admin panel. Those facts are not in
 the source document. Native Transport Rates require separate price approval before sale.
+
+## Nov 19 2026 — Transportation Tour Component Status and Tour-style Pricing UX
+
+### Hotel parity and eligibility
+
+The Property CPT field prop_use_in_tour_rate_generation is the existing
+Yes/No Glossary 321 source for automatic Tour Rate eligibility. Transportation
+now mirrors it as trans_use_in_tour_rate_generation, a JetEngine radio field
+with default No, inserted immediately below trans_description (index 11).
+The Transportation CPT has 70 fields on Tours.dev and Wayfatours, and the
+status metadata is WPML COPY across all active languages.
+
+Existing statuses initialized to No: 345 transports on Tours.dev, 131 on
+Wayfatours. All historical rate prices, publication statuses and bookings
+remain untouched. The separate trans_available_status is unchanged.
+
+The eligibility adapter in includes/transport-tour-component-eligibility.php
+requires a Yes opt-in, published post, operational availability, company
+Tour Component channel and native mode/type verification. The resulting
+component qualification is NOT a rate, stock or checkout authorization.
+It gates native Tour Rate related options immediately before visual-options
+composition (filter priority 25), and the known native Tour transport listing
+queries 258, 259 and 260, without filtering unrelated queries. Read-only
+status and blockers are available through a permission-protected REST route.
+
+### WPML identity correction
+
+The original 2026 PDF draft importer wrote localized term IDs to trans_mode
+for non-English translations. Native Tour Components require canonical
+transport mode 568 and the original taxonomy relation. The guarded exact
+source migration normalized 255 Tours.dev and 51 Wayfatours localized Drafts,
+leaving English originals and taxonomy relations unchanged. All 408 source
+Drafts now use canonical Road mode 568. WPML trans_mode is COPY and future
+importer writes canonical 568. Both sites retain separate reversible
+metadata backups. No unverified subtype, supplier capacity or prices were
+created. Current source Drafts remain ineligible until validated.
+
+### Native UX revision
+
+The existing Dynamic Pricing Controls page now follows the Tour Rate pattern:
+1. Choose a transport (city, WPML language, searchable PDF row, Tour Component
+   qualification filter, vehicle and quantity).
+2. Configure the company self-provider source policy (currency, amount role,
+   source-specific discount and global/city/vehicle markups).
+3. Review the saved-policy price preview and qualification reasons on a
+   sticky desktop right-side rail, with an edit link straight to the native
+   Transportation Status field below Description.
+
+Draft policy edits are labeled as unsaved and preserved across city/language
+filters; previews always use persisted policy. AJAX responses are
+sequence-checked so out-of-order calls cannot show stale source selections.
+Layout stacks at tablet/mobile widths; nonce and capability checks are
+unchanged. No separate pricing engine or alternate checkout was created.
+
+### Verification and rollout boundary
+
+- Tours.dev: 27/27 new status and Tour Component tests; 381/381 existing
+  multilingual PDF-source tests; 35/35 self-price control tests.
+- Wayfatours: 27/27 new status/component tests; 141/141 existing source
+  tests; 35/35 self-price control tests.
+- Source price data and authorization were not changed.
+- JavaScript passed Node syntax checks. HTML template passed structural and
+  unique control-binding checks; registered admin assets were verified on
+  both sites. Both live sites are still serving the new UI assets.
+- The source catalog response assembled 51 rows in roughly 75–228ms
+  in CLI samples, with no internal :8080 links.
+- All 476 transportations currently retain Status No and no Tour Component
+  was autoenabled.
+- No authenticated graphical browser was available for pixel-level,
+  keyboard navigation and viewport screenshot acceptance; that remains
+  separate from verified server behavior.
+
+## November 19 2026 — Owner-authorized PDF transport component opt-in
+
+The owner explicitly authorized setting Use in Tour Rate Generation = Yes
+for all transportation operations added from the trusted 2026 PDF, across
+all active WPML languages on both sites, for future regenerated Tour Rates.
+
+Tool: tools/enable-pdf-transport-tour-components.php
+
+- Tours.dev: 51 supplier operation keys × six languages = 306 Drafts Yes.
+- Wayfatours: 51 source operations × two languages = 102 Drafts Yes.
+- All 408 Draft posts were preflight-verified against the exact trusted
+  source SHA-256, company self provider, WPML translation group, canonical
+  Road mode 568, source non-sale marker, and Draft post status.
+- Each site has a persistent before-image option
+  mad4b_pdf_transport_component_yes_backup_20261119_v1 and guarded rollback.
+- The future PDF importer now sets trans_use_in_tour_rate_generation=1 on
+  newly created source Drafts. The general Transportation CPT default
+  remains No for unrelated transport services.
+- Excluded QA-only 67115/67117 and unrelated VinFast 39707: these are
+  outside the trusted PDF source; they need independent verification.
+- Eligibility is independently gated: these records are opted in but are
+  NOT commercially qualified while remaining unpublished Drafts.
+- All 408 remain Draft. No Transport Rate amount, publication status,
+  approved Market Profile, inventory, WooCommerce order, or checkout changed.
+- Read-only runtime tests after apply: 32/32 on Tours.dev and 32/32 on
+  Wayfatours, checking exact PDF language rows and source-only Yes.
+- Reversible per-site state is saved before the status changes.
+
+Future Tour Rate regeneration may now use these operations as explicit
+composition candidates, subject to publication, validated availability,
+route/type checks and native Rate approval before customer offers.
+
+## 19 November 2026: Route-aware Transportation candidate generation
+
+### Original PDF and confidence
+The exact original Transportation 2026 - Sheet1 (2).pdf (SHA-256
+c3bde2be4ac89f1b7b9671720b552d39646c93ea9fa5a786fe2a9bde8f1644cd)
+was reopened. It contains 51 Cairo/Aswan/Luxor source operations, but does not
+identify every pickup/dropoff point or a definitive monetary currency.
+
+The 51-key evidence fixture data/transport-pdf-2026-route-evidence.php
+preserves source origin city, any explicitly named destination,
+round-trip/multi-stop evidence, and ambiguous alternatives. No supplier
+addresses, station IDs or geocodes were invented. Cairo:9 contains
+Alexandria and Ain Sokhna alternatives and is review-only. Luxor:23 remains
+unpriced and review-only. Source Luxor:7 price anomaly is preserved.
+
+### Reversible source route annotations
+The site-guarded migration tools/annotate-pdf-transport-geography.php
+annotated 306 Tours.dev and 102 Wayfatours source Drafts. Origin
+evidence, possible destination slugs, route shape, WPML COPY and
+point-confirmation flags are now stored on each localized source post.
+Single explicit destinations were grounded for 72 Tours.dev and 24
+Wayfatours records (96 translated posts). Every pickup/dropoff point
+remains marked unverified. Native pickup/dropoff allowed-destination
+fields, station IDs and existing prices were not changed. Each site
+retains a before-image under option
+mad4b_pdf_transport_route_annotations_backup_20261119_v1.
+
+The first post-write readback encountered a WordPress meta type difference
+(int expected / string returned). The idempotent retry normalized scalar
+comparisons and fully validated the already-saved annotations on both sites.
+
+### Native Tour Rate authoring
+The native JetEngine Tour Rate schema was expanded on both sites from
+46 to 52 fields immediately after Accommodation Stages:
+- has_transportations, default No;
+- transport_assignment_mode, manual or auto-suggest;
+- transport_selection_mode, simple OR or multiple stages;
+- related_transportations_id, simple alternatives;
+- transport_price_policy, Inquiry/Included/Additional;
+- _mad4b_transport_stages_v1, itinerary repeater with stable key, day,
+  origin/destination taxonomy term IDs, return flag, required flag,
+  within-stage OR/AND, category, price policy and selected transport IDs.
+
+Required stages combine as AND; alternatives within stages combine as OR,
+or as AND where two distinct services are necessary. New native metadata
+is WPML COPY; existing Tour Rates remain disabled and unchanged.
+Original Accommodation Stages and their transport_ids were not migrated,
+priced again or deleted. Per-site schema rollback option:
+mad4b_tour_rate_transport_stage_schema_backup_20261119_v1.
+
+### Admin route suggestions and API
+The read-only route engine includes/transport-tour-rate-routing.php
+implements protected POST REST route:
+  /wp-json/mad4b-pricing/v1/transport-tour-rate-candidates
+
+It requires an explicit stage origin/destination, Status Yes, self provider,
+source-grounded forward route and a validated OR/AND stage specification.
+It returns separate city-level Draft candidate and route-review queues,
+with an exact source key, localized title, reason codes, and no price
+approval or checkout grant. Reverse routes are rejected. Round trips need
+the explicit return flag. Multi-stop round trips require editor review.
+
+The companion native Tour Rate meta box under
+includes/transport-tour-rate-routing-admin.php previews stage matches
+and blockers while editors save permanent values in JetEngine's
+own Tour Rate fields. JS/CSS and REST nonce are loaded only in
+authorized Tour Rate editing pages, with HTTPS asset URLs.
+
+### Verification
+- 47/47 route/source/OR-AND/WPML/taxonomy assertions passed on Tours.dev.
+- 47/47 assertions passed on Wayfatours.
+- Aswan to Luxor returns Aswan:7 and Aswan:8; reverse direction returns
+  Luxor:18 and Luxor:19. Cairo to Hurghada returns Cairo:11.
+- Cairo to Alexandria returns Cairo:9 in review only, not automatic matches.
+- Abu Simbel round-trip requires the return flag; Edfu + Kom Ombo
+  multi-stop stays in review instead of being selected automatically.
+- All six active Tours.dev and two Wayfatours WPML languages return
+  the corresponding locale-specific posts for Aswan to Luxor.
+- Authenticated REST and native Tour Rate editor meta box, nonce,
+  stylesheet, script and HTTPS URL registration were tested on both sites.
+- No existing Tour Rate post, source price, booking, or WPML relation
+  was modified by candidate generation. 408 source Drafts remain opted in
+  Yes but unpublished and commercially unqualified.
+
+The new system is usable for draft Tour Rate stage composition. It is
+not a bulk regeneration of old Rates or commercial-price activation:
+verified pickup/dropoff points, vehicle capacities, monetary source
+currency and approved native Transport Rates remain separate requirements.
+
+## 20 November 2026 — Editorial publication of trusted PDF transport services
+
+Owner instructed publication of the Transportation CPT entries imported from
+Transportation 2026 - Sheet1 (2).pdf, without inventing unverified selling
+prices, fleet photos, capacity, pickup/dropoff addresses or booking authority.
+
+The exact-source, reversible publisher is:
+tools/publish-pdf-transport-editorial.php
+
+The tool verifies complete source groups and active WPML language coverage,
+trusted PDF SHA256, provider self, Road category, non-sale metadata and
+Use in Tour Rate Generation = Yes. Batches are source-key-scoped. It records
+a per-site before-image backup in the WordPress option
+mad4b_pdf_transport_editorial_publish_backup_20261120_v1.
+It does not update Transport Rate amounts, trans_start_price, trans_type,
+trans_available_status, WooCommerce checkout or company Service Activation.
+
+Localized content, translated description/excerpt and Rank Math noindex/follow
+were added to every source post. The editorial copy explains that precise
+pickup/dropoff, vehicle availability, itinerary and supplier quote still
+require confirmation, with no direct online booking. Company provider remains
+self. Generic Wikimedia vehicle-category photos are NOT published as featured
+supplier fleet photos: the media manifest explicitly does not authorize
+that use.
+
+### Verified status
+
+- Tours.dev: 306/306 source posts Published, 51 × EN/AR/FR/DE/ES/IT.
+- Wayfatours: 102/102 source posts Published, 51 × EN/ES.
+- Combined: 408 editorial-Published, 0 source Drafts, all opt-in Yes.
+- No original supplier price made a sellable rate. All 408 retain non-sale
+  metadata and remain not qualified for checkout.
+
+WPML syncs post_status across translations as soon as one language publishes;
+this can temporarily leave a sibling translation with the original Draft
+text despite Published status. The publishing tool matches that exact case
+against its backup, finalizes the localized editorial copy and checks every
+post's publication marker, status and non-sale conditions. Raw post_status
+alone is never used as the completion signal.
+
+### Site-wide visibility is separate from publication
+
+Both sites currently use transportations_channel_mode=tour_only.
+The presentation service-visibility hook intentionally returns HTTP 404
+on standalone Transportation archive/detail URLs under this policy.
+Changing the company mode to standalone_and_tour would expose other
+previously published non-PDF transportation records, so it was deliberately
+NOT changed. Published records exist in WordPress and may be composed
+internally for Tours subject to eligibility; they are NOT accessible
+as independent guest-facing Transportation pages yet.
+
+### Source reviewer and regressions
+
+The protected 2026 Transfer Source Review now recognizes both Draft and
+editorial-Published source posts, provides their current editorial status,
+and maintains 51 rows per active language. Its supplier price values
+remain internal to authorized pricing staff. The future importer recognizes
+existing marked Published source posts rather than trying to recreate them.
+All existing source/component/route/self-pricing tests now distinguish
+source publication from commercial authorization.
+
+A new read-only test at tests/transport-pdf-publication-runtime.php checks
+the exact source SHA, 51 WPML source/TRID groups, all localized records,
+editorial content and marker, noindex, supplier provenance, absence of
+selling price/availability/fleet attachments, and unchanged tour_only mode.
+
+Verified checks on the fully published live state:
+- Tours.dev: 133/133 publication, 381/381 PDF/WPML,
+  32/32 Tour Component, 47/47 route, 35/35 Self Pricing.
+- Wayfatours: 121/121 publication, 141/141 PDF/WPML,
+  32/32 Tour Component, 47/47 route, 35/35 Self Pricing.
+
+No commercial Rate generation or checkout activation occurred.
+
+## 20 November 2026 — Pickup/drop-off, supplier readiness and Form #6
+
+Owner scope: cover pickup/drop-off, pricing and availability without opening
+standalone Transportation pages. The trusted original 2026 PDF lacks confirmed
+currency, cost-versus-selling-price role, date-specific stock, actual fleet
+capacity and exact pickup/dropoff addresses. These remain explicit blockers,
+not guessed data.
+
+### Source of truth
+
+Transportation and the Tour Rate define stage city, direction, service kind,
+transport alternatives, required stages and OR/AND. Stage point descriptors
+hold operator-specified hotel/station references and meeting instructions.
+A native post ID proves its identity only; it does not prove a supplier pickup
+agreement, distance, driver assignment or exact meeting time.
+
+Fluent Form #6 records requested traveler logistics. The original commerce
+pickup module retains hotel pickup booked/not booked, name, city and address.
+The new drop-off fields store the final requested destination, not a new
+transfer Rate or automatically accepted route. Native Transport Rates remain
+the only source of approved transport price in a documented currency and
+unit. Availability is On Request until verified for a travel date.
+
+### Additive native Tour Rate stage fields
+
+The reversible tool tools/reconcile-tour-rate-stage-points.php added six
+fields in the existing JetEngine Transportation Stage repeater, raising its
+subfield count from 11 to 17 while keeping 52 parent Tour Rate CPT fields:
+
+- pickup_point_type and dropoff_point_type
+- pickup_point_ref_id and dropoff_point_ref_id
+- pickup_point_notes and dropoff_point_notes
+
+Location kinds include pending, hotel, airport, rail_station, marina,
+meeting_point and custom. Reference IDs are optional native Properties or
+Stations post identifiers. All new location types default Pending. The
+route-candidate parser now accepts these fields and native JetEngine 1/0
+boolean representations while preserving supplier_points_confirmed=false.
+No existing Rate post content, pricing or stage values were changed.
+Rollback option: mad4b_tour_rate_stage_points_schema_backup_20261120_v1
+on each website.
+
+### Form #6 native final drop-off
+
+The site-guarded migration tools/reconcile-transport-form6-dropoff.php
+added four optional fields directly below the existing pickup hotel fields:
+
+- mad4b_dropoff_mode: same-as-pickup if route permits, hotel/cruise,
+  airport, railway station, port/marina, meeting point or confirm later
+- mad4b_dropoff_place_name
+- mad4b_dropoff_city
+- mad4b_dropoff_address
+
+The original Form #6 (Single Tour Order Form) has 22 top-level fields
+on both sites instead of 18, with all existing field definitions preserved.
+Each site retains a separate before-image and guarded rollback at
+mad4b_form6_transport_dropoff_backup_20261120_v1.
+
+The additive includes/transport-form6-dropoff.php and
+assets/transport-form6-dropoff.js render them conditionally only on an
+eligible published Tour page, based on the existing pickup policy or a
+published Tour Rate with Transportation explicitly enabled. Visible labels
+are localized across EN, AR, FR, DE, ES and IT.
+
+The new submission filter runs at priority 55, after the existing native
+pickup filter at 45 and pricing intent filter at 25. It reuses the original
+Fluent Form #6 Tour/Rate binding, embedded Tour context and server-created
+nonfinancial booking intent. It appends a separate
+_mad4b_transport_dropoff_v1 logistics record into the SAME Fluent Forms
+response without changing the original price, Rate, checkout flag, order or
+booking workflow. Same-as-pickup reuses previously supplied hotel details
+only as an unconfirmed traveler request. Missing details remain Pending.
+
+### Operations readiness dashboard
+
+The self-provider Dynamic Pricing Controls catalog now includes
+includes/transport-source-operations-readiness.php and an operational
+readiness section with: source city/destination evidence; exact pickup
+and dropoff flags; supplier availability; source currency/price-role
+status; approved native Rate presence; fleet capacity confirmation;
+and Form #6 traveler handoff. The response stays nonfinancial.
+The 51 PDF source services remain On Request / Reference Only.
+
+Existing transportations_channel_mode remains tour_only on both sites:
+standalone Transportation pages and archives are NOT made public.
+
+### Verified tests
+
+- Form #6 source-bound integration: 15/15 Tours.dev and 15/15 Wayfatours.
+- Operational readiness: 24/24 Tours.dev and 12/12 Wayfatours.
+- Routing/OR-AND including 6 stage-point fields: 51/51 on both websites.
+- Real public Tour pages load Form #6, four optional drop-off inputs and
+  scoped JavaScript successfully (HTTP 200).
+- No actual traveler Form #6 submission or Woo order was created for tests.
+- Supplier price currency, availability, capacity and exact route points
+  have not been certified: checkout_authorized remains false.
+
+## 20 November 2026 — Unified sticky Pricing Controls UX
+
+Owner-reported issue: the main MAD4B JetEngine Pricing Controls page uses
+a sticky left functional navigation and a right Tour Preview inspector,
+while independent Accommodation and Transportation modules append
+themselves below the main form, creating a disconnected stack and
+squeezed fields.
+
+### Page-scoped, presentation-only solution (both sites)
+
+- includes/pricing-workspace-unified.php
+- assets/pricing-workspace-unified.js
+- assets/pricing-workspace-unified.css
+
+Authorized users of the native dynamic-pricing-controls page now see
+Accommodation & Units and Transportation inside the existing sticky
+functional navigation, along with all six original JetEngine groups.
+
+The panels are moved as the original DOM elements into the same central
+workspace, never cloned, re-rendered or re-submitted. Existing event
+listeners, AJAX endpoints, field values, independent policy Save paths
+and original JetEngine form ownership are preserved.
+
+Selecting either service module hides the unrelated JetEngine form and
+right Tour Preview inspector visually, expands the main editor area
+and displays only that module. Returning to a native sidebar group or
+switching Native/Grouped mode restores the core JetEngine editor.
+The sticky navigation scrolls within viewport height as needed.
+
+Transport policy and accommodation fields use consistent heights,
+labels, spacing, focus, responsive source/filters layout and a sticky
+internal result panel only where the available container width permits.
+At smaller widths internal preview cards stack below the form. The
+native Save changes banner action hides for service-only modules to
+avoid confusion with the independent Transport policy Save.
+
+The frontend bridge is loaded only for authorized admin pricing pages,
+not public tours, checkout, other settings pages or Form #6.
+
+### Tests and release boundaries
+
+- Staging and Production PHP syntax passed; JS syntax passed.
+- DOM regression tests/pricing-workspace-unified-dom.test.js: 10/10.
+  Covers one sidebar, node move without clones, independent service
+  views, native field restoration and async late panel mounting.
+- Both sites return HTTP 200 for the new page-scoped CSS/JS and
+  register the assets for authorized pricing administrators only.
+- Existing Self Pricing 35/35 and Route/OR-AND 51/51 passed per site.
+- Wayfatours' live registry deliberately lacks five source-only
+  modules retained on Tours.dev. Production was modified additively,
+  preserving this difference instead of copying a staging entrypoint.
+- Authenticated Chrome visual screenshot QA is still independent from
+  the static and DOM smoke tests.
+- Transport service mode remains tour_only. No price, currency,
+  availability, stock, booking, checkout or CPT visibility changed.

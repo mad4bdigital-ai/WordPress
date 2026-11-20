@@ -15,7 +15,7 @@ function init(){
  panel.innerHTML=cfg.template;
  root.append(panel);
  const q=k=>panel.querySelector('[data-ts="'+k+'"]');
- const state={policy:null,rows:[],revision:0,selected:null};
+ const state={policy:null,rows:[],revision:0,selected:null,requestSeq:0};
  const make=(tag,content)=>{const el=document.createElement(tag);
     el.textContent=String(content);return el;};
  const asNum=v=>Number.isFinite(Number(v))?new Intl.NumberFormat('en',{maximumFractionDigits:2}).format(Number(v)):'—';
@@ -75,10 +75,101 @@ function init(){
         city_markup_pct:values('[data-group="city"]'),
         vehicle_markup_pct:values('[data-group="vehicle"]')};
  }
+ function isDirty(){
+    if(!state.policy)return false;
+    const p=state.policy;
+    const expected={
+        currency:p.currency||'',price_role:p.price_role||'reference_only',
+        apply_upper_egypt_five_pct:p.apply_upper_egypt_five_pct===true,
+        global_markup_pct:Number(p.global_markup_pct??0),
+        city_markup_pct:p.city_markup_pct,vehicle_markup_pct:p.vehicle_markup_pct
+    };
+    return JSON.stringify(currentForm())!==JSON.stringify(expected);
+ }
+ function markDirty(){
+    const changed=isDirty();
+    q('dirty').textContent=changed
+        ?'Draft changes not saved — price preview still uses the saved policy.'
+        :'Saved settings are active in preview.';
+    q('dirty').classList.toggle('is-unsaved',changed);
+ }
+ function refreshOperationOptions(){
+    const search=q('search').value.trim().toLocaleLowerCase();
+    const previous=q('operation').value;
+    const componentFilter=q('component-filter').value;
+    const available=state.rows.filter(r=>{
+        const qualified=r.component?.qualifies_as_tour_component===true;
+        const statusMatch=componentFilter==='all' ||
+          (componentFilter==='qualified'?qualified:!qualified);
+        const queryMatch=!search||
+          (r.key+' '+r.title+' '+r.original_ar+' '+r.service_type)
+            .toLocaleLowerCase().includes(search);
+        return statusMatch && queryMatch;
+    });
+    options(q('operation'),available.map(r=>[r.key,r.key+' · '+r.title]),
+       available.length?'Choose operation ('+available.length+')':'No matching operations',previous);
+    operationChanged();
+ }
+ function componentReadiness(entry){
+    const c=entry?.component;
+    const action=q('component-edit');
+    if(!entry){
+        q('component-state').textContent='Select a PDF operation';
+        q('component-reasons').textContent='Status is edited on the Transportation post below Description.';
+        action.hidden=true;action.removeAttribute('href');return;
+    }
+    const reasons={
+      'tour_component_status_no':'Tour Component Status is No',
+      'transport_not_published':'Transportation is still a Draft',
+      'transport_not_available':'Is Available? is not Yes',
+      'company_tour_component_channel_disabled':'Company Tour Component channel is disabled',
+      'unsupported_or_unclassified_transport_mode':'Transport mode needs classification',
+      'TRANSPORT_SUBTYPE_MISMATCH':'Transport subtype is not aligned with taxonomy',
+      'TRANSPORT_TAXONOMY_MODE_MISMATCH':'Transport mode taxonomy is not aligned',
+      'native_transport_identity_not_loaded':'Transport identity policy is not available',
+      'missing_or_duplicate_translation_draft':'The localized source Draft is missing or duplicated'
+    };
+    const yes=c?.qualifies_as_tour_component===true;
+    q('component-state').textContent=yes?'Qualified for Tour Component selection':
+      c?.opted_in?'Yes selected · still requires checks':'Not qualified · Status No';
+    const issues=c?.reason_codes||[];
+    q('component-reasons').textContent=yes
+      ?'Ready for Tour Component selection, not automatically sellable or stocked.'
+      :issues.map(x=>reasons[x]||String(x).replaceAll('_',' ')).join(' · ');
+    action.hidden=!entry?.post_id;
+    action.removeAttribute('href');
+    if(entry?.edit_url)safeLink(action,entry.edit_url);
+    if(!action.getAttribute('href'))action.hidden=true;
+ }
+ function operationsReadiness(entry){
+    const stateBox=q('operations-state'),details=q('operations-details');
+    const o=entry?.operations;
+    if(!o){
+      stateBox.textContent='Select a PDF operation';
+      details.textContent='Source city, exact points and price approval will appear here.';
+      return;
+    }
+    stateBox.textContent=o.booking_ready?'Approved for operations':
+        'Request and supplier review only — not payable';
+    const origin=o.origin_city_known?'Origin city recorded':'Origin city missing';
+    const destination=o.destination_city_known?
+        'Destination city recorded':'Destination / route details pending';
+    details.textContent=[
+      origin,destination,
+      'Exact pickup '+(o.pickup_point_verified?'verified':'unconfirmed'),
+      'Exact drop-off '+(o.dropoff_point_verified?'verified':'unconfirmed'),
+      'Availability: '+o.supplier_availability.replaceAll('_',' '),
+      'Native approved Rate: '+(o.approved_native_rate_present?'yes':'no'),
+      'Source currency / role: '+(o.source_currency||'missing')+' / '+o.source_price_role,
+      'Fleet capacity: supplier confirmation required'
+    ].join(' · ');
+ }
  function operationChanged(){
     const r=state.rows.find(x=>x.key===q('operation').value);
     state.selected=r||null;
     q('source-ar').textContent=r?.original_ar||'';
+    componentReadiness(r);
+    operationsReadiness(r);
     options(q('vehicle'),r?Object.keys(r.prices).map(k=>[k,display(k)]):[],
         'Choose vehicle');
     vehicleChanged();
@@ -97,19 +188,29 @@ function init(){
     q('source-flags').textContent=(state.selected?.review_flags||[]).join(' · ');
     q('preview-result').textContent='Use Calculate preview to apply the saved company policy.';
  }
- async function load(){
+ async function load(forceReload=false){
+    const preserveDraft=!forceReload && state.policy!==null && isDirty();
+    const sequence=++state.requestSeq;
     q('status').textContent='Loading original source and company policy…';
     try{
         const r=await api('catalog',{city:q('city').value,lang:q('lang').value||cfg.lang||'en'});
         if(r.error)throw new Error(r.error);
+        if(sequence!==state.requestSeq)return;
         state.rows=r.items;
-        policyView(r.policy);
+        if(!preserveDraft){
+            policyView(r.policy);
+        }else{
+            q('status').textContent='Catalog updated. Your unsaved policy edits were preserved.';
+        }
+        markDirty();
         if(q('lang').options.length<=1)
             options(q('lang'),r.languages.map(x=>[x,x.toUpperCase()]),'Language',r.language);
-        options(q('operation'),r.items.map(x=>[x.key,x.key+' · '+x.title]),'Choose operation',
-            q('operation').value);
+        refreshOperationOptions();
         safeLink(q('drafts'),r.edit_drafts_url);
+        safeLink(q('transportations'),r.transportations_url);
         safeLink(q('rates'),r.native_rates_url);
+        q('components-count').textContent=
+          Number(r.component_qualified_count||0)+' qualified / '+r.items.length+' shown';
         safeLink(q('markets'),r.market_url);
         q('provider').textContent=r.provider.name+' / self';
         q('markets-status').textContent=Number(r.approved_market_profiles||0)+
@@ -117,7 +218,10 @@ function init(){
         operationChanged();
         q('status').textContent='Verified PDF · '+r.items.length+
             ' operations · saved revision '+state.revision;
-    }catch(e){q('status').textContent='Unable to load: '+e.message;}
+    }catch(e){
+        if(sequence===state.requestSeq)
+           q('status').textContent='Unable to load: '+e.message;
+    }
  }
  function quoteResult(r){
     const out=q('preview-result');out.replaceChildren();
@@ -141,8 +245,19 @@ function init(){
         'Reference result: '+asNum(r.extended_reference_amount)+' (currency not configured)'));
     out.append(make('small','Company self provider · not an approved sale price, Market Profile quote or checkout authorization.'));
  }
- q('city').addEventListener('change',load);
- q('lang').addEventListener('change',load);
+ q('city').addEventListener('change',()=>load(false));
+ q('lang').addEventListener('change',()=>load(false));
+ q('search').addEventListener('input',refreshOperationOptions);
+ q('component-filter').addEventListener('change',refreshOperationOptions);
+ panel.querySelectorAll('[data-ts="currency"],[data-ts="role"],[data-ts="discount"],[data-ts="global"]')
+   .forEach(element=>{
+     element.addEventListener('input',markDirty);
+     element.addEventListener('change',markDirty);
+   });
+ for(const region of [q('city-markups'),q('vehicle-markups')]){
+   region.addEventListener('input',markDirty);
+   region.addEventListener('change',markDirty);
+ }
  q('operation').addEventListener('change',operationChanged);
  q('vehicle').addEventListener('change',vehicleChanged);
  q('preview').addEventListener('click',async()=>{
@@ -163,14 +278,15 @@ function init(){
         const r=await api('save',{policy:JSON.stringify(currentForm()),
             revision:state.revision});
         policyView(r.policy);
+        markDirty();
         q('status').textContent='Saved revision '+state.revision+
             ' · PDF and company self source unchanged · no checkout activation.';
     }catch(e){q('status').textContent='Not saved: '+e.message+
         '. If the revision changed, reload the policy.';}
     finally{q('save').disabled=false;}
  });
- q('reload').addEventListener('click',load);
- load();
+ q('reload').addEventListener('click',()=>load(true));
+ load(true);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
 else init();
