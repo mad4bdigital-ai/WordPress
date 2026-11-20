@@ -594,6 +594,81 @@ def reviewed_rc129_company_staff_ceiling_successor(repo:Path,path:str,contents:b
         return None
 
 
+def reviewed_pr983_wayfa_classification_reconcile_source(repo:Path,path:str,contents:bytes):
+    """Single exact local-only Context classification repair. Never release authority."""
+    name='includes/class-mad4b-scp-context-authority.php'
+    if path!=name or not isinstance(contents,bytes):return None
+    manifest=repo/'governance/release-parity/qa31-pr983-wayfa-classification-reconcile-source-20261120.json'
+    parent='ec422eae1706a697e2b1d379f2dc071c16ba1ceb'
+    previous='governance/release-parity/qa31-rc129-context-title-authority-successor-20261119.json'
+    previous_sha='e9b84503655589365ccab7d493cb2aca154437b2843754e44b3745c4be750e26'
+    previous_blob='8d5e50c17a780ce580a18be5e3d2912a2e06920c'
+    previous_content_sha='ea788a5b7197991999ed2aff6a9b9e449fafc522eb4654f44d190010b795eff1'
+    current_blob='cd451220793dbbf3325bc5cd7c9dfcfc6a88e8e8'
+    current_sha='1cb4819fa531d362d4d22b64e1226ec18ac3bbdd04c43ff29f6784a0520e7727'
+    regression='wp-content/plugins/mad4b-site-control-plane/tests/context-classification-reconcile-hermetic.php'
+    negative='tests/qa31_wayfa_classification_reconcile_source_contract.py'
+    controls=['GOVERNANCE-02','SECURITY-01','AI-01','PLATFORM-01']
+    try:
+        m=json.loads(manifest.read_text(encoding='utf-8'))
+        known={x['id'] for x in json.loads((repo/'governance/production-readiness/controls.json').read_text()).get('controls',[]) if isinstance(x,dict)}
+        if (m.get('contract')!='mad4b.qa31-pr983-wayfa-classification-reconcile-source.v1'
+            or m.get('original_github_head_sha')!=parent
+            or m.get('previous_context_title_review_path')!=previous
+            or m.get('previous_context_title_review_sha256')!=previous_sha
+            or hashlib.sha256((repo/previous).read_bytes()).hexdigest()!=previous_sha
+            or m.get('source_path')!=name
+            or m.get('original_parent_blob_sha')!=previous_blob
+            or m.get('original_parent_sha256')!=previous_content_sha
+            or m.get('reviewed_blob_sha')!=current_blob
+            or m.get('reviewed_sha256')!=current_sha
+            or m.get('required_regression')!=regression
+            or m.get('negative_contract')!=negative
+            or m.get('control_ids')!=controls or not set(controls)<=known
+            or m.get('source_only') is not True
+            or m.get('reviewed_for_ci_only') is not True
+            or m.get('authorizing') is not False
+            or m.get('production_authorized') is not False
+            or m.get('source_promotion_approved') is not False
+            or m.get('is_build_provenance') is not False
+            or m.get('live_evidence_required') is not True
+            or m.get('automatic_context_approval_authorized') is not False
+            or m.get('remote_mutation_ability_added') is not False
+            or m.get('original_human_review_mutation_authorized') is not False
+            or m.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or len(m.get('review_rationale',''))<350
+            or not (repo/regression).is_file() or (repo/regression).is_symlink()
+            or not (repo/negative).is_file() or (repo/negative).is_symlink()):
+            return None
+        original=subprocess.check_output(['git','show',parent+':wp-content/plugins/mad4b-site-control-plane/'+name],cwd=repo,stderr=subprocess.DEVNULL,timeout=8)
+        # Revalidate the entire immutable predecessor title/Host chain.
+        # A new reviewed source must not hide tampering with older QA31 evidence.
+        if reviewed_rc129_context_title_authority_successor(repo,path,original) != (
+            'wp-content/plugins/mad4b-site-control-plane/tests/context-classification-title-contract.php'):
+            return None
+        if (hashlib.sha256(original).hexdigest()!=previous_content_sha
+            or hashlib.sha1(b'blob '+str(len(original)).encode()+b'\0'+original).hexdigest()!=previous_blob
+            or subprocess.run(['git','merge-base','--is-ancestor',parent,'HEAD'],cwd=repo,
+                stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=8).returncode!=0):return None
+        if (hashlib.sha256(contents).hexdigest()!=current_sha
+            or hashlib.sha1(b'blob '+str(len(contents)).encode()+b'\0'+contents).hexdigest()!=current_blob):return None
+        code=contents.decode('utf-8')
+        for marker in (
+            'function classification_reconcile_preview(array $source, array $site,',
+            'function classification_reconcile_plan($source_id)',
+            'function classification_reconcile_apply(array $request)',
+            "'classification_source'] ?? '') !== 'automatic_heuristic'",
+            "'review_status'] ?? '') !== 'unreviewed'",
+            "!defined('WP_CLI')", "self::with_registry_lock('classification_reconcile'",
+            "self::commit_option_changes(array(self::ASSETS_OPTION => $records)",
+            "'approval_granted' => false, 'content_modified' => false",
+            "'source_rescanned' => false", "'authorizing' => false"):
+            if marker not in code:return None
+        return regression
+    except (OSError,ValueError,KeyError,TypeError,UnicodeError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
+        return None
+
+
 def reviewed_pr970_wayfa_drive_exact_evidence_source(repo:Path,path:str,contents:bytes):
     """Exact SHA-pinned original Google Drive evidence only, not a release."""
     manifest=repo/'governance/release-parity/qa31-pr970-wayfa-drive-exact-evidence-source-20261120.json'
@@ -1093,6 +1168,8 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     requested=reviewed_rc129_dormant_ollama_bootstrap_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_rc129_wayfa_source_followup_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_pr983_wayfa_classification_reconcile_source(repo,path,contents)
     if requested is None:
         requested=reviewed_pr970_wayfa_drive_exact_evidence_source(repo,path,contents)
     if requested is None:

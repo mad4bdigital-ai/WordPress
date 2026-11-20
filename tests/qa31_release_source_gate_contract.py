@@ -82,6 +82,7 @@ runpy.run_path(str(repo / 'tests/qa31_company_email_native_preflight_successor_c
 runpy.run_path(str(repo / 'tests/qa31_pr937_optional_host_catalog_merge_contract.py'), run_name='__main__')
 runpy.run_path(str(repo / 'tests/qa31_pr970_optional_host_catalog_recursion_contract.py'), run_name='__main__')
 runpy.run_path(str(repo / 'tests/qa31_wayfa_drive_exact_evidence_source_contract.py'), run_name='__main__')
+runpy.run_path(str(repo / 'tests/qa31_wayfa_classification_reconcile_source_contract.py'), run_name='__main__')
 runpy.run_path(str(repo / 'tests/pr951_pr937_composite_source_gates_contract.py'), run_name='__main__')
 chk(reviewed_bootstrap_successor(plugin,'mad4b-site-control-plane.php',current),
     'original305_bootstrap_reviewed_exactly')
