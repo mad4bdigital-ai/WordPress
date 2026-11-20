@@ -43,12 +43,23 @@ jobs:
           python3 tests/source-reconciliation/pr942_combined_semantic_contract.py --verify-report
           python3 wp-content/plugins/mad4b-tour-media-host-bridge/tests/verify_source_origin.py
           python3 tests/test_content_readiness_trait_parity.py
-      - name: Confirm host and content guard hermetic behavior
+      - name: Exercise Root-only Host operator fixture in an unprivileged sandbox
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Host operator positive-path requires uid 0; regular GitHub runners use uid 1001.
+          # Never sudo-execute PR source on the host. The container has no network,
+          # Linux capabilities, writeable source tree or inherited credentials.
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 80 --memory 512m \
+            --user 0:0 -v "$PWD":/src:ro -w /src \
+            --entrypoint php "php:${{ matrix.php }}-cli" \
+            tests/execution-authority-identity-native-hermetic.php
+      - name: Confirm content guards without host privilege
         shell: bash
         run: |
           set -euo pipefail
           for path in \
-            tests/execution-authority-identity-native-hermetic.php \
             tests/brand-quality-readiness-coverage-hermetic.php \
             tests/readiness-workflow-options-original-hermetic.php \
             tests/readiness-scopes-events-original-hermetic.php \
