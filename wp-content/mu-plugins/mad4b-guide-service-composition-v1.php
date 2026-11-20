@@ -240,19 +240,39 @@ final class MAD4B_Guide_Service_Composition_V1 {
                 self::canonical((int)$id,'guide-languages'),(array)$assigned),true)) {
             return new WP_Error('guide_language_not_offered_by_tour');
         }
-        $base=MAD4B_Guide_Daily_Base_Cost_V1::read();
-        if (is_wp_error($base)) return $base;
-        $tier=$code==='ar'?'ar':($code==='en'?'en':'other');
+        $rate=class_exists('MAD4B_Guide_Taxonomy_Pricing_V1',false)
+            ?MAD4B_Guide_Taxonomy_Pricing_V1::resolved((int)$selectedId)
+            :null;
+        if (is_wp_error($rate)) return $rate;
+        if (!is_array($rate)) {
+            $base=MAD4B_Guide_Daily_Base_Cost_V1::read();
+            if (is_wp_error($base)) return $base;
+            $tier=$code==='ar'?'ar':($code==='en'?'en':'other');
+            $rate=[
+                'tier'=>$tier,'unit_cost'=>(float)$base['amounts'][$tier],
+                'source_currency'=>'EGP','source_unit_cost'=>(int)$base['amounts'][$tier],
+                'fx_rate'=>1.0,'fx_source'=>'same_currency','fx_asof'=>null,
+                'policy_source'=>'global_fallback','policy_fingerprint'=>hash('sha256',wp_json_encode($base)),
+                'term_revision'=>0,'supplier'=>'self',
+            ];
+        }
+        $tier=$rate['tier'];
         $units=$full+($half*(float)($factor??0));
-        $cost=round($units*(int)$base['amounts'][$tier]*$guides,2);
+        $cost=round($units*(float)$rate['unit_cost']*$guides,2);
         $receipt=[
             'contract'=>'mad4b.guide-cost-component.v1',
             'component_key'=>'guide:'.$source['source_kind'].':'.$source['source_id'].':'.$code,
             'tour_id'=>$source['tour_id'],'program_id'=>$source['program_id'],
-            'supplier'=>'self','currency'=>'EGP',
+            'supplier'=>$rate['supplier'],'currency'=>'EGP',
             'amount_type'=>'internal_cost_not_sell',
             'language_code'=>$code,'tier'=>$tier,
-            'unit_cost'=>(int)$base['amounts'][$tier],
+            'unit_cost'=>$rate['unit_cost'],
+            'source_currency'=>$rate['source_currency'],
+            'source_unit_cost'=>$rate['source_unit_cost'],
+            'fx_rate'=>$rate['fx_rate'],'fx_source'=>$rate['fx_source'],
+            'fx_asof'=>$rate['fx_asof'],'cost_policy_source'=>$rate['policy_source'],
+            'cost_policy_fingerprint'=>$rate['policy_fingerprint'],
+            'cost_term_revision'=>$rate['term_revision'],
             'full_days'=>$full,'half_days'=>$half,'half_day_factor'=>$half?(float)$factor:null,
             'optional_days_excluded'=>$optional,
             'effective_guide_days'=>$units,'guide_count'=>$guides,

@@ -81,20 +81,37 @@ final class MAD4B_Guide_Daily_Base_Cost_V1 {
     public static function preview(string|int $language, int $guidedDays, int $guides=1): array|WP_Error {
         if ($guidedDays < 1 || $guidedDays > 365 ||
             $guides < 1 || $guides > 30) return new WP_Error('guide_cost_quantity_invalid');
-        $policy=self::read();
-        if (is_wp_error($policy)) return $policy;
         $code=self::identity($language);
         if (is_wp_error($code)) return $code;
-        $tier=array_key_exists($code, ['ar'=>true,'en'=>true]) ? $code : 'other';
-        $unit=(int)$policy['amounts'][$tier];
-        $amount=$unit*$guidedDays*$guides;
+        $rate=class_exists('MAD4B_Guide_Taxonomy_Pricing_V1',false)
+            ?MAD4B_Guide_Taxonomy_Pricing_V1::resolved($language):null;
+        if (is_wp_error($rate)) return $rate;
+        if (!is_array($rate)) {
+            $policy=self::read();
+            if (is_wp_error($policy)) return $policy;
+            $tier=in_array($code,['ar','en'],true)?$code:'other';
+            $rate=[
+                'tier'=>$tier,'unit_cost'=>(float)$policy['amounts'][$tier],
+                'source_currency'=>'EGP','source_unit_cost'=>(int)$policy['amounts'][$tier],
+                'supplier'=>'self','fx_rate'=>1.0,'fx_source'=>'same_currency',
+                'fx_asof'=>null,'policy_source'=>'global_fallback',
+                'policy_fingerprint'=>hash('sha256',wp_json_encode($policy)),
+            ];
+        }
+        $unit=(float)$rate['unit_cost'];
+        $amount=round($unit*$guidedDays*$guides,2);
         return [
             'contract'=>'mad4b.guide.daily-base-cost.v1',
             'component'=>'guide',
             'language_code'=>$code,
-            'tier'=>$tier,
-            'supplier'=>$policy['supplier'],
+            'tier'=>$rate['tier'],
+            'supplier'=>$rate['supplier'],
             'currency'=>'EGP',
+            'source_currency'=>$rate['source_currency'],
+            'source_unit_cost'=>$rate['source_unit_cost'],
+            'fx_rate'=>$rate['fx_rate'],'fx_source'=>$rate['fx_source'],
+            'fx_asof'=>$rate['fx_asof'],'cost_policy_source'=>$rate['policy_source'],
+            'cost_policy_fingerprint'=>$rate['policy_fingerprint'],
             'price_unit'=>'per_guide_day',
             'guided_days'=>$guidedDays,
             'guide_count'=>$guides,
