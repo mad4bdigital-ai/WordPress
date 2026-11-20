@@ -29,6 +29,8 @@ on:
       - 'scripts/mad4b-stay-eight-packages-hotel-component-discovery-cli.php'
       - 'scripts/mad4b-stay-pyramids-park-owner-google-five-star-cli.php'
       - 'scripts/mad4b-package-eight-accommodation-source-plan-cli.php'
+      - 'scripts/mad4b-package-eight-component-source-admission-cli.php'
+      - 'tests/stay-package-eight-component-source-admission-contract.py'
       - 'scripts/mad4b-package-60441-bilingual-exact-dedup-cli.php'
       - 'tests/stay-package-eight-accommodation-source-plan-contract.py'
       - 'tests/stay-pyramids-park-google-five-star-contract.py'
@@ -80,6 +82,8 @@ on:
       - 'scripts/mad4b-stay-eight-packages-hotel-component-discovery-cli.php'
       - 'scripts/mad4b-stay-pyramids-park-owner-google-five-star-cli.php'
       - 'scripts/mad4b-package-eight-accommodation-source-plan-cli.php'
+      - 'scripts/mad4b-package-eight-component-source-admission-cli.php'
+      - 'tests/stay-package-eight-component-source-admission-contract.py'
       - 'scripts/mad4b-package-60441-bilingual-exact-dedup-cli.php'
       - 'tests/stay-package-eight-accommodation-source-plan-contract.py'
       - 'tests/stay-pyramids-park-google-five-star-contract.py'
@@ -154,6 +158,7 @@ jobs:
           php -l scripts/mad4b-stay-eight-packages-hotel-component-discovery-cli.php
           php -l scripts/mad4b-stay-pyramids-park-owner-google-five-star-cli.php
           php -l scripts/mad4b-package-eight-accommodation-source-plan-cli.php
+          php -l scripts/mad4b-package-eight-component-source-admission-cli.php
           php -l scripts/mad4b-package-60441-bilingual-exact-dedup-cli.php
           php -l scripts/mad4b-stay-invalid-import-quarantine-36260-cli.php
           php -l scripts/mad4b-stay-unresolved-official-room-photo-gaps-cli.php
@@ -175,5 +180,6 @@ jobs:
           python3 tests/stay-eight-packages-hotel-component-discovery-contract.py
           python3 tests/stay-pyramids-park-google-five-star-contract.py
           python3 tests/stay-package-eight-accommodation-source-plan-contract.py
+          python3 tests/stay-package-eight-component-source-admission-contract.py
           python3 tests/stay-commercial-readiness-ui-check.py
           node --check wp-content/mu-plugins/mad4b-stay-readiness/admin.js
