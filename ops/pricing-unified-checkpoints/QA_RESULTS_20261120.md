@@ -41,3 +41,17 @@ A complete synthetic component-cost fixture is not proof of a real supplier invo
 5. Release owner/CI: new branch workflows green, Git/live SHA audit, rollback evidence, explicit approval.
 
 CP8 must remain OPEN until those conditions are fulfilled.
+
+
+## 20 November addendum: Source CAS and Package supplier readiness
+
+- Native JetEngine Options Page etg-dynamic-pricing-controls is protected with an HMAC fingerprint over 54 original SEPARATE option values read directly from DB. Original form receives signed hidden revision and nonce; admin_init priority 39 guard gets a MySQL advisory lock before JetEngine save priority 40. After-save or shutdown releases lock; no duplicate write store.
+- Both source and Wayfatours passed tests/verify-native-pricing-cas.php and tests/verify-native-pricing-cas-dom.js. An unsigned vendor POST was rejected in an isolated staging simulation without altering source fingerprint. Authenticated parallel browser save remains unverified.
+- Policy Write Preflight was updated to read source CAS revision, return native_validation_required and still perform no write.
+- New MAD4B_Package_Supplier_Admission_V1 inspects original Stay Package Program bindings, Transport Self source, Guide composition and Extras quote runtime without relying on historic selling prices. All cost eligibility decisions fail closed until real supplier evidence is signed.
+- Eight canonical Wayfatours Tours 60629,60627,60623,60443,60441,60439,60437,57562 were checked in EN/ES, EGP/USD/EUR/GBP, adult-only and adult+children+infants: 128 checks; 0 commercial approvals. Unselected room and missing stay cost (128), unapproved route cost (128), guide coverage not reviewed (128), extras supplier rate not certified (128), company margin and tax pending (128), FX needed (96), child/infant rates needed (64). No Rates or pricing options mutated.
+- Eight Tour Property Stage x Package Level backlog exported to reports/wayfatours-eight-package-supplier-gaps.csv: 60 real source rows, zero commercially approved room units. Selected cruise vessels/programs and supplier prices remain missing on relevant stages.
+- Actual room source receipts are editorial, rates intentionally unset; transport source records use vehicle_rates_unverified; Extras source runtime explicitly marks rate_eligibility_verified false.
+- Source Tour Rates 196 Published and 29 Draft; Wayfatours 0 Published, 106 Draft and 2 Auto Draft. No commerce activation.
+
+Remaining gates: real approved dated hotel/boat unit costs, verified transport vehicle-route costs, Guide day coverage, extras cost, FX, company margin/tax, child pricing, real browser dual-tab Save acceptance, updated CI and release owner approval. CP8 remains OPEN.
