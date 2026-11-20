@@ -1,7 +1,7 @@
 # Host Authority v126 — Exact Tours.dev Staging Site Profile identity parity
 
 **Base:** canonical master `1ed359a52ecd1c94574ddfd31c9327de5779b856`.
-**Live source SHA-256:** `f643847a8dbf590e48dda561f29a7eae36da66ce4f079c16f2fd34be22f2a175`.
+**Initial live source SHA-256:** `f643847a8dbf590e48dda561f29a7eae36da66ce4f079c16f2fd34be22f2a175`.
 **Previous master SHA-256:** `cc3ace25b52a452a32031a8a6ce02157963de96eb0b563346aa5d33599cf36bf`.
 
 This is the **identity-correctness half** of Host Authority runtime source
@@ -47,3 +47,5 @@ separate company-specific release approval and rollback.
 Commerce, or Original305/306/313/318/328 from master; PR #975 still
 contains inert source evidence only. Live Staging Original318 Rev 1 and
 signed Original313 receipt must remain untouched.
+
+**Review-only comment correction:** The Site Profile review candidate is functionally identical to live Staging apart from replacing one URL-like fragment in a PHP comment, which the legacy site-neutrality scanner incorrectly interpreted as a literal host. Candidate SHA-256: `7698ea2882d95bcc8eab3a029d0d9c4814b206d9a1e1d20de4b4546318e8d7ee`. The comment-only correction changes no PHP behavior and must not be used to claim byte-for-byte equality with live Staging.

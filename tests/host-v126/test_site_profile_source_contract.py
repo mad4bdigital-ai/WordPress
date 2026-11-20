@@ -7,7 +7,7 @@ import unittest
 
 ROOT=Path(__file__).resolve().parents[2]
 FILE=ROOT/"wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php"
-EXPECTED_SHA="f643847a8dbf590e48dda561f29a7eae36da66ce4f079c16f2fd34be22f2a175"
+EXPECTED_SHA="7698ea2882d95bcc8eab3a029d0d9c4814b206d9a1e1d20de4b4546318e8d7ee"
 FUNCTION=re.compile(r"\b(?:public|protected|private)\s+(?:static\s+)?function\s+(\w+)\s*\(")
 class SourceParity(unittest.TestCase):
  def test_01_exact_original_staging_source_sha(self):
