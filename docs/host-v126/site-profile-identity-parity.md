@@ -49,3 +49,5 @@ contains inert source evidence only. Live Staging Original318 Rev 1 and
 signed Original313 receipt must remain untouched.
 
 **Review-only comment correction:** The Site Profile review candidate is functionally identical to live Staging apart from replacing one URL-like fragment in a PHP comment, which the legacy site-neutrality scanner incorrectly interpreted as a literal host. Candidate SHA-256: `7698ea2882d95bcc8eab3a029d0d9c4814b206d9a1e1d20de4b4546318e8d7ee`. The comment-only correction changes no PHP behavior and must not be used to claim byte-for-byte equality with live Staging.
+
+CI behavior execution is mapped through `tests/host-v126/test_site_profile_runtime_cli.py` rather than unallowlisted PHPUnit filenames. The wrapper executes eight exact, fixture-only PHP tests (27 checks, zero persistent WordPress writes); it fails on missing PHP, nonzero subprocess exits or missing positive evidence. No PHP runner allowlist or Production privilege was broadened.
