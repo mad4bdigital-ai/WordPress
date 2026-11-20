@@ -16,9 +16,10 @@ foreach(['mad4b-ws-editor-composed','createComment',
  'workspaceContent.append(original)',
  'root.insertBefore(original,anchor.nextSibling)',
  'mad4b:jetengine:mode-changed',
- 'nativeEditors.length===1'] as $needle)
+ 'nativeEditors.length===1','mad4b-ws-flat-canvas'] as $needle)
  if(!str_contains($js,$needle)) WP_CLI::error('Single editor safeguard missing: '.$needle);
 foreach(['.mad4b-ws-layout','grid-template-columns:215px',
+ '.mad4b-ws-flat-canvas','.mad4b-ws-control:not(.mad4b-ws-filtered)',
  '.mad4b-ws-content>.mad4b-ws-original',
  '.mad4b-ws-editor-composed','border-inline-end',
  '.mad4b-ws-summary','@media(max-width:900px)'] as $needle)

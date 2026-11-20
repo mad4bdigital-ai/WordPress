@@ -42,8 +42,12 @@
       }else if(!grouped && original.parentNode!==root){
         root.insertBefore(original,anchor.nextSibling);
       }
-      root.classList.toggle('mad4b-ws-editor-composed',
-        grouped && original.parentNode===workspaceContent);
+      const composed=grouped && original.parentNode===workspaceContent;
+      root.classList.toggle('mad4b-ws-editor-composed',composed);
+      // Flat Settings Canvas is pricing-specific: the original JetEngine
+      // editor remains fully native in non-grouped mode, and other JetEngine
+      // option pages keep their own presentation contracts.
+      root.classList.toggle('mad4b-ws-flat-canvas',Boolean(cfg.pricing && composed));
     };
     document.addEventListener('mad4b:jetengine:mode-changed',moveEditor);
     moveEditor();

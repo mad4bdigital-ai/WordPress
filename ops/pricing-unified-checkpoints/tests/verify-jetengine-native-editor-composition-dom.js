@@ -110,6 +110,8 @@ assert.equal(formContainer.parentNode,content,'Native editor must be structurall
 assert.equal(root.children.filter(x=>x===formContainer).length,0,'Orphan duplicate editor remained');
 assert.equal(content.children[content.children.length-1],formContainer);
 assert.equal(root.classes.has('mad4b-ws-editor-composed'),true);
+assert.equal(root.classes.has('mad4b-ws-flat-canvas'),true,
+ 'Flat canvas must activate only with the original grouped pricing editor');
 assert.equal(root.querySelectorAll('form').length,2,'Existing independent supplier form must remain intact');
 assert.equal(separateSupplierForm.parentNode,content);
 assert.deepEqual(form.children,[inputGroup,submit]);
@@ -119,6 +121,8 @@ sendMode();
 assert.equal(formContainer.parentNode,root,'Raw native mode did not restore original parent');
 assert.equal(form.parentNode,formContainer);
 assert.equal(root.classes.has('mad4b-ws-editor-composed'),false);
+assert.equal(root.classes.has('mad4b-ws-flat-canvas'),false,
+ 'Original raw JetEngine view must be exempt from flat design overrides');
 assert.equal(root.querySelectorAll('form').length,2,'Existing independent supplier form must remain intact');
 assert.equal(separateSupplierForm.parentNode,content);
 root.classes.delete('mad4b-ws-native');root.classes.add('mad4b-ws-visual');

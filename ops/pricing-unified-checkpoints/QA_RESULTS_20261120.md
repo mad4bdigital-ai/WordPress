@@ -112,3 +112,10 @@ The two shell JS/CSS files were deployed to staging and production with source S
 Replaced the prior CSS-only seam joining with one actual shared visual editor. The existing native JetEngine form is moved intact into the central content when Grouped View is on and restored when Native View is selected. Its field object identities, input names, nonce and submit remain unchanged. New guard allows separate supplier-specific forms without confusing them with the unique JetEngine original. The header statistics are nested in the existing header, and mobile navigation collapses rather than consuming the whole screen. Native Save remains in normal flow after the inputs.
 
 Testing: original WordPress factory form readback (54 fields), component script/style verification on staging and Wayfatours, DOM identity tests, Chromium at 1440/1024/768/390/320 with zero horizontal overflow and mobile navigation click/close, intact source revision. No live authenticated browser certificate issued. All changes are scoped to the presentation shell; commerce and supplier cost approvals were not changed.
+
+
+### CP2.4 Visual UX correction — Flat Canvas
+
+Source: real Wayfatours Pricing Controls screenshot (20 Nov). Heavy native field cards and nested shells created the impression of separate applications. Scoped design mode mad4b-ws-flat-canvas only activates with Grouped Pricing Controls and original JetEngine editor composed. Native standard fields become flat rows, repeaters remain full width, and Save, Preview and supplier product panels integrate into one surface. Raw native view unaffected.
+
+Chromium UI fixture: 1440, 1024, 768, 390, 320 PASS, including CSS computed styles and product state. Narrow-screen grid specificity issue was identified and corrected before deployment. Native WordPress readback/markup tests PASS on staging and Wayfatours, settings revision unchanged. Both sites retain backups and source SHA parity. A real logged-in browser interaction/save certificate was not issued.

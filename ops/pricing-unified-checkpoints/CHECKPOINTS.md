@@ -127,3 +127,19 @@ Supersedes the former "two separate DOM elements with matched borders" styling-o
 - WordPress source verification: tests/verify-jetengine-composed-workspace.php and original native form/UI tests passed on both Tours.dev and Wayfatours with 54 native fields; source revisions unchanged.
 - Live CSS/JS files were updated on staging and production, with per-site rollback backups under /opt/mad4b-company-provisioning/backups/jetengine-single-surface-final-20261120/.
 - Authentication-based browser Save, real plugin interoperability, EN/ES responsive and commercial pricing E2E are still OPEN. CP8 remains OPEN.
+
+
+## CP2.4 — Modern Flat Settings Canvas (20 Nov 2026)
+
+After visual review of the real Wayfatours admin screenshot, the structurally merged Workspace still looked like separate pages because the shared JetEngine Field Recipe styled every regular control as a white card, while the preview, sidebar, and Save bar each had independent bordered shells.
+
+Visual design contract: one neutral company pricing canvas; a single brand-consistent header; left navigation and right tour preview separated by hairline rules; central native settings expressed as label-and-control rows, not stacks of framed cards; original complex repeaters retain internal functional boundaries; the only primary save remains JetEngine's real original Save action; responsive controls stack below 1200px, and nav collapses on mobile.
+
+Implementation: mad4b-jetengine-workspace-shell-v1.js toggles mad4b-ws-flat-canvas only when Pricing Controls is in Grouped Visual mode with the original native editor composed. Scoped rules in its CSS remove inner shell borders/shadows, flatten standard native controls, preserve native repeaters, integrate Save and Tour Preview, and remove redundant service shells. Original field names, input nodes and source settings remain unchanged.
+
+Acceptance:
+- verify-jetengine-native-editor-composition-dom.js, verify-jetengine-shell-product-context-dom.js, verify-jetengine-shell-nav-dom.js: original source field identities, view switch and Save accepted.
+- verify-composed-workspace-playwright.py and fixtures/composed-workspace.html with actual Field Recipe CSS: 1440/1024/768/390/320, zero horizontal overflow, flat computed field border, original repeater, Save in normal flow, no nested workspace border, product context and mobile navigation accepted.
+- Real WordPress server: verify-jetengine-composed-workspace.php, verify-jetengine-shell-ui.php, verify-native-jetengine-form-markup.php PASS on Tours.dev and Wayfatours. Original option source revision unchanged.
+- Rollback backups: /opt/mad4b-company-provisioning/backups/jetengine-flat-canvas-20261120/
+- OPEN: live logged-in browser real-data responsive and repeater evaluation, cross-browser and full business E2E. Not a certified commercial save or rate generation.

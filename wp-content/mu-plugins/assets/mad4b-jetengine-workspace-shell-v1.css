@@ -739,3 +739,316 @@
   gap:3px;
  }
 }
+
+/* MAD4B Pricing Canvas · neutral, cardless settings surface (v4).
+   The previous iterations aligned multiple bordered panels; this edition
+   deliberately removes those inner card boundaries. Every override is gated
+   to the authenticated Grouped Pricing workspace and never affects raw
+   JetEngine mode, CPT post meta editors, or storefront controls. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas{
+ --mad4b-flat-ink:#223c40;
+ --mad4b-flat-muted:#657b7d;
+ --mad4b-flat-hairline:#e7eeec;
+ --mad4b-flat-panel:#f8faf9;
+ --mad4b-flat-accent:#176f64;
+ background:#fff!important;
+ border:1px solid #dbe5e2!important;
+ border-radius:13px!important;
+ box-shadow:0 3px 18px rgba(29,63,56,.035)!important;
+ gap:0!important;
+ row-gap:0!important;
+ column-gap:0!important;
+ overflow:visible;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-banner{
+ background:#fff!important;
+ border:0!important;
+ border-bottom:1px solid var(--mad4b-flat-hairline)!important;
+ border-radius:13px 13px 0 0!important;
+ padding:20px 23px 13px!important;
+ box-shadow:none!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-title h2{
+ color:var(--mad4b-flat-ink);
+ letter-spacing:-.028em;
+ font-weight:720;
+ font-size:25px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-title p{font-size:12px;color:var(--mad4b-flat-muted)}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-banner>.mad4b-ws-summary{
+ border-top:1px solid var(--mad4b-flat-hairline)!important;
+ margin-top:9px!important;
+ padding-top:9px!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-banner>.mad4b-ws-summary>.mad4b-ws-metric strong{
+ font-size:16px;
+ font-weight:750;
+ color:#295b53;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-layout{
+ border:0!important;
+ border-radius:0!important;
+ box-shadow:none!important;
+ background:transparent!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-layout>.mad4b-ws-sidebar{
+ background:var(--mad4b-flat-panel)!important;
+ border:0!important;
+ border-inline-end:1px solid var(--mad4b-flat-hairline)!important;
+ border-radius:0!important;
+ padding:19px 14px!important;
+ box-shadow:none!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-layout>.mad4b-ws-content{
+ border:0!important;
+ border-radius:0!important;
+ background:#fff!important;
+ padding:24px 24px 17px!important;
+ box-shadow:none!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-section-heading{
+ margin:0 0 16px;
+ padding:0 0 13px;
+ border-bottom:1px solid var(--mad4b-flat-hairline);
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-section-heading h3{
+ font-size:17px;
+ line-height:1.3;
+ letter-spacing:-.018em;
+ color:var(--mad4b-flat-ink);
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-search{
+ background:#fff!important;
+ border-color:#d7e2de!important;
+ min-height:38px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-nav-btn{
+ border-radius:6px;
+ min-height:38px;
+ padding:9px 10px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-nav-btn.is-active{
+ border-color:transparent!important;
+ background:#e8f2ef!important;
+ box-shadow:inset 3px 0 0 var(--mad4b-flat-accent);
+}
+/* Compact neutral dimensions and source selectors; these are steps, not
+   bright nested cards. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-dimension-launcher,
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-product-context{
+ background:#f5f8f7!important;
+ border:0!important;
+ border-radius:7px!important;
+ box-shadow:none!important;
+ padding:13px 15px!important;
+}
+/* JetEngine fields become real settings ROWS. Metadata remains visible,
+   all original field info/content descendants remain in the same form. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-content>.mad4b-ws-original #settings_top
+ .mad4b-ws-control:not(.mad4b-ws-filtered):not(.cx-control-repeater):not(.mad4b-source-cards-mode){
+ display:grid!important;
+ grid-template-columns:minmax(150px,33%) minmax(0,1fr);
+ align-items:start;
+ column-gap:23px;
+ row-gap:6px;
+ min-width:0!important;
+ margin:0!important;
+ padding:17px 0!important;
+ border:0!important;
+ border-bottom:1px solid var(--mad4b-flat-hairline)!important;
+ border-radius:0!important;
+ background:transparent!important;
+ box-shadow:none!important;
+ transition:background .14s ease;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-content>.mad4b-ws-original #settings_top
+ .mad4b-ws-control:not(.cx-control-repeater):not(.mad4b-source-cards-mode):focus-within{
+ background:#fcfefd!important;
+ box-shadow:inset 3px 0 0 #85b6aa!important;
+}
+/* Override vendor inline flex widths only for the two direct native parts;
+   keep nested repeaters, media and upload layouts untouched. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-content>.mad4b-ws-original #settings_top
+ .mad4b-ws-control:not(.cx-control-repeater):not(.mad4b-source-cards-mode)
+ >.cx-control__info,
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-content>.mad4b-ws-original #settings_top
+ .mad4b-ws-control:not(.cx-control-repeater):not(.mad4b-source-cards-mode)
+ >.cx-control__content{
+ width:auto!important;
+ max-width:100%!important;
+ flex:none!important;
+ min-width:0;
+ padding:0!important;
+ margin:0!important;
+ box-sizing:border-box;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-content>.mad4b-ws-original #settings_top
+ .mad4b-ws-control>.cx-control__info .cx-control__title{
+ font-size:12px!important;
+ line-height:1.55!important;
+ font-weight:700!important;
+ color:var(--mad4b-flat-ink)!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-content>.mad4b-ws-original #settings_top
+ .mad4b-ws-control :is(.cx-control__description,.cx-control__desc){
+ color:var(--mad4b-flat-muted)!important;
+ font-size:11px!important;
+ line-height:1.55;
+}
+/* Complex and repeater source policies retain full-width content, but no
+   outer card around the vendor row list. Individual rows/choices retain
+   their functional boundaries. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-content>.mad4b-ws-original #settings_top
+ .mad4b-ws-control:is(.cx-control-repeater,.mad4b-source-cards-mode,[data-control-name="shared_price_source_mode_rows"]){
+ margin:0!important;
+ padding:18px 0!important;
+ border:0!important;
+ border-bottom:1px solid var(--mad4b-flat-hairline)!important;
+ border-radius:0!important;
+ background:transparent!important;
+ box-shadow:none!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-content>.mad4b-ws-original #settings_top
+ .mad4b-ws-control:is(.cx-control-repeater,.mad4b-source-cards-mode,[data-control-name="shared_price_source_mode_rows"]):focus-within{
+ box-shadow:none!important;
+}
+/* Save is the bottom ACTION ROW of the editor. Never visually another card. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-content .cx-component.dialog-save.mad4b-ws-native-save-bar{
+ margin:18px 0 0!important;
+ padding:17px 0 4px!important;
+ background:transparent!important;
+ border:0!important;
+ border-top:1px solid var(--mad4b-flat-hairline)!important;
+ border-radius:0!important;
+ box-shadow:none!important;
+}
+/* Right-side Tour Preview uses the same surface with a dividing rule rather
+   than its own "floating application" card and shadow. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ >.mad4b-tour-inspector{
+ border:0!important;
+ border-inline-start:1px solid var(--mad4b-flat-hairline)!important;
+ border-radius:0!important;
+ background:var(--mad4b-flat-panel)!important;
+ box-shadow:none!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-tour-inspector__header{
+ background:transparent!important;
+ border-bottom:1px solid var(--mad4b-flat-hairline)!important;
+ padding:18px 16px 13px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-tour-inspector__content{
+ background:transparent!important;
+ padding:12px 15px 20px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-tour-inspector__facet{
+ border:0!important;
+ border-bottom:1px solid var(--mad4b-flat-hairline)!important;
+ border-radius:0!important;
+ background:transparent!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-tour-inspector__facet>summary{
+ background:transparent!important;
+ padding:11px 5px!important;
+ font-weight:650;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-tour-inspector__tour{
+ border:1px solid transparent!important;
+ border-bottom-color:var(--mad4b-flat-hairline)!important;
+ border-radius:6px!important;
+ background:transparent!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-tour-inspector__tour.is-selected{
+ border-color:#9dc4ba!important;
+ background:#edf6f3!important;
+}
+/* Supplier panels remain FUNCTIONAL components rather than full independent
+   pages nested under Pricing Controls. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-external-section,
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-external-section :is(.mad4b-stay-panel,.mad4b-ts-panel){
+ background:transparent!important;
+ box-shadow:none!important;
+ border:0!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ :is(.mad4b-ws-provider-panel,.mad4b-supplier-readiness>details){
+ border:0!important;
+ border-bottom:1px solid var(--mad4b-flat-hairline)!important;
+ border-radius:0!important;
+ box-shadow:none!important;
+ background:transparent!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ :is(.mad4b-ws-provider-panel>summary,.mad4b-supplier-readiness>details>summary){
+ background:transparent!important;
+ padding:13px 8px!important;
+ min-height:44px;
+}
+/* Desktop provides label + control columns. Narrow view returns to one
+   comfortable column; native JetEngine mode is entirely unaffected. */
+@media(max-width:1200px){
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  .mad4b-ws-content>.mad4b-ws-original #settings_top
+  .mad4b-ws-control:not(.cx-control-repeater):not(.mad4b-source-cards-mode){
+  grid-template-columns:minmax(0,1fr)!important;
+  row-gap:9px;
+ }
+}
+@media(max-width:1100px){
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  >.mad4b-tour-inspector{
+  border-inline-start:0!important;
+  border-top:1px solid var(--mad4b-flat-hairline)!important;
+ }
+}
+@media(max-width:900px){
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  .mad4b-ws-layout>.mad4b-ws-sidebar{
+  border-inline-end:0!important;
+  border-bottom:1px solid var(--mad4b-flat-hairline)!important;
+  background:var(--mad4b-flat-panel)!important;
+  padding:12px!important;
+ }
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  .mad4b-ws-layout>.mad4b-ws-content{
+  padding:17px!important;
+ }
+}
+@media(max-width:580px){
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  .mad4b-ws-banner{padding:16px!important}
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  .mad4b-ws-title h2{font-size:21px!important}
+}
