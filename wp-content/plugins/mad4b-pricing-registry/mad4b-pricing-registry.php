@@ -89,3 +89,5 @@ require_once __DIR__ . '/includes/transport-self-pricing-controls.php';
 require_once __DIR__ . '/includes/transport-tour-component-eligibility.php';
 require_once __DIR__ . '/includes/transport-tour-rate-routing.php';
 require_once __DIR__ . '/includes/transport-tour-rate-routing-admin.php';
+require_once __DIR__ . '/includes/transport-form6-dropoff.php';
+require_once __DIR__ . '/includes/transport-source-operations-readiness.php';

@@ -141,11 +141,35 @@ function init(){
     if(entry?.edit_url)safeLink(action,entry.edit_url);
     if(!action.getAttribute('href'))action.hidden=true;
  }
+ function operationsReadiness(entry){
+    const stateBox=q('operations-state'),details=q('operations-details');
+    const o=entry?.operations;
+    if(!o){
+      stateBox.textContent='Select a PDF operation';
+      details.textContent='Source city, exact points and price approval will appear here.';
+      return;
+    }
+    stateBox.textContent=o.booking_ready?'Approved for operations':
+        'Request and supplier review only — not payable';
+    const origin=o.origin_city_known?'Origin city recorded':'Origin city missing';
+    const destination=o.destination_city_known?
+        'Destination city recorded':'Destination / route details pending';
+    details.textContent=[
+      origin,destination,
+      'Exact pickup '+(o.pickup_point_verified?'verified':'unconfirmed'),
+      'Exact drop-off '+(o.dropoff_point_verified?'verified':'unconfirmed'),
+      'Availability: '+o.supplier_availability.replaceAll('_',' '),
+      'Native approved Rate: '+(o.approved_native_rate_present?'yes':'no'),
+      'Source currency / role: '+(o.source_currency||'missing')+' / '+o.source_price_role,
+      'Fleet capacity: supplier confirmation required'
+    ].join(' · ');
+ }
  function operationChanged(){
     const r=state.rows.find(x=>x.key===q('operation').value);
     state.selected=r||null;
     q('source-ar').textContent=r?.original_ar||'';
     componentReadiness(r);
+    operationsReadiness(r);
     options(q('vehicle'),r?Object.keys(r.prices).map(k=>[k,display(k)]):[],
         'Choose vehicle');
     vehicleChanged();

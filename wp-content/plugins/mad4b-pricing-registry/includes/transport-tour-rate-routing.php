@@ -82,7 +82,9 @@ final class MAD4B_Transport_Tour_Rate_Routing_V1 {
     public static function validate_stage(array $stage) {
         $allowed=['key','label','day_offset','origin_term_id',
             'destination_term_id','return_to_origin','required',
-            'join','service_kind','price_policy'];
+            'join','service_kind','price_policy','transport_ids',
+            'pickup_point_type','pickup_point_ref_id','pickup_point_notes',
+            'dropoff_point_type','dropoff_point_ref_id','dropoff_point_notes'];
         if(array_diff(array_keys($stage),$allowed))
             return new WP_Error('transport_stage_unknown_fields');
         $key=(string)($stage['key']??'');
@@ -112,7 +114,14 @@ final class MAD4B_Transport_Tour_Rate_Routing_V1 {
             return new WP_Error('transport_stage_join_invalid');
         $required=$stage['required']??true;
         $return=$stage['return_to_origin']??false;
-        if(!is_bool($required)||!is_bool($return))
+        $boolean=static function($v){
+            if(is_bool($v))return $v;
+            if(in_array($v,['1',1],true))return true;
+            if(in_array($v,['0',0],true))return false;
+            return null;
+        };
+        $required=$boolean($required);$return=$boolean($return);
+        if($required===null||$return===null)
             return new WP_Error('transport_stage_boolean_invalid');
         $price=(string)($stage['price_policy']??'inquiry');
         if(!in_array($price,['inquiry','included','additional'],true))
@@ -120,6 +129,46 @@ final class MAD4B_Transport_Tour_Rate_Routing_V1 {
         $kind=(string)($stage['service_kind']??'any');
         if(!in_array($kind,['any','transfer','sightseeing','facility','extra'],true))
             return new WP_Error('transport_stage_kind_invalid');
+        $pointTypes=['pending','hotel','airport','rail_station','marina',
+          'meeting_point','custom'];
+        $points=[];
+        foreach(['pickup','dropoff'] as $endpoint){
+            $type=(string)($stage[$endpoint.'_point_type']??'pending');
+            if(!in_array($type,$pointTypes,true))
+                return new WP_Error('transport_stage_point_type_invalid');
+            $rawId=$stage[$endpoint.'_point_ref_id']??0;
+            if($rawId===''||$rawId===null)$rawId=0;
+            if(!is_scalar($rawId)||!ctype_digit((string)$rawId)||
+                (int)$rawId>99999999)
+                return new WP_Error('transport_stage_point_ref_invalid');
+            $id=(int)$rawId;
+            $notes=sanitize_textarea_field(
+                (string)($stage[$endpoint.'_point_notes']??''));
+            if(mb_strlen($notes)>500)
+                return new WP_Error('transport_stage_point_notes_oversized');
+            $permittedType=$type==='hotel'?'properties':
+                (in_array($type,['airport','rail_station','marina'],true)?
+                    'stations':null);
+            $validId=$id>0&&$permittedType!==null&&
+                get_post_type($id)===$permittedType&&
+                get_post_status($id)==='publish';
+            // A published Property/Station proves only post identity,
+            // not supplier pickup time, capacity or point confirmation.
+            if($id>0&&!$validId)
+                return new WP_Error('transport_stage_point_reference_unverified');
+            $points[$endpoint]=[
+                'kind'=>$type,'object_id'=>$id?:null,'notes'=>$notes,
+                'post_identity_valid'=>$validId,
+                'supplier_confirmed'=>false
+            ];
+        }
+        $selected=$stage['transport_ids']??[];
+        if($selected===''||$selected===null)$selected=[];
+        if(!is_array($selected)||count($selected)>30)
+            return new WP_Error('transport_stage_selected_transports_invalid');
+        $selected=array_values(array_unique(array_map('absint',$selected)));
+        if(in_array(0,$selected,true))
+            return new WP_Error('transport_stage_selected_transport_zero');
         return [
             'key'=>$key,'label'=>$label,'day_offset'=>$day,
             'origin_term_id'=>(int)$origin,'destination_term_id'=>$dest,
@@ -127,6 +176,10 @@ final class MAD4B_Transport_Tour_Rate_Routing_V1 {
             'destination_slug'=>$dest?self::slug_from_term($dest):'',
             'return_to_origin'=>$return,'required'=>$required,
             'join'=>$join,'price_policy'=>$price,'service_kind'=>$kind,
+            'pickup_point'=>$points['pickup'],
+            'dropoff_point'=>$points['dropoff'],
+            'selected_transport_ids'=>$selected,
+            'supplier_points_confirmed'=>false
         ];
     }
     private static function service_type(string $shape,string $sourceKind):string {

@@ -149,6 +149,10 @@ final class MAD4B_Transport_Self_Pricing_Controls_V1 {
             if(!$sourceKey)continue;
             $linked[$sourceKey][]=(int)$id;
         }
+        $sourceIds=array_merge([],...array_values($linked));
+        $operational=class_exists('MAD4B_Transport_Source_Operations_Readiness_V1')
+            ?MAD4B_Transport_Source_Operations_Readiness_V1::map($sourceIds)
+            :[];
         $items=[];
         foreach($source['rows'] as $r){
             if($city!==''&&$r['city']!==$city)continue;
@@ -172,6 +176,10 @@ final class MAD4B_Transport_Self_Pricing_Controls_V1 {
                 'post_id'=>$postId,'translation_count'=>count($postIds),
                 'edit_url'=>$postId?get_edit_post_link($postId,'raw'):null,
                 'component'=>$component,
+                'operations'=>$operational[$postId]??[
+                    'booking_ready'=>false,
+                    'reason_codes'=>['source_translation_not_unique']
+                ],
                 'key'=>$r['source_key'],'city'=>$r['city'],
                 'row'=>$r['source_row'],
                 'title'=>$r['titles'][$lang]??$r['titles']['en'],

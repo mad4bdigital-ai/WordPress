@@ -144,6 +144,36 @@ $simpleMulti=$c::composition(['mode'=>'simple','stages'=>[
  $stage('first',122,125),$stage('second',125,122)
 ]],'en');
 $check('simple_or_only_one_stage',is_wp_error($simpleMulti));
+$stageDef=null;
+foreach($fields as $f)
+ if(($f['name']??'')==='_mad4b_transport_stages_v1')$stageDef=$f;
+$pointFields=(array)($stageDef['repeater-fields']??[]);
+$check('native_stage_has_17_point_fields',count($pointFields)===17);
+$pointStage=$stage('city-leg',122,125);
+$pointStage['required']='1';
+$pointStage['return_to_origin']='0';
+$pointStage['pickup_point_type']='pending';
+$pointStage['pickup_point_ref_id']='0';
+$pointStage['pickup_point_notes']='';
+$pointStage['dropoff_point_type']='pending';
+$pointStage['dropoff_point_ref_id']='0';
+$pointStage['dropoff_point_notes']='';
+$pointStage['transport_ids']=[];
+$validPoint=$c::validate_stage($pointStage);
+$check('native_jetengine_stage_values_readable',
+ !is_wp_error($validPoint)&&$validPoint['required']===true&&
+ $validPoint['return_to_origin']===false);
+$check('missing_points_remain_unconfirmed',
+ !is_wp_error($validPoint)&&
+ $validPoint['pickup_point']['kind']==='pending'&&
+ $validPoint['dropoff_point']['kind']==='pending'&&
+ $validPoint['supplier_points_confirmed']===false);
+$badPoint=$pointStage;$badPoint['pickup_point_type']='airport';
+$badPoint['pickup_point_ref_id']='999999';
+$invalidPoint=$c::validate_stage($badPoint);
+$check('unverified_station_reference_fails_closed',
+ is_wp_error($invalidPoint)&&
+ $invalidPoint->get_error_code()==='transport_stage_point_reference_unverified');
 $failed=array_keys(array_filter($checks,static fn($ok)=>!$ok));
 echo wp_json_encode([
  'site'=>$site,'checks'=>count($checks),

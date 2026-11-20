@@ -665,3 +665,100 @@ Verified checks on the fully published live state:
   32/32 Tour Component, 47/47 route, 35/35 Self Pricing.
 
 No commercial Rate generation or checkout activation occurred.
+
+## 20 November 2026 — Pickup/drop-off, supplier readiness and Form #6
+
+Owner scope: cover pickup/drop-off, pricing and availability without opening
+standalone Transportation pages. The trusted original 2026 PDF lacks confirmed
+currency, cost-versus-selling-price role, date-specific stock, actual fleet
+capacity and exact pickup/dropoff addresses. These remain explicit blockers,
+not guessed data.
+
+### Source of truth
+
+Transportation and the Tour Rate define stage city, direction, service kind,
+transport alternatives, required stages and OR/AND. Stage point descriptors
+hold operator-specified hotel/station references and meeting instructions.
+A native post ID proves its identity only; it does not prove a supplier pickup
+agreement, distance, driver assignment or exact meeting time.
+
+Fluent Form #6 records requested traveler logistics. The original commerce
+pickup module retains hotel pickup booked/not booked, name, city and address.
+The new drop-off fields store the final requested destination, not a new
+transfer Rate or automatically accepted route. Native Transport Rates remain
+the only source of approved transport price in a documented currency and
+unit. Availability is On Request until verified for a travel date.
+
+### Additive native Tour Rate stage fields
+
+The reversible tool tools/reconcile-tour-rate-stage-points.php added six
+fields in the existing JetEngine Transportation Stage repeater, raising its
+subfield count from 11 to 17 while keeping 52 parent Tour Rate CPT fields:
+
+- pickup_point_type and dropoff_point_type
+- pickup_point_ref_id and dropoff_point_ref_id
+- pickup_point_notes and dropoff_point_notes
+
+Location kinds include pending, hotel, airport, rail_station, marina,
+meeting_point and custom. Reference IDs are optional native Properties or
+Stations post identifiers. All new location types default Pending. The
+route-candidate parser now accepts these fields and native JetEngine 1/0
+boolean representations while preserving supplier_points_confirmed=false.
+No existing Rate post content, pricing or stage values were changed.
+Rollback option: mad4b_tour_rate_stage_points_schema_backup_20261120_v1
+on each website.
+
+### Form #6 native final drop-off
+
+The site-guarded migration tools/reconcile-transport-form6-dropoff.php
+added four optional fields directly below the existing pickup hotel fields:
+
+- mad4b_dropoff_mode: same-as-pickup if route permits, hotel/cruise,
+  airport, railway station, port/marina, meeting point or confirm later
+- mad4b_dropoff_place_name
+- mad4b_dropoff_city
+- mad4b_dropoff_address
+
+The original Form #6 (Single Tour Order Form) has 22 top-level fields
+on both sites instead of 18, with all existing field definitions preserved.
+Each site retains a separate before-image and guarded rollback at
+mad4b_form6_transport_dropoff_backup_20261120_v1.
+
+The additive includes/transport-form6-dropoff.php and
+assets/transport-form6-dropoff.js render them conditionally only on an
+eligible published Tour page, based on the existing pickup policy or a
+published Tour Rate with Transportation explicitly enabled. Visible labels
+are localized across EN, AR, FR, DE, ES and IT.
+
+The new submission filter runs at priority 55, after the existing native
+pickup filter at 45 and pricing intent filter at 25. It reuses the original
+Fluent Form #6 Tour/Rate binding, embedded Tour context and server-created
+nonfinancial booking intent. It appends a separate
+_mad4b_transport_dropoff_v1 logistics record into the SAME Fluent Forms
+response without changing the original price, Rate, checkout flag, order or
+booking workflow. Same-as-pickup reuses previously supplied hotel details
+only as an unconfirmed traveler request. Missing details remain Pending.
+
+### Operations readiness dashboard
+
+The self-provider Dynamic Pricing Controls catalog now includes
+includes/transport-source-operations-readiness.php and an operational
+readiness section with: source city/destination evidence; exact pickup
+and dropoff flags; supplier availability; source currency/price-role
+status; approved native Rate presence; fleet capacity confirmation;
+and Form #6 traveler handoff. The response stays nonfinancial.
+The 51 PDF source services remain On Request / Reference Only.
+
+Existing transportations_channel_mode remains tour_only on both sites:
+standalone Transportation pages and archives are NOT made public.
+
+### Verified tests
+
+- Form #6 source-bound integration: 15/15 Tours.dev and 15/15 Wayfatours.
+- Operational readiness: 24/24 Tours.dev and 12/12 Wayfatours.
+- Routing/OR-AND including 6 stage-point fields: 51/51 on both websites.
+- Real public Tour pages load Form #6, four optional drop-off inputs and
+  scoped JavaScript successfully (HTTP 200).
+- No actual traveler Form #6 submission or Woo order was created for tests.
+- Supplier price currency, availability, capacity and exact route points
+  have not been certified: checkout_authorized remains false.
