@@ -17,7 +17,7 @@ Snapshot date: 20 November 2026. Primary source: Tours.dev staging; target: Wayf
 | CP3 | Single supplier-cost evidence schema and composer: no retail substitution, duplicate lines, missing or expired FX evidence | CONTRACT PASS, DATA BLOCKED: 10 denial cases, quantity and missing-component tests passed on both sites; real supplier receipts incomplete |
 | CP4 | Deterministic integer-minor-unit shadow evaluator with markup vs margin separation, fixed rule ordering, duplicate protection; full FX/passenger/provider integration separately gated | SHADOW PASS, COMMERCIAL OPEN: 7 unsafe cases rejected on both sites; actual cost, FX, occupancy/children receipts still missing |
 | CP5 | AJAX native entity selector and progressive disclosure of 16 financial fields in 21-field policy repeater; no extra Save or hidden disabled native values | SERVER+DOM PASS, BROWSER OPEN: original input and change events tested, logged-in UI Save/mobile/real repeater markup not yet certified |
-| CP6 | Unified native policy write/approval gateway with RBAC, revision, validation and original writer ownership | NOT STARTED |
+| CP6 | Native-source policy write admission with role, revision, target/refs, no writes; transactional native writer integration | READ-ONLY PREFLIGHT PASS, WRITES BLOCKED: JetEngine Options Page lacks expected-revision compare-and-swap; native writer approval and browser testing open |
 | CP7 | E2E matrix: Wayfa 84 Tours, 8 package templates, EN/ES, rate/occupancy/children/FX, mobile 320/390/768/1024/1440 and checkout gate | NOT STARTED |
 | CP8 | Local Git/GitHub/live fingerprint parity, all CI green, approval and merge/release evidence | NOT STARTED |
 
@@ -38,6 +38,14 @@ Snapshot date: 20 November 2026. Primary source: Tours.dev staging; target: Wayf
 - CP4: mad4b-price-evaluator-shadow-v1.php, acceptance ops/pricing-unified-checkpoints/tests/verify-price-evaluator-shadow.php. Integer minor-unit cost basis, mutually exclusive markup or margin and single instance per financial stage. Fixed order; synthetic 8,000 EGP cost -> 14,158.80 EGP after configured test rules and 14% test tax. Seven unsafe cases blocked. Neither FX conversion nor child/occupancy/pricing source re-verification implemented or approved.
 - CP5: mad4b-pricing-entity-picker-v1.php plus JS lookup, accessible search and results without named form controls or additional save actions. Native number input receives the actual selected term/post ID and input+change events. Taxonomy WPML canonical ID displayed for inspection, but stored ID remains the selected native ID. Native 21-field policy form gets progressive disclosure of advanced fields in visual mode only; non-default overrides start expanded. Source and production hashes matched.
 - CP5 tests: verify-entity-picker.php, verify-entity-picker-dom.js, verify-conditional-jetengine-mode.js passed. This **does not certify** that controls appear in a real admin browser: selectors and logged-in native Save still need independent test.
+
+## CP6 source-aware preflight
+- New MU mad4b-pricing-policy-write-preflight-v1.php only inspects native provider state, does not call a writer.
+- Pricing Lab Draft state and source Revision checked against the native option store.
+- Policy Bindings validates scope, target, references and revision through MAD4B_Hybrid_Pricing_Policies_V1 without binding anything.
+- JetEngine Options Page writes fail closed because its native saving hook increments revision but does not enforce an expected version atomically. Checkout activation always blocked.
+- Signed admin AJAX (only for authorized pricing managers); no guest route. Acceptance: tests/verify-policy-write-preflight.php on Tours.dev and Wayfatours, no options changed.
+- This is NOT a completed transactionally consistent write gateway. Retain native Save UI and original actions for now.
 
 ## CP2 runtime findings
 - Original Wayfatours module.php does not include the optional Recipe Registry and its styling assets, unlike Tours.dev. The first attempted three-file upgrade **failed** during a WP-CLI asset test and was rolled back to exact original hashes, verified with HTTP 200.
