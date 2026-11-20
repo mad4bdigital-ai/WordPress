@@ -52,6 +52,39 @@ class CompositeReviewNegativeTests(TestCase):
         with self.assertRaises(AssertionError):
             m.validate(self.supplement, self.source)
 
+    def test_cwv_bootstrap_successor_requires_gated_include(self):
+        key = m.P + 'mad4b-site-control-plane.php'
+        self.sources[key] = self.sources[key].replace(
+            'if ( MAD4B_SCP_CWV_Site_Admission::admitted() ) {',
+            'if ( true ) {', 1)
+        with self.assertRaises(AssertionError):
+            m.validate(self.supplement, self.source)
+
+    def test_cwv_governance_source_requires_exact_review_rows(self):
+        key = m.GOVERNANCE_PATH
+        doc = json.loads(self.sources[key])
+        doc['reviewed_changes'] = [r for r in doc['reviewed_changes']
+            if r.get('source_blob_sha') != m.CWV_REVIEWED_HELPER]
+        self.sources[key] = json.dumps(doc)
+        with self.assertRaises(AssertionError):
+            m.validate(self.supplement, self.source)
+
+    def test_cwv_runner_successor_denies_unknown_executable(self):
+        path='tools/readiness_test_execution.py'
+        self.sources[path]=self.sources[path].replace(
+            '"wp-content/plugins/mad4b-site-control-plane/tests/cwv-site-admission-hermetic.php",',
+            '"wp-content/plugins/mad4b-site-control-plane/tests/unreviewed-php-runner.php",',1)
+        with self.assertRaises(AssertionError):
+            m.validate(self.supplement,self.source)
+
+    def test_cwv_runner_successor_requires_real_negative_test(self):
+        path='tools/readiness_test_execution.py'
+        self.sources[path]=self.sources[path].replace(
+            'assert not has_assertion_pass("FAIL: CWV_SITE_SCOPED_ADMISSION unauthorized policy',
+            'assert has_assertion_pass("FAIL: CWV_SITE_SCOPED_ADMISSION unauthorized policy',1)
+        with self.assertRaises(AssertionError):
+            m.validate(self.supplement,self.source)
+
     def test_fails_on_collision_sha_change(self):
         with patch.object(m, 'current_blob', lambda _p: '0' * 40):
             with self.assertRaises(AssertionError):

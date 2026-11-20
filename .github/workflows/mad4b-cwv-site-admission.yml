@@ -1,0 +1,72 @@
+name: MAD4B CWV Site Scoped Admission
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mad4b-cwv-site-admission.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cwv-site-admission.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/cwv-site-admission-hermetic.php'
+      - 'docs/source-reconciliation/PR977-CWV-SITE-ADMISSION-20261120.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-cwv-per-site-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hermetic-tenant-activation:
+    name: Site-bound activation / PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 0 # historical PR813/Original305 SHA checks use git show
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Lint source and verify site admission denial paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cwv-site-admission.php
+          php -l wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/cwv-site-admission-hermetic.php
+      - name: Verify real bootstrap only loads admitted provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('wp-content/plugins/mad4b-site-control-plane')
+          source=(root/'mad4b-site-control-plane.php').read_text()
+          gate="if ( MAD4B_SCP_CWV_Site_Admission::admitted() ) {\n    require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-core-web-vitals.php';\n}"
+          assert source.count(gate)==1
+          assert source.count("require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-core-web-vitals.php';")==1
+          assert source.index("require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cwv-site-admission.php';") < source.index(gate)
+          print('PASS: no unconditional CWV bootstrap, exactly one opt-in admission gate')
+          PY
+      - name: Preserve immutable historical PR813 and Original305 exact-source checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=tests python3 tests/test_cwv_site_admission_exact_overlay.py
+          PYTHONPATH=tests python3 tests/test_tour_highlights_source_delta.py
+          PYTHONPATH=tests python3 tests/test_pr813_destination_additive_reconcile.py
+      - name: Preserve broker and CWV REST authority invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/adaptive-interaction-broker/contract-test.php
+          php tests/readiness-core-web-vitals-rest-cron-hermetic.php

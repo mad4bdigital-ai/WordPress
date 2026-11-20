@@ -40,7 +40,35 @@ def current_blob(path):
 # Governance manifest successor can be admitted only by its fixed Git blob and
 # explicit non-authorizing security metadata. Unknown future bytes stay denied.
 GOVERNANCE_REVIEWED_SUCCESSOR = '0f4930fe976ff604f30c600c044812fdb7de3fa7'
+GOVERNANCE_CWV_REVIEWED_SUCCESSOR = '18df447206263ee9bd79772068376dc24ebf9400'
+CWV_REVIEWED_BOOTSTRAP = '97887a449a3abf473a043d2da0737a3c2f2ab7ae'
+CWV_REVIEWED_HELPER = '366b5b085976f87a633aa4a7737596eea14dcd6b'
+
 GOVERNANCE_PATH = 'governance/production-readiness/capability-coverage.json'
+
+
+def require_cwv_review(coverage):
+    identifier='service:'+P+'includes/class-mad4b-scp-cwv-site-admission.php'
+    capabilities=[r for r in coverage.get('reviewed_capabilities',[])
+        if r.get('id')==identifier and r.get('status')=='reviewed_for_ci_only'
+        and r.get('production_authorized') is False
+        and r.get('live_evidence_required') is True
+        and 'wp-content/plugins/mad4b-site-control-plane/tests/cwv-site-admission-hermetic.php'
+            in r.get('regression_tests',[])]
+    check(len(capabilities)==1,'CWV Service capability source review absent or authorizing')
+    for path, source in (
+        (P+'mad4b-site-control-plane.php', CWV_REVIEWED_BOOTSTRAP),
+        (P+'includes/class-mad4b-scp-cwv-site-admission.php', CWV_REVIEWED_HELPER),
+    ):
+        matches = [entry for entry in coverage.get('reviewed_changes', [])
+                   if entry.get('path') == path
+                   and entry.get('source_blob_sha') == source
+                   and entry.get('status') == 'reviewed_for_ci_only'
+                   and entry.get('production_authorized') is False
+                   and entry.get('live_evidence_required') is True
+                   and 'wp-content/plugins/mad4b-site-control-plane/tests/cwv-site-admission-hermetic.php'
+                       in entry.get('regression_tests', [])]
+        check(len(matches) == 1, 'CWV exact-source CI-only provenance missing: '+path)
 
 
 def validate_governance_successor(coverage):
@@ -65,6 +93,35 @@ def validate_governance_successor(coverage):
         check(len(rows) == 1, 'Governance exact reviewed successor missing: ' + basename)
 
 
+# Original 57-path semantic ledger stays frozen. An explicitly reviewed
+# test-only runner successor permits exactly one new hermetic PHP entry.
+RUNNER_CWV_REVIEWED_SUCCESSOR = '0d7af9a1ebe0b3503cc1ff581c8344805c0b8981'
+RUNNER_CWV_ALLOWED_BLOCK = ("    # Explicit per-company CWV admission fixture: 17 positive and negative\n"
+    "    # source-only cases, synthetic Site Profile/options/schedule, with no real\n"
+    "    # WordPress, Cron writes, database, browser or external network access.\n"
+    "    # The bounded PHP runner checks the PASS marker after actual execution.\n"
+    '    "wp-content/plugins/mad4b-site-control-plane/tests/cwv-site-admission-hermetic.php",\n')
+RUNNER_CWV_SELFTEST_BLOCK = (
+    '    cwv="wp-content/plugins/mad4b-site-control-plane/tests/cwv-site-admission-hermetic.php"\n'
+    '    assert command_for(cwv) == ["php", str((ROOT / cwv).resolve())]\n'
+    '    assert cwv in STANDALONE_PHP_REGRESSIONS\n'
+    '    assert has_assertion_pass("PASS: CWV_SITE_SCOPED_ADMISSION 17 legacy/tenant/security cases; no writes\\n")\n'
+    '    assert not has_assertion_pass("FAIL: CWV_SITE_SCOPED_ADMISSION unauthorized policy\\n")\n')
+
+
+def require_exact_cwv_runner_successor(content, preceding_blob):
+    check(isinstance(content,str),'Runner source missing')
+    check(content.count(RUNNER_CWV_ALLOWED_BLOCK)==1,
+          'Unreviewed standalone PHP allowlist expansion')
+    check(content.count(RUNNER_CWV_SELFTEST_BLOCK)==1,
+          'Missing or different CWV test execution/denial contract')
+    original=content.replace(RUNNER_CWV_ALLOWED_BLOCK,'',1).replace(RUNNER_CWV_SELFTEST_BLOCK,'',1)
+    identity=lambda value:hashlib.sha1(
+        b'blob '+str(len(value.encode('utf-8'))).encode('ascii')+b'\0'+value.encode('utf-8')).hexdigest()
+    check(identity(content)==RUNNER_CWV_REVIEWED_SUCCESSOR,'Unreviewed runner source SHA')
+    check(identity(original)==preceding_blob,'Runner successor changes unrelated code')
+
+
 def validate(supplement, source_text):
     check(supplement['release_authorized'] is False, 'Unexpected release approval')
     check(supplement['semantic_conflict_review_completed'] is False, 'Unexpected semantic approval')
@@ -76,9 +133,28 @@ def validate(supplement, source_text):
         check(r['semantic_review_completed'] is False, 'Unexpected functional signoff: ' + path)
         current = current_blob(path)
         if path == GOVERNANCE_PATH and current != r['followup_964']:
-            check(current == GOVERNANCE_REVIEWED_SUCCESSOR,
+            check(current in (GOVERNANCE_REVIEWED_SUCCESSOR, GOVERNANCE_CWV_REVIEWED_SUCCESSOR),
                   'Unreviewed Governance successor SHA: ' + current)
-            validate_governance_successor(json.loads(source_text(path)))
+            coverage = json.loads(source_text(path))
+            validate_governance_successor(coverage)
+            if current == GOVERNANCE_CWV_REVIEWED_SUCCESSOR:
+                require_cwv_review(coverage)
+        elif path == 'tools/readiness_test_execution.py' and current != r['followup_964']:
+            check(current == RUNNER_CWV_REVIEWED_SUCCESSOR,
+                  'Unreviewed CI runner successor SHA: ' + current)
+            require_cwv_review(json.loads(source_text(GOVERNANCE_PATH)))
+            require_exact_cwv_runner_successor(source_text(path),r['followup_964'])
+        elif path == P+'mad4b-site-control-plane.php' and current != r['followup_964']:
+            check(current == CWV_REVIEWED_BOOTSTRAP,
+                  'Unreviewed Bootstrap successor SHA: ' + current)
+            check(current_blob(P+'includes/class-mad4b-scp-cwv-site-admission.php')
+                  == CWV_REVIEWED_HELPER, 'Unreviewed CWV helper source SHA')
+            require_cwv_review(json.loads(source_text(GOVERNANCE_PATH)))
+            bootstrap=source_text(path)
+            controlled=("if ( MAD4B_SCP_CWV_Site_Admission::admitted() ) {\n"
+                        "    require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-core-web-vitals.php';\n}")
+            check(bootstrap.count(controlled)==1,
+                  'CWV activation does not have one bounded per-site guard')
         else:
             check(r['followup_964'] == current, 'Unreviewed code drift: ' + path)
     field = source_text(P+'includes/class-mad4b-scp-provider-field-intelligence.php')

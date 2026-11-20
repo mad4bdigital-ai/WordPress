@@ -465,7 +465,12 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-automation-slo.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-query-monitor-evidence-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-query-performance.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-query-performance-ui.php';
-require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-core-web-vitals.php';
+// Per-company admission: do not activate CWV hooks or Cron on another site
+// just because its shared Control Plane source has the provider class.
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cwv-site-admission.php';
+if ( MAD4B_SCP_CWV_Site_Admission::admitted() ) {
+    require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-core-web-vitals.php';
+}
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-acceptance-finalizer.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-production-unchanged-attestation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-production-promotion-attestation.php';

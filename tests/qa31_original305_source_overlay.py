@@ -8,6 +8,7 @@ import hashlib
 import json
 import unittest
 from qa31_rc129_host_bootstrap_overlay import strip_rc129_signed_host_overlay
+from cwv_site_admission_exact_overlay import strip_exact_site_admission
 
 ROOT = Path(__file__).resolve().parents[1]
 MAIN = 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
@@ -16,6 +17,7 @@ def restore_exact_original305_overlay(actual, meta):
     """Restore the frozen source only after verifying a separately reviewed,
     narrow 7-line boot overlay; never repin PR808/PR813 certificates."""
     guard=unittest.TestCase()
+    actual=strip_exact_site_admission(actual)
     actual=strip_rc129_signed_host_overlay(actual)
     if (len(actual), hashlib.sha256(actual).hexdigest()) == (
             meta['current_bytes'], meta['current_sha256']):

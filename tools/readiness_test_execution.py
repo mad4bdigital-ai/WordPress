@@ -83,6 +83,11 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-scheduler-source-closure-runtime.php',
     'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-unactivated-source-parity-runtime.php',
     'wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-visual-seo-strategy-runtime.php',
+    # Explicit per-company CWV admission fixture: 17 positive and negative
+    # source-only cases, synthetic Site Profile/options/schedule, with no real
+    # WordPress, Cron writes, database, browser or external network access.
+    # The bounded PHP runner checks the PASS marker after actual execution.
+    "wp-content/plugins/mad4b-site-control-plane/tests/cwv-site-admission-hermetic.php",
     # Exact site-neutral destination Term Meta preflight fixture: fake identity,
     # fake DB baseline, simulated JetEngine admin POST, WP metadata filter
     # rejection, benign first-party URLs and a no-network WP_Error response.
@@ -737,6 +742,11 @@ def run_tests(impact, head, timeout):
 
 
 def self_test():
+    cwv="wp-content/plugins/mad4b-site-control-plane/tests/cwv-site-admission-hermetic.php"
+    assert command_for(cwv) == ["php", str((ROOT / cwv).resolve())]
+    assert cwv in STANDALONE_PHP_REGRESSIONS
+    assert has_assertion_pass("PASS: CWV_SITE_SCOPED_ADMISSION 17 legacy/tenant/security cases; no writes\n")
+    assert not has_assertion_pass("FAIL: CWV_SITE_SCOPED_ADMISSION unauthorized policy\n")
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/original305-host-review-denial-runtime.php")[0] == "php"
     for test in WORDPRESS_RUNTIME_REGRESSIONS:
         assert command_for(test) == ["php", WP_CLI_PHAR, "eval-file",
