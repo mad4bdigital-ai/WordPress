@@ -9,7 +9,17 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	throw new RuntimeException( 'WordPress is not loaded.' );
 }
+// CI-only, secret-free stage observations. These assertions never run as a
+// normal WordPress request and do not instantiate any authority or tooling.
+$qa_mcp_probe = static function ( $stage ) {
+    if ( defined( 'WP_CLI' ) && true === WP_CLI && defined( 'STDERR' ) ) {
+        fwrite( STDERR, 'MAD4B_MCP_CI_STAGE:' . (string) $stage . "\n" );
+        fflush( STDERR );
+    }
+};
+$qa_mcp_probe( 'test_entered' );
 require_once __DIR__ . '/prepared-dispatch-runtime-helper.php';
+$qa_mcp_probe( 'helper_loaded' );
 
 $fail = static function ( $message, $data = null ) {
 	throw new RuntimeException(
@@ -30,13 +40,19 @@ if ( ! class_exists( 'MAD4B_SCP_Post_Identity' ) ) {
 	$fail( 'MAD4B narrow post identity primitive is unavailable.' );
 }
 
+$qa_mcp_probe( 'adapter_instance_before' );
 $adapter = \WP\MCP\Core\McpAdapter::instance();
+$qa_mcp_probe( 'adapter_instance_after' );
+$qa_mcp_probe( 'server_lookup_before' );
 $server  = $adapter->get_server( 'mad4b-chatgpt' );
+$qa_mcp_probe( 'server_lookup_after' );
 if ( ! $server ) {
 	$fail( 'mad4b-chatgpt server is not registered in the Adapter runtime.' );
 }
 
+$qa_mcp_probe( 'protocol_tools_before' );
 $tools = $server->get_tools();
+$qa_mcp_probe( 'protocol_tools_after' );
 if ( empty( $tools ) ) {
     // Bounded, secret-free evidence: keep actual official Adapter registration
     // failures visible instead of misdiagnosing missing tools as a count cap.
@@ -68,14 +84,18 @@ foreach ( $tools as $tool ) {
 $actual_names = array_values( array_unique( $actual_names ) );
 sort( $actual_names );
 
+$qa_mcp_probe( 'requested_abilities_before' );
 $requested_abilities = MAD4B_SCP_Servers::chatgpt_tools();
+$qa_mcp_probe( 'requested_abilities_after' );
 if ( empty( $requested_abilities ) ) {
 	$fail( 'Governed ChatGPT allowlist unexpectedly resolved to zero abilities.' );
 }
 // The MCP Adapter certifies this exact budgeted, serializable inventory.
 // Never claim that an optional schema dropped by preflight was published.
 $optional_abilities = MAD4B_SCP_Servers::chatgpt_materialization_optional_tools( $requested_abilities );
+$qa_mcp_probe( 'catalog_preflight_before' );
 $certified_catalog = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $requested_abilities, $optional_abilities );
+$qa_mcp_probe( 'catalog_preflight_after' );
 if ( empty( $certified_catalog['ready'] ) || empty( $certified_catalog['tools'] ) ) {
 	$fail( 'The reviewed ChatGPT tool catalog did not pass actual MCP preflight.', $certified_catalog );
 }
