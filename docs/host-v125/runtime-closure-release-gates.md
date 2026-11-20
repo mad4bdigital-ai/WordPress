@@ -76,3 +76,25 @@ all external references, Staging-specific Original328 identity, original
 signed Owner attribution, REST/AJAX authorization, signed issuance idempotency,
 rollback, and master CI + an exact-head owner attestation. Current live Staging
 Anchor Revision 1 remains immutable and operational.
+
+## Actual Tours.dev Staging loaded-class evidence
+
+The read-only WordPress CLI inspection used \`class_exists($name,false)\`
+(no autoload) plus ReflectionClass file/source SHA readback, with no writes.
+Evidence is in \`governance/host-authority/live-staging-runtime-evidence-v125.json\`.
+
+- **5/5** Original305, Original306, Original313, Original318 and Original328
+  candidate file hashes match the classes actually loaded on Staging.
+- All **13/13** referenced external classes are loaded on Staging, but
+  **11/13** external class files are absent from current master at the live
+  locations. Of the two found in master, \`MAD4B_SCP_Audit\` matches live
+  source; \`MAD4B_SCP_Site_Profile\` differs.
+- The Portfolio Manager and some MU/Commerce sources are not present as
+  equivalent master files. A staging-loaded class does not prove it can
+  initialize or authorize requests when imported into current master.
+- The live Original305 sealed command class comes from the ordered-map
+  \`305-mad4b-original-sealed-rebind.php\` implementation; the competing
+  definition is not loaded.
+
+**No runtime activation is authorized** by this evidence. A separate
+master-vs-Staging identity-preserving source reconciliation is mandatory.

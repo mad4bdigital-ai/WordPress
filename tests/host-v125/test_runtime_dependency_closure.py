@@ -149,5 +149,55 @@ class RuntimeClosureReadOnly(unittest.TestCase):
         self.assertFalse((ROOT/"wp-content/plugins/mad4b-platform").exists())
         self.assertFalse((ROOT/"wp-content/mu-plugins/393-mad4b-host-authority-owner-console.php").exists())
 
+class LiveStagingParityEvidence(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.m=json.loads(MANIFEST.read_text())
+        cls.e=json.loads((ROOT/"governance/host-authority/live-staging-runtime-evidence-v125.json").read_text())
+    def test_12_five_original_classes_match_live_original_file_sha(self):
+        e=self.e
+        self.assertEqual(e["contract"],"mad4b.host-v125.staging-loaded-class-readback.v1")
+        self.assertEqual(e["master_sha"],MASTER)
+        self.assertEqual(e["source_sha"],SOURCE)
+        self.assertEqual(len(e["root_classes"]),5)
+        for row in e["root_classes"]:
+            match=next(i for i in self.m["files"] if i["source"]==row["file"])
+            self.assertTrue(row["loaded"] and row["sha_equal"])
+            self.assertEqual(row["staging_sha256"],match["sha256"])
+            self.assertEqual(row["candidate_sha256"],match["sha256"])
+    def test_13_external_staging_class_presence_does_not_enable_runtime(self):
+        external=self.e["external_classes"]
+        self.assertEqual(len(external),13)
+        self.assertTrue(all(row["loaded_on_staging"] for row in external))
+        self.assertTrue(all(row["runtime_loader_and_permissions_verified"] is False
+                            for row in external))
+        self.assertEqual(sum(row["master_file_present"] for row in external),2)
+        self.assertEqual(sum(row["master_matches_staging"] is True for row in external),1)
+        self.assertEqual(sum(row["source_matches_staging"] is True for row in external),2)
+        self.assertEqual(self.e["release_gate"],"HOLD_RUNTIME_ACTIVATION")
+    def test_14_current_master_site_profile_differs_from_live(self):
+        rows={row["class"]:row for row in self.e["external_classes"]}
+        p=rows["MAD4B_SCP_Site_Profile"]
+        self.assertTrue(p["master_file_present"])
+        self.assertFalse(p["master_matches_staging"])
+        self.assertNotEqual(p["master_sha256"],p["staging_sha256"])
+        audit=rows["MAD4B_SCP_Audit"]
+        self.assertTrue(audit["master_matches_staging"])
+    def test_15_unmapped_seal_duplicate_stays_unloaded_in_real_wp(self):
+        r=self.e["sealed_command"]
+        self.assertTrue(r["alternate_definition_source_excluded"])
+        self.assertTrue(r["loaded_from_ordered_file"].endswith(
+          "305-mad4b-original-sealed-rebind.php"))
+        canonical=next(i for i in self.m["files"] if
+             i["source"]==r["loaded_from_ordered_file"])
+        self.assertEqual(canonical["sha256"],r["sha256"])
+    def test_16_live_snapshot_has_no_new_signed_issuance_authority(self):
+        self.assertEqual(self.e["counts"]["external_missing_from_master"],11)
+        self.assertEqual(self.e["readback_method"],
+          "WordPress WPCLI read-only class_exists(name, false) and ReflectionClass; no autoload")
+        self.assertEqual(self.e["no_side_effects"],
+          ["no WordPress write","no Root worker change","no Original318 write",
+           "no Production change"])
+
 if __name__=="__main__":
     unittest.main(verbosity=2)
