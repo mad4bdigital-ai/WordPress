@@ -25,7 +25,12 @@ function treeText(node){
  return (node.textContent||'')+' '+(node.children||[]).map(treeText).join(' ');
 }
 (async()=>{
-const root=new E(),launch=new E(),dimensions=new E(),head=new E();
+const root=new E(),launch=new E(),dimensions=new E(),head=new E(),content=new E(),sidebar=new E(),listing=new E();
+const nav=new E('button');nav.dataset.section='overview';
+root.query['.mad4b-ws-nav-btn.is-active']=nav;
+root.query['.mad4b-ws-content']=content;
+root.query['.mad4b-ws-sidebar']=sidebar;
+content.query['.mad4b-ws-listing']=listing;
 root.query['#mad4b-pricing-rules-status']=null;
 root.query['.mad4b-ws-dimension-launcher']=launch;
 root.query['.mad4b-ws-dimension-panel']=dimensions;
@@ -47,10 +52,25 @@ const snapshot={
  read_only:true,engine_enabled:true,booking_enabled:false,dimension_mode:'custom',
  selected_dimensions:['taxonomy:tour-types','taxonomy:package_levels'],strategy_count:0,
  native_assignments:{enabled_approved:0},published_tour_rates:0,
- policy_bindings:{global_refs:0,term_records:0,post_records:0},by_dimension:{}
+ policy_bindings:{global_refs:0,term_records:0,post_records:0},by_dimension:{},
+ unified_registry:{
+   rows:[{
+     id:'tour_type:194',family:'tour_type',name:'Packages',effect:'+25%',
+     status:'preview_eligible',source:'mad4b_dynamic_dimension_markup_v1',
+     dimension:'taxonomy:tour-types'
+   }],
+   source_count:12,status_counts:{preview_eligible:1},
+   by_dimension:{
+     'taxonomy:tour-types':[{
+       family:'tour_type',name:'Packages',effect:'+25%',
+       status:'preview_eligible',source:'mad4b_dynamic_dimension_markup_v1'
+     }]
+   },warnings:[]
+ }
 };
 const context={window:{MAD4BPricingRulesReadback:{ajax:'/wp-admin/admin-ajax.php',action:'read',nonce:'valid',lab:'/lab',bindings:'/bindings'}},
  document,MutationObserver:class{observe(){}},URLSearchParams,
+ requestAnimationFrame:(fn)=>fn(),
  fetch:async()=>{requests++;return {ok:true,json:async()=>({success:true,data:snapshot})};},
  console};
 vm.runInNewContext(source,context);
@@ -60,15 +80,30 @@ const status=launch.children.find(x=>x.id==='mad4b-pricing-rules-status');
 assert.ok(status,'Status was not inserted after dimension launcher');
 const contents=treeText(status);
 assert.match(contents,/Pricing Engine: ON/);
-assert.match(contents,/saved Lab strategies/);
+assert.match(contents,/Pricing Lab drafts/);
 assert.match(contents,/0\s+published Tour Rates/);
-assert.match(contents,/not price rules/);
+assert.match(contents,/native Tour Type\/Package Level preview rules exist/);
 assert.equal(counter.textContent,'1/2 selected');
-assert.match(treeText(body),/No saved Pricing Lab strategy targets this dimension/);
-assert.match(treeText(trigger),/0 saved strategies/);
+assert.match(treeText(body),/No saved Pricing Lab Strategy targets this dimension/);
+assert.match(treeText(body),/Packages/);
+assert.match(treeText(body),/preview eligible/);
+assert.match(treeText(trigger),/1 native \/ 0 Lab drafts/);
 assert.ok(head.children.length,'Expected scoped CSS');
-console.log('PASS source-backed summary displays engine, selected dimensions and zero saved pricing rules');
-console.log('PASS Tour Types rule editor displays empty saved-rule state, not a fictional active rule');
+const policyTab=content.children.find(node=>node.id==='mad4b-pricing-unified-policy-list');
+assert.ok(policyTab,'Unified registry not mounted inside Pricing policies content');
+assert.equal(policyTab.hidden,true,'Unified registry should hide outside Pricing policies');
+nav.dataset.section='policies';
+sidebar.listeners.click();
+assert.equal(policyTab.hidden,false,'Pricing policies selection did not reveal unified registry');
+assert.match(treeText(policyTab),/Unified policies · all source families/);
+assert.match(treeText(policyTab),/Packages/);
+assert.match(treeText(policyTab),/preview_eligible|preview eligible/);
+nav.dataset.section='sources';
+sidebar.listeners.click();
+assert.equal(policyTab.hidden,true,'Unified registry not hidden in other native tabs');
+console.log('PASS unified summary displays one native preview rule separately from zero Lab drafts');
+console.log('PASS Tour Types editor displays canonical native preview and absence of Lab drafts');
 console.log('PASS confusing active dimension counter is relabeled selected');
+console.log('PASS native Pricing policies tab renders the unified registry and preserves other native sections');
 console.log('RULE_VISIBILITY_DOM_TEST_PASSED');
 })().catch(e=>{console.error(e);process.exitCode=1;});

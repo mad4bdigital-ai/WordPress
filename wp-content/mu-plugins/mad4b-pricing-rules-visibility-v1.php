@@ -81,8 +81,12 @@ final class MAD4B_Pricing_Rules_Visibility_V1 {
         $linkedPosts=(int)$wpdb->get_var($wpdb->prepare(
             "SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key=%s",
             'mad4b_pricing_policy_override_ids'));
+        $registry=class_exists('MAD4B_Unified_Pricing_Policy_Registry_V1',false)
+            ?MAD4B_Unified_Pricing_Policy_Registry_V1::snapshot()
+            :new WP_Error('unified_policy_registry_unavailable');
+        if(is_wp_error($registry))return $registry;
         return [
-            'schema'=>1,
+            'schema'=>2,
             'scope'=>'mad4b_pricing_lab_policy_bindings_native_preset_readback',
             'read_only'=>true,'no_sale_quote_authority'=>true,
             'engine_enabled'=>$on,'booking_enabled'=>$booking,
@@ -101,6 +105,7 @@ final class MAD4B_Pricing_Rules_Visibility_V1 {
             ],
             'published_tour_rates'=>$publish,
             'effective_native_rule_count_is_proven'=>false,
+            'unified_registry'=>$registry,
             'note'=>'Enabled targeting dimensions are available for strategy design. They are not active price rules. Only native provider evaluation can prove an effective quote.',
         ];
     }

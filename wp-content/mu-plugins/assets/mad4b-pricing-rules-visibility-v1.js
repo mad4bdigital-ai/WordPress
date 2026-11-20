@@ -36,6 +36,25 @@
     section.append(heading,details,links);
     launch.insertAdjacentElement('afterend',section);
 
+    // The native Pricing policies tab displays the same read-only registry.
+    const content=root.querySelector('.mad4b-ws-content');
+    const sidebar=root.querySelector('.mad4b-ws-sidebar');
+    const policyPanel=make('section','mad4b-pricing-rule-status mad4b-pricing-policy-registry-tab');
+    policyPanel.id='mad4b-pricing-unified-policy-list';
+    policyPanel.setAttribute('aria-label','Unified pricing policy registry');
+    policyPanel.hidden=true;
+    if(content){
+      const listing=content.querySelector('.mad4b-ws-listing');
+      if(listing)content.insertBefore(policyPanel,listing);
+      else content.append(policyPanel);
+    }
+    const syncPolicyTab=()=>{
+      const active=root.querySelector('.mad4b-ws-nav-btn.is-active')?.dataset.section;
+      policyPanel.hidden=active!=='policies';
+    };
+    sidebar?.addEventListener('click',()=>requestAnimationFrame(syncPolicyTab));
+    syncPolicyTab();
+
     const css=make('style');
     css.id='mad4b-pricing-rule-visibility-style';
     css.textContent=[
@@ -54,6 +73,14 @@
       '.mad4b-pricing-rule-inline li{margin:3px 0}',
       '.mad4b-pricing-rule-inline a{display:inline-block;margin-top:5px}',
       '.mad4b-pricing-rule-inline-badge{font-size:11px;color:#50575e;font-weight:400;padding-left:8px}',
+      '.mad4b-pricing-unified-registry{margin-top:10px;border-top:1px solid #ddd;padding-top:10px}',
+      '.mad4b-pricing-unified-registry summary{cursor:pointer;font-weight:600;padding:5px 0}',
+      '.mad4b-pricing-rule-table-box{max-height:380px;overflow:auto;margin-top:8px}',
+      '.mad4b-pricing-rule-table{font-size:12px;min-width:780px}',
+      '.mad4b-pricing-rule-table td{white-space:normal;word-break:break-word}',
+      '.mad4b-pricing-rule-table th{position:sticky;top:0;background:#f6f7f7}',
+      '.mad4b-pricing-policy-registry-tab{margin-top:4px}',
+      '.mad4b-pricing-policy-registry-tab[hidden]{display:none!important}',
       '@media(max-width:782px){.mad4b-pricing-rule-status{padding:10px}.mad4b-pricing-rule-metrics{gap:6px 10px!important}}'
     ].join('\n');
     document.head.append(css);
@@ -67,8 +94,12 @@
     const stateWord=(value)=>value?'ON':'OFF';
     const explain=(snap)=>{
       if(!snap.engine_enabled)return 'Pricing Engine is OFF. Selecting dimensions does not activate it.';
+      const reg=snap.unified_registry;
+      const previews=reg?.status_counts?.preview_eligible||0;
+      if(snap.strategy_count===0 && snap.native_assignments.enabled_approved===0 && previews>0)
+        return 'The engine is ON; '+previews+' native Tour Type/Package Level preview rules exist, while Pricing Lab has no saved Strategies. Preview rules are not Checkout or Tour Rate authority.';
       if(snap.strategy_count===0 && snap.native_assignments.enabled_approved===0)
-        return 'The engine is ON, but no saved Pricing Lab strategy or approved-enabled native assignment is present. These selected dimensions are not price rules.';
+        return 'The engine is ON, but no native preview pricing rule or saved Pricing Lab Strategy is available. Selected dimensions are not price rules.';
       return 'Saved strategies and provider assignments are listed below. A saved Draft or binding alone does not prove a live Rate adjustment.';
     };
     const draw=()=>{
@@ -81,13 +112,103 @@
         ' · Dimension mode: '+(s.dimension_mode==='custom'?'Custom selection':'Auto-include all')));
       const metrics=make('div','mad4b-pricing-rule-metrics');
       const selected=s.dimension_mode==='custom'?s.selected_dimensions.length:'All discovered';
+      const registry=s.unified_registry;
       metrics.append(
-        metric('targeting dimensions',selected),
-        metric('saved Lab strategies',s.strategy_count),
-        metric('approved + enabled native rows',s.native_assignments.enabled_approved),
+        metric('selected targeting dimensions',selected),
+        metric('native preview rules',registry?.status_counts?.preview_eligible||0),
+        metric('Pricing Lab drafts',s.strategy_count),
+        metric('approved + enabled native presets',s.native_assignments.enabled_approved),
         metric('published Tour Rates',s.published_tour_rates)
       );
       details.append(metrics,make('p','mad4b-pricing-rule-explain',explain(s)));
+      if(registry && Array.isArray(registry.rows)){
+        const wrapper=make('details','mad4b-pricing-unified-registry');
+        const summary=make('summary','',
+          'Unified policy registry · '+registry.rows.length+
+          ' entries from '+registry.source_count+' provider families');
+        wrapper.append(summary);
+        const note=make('p','mad4b-pricing-rule-explain',
+          'Read-only projection. Native JetEngine rules are the original source of truth; Pricing Lab is the Draft workspace. No rule is copied or activated by this panel.');
+        wrapper.append(note);
+        const tablebox=make('div','mad4b-pricing-rule-table-box');
+        const table=make('table','widefat striped mad4b-pricing-rule-table');
+        const head=make('thead'),hrow=make('tr');
+        for(const label of ['Family','Rule','Value','Status','Authoritative source']){
+          hrow.append(make('th','',label));
+        }
+        head.append(hrow);table.append(head);
+        const tbody=make('tbody');
+        const states={
+          preview_eligible:'Preview eligible · not live Checkout',
+          configured_native:'Configured native policy · not a verified sale',
+          configured_component:'Component source configured',
+          configured_supplier_cost:'Supplier cost source configured',
+          inherited_supplier_cost:'Guide cost · inherited EGP fallback',
+          approved_supplier_cost:'Guide cost · approved Term',
+          reference_only_no_cost_authority:'Reference only · supplier cost blocked',
+          blocked_term_gate:'Blocked · Taxonomy term gate',
+          blocked_source_or_conflict:'Blocked · source invalid or conflict',
+          draft:'Draft · no price effect',
+          staged:'Staged · not active',
+          approval_pending:'Pending approval',
+          disabled:'Disabled'
+        };
+        const names={
+          tour_type:'Tour Type',package_level:'Package Level',
+          tour_mode:'Tour Mode',price_source:'Price Source',
+          pricing_lab:'Pricing Lab',native_preset:'Native Preset',
+          component:'Component Cost',guide_cost:'Guide Cost',
+          transport_self:'Transport Self',group_tier:'Group Tier',
+          promotion:'Promotion',payment_fee:'Payment Fee',
+        };
+        for(const entry of registry.rows){
+          const tr=make('tr');
+          for(const value of [
+            names[entry.family]||entry.family,
+            entry.name,entry.effect,
+            states[entry.status]||entry.status,
+            entry.source
+          ])tr.append(make('td','',value));
+          tbody.append(tr);
+        }
+        table.append(tbody);tablebox.append(table);wrapper.append(tablebox);
+        details.append(wrapper);
+        if(registry.warnings?.length)
+          details.append(make('p','mad4b-pricing-rule-explain',
+            'Source warnings: '+registry.warnings.join(', ')));
+      }
+      policyPanel.replaceChildren();
+      if(registry && Array.isArray(registry.rows)){
+        policyPanel.append(make('h3','','Unified policies · all source families'));
+        policyPanel.append(make('p','mad4b-pricing-rule-explain',
+          'Single read-only registry. Package Levels and Tour Type markups come from their native source, not Pricing Lab. Preview enabled does not mean a live selling rule.'));
+        const counts=registry.status_counts||{};
+        policyPanel.append(make('p','',
+          (counts.preview_eligible||0)+' preview-eligible price rules · '+
+          (counts.draft||0)+' Draft · '+
+          (counts.staged||0)+' Staged · '+
+          (counts.blocked_source_or_conflict||0)+' source conflicts · '+
+          registry.source_count+' sources'));
+        const scroll=make('div','mad4b-pricing-rule-table-box');
+        const table=make('table','widefat striped mad4b-pricing-rule-table');
+        const head=make('thead'),headRow=make('tr');
+        for(const label of ['Family','Policy','Value','State','Original source'])
+          headRow.append(make('th','',label));
+        head.append(headRow);
+        table.append(head);
+        const body=make('tbody');
+        for(const rule of registry.rows){
+          const tr=make('tr');
+          for(const v of [rule.family,rule.name,rule.effect,
+            rule.status.replaceAll('_',' '),rule.source])
+            tr.append(make('td','',v));
+          body.append(tr);
+        }
+        table.append(body);scroll.append(table);policyPanel.append(scroll);
+        policyPanel.append(make('p','mad4b-pricing-rule-explain',
+          'To change a source policy, use its existing JetEngine editor and Save. This registry never saves a second copy or applies a new rate.'));
+      }
+      syncPolicyTab();
       if(s.policy_bindings.global_refs || s.policy_bindings.term_records || s.policy_bindings.post_records){
         details.append(make('p','mad4b-pricing-rule-explain',
           'Policy Bindings: '+s.policy_bindings.global_refs+' global references, '+
@@ -104,6 +225,7 @@
         if(/^\d+\/\d+ active$/.test(str))
           counter.textContent=str.replace(/ active$/,' selected');
       }
+      const registry=snapshot.unified_registry;
       for(const row of dimensions.querySelectorAll('.mad4b-ws-dimension-row')){
         const id=row.querySelector('.mad4b-ws-dimension-item input[type=checkbox]')?.value;
         const editor=row.querySelector('.mad4b-ws-nested-policy');
@@ -111,6 +233,8 @@
         const trigger=editor?.querySelector('summary');
         if(!id||!container||!trigger)continue;
         const linked=snapshot.by_dimension[id]||[];
+        const nativeRules=(registry?.by_dimension?.[id]||[]).filter(
+          item=>item.family!=='pricing_lab');
         let info=container.querySelector('.mad4b-pricing-rule-inline');
         if(!info){
           info=make('aside','mad4b-pricing-rule-inline');
@@ -122,6 +246,19 @@
         info.replaceChildren(
           make('strong','','Saved rule state · '+(enabled?'Eligible for targeting':'Not selected for targeting'))
         );
+        if(nativeRules.length){
+          const summary=make('p','',
+            nativeRules.length+' native-source rule'+(nativeRules.length===1?'':'s')+
+            ' found for this dimension. These are not automatically active checkout prices.');
+          info.append(summary);
+          const nativeList=make('ul');
+          for(const rule of nativeRules.slice(0,15)){
+            nativeList.append(make('li','',
+              rule.name+' · '+rule.effect+' · '+rule.status.replaceAll('_',' ')+
+              ' · source: '+rule.source));
+          }
+          info.append(nativeList);
+        }
         if(linked.length){
           const list=make('ul');
           for(const rule of linked.slice(0,8)){
@@ -132,7 +269,7 @@
           info.append(list);
         } else {
           info.append(make('p','',
-            'No saved Pricing Lab strategy targets this dimension. The form below creates an inactive Draft; it is not an existing or enabled price rule.'));
+            'No saved Pricing Lab Strategy targets this dimension. The form below creates an inactive Draft; it does not edit the native preview rules listed above.'));
         }
         info.append(link('Inspect all Policy Bindings',cfg.bindings));
         let badge=trigger.querySelector('.mad4b-pricing-rule-inline-badge');
@@ -140,7 +277,7 @@
           badge=make('small','mad4b-pricing-rule-inline-badge');
           trigger.append(badge);
         }
-        badge.textContent=' · '+linked.length+' saved '+(linked.length===1?'strategy':'strategies');
+        badge.textContent=' · '+nativeRules.length+' native / '+linked.length+' Lab drafts';
       }
     };
     // JetEngine creates the nested rows on demand. The observer only annotates
