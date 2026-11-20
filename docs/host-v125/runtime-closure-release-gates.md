@@ -98,3 +98,12 @@ Evidence is in \`governance/host-authority/live-staging-runtime-evidence-v125.js
 
 **No runtime activation is authorized** by this evidence. A separate
 master-vs-Staging identity-preserving source reconciliation is mandatory.
+
+
+The live \`get_included_files()\` readback confirms that all **32/32**
+candidate modules are currently included in Tours.dev Staging, including
+the five modules absent from the primary ordered map. The competing
+Original305 sealed-command definition is **not** included. This confirms
+source path selection on the *current live Staging installation*, but does
+not establish transitive bootstrap availability, authorization or safety
+when reconstituted from the incomplete master repository.

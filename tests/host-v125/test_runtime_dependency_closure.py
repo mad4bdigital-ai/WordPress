@@ -191,6 +191,21 @@ class LiveStagingParityEvidence(unittest.TestCase):
         canonical=next(i for i in self.m["files"] if
              i["source"]==r["loaded_from_ordered_file"])
         self.assertEqual(canonical["sha256"],r["sha256"])
+    def test_17_live_bootstrap_includes_all_32_exact_candidate_paths(self):
+        included=self.e["runtime_include_observation"]
+        expected={x["source"].split("mad4b-platform/",1)[1]
+                  for x in self.m["files"]}
+        self.assertEqual(set(included["candidate_modules_actually_included"]),expected)
+        self.assertEqual(included["candidate_modules_missing_from_live"],[])
+        self.assertEqual(included["loaded_platform_php_count"],342)
+        self.assertFalse(included["alternate_sealed_class_definition_included"])
+    def test_18_five_non_ordered_modules_are_loaded_independently(self):
+        included=self.e["runtime_include_observation"]
+        expected={x["source"].split("mad4b-platform/",1)[1]
+                  for x in self.m["files"] if x["source_load_order_index"] is None}
+        self.assertEqual(set(included["not_in_ordered_mu_map_but_included"]),expected)
+        self.assertEqual(len(expected),5)
+
     def test_16_live_snapshot_has_no_new_signed_issuance_authority(self):
         self.assertEqual(self.e["counts"]["external_missing_from_master"],11)
         self.assertEqual(self.e["readback_method"],
