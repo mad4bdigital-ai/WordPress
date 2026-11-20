@@ -69,6 +69,22 @@ class CompositeReviewNegativeTests(TestCase):
         with self.assertRaises(AssertionError):
             m.validate(self.supplement, self.source)
 
+    def test_cwv_runner_successor_denies_unknown_executable(self):
+        path='tools/readiness_test_execution.py'
+        self.sources[path]=self.sources[path].replace(
+            '"wp-content/plugins/mad4b-site-control-plane/tests/cwv-site-admission-hermetic.php",',
+            '"wp-content/plugins/mad4b-site-control-plane/tests/unreviewed-php-runner.php",',1)
+        with self.assertRaises(AssertionError):
+            m.validate(self.supplement,self.source)
+
+    def test_cwv_runner_successor_requires_real_negative_test(self):
+        path='tools/readiness_test_execution.py'
+        self.sources[path]=self.sources[path].replace(
+            'assert not has_assertion_pass("FAIL: CWV_SITE_SCOPED_ADMISSION unauthorized policy',
+            'assert has_assertion_pass("FAIL: CWV_SITE_SCOPED_ADMISSION unauthorized policy',1)
+        with self.assertRaises(AssertionError):
+            m.validate(self.supplement,self.source)
+
     def test_fails_on_collision_sha_change(self):
         with patch.object(m, 'current_blob', lambda _p: '0' * 40):
             with self.assertRaises(AssertionError):

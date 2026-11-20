@@ -93,6 +93,35 @@ def validate_governance_successor(coverage):
         check(len(rows) == 1, 'Governance exact reviewed successor missing: ' + basename)
 
 
+# Original 57-path semantic ledger stays frozen. An explicitly reviewed
+# test-only runner successor permits exactly one new hermetic PHP entry.
+RUNNER_CWV_REVIEWED_SUCCESSOR = '0d7af9a1ebe0b3503cc1ff581c8344805c0b8981'
+RUNNER_CWV_ALLOWED_BLOCK = ("    # Explicit per-company CWV admission fixture: 17 positive and negative\n"
+    "    # source-only cases, synthetic Site Profile/options/schedule, with no real\n"
+    "    # WordPress, Cron writes, database, browser or external network access.\n"
+    "    # The bounded PHP runner checks the PASS marker after actual execution.\n"
+    '    "wp-content/plugins/mad4b-site-control-plane/tests/cwv-site-admission-hermetic.php",\n')
+RUNNER_CWV_SELFTEST_BLOCK = (
+    '    cwv="wp-content/plugins/mad4b-site-control-plane/tests/cwv-site-admission-hermetic.php"\n'
+    '    assert command_for(cwv) == ["php", str((ROOT / cwv).resolve())]\n'
+    '    assert cwv in STANDALONE_PHP_REGRESSIONS\n'
+    '    assert has_assertion_pass("PASS: CWV_SITE_SCOPED_ADMISSION 17 legacy/tenant/security cases; no writes\\n")\n'
+    '    assert not has_assertion_pass("FAIL: CWV_SITE_SCOPED_ADMISSION unauthorized policy\\n")\n')
+
+
+def require_exact_cwv_runner_successor(content, preceding_blob):
+    check(isinstance(content,str),'Runner source missing')
+    check(content.count(RUNNER_CWV_ALLOWED_BLOCK)==1,
+          'Unreviewed standalone PHP allowlist expansion')
+    check(content.count(RUNNER_CWV_SELFTEST_BLOCK)==1,
+          'Missing or different CWV test execution/denial contract')
+    original=content.replace(RUNNER_CWV_ALLOWED_BLOCK,'',1).replace(RUNNER_CWV_SELFTEST_BLOCK,'',1)
+    identity=lambda value:hashlib.sha1(
+        b'blob '+str(len(value.encode('utf-8'))).encode('ascii')+b'\0'+value.encode('utf-8')).hexdigest()
+    check(identity(content)==RUNNER_CWV_REVIEWED_SUCCESSOR,'Unreviewed runner source SHA')
+    check(identity(original)==preceding_blob,'Runner successor changes unrelated code')
+
+
 def validate(supplement, source_text):
     check(supplement['release_authorized'] is False, 'Unexpected release approval')
     check(supplement['semantic_conflict_review_completed'] is False, 'Unexpected semantic approval')
@@ -110,6 +139,11 @@ def validate(supplement, source_text):
             validate_governance_successor(coverage)
             if current == GOVERNANCE_CWV_REVIEWED_SUCCESSOR:
                 require_cwv_review(coverage)
+        elif path == 'tools/readiness_test_execution.py' and current != r['followup_964']:
+            check(current == RUNNER_CWV_REVIEWED_SUCCESSOR,
+                  'Unreviewed CI runner successor SHA: ' + current)
+            require_cwv_review(json.loads(source_text(GOVERNANCE_PATH)))
+            require_exact_cwv_runner_successor(source_text(path),r['followup_964'])
         elif path == P+'mad4b-site-control-plane.php' and current != r['followup_964']:
             check(current == CWV_REVIEWED_BOOTSTRAP,
                   'Unreviewed Bootstrap successor SHA: ' + current)

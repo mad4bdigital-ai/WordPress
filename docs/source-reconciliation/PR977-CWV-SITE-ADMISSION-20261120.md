@@ -50,3 +50,9 @@ Source-only tests executed locally against this integrated tree: QA31 original n
 ## Executable CI Readiness runner admission
 
 GitHub Production Readiness Matrix on the previous exact head reported `Untrusted mapped regression runners (1): .../cwv-site-admission-hermetic.php: No trusted PHPUnit runner`. The filename belongs to a standalone hermetic CLI script, not a PHPUnit class. The source-limited `tools/readiness_test_execution.py` allowlist now admits **only that exact test path** through the standard PHP runner, after checking 17 explicit PASS/negative admission cases. The test itself cannot boot a real WordPress or schedule a real Cron. An assertion `FAIL` or absence of a PASS marker remains rejected, and all unknown PHP tests remain denied. A new self-test asserts the exact accepted command and demonstrates negative marker denial. This adds no generic PHP execution capability or Production grant.
+
+## PR942 Composite exact-source runner closure
+
+The prior exact-head CI passed Production Readiness, QA31, CWV admission, and 60+ other checks, but the immutable PR942 composite initially rejected the modified `tools/readiness_test_execution.py` source blob. The original runner is pinned by the historical supplement at Git blob `547760f7feded4e449858b5193b7fbe833385ea3`; the new reviewed CI-only runner is **exact** Git blob `0d7af9a1ebe0b3503cc1ff581c8344805c0b8981`.
+
+The enhanced composite test removes only two bounded CWV additions—the single named hermetic PHP allowlist entry and its four positive/negative self-test assertions—and requires reconstruction of the original runner bytes, with no wildcard executor or replacement of historical pin. An unknown PHP test path or missing negative assertion fails. **14/14 composite positive/negative checks PASS** locally; `release_authorized=false` and the 57 original manual semantic signoffs remain unchanged. This certifies test-execution source compatibility only, not live operational authority.
