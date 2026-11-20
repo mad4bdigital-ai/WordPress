@@ -148,6 +148,13 @@ else
   echo "HOLD $SITE invalid event-gate state ($rc)"
   exit "$rc"
 fi
+if [[ "${MAD4B_CSS_PROBE_ONLY:-0}" == 1 ]];then
+  # Probe-only can ACK an unchanged previously certified source above.
+  # Changed CSS requires ordinary CPU/Chromium QA; never issue a
+  # certificate, start a browser, or publish a manifest in probe mode.
+  echo "DEFER $SITE CSS source changed; full resource-admitted run required"
+  exit 75
+fi
 GATE_STATUS=hold
 GATE_REASON=source_unavailable
 record_event_gate(){
