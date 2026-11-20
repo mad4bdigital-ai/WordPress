@@ -45,6 +45,15 @@ with tempfile.TemporaryDirectory() as tmp:
  test('two independent matching Elementor graphs prove shared source canary',r['source_canary_qualified_groups']==1)
  test('shared source does not certify third unseen route CSS',r['routes_on_native_or_unproven_css']==1 and r['source_families'][0]['source_routes_not_individually_certified']==1)
  test('future source canary automatically avoids duplicate QA',r['next_canary_route_key'] is None)
+ test('qualified shared source schedules independent third-route CSS',
+      r['next_individual_css_route_key']==routes[2]['route_key']
+      and r['source_families'][0]['next_individual_css']==routes[2]['route_key'])
+ test('source-qualified group does not claim route-specific CSS was issued',
+      r['qualified_families_individual_routes_unproven']==1
+      and r['routes_on_native_or_unproven_css']==1)
+ test('original catalog admission still accepts only the third route',
+      m.queue.choose(cat,state,ledger,int(time.time()),
+                     preferred=r['next_individual_css_route_key'])[0]==routes[2])
  test('two CSS hashes may differ without copying per-route assets',r['source_families'][0]['canary_count']==2)
  test('two independent canaries prove only source behaviour, never transfer route CSS',
       r['source_cross_route_behaviour_qualified_groups']==1
@@ -56,6 +65,8 @@ with tempfile.TemporaryDirectory() as tmp:
       and r['source_families'][0]['source_context_evidence'][0]['source_canary_status']=='divergent_source_variants'
       and r['source_cross_route_behaviour_qualified_groups']==0)
  test('changed Elementor graph refuses shared source promotion',r['source_families'][0]['status']=='source_variants_need_split')
+ test('divergent template never selects a sibling-route CSS grant',
+      r['next_individual_css_route_key'] is None)
  certify(routes[1]);cat['listing_generation']=4;r=m.build('wayfa',cat,state,ledger,root)
  test('tour source listing update invalidates all stale canaries',r['routes_with_exact_current_certificate']==0)
  cat['listing_generation']=3;state['runtime_sha']='f'*64;r=m.build('wayfa',cat,state,ledger,root)

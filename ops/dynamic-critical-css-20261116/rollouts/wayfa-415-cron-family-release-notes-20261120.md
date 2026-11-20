@@ -51,3 +51,29 @@ The audit is read-only. Its result cannot qualify a different
 route, bypass the native admission, or publish a CSS certificate.
 No signed Broker grant, whole-site cache purge, PR merge, or
 Tours.dev release was implied.
+
+## 20 Nov: site-owned CSS expansion from qualified source to individual routes
+
+The fifth Wayfa public V2 route (ES Sound and Light Show Giza) passed
+the original source-first issue and independent five-viewport QA,
+then was acknowledged by WordPress public Cron 105. Exactly five
+independent route certificates were certified on live readback;
+234 of 239 catalog routes were still on native/unproven CSS.
+
+A separate safe source gap was fixed: template variant index now hashes
+the FULL ordered native CSS file list (including Elementor/JetEngine)
+instead of just the LiteSpeed combined stylesheet. A real five-file,
+two-cascade-slot WordPress CSS source was matched byte-for-byte.
+Observed template variants are informational only, not CSS grants.
+
+A dual-lane source-family planner now reserves one of four admissions
+for independently issuing a route CSS certificate within an ALREADY
+source-qualified family. Source canary proofs are never applied as
+route asset certificates. The 8-vCPU original admission, source
+lineage, WCML market and one-Chromium slot remain unchanged.
+
+A site-owned cheap source-only WordPress snapshot refresh now makes
+one advisory observation during reserved WP-CLI slots, after a
+second CPU guard. It cannot start Chrome, run WPCLI, or acknowledge
+a ticket. Actual Production source-only progress was observed.
+Normal pressure remains fail-closed and queued.

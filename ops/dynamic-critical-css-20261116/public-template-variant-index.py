@@ -17,6 +17,7 @@ def load(name,filename):
     return obj
 queue=load('mad4b_template_index_queue','public-route-queue.py')
 drift=load('mad4b_template_index_drift','public-route-live-css-drift.py')
+ordered=load('mad4b_template_index_native_ordered_css','public-css-dependency-manifest.py')
 
 CONTRACT='mad4b.public-css.template-variant-index.v1'
 HOSTS={'source':'tours.dev.mad4b.com','wayfa':'wayfatours.com'}
@@ -114,19 +115,25 @@ def extract(site,route,response,root):
     if start<0:return None
     docs=sorted({int(x) for x in DOC_RE.findall(body[start:])})
     if not docs:return None
-    css=drift.bundle_filenames(body,HOSTS[site])
-    if len(css)!=1:return None
-    csspath=root/'litespeed/css'/css[0]
-    if csspath.is_symlink() or not csspath.is_file():
-        csspath=root/'litespeed/.mad4b-asset-retention/css'/css[0]
-    if (csspath.is_symlink() or not csspath.is_file()
-        or not 16000<=csspath.stat().st_size<=6291456):return None
-    css_sha=hashlib.sha256(csspath.read_bytes()).hexdigest()
+    # Multi-CSS can include a LiteSpeed bundle plus independent Elementor
+    # files. The previous LiteSpeed-only source SHA missed those files and
+    # their order. This is original-HTML observation, NOT CSS issuance.
+    if ('data-mad4b-ccss-v2-critical=' in body
+        or 'data-mad4b-ccss-v2-rest=' in body):
+        return None
+    try:
+        manifest=ordered.inspect(body,HOSTS[site],root)
+    except (OSError,ValueError,TypeError,KeyError,UnicodeError):
+        return None
+    css_sha=manifest['manifest_sha256']
     # Signals for anomaly prioritization only: NOT verified LCP assets.
     h1=H1_RE.search(body[start:])
     title=html.unescape(TAG_RE.sub('',h1.group(1)) if h1 else '')
     images=IMG_RE.findall(body[start:start+120000])[:6]
     return {'doc_sha':digest(','.join(map(str,docs))),'css_sha':css_sha,
+            'css_source_contract':ordered.CONTRACT,
+            'css_files_observed':len(manifest['files']),
+            'css_cascade_slots_observed':len({x['slot'] for x in manifest['files']}),
             'first_image_sha':digest('\n'.join(html.unescape(x) for x in images)),
             'has_h1':bool(title.strip()),'currency':currency,'market':market}
 

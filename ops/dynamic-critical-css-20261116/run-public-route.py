@@ -412,7 +412,9 @@ def run_core(site):
     report=family.build(site,listing,state,report_ledger,wp,variant_index=index)
     report['refreshed_at_utc']=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime())
     family.queue.atom(base/'source-families-latest.json',report)
-    preferred=drift['route_key'] if drift else report.get('next_canary_route_key')
+    preferred=family.plan_next_css_issuance(
+        report,int(report_ledger.get('scheduler_sequence',0)),
+        drift['route_key'] if drift else None)
     if not qa_available:
         print('POLICY_ACTIVE_BROWSER_EVIDENCE_DEFERRED',site,
               report['source_groups_total'],flush=True)

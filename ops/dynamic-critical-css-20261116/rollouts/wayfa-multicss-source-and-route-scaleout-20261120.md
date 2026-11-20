@@ -1,0 +1,116 @@
+# Wayfatours original CSS source-family and exact-route coverage expansion
+
+Date: 20 November 2026. Production site: wayfatours.com.
+
+## Observed source state
+
+- WordPress public route catalog: 239 non-Home public routes.
+- V2 independently certified public routes on latest readback: five;
+  the fifth is the Spanish Sound and Light Show at Giza Pyramids.
+- The fifth certificate was issued from first-party source, then
+  measured in Chromium at five viewport sizes, verified by WP 422
+  and returned WordPress Cron ACK for public job 105.
+- 234 other routes still need their OWN exact CSS certificates.
+  Proven source-family membership alone NEVER permits their CSS READY
+  headers or copying CSS assets between tours.
+- The current company CSS workers remain one-per-site and one shared
+  Chromium admission slot, with 8-vCPU CPU/steal/PSI and WP-CLI guards.
+  Deferred WordPress tickets remain pending; no false ACK.
+
+## Source issue 1: incomplete native template variant fingerprint
+
+The original template observer hashed only the one LiteSpeed combined
+CSS file, even if Elementor/JetEngine and theme source files were
+loaded in addition. This skipped changes in the other CSS files and
+their browser cascade order.
+
+The new first-party read-only observer uses the existing ordered CSS
+dependency inspector for EVERY original local stylesheet. It records:
+- immutable full ordered original CSS manifest hash;
+- number of local files, their byte sources, and cascade slots;
+- existing exact Elementor document DOM fingerprint and server-resolved
+  WordPress country/currency.
+
+It rejects invalid HTML, already transformed critical HTML, external,
+missing, oversized and root-escaping CSS. This operation never
+publishes CSS, a route certificate, or changes a visitor's cache.
+The original Spanish Saqqara/Memphis source with five real CSS files
+and two cascade slots matched the V2 publication source manifest.
+
+Past index observations are retained as previous DOM-only advisory
+facts until their original WordPress source key or age expires. Only
+new observations carry the full native stylesheet source contract.
+Neither kind of index entry independently certifies CSS.
+
+## Source issue 2: family-only scheduler could stop too early
+
+Once a shared template had two independently passed source canaries,
+the previous planner returned no next route, even while its sibling
+routes remained unoptimized. Source-family proof is not a route CSS
+certificate; 235 routes would have been left on native CSS indefinitely.
+
+The new dual-lane site-owned original Cron planner schedules ONE
+source candidate per normal resource-admitted public ticket:
+- three out of four admissions favor new/unproven source families;
+- the fourth serves an unsampled route in an already-qualified family,
+  issuing and QA-checking its CSS independently;
+- when no source canary remains, the exact-route lane uses every
+  eligible slot; a current source-drift repair overrides both lanes.
+
+Every selected route is rechecked by the existing first-party WordPress
+catalog, private queue source key, WPML/CWML scope, current PHP 422,
+original CSS manifest, and bounded post-release QA. Pending/reverted
+or another route's certificate never counts as active.
+
+Native CSS remains safe fallback for all other routes.
+
+## Source issue 3: WP-CLI resource reservations blocked all progress
+
+The site-owned host worker correctly defers heavy browser and WordPress
+jobs if the CPU guard reports two or more WP-CLI processes. However,
+a cheap snapshot-based variant refresh inside refresh-source-families.py
+was never reached when the host worker deferred the whole job.
+
+The original host worker now has an advisory-only branch for this
+ONE reason: central_wpcli_slots_reserved. It calls the existing
+cached-variant-refresh.py with the exact enrolled company name,
+and the nested module independently rechecks CPU/steal/PSI and the
+root-owned, recent WordPress catalog snapshot.
+
+- Bounded one original public HTML observation per host wake
+  (no WordPress CLI, Chromium, PHP source mutation or cache purge).
+- On CPU load/steal/PSI pressure there is NO cheap observation.
+- Under the original WP-CLI resource admission, normal browser and
+  full family workers continue unchanged.
+- Advisory progress NEVER consumes a WordPress CSS job, issues a CSS
+  certificate, sends ACK, or changes the result of a prior browser QA.
+- Site-only argument rejects cross-company writes and untrusted paths.
+
+Real production source-only proof: Wayfatours observed one full ordered
+source during reserved WP-CLI slots without an additional browser/WPCLI
+process. The original WordPress family ticket remained pending.
+
+## Direct production receipts
+
+Wayfa renderer after ordered native template index:
+98cc6842e20847d52a9abc5634cc5184c73c1b9936a0dd21ea5a5c46054a3024.
+
+Wayfa renderer after independent family/route dual-lane planner:
+54f340a4aff44bc371a59a072fbd69c5c6821cbad58e3edaf5d1d2c2b0b30acc.
+
+Wayfa renderer after site-specific cheap progress:
+3f317e24022be080444ffe3bfc205295b850ae832cf10e85a29e1fa97c082c1c.
+
+The source worker was reconciled to the same bytes as the live Wayfa
+worker, preserving its original company-only receipt rules and the
+release-first V2 issuance policy rather than reverting to old shared
+two-company task receipts.
+
+Root-owned preimage and rollback receipts:
+- /var/lib/mad4b/company-code-release/receipts/wayfa-full-ordered-variant-index-20261120/
+- /var/lib/mad4b/company-code-release/receipts/wayfa-css-source-and-route-coverage-20261120/
+- /var/lib/mad4b/company-code-release/receipts/wayfa-site-owned-light-variants-20261120/
+
+This was site-only direct VPS execution at the user's request, not a
+signed Broker release, GitHub merge, or a production release to
+Tours.dev. It does NOT assert that all 239 pages are certified.
