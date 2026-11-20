@@ -115,7 +115,18 @@ $plan = get_option('mad4b_stay_editorial_publish_v1');
 if (!is_array($plan) || ($plan['catalog_activated'] ?? null) !== false) {
     $violations[] = 'catalog_publication_plan_changed';
 }
-if ($summary['linked_units_published'] !== 131 || $summary['without_units'] !== [36316]) {
+// Owner-verified Saray Pyramids adds exactly three editorial Units, no sales activation.
+$sarayExpectedUnits = [71731,71733,71735];
+$sarayActualUnits = array_values(array_unique(array_map('intval',$unitLinks[36316] ?? [])));
+sort($sarayActualUnits);
+$sarayOwnerProof = get_post_meta(36316,'_mad4b_property_identity_verified_v3',true);
+if ($sarayActualUnits !== $sarayExpectedUnits
+    || !is_array($sarayOwnerProof)
+    || ($sarayOwnerProof['owner_confirmed'] ?? false) !== true
+    || ($sarayOwnerProof['catalog_activated'] ?? true) !== false) {
+    $violations[] = 'saray_owner_identity_or_room_link_mismatch';
+}
+if ($summary['linked_units_published'] !== 134 || $summary['without_units'] !== []) {
     $violations[] = 'linked_unit_cohort_mismatch';
 }
 $output = [
