@@ -39,6 +39,12 @@ Snapshot date: 20 November 2026. Primary source: Tours.dev staging; target: Wayf
 - CP5: mad4b-pricing-entity-picker-v1.php plus JS lookup, accessible search and results without named form controls or additional save actions. Native number input receives the actual selected term/post ID and input+change events. Taxonomy WPML canonical ID displayed for inspection, but stored ID remains the selected native ID. Native 21-field policy form gets progressive disclosure of advanced fields in visual mode only; non-default overrides start expanded. Source and production hashes matched.
 - CP5 tests: verify-entity-picker.php, verify-entity-picker-dom.js, verify-conditional-jetengine-mode.js passed. This **does not certify** that controls appear in a real admin browser: selectors and logged-in native Save still need independent test.
 
+## Native form server-side rendering verification
+- Both sites rendered the real original JetEngine Pricing Controls form via its own page factory, with one form, native Save submit, settings_top, existing 21-field Mode repeater and correct original Package Level Repeater structure.
+- Wayfatours has stored Package rows such as shared_package_pricing_rows[item-0][package_term_id]. Tours.dev has the registered Repeater container but no saved Package row; test accepts this legitimate difference rather than inventing a row.
+- Verifier: tests/verify-native-jetengine-form-markup.php. Real HTML rendering accepted on both sites with no source option mutation.
+- This is not a logged-in two-browser Save, client-side AJAX, or mobile interactive certification.
+
 ## CP7 read-only matrix
 - Detailed evidence: QA_RESULTS_20261120.md, tests/verify-cp7-readiness-matrix.php.
 - Tours.dev: 221 published, 116 assigned package terms all blocked because source preview policy is not configured.

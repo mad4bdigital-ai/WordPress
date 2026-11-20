@@ -55,3 +55,8 @@ CP8 must remain OPEN until those conditions are fulfilled.
 - Source Tour Rates 196 Published and 29 Draft; Wayfatours 0 Published, 106 Draft and 2 Auto Draft. No commerce activation.
 
 Remaining gates: real approved dated hotel/boat unit costs, verified transport vehicle-route costs, Guide day coverage, extras cost, FX, company margin/tax, child pricing, real browser dual-tab Save acceptance, updated CI and release owner approval. CP8 remains OPEN.
+
+
+### Additional rendered JetEngine admin markup acceptance
+
+Both sites passed tests/verify-native-jetengine-form-markup.php using the real native JetEngine page factory. One original form and Save button exist, and the actual Mode/Package Repeater input-name patterns match. Staging has no stored Package rows and Production has six; both are supported. Option source revision is identical before and after HTML rendering. The previous busy staging rerun later succeeded. Browser-authenticated click/Save and responsive testing remain separately open.
