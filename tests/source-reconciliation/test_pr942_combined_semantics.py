@@ -34,6 +34,24 @@ class CompositeReviewNegativeTests(TestCase):
         with self.assertRaises(AssertionError):
             m.validate(bad, self.source)
 
+    def test_governance_successor_cannot_approve_production(self):
+        key = m.GOVERNANCE_PATH
+        ledger = json.loads(self.sources[key])
+        ledger['authorizing'] = True
+        self.sources[key] = json.dumps(ledger)
+        with self.assertRaises(AssertionError):
+            m.validate(self.supplement, self.source)
+
+    def test_governance_successor_cannot_lose_original_artifact_fixture(self):
+        key = m.GOVERNANCE_PATH
+        ledger = json.loads(self.sources[key])
+        for row in ledger['reviewed_changes']:
+            if row.get('source_blob_sha') == '60750fb4a0cf8180f012254acd3fc2ccc43bba78':
+                row['regression_tests'] = []
+        self.sources[key] = json.dumps(ledger)
+        with self.assertRaises(AssertionError):
+            m.validate(self.supplement, self.source)
+
     def test_fails_on_collision_sha_change(self):
         with patch.object(m, 'current_blob', lambda _p: '0' * 40):
             with self.assertRaises(AssertionError):

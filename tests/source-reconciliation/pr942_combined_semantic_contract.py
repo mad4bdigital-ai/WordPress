@@ -36,6 +36,35 @@ def current_blob(path):
     return hashlib.sha1(b'blob ' + str(len(raw)).encode('ascii') + b'\0' + raw).hexdigest()
 
 
+# The original PR942/964 conflict ledger is immutable. A later exact review-only
+# Governance manifest successor can be admitted only by its fixed Git blob and
+# explicit non-authorizing security metadata. Unknown future bytes stay denied.
+GOVERNANCE_REVIEWED_SUCCESSOR = '0f4930fe976ff604f30c600c044812fdb7de3fa7'
+GOVERNANCE_PATH = 'governance/production-readiness/capability-coverage.json'
+
+
+def validate_governance_successor(coverage):
+    check(coverage.get('authorizing') is False
+          and coverage.get('production_promotion_from_ci') is False,
+          'New Governance source cannot authorize Production')
+    for basename, sha, fixture in (
+        ('class-mad4b-scp-reconnect-hardening.php',
+         '388408d37737ee2bacb2b97614be3fa375b334b8',
+         'wp-content/plugins/mad4b-site-control-plane/tests/reconnect-hardening-runtime.php'),
+        ('class-mad4b-scp-artifacts.php',
+         '60750fb4a0cf8180f012254acd3fc2ccc43bba78',
+         'tests/artifacts-original-hermetic.php'),
+    ):
+        rows = [r for r in coverage.get('reviewed_changes', [])
+                if r.get('path', '').endswith('/' + basename)
+                and r.get('source_blob_sha') == sha
+                and fixture in r.get('regression_tests', [])
+                and r.get('status') == 'reviewed_for_ci_only'
+                and r.get('live_evidence_required') is True
+                and r.get('production_authorized') is False]
+        check(len(rows) == 1, 'Governance exact reviewed successor missing: ' + basename)
+
+
 def validate(supplement, source_text):
     check(supplement['release_authorized'] is False, 'Unexpected release approval')
     check(supplement['semantic_conflict_review_completed'] is False, 'Unexpected semantic approval')
@@ -45,7 +74,13 @@ def validate(supplement, source_text):
     for r in collision_rows:
         path = r['path']
         check(r['semantic_review_completed'] is False, 'Unexpected functional signoff: ' + path)
-        check(r['followup_964'] == current_blob(path), 'Unreviewed code drift: ' + path)
+        current = current_blob(path)
+        if path == GOVERNANCE_PATH and current != r['followup_964']:
+            check(current == GOVERNANCE_REVIEWED_SUCCESSOR,
+                  'Unreviewed Governance successor SHA: ' + current)
+            validate_governance_successor(json.loads(source_text(path)))
+        else:
+            check(r['followup_964'] == current, 'Unreviewed code drift: ' + path)
     field = source_text(P+'includes/class-mad4b-scp-provider-field-intelligence.php')
     discover = field.split('public static function discover($input=[])', 1)[1].split('public static function ', 1)[0]
     check(discover.index('MAD4B_SCP_Site_Profile::status()') < discover.index('post_type_exists($subtype)'), 'Identity must precede type probing')
