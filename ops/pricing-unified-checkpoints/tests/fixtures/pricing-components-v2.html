@@ -1,0 +1,51 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f6f5;font:13px Arial,sans-serif;color:#243c40}
+.jet-engine-options-page-wrap{margin:16px auto;max-width:1280px;padding:15px;background:#fff}
+.mad4b-ws-external-section{container-type:inline-size}
+button,input,select,textarea{font:inherit;max-width:100%}
+</style></head><body>
+<div class="jet-engine-options-page-wrap mad4b-ws-visual mad4b-ws-flat-canvas mad4b-pricing-composed">
+  <section class="mad4b-ws-external-section">
+   <section class="mad4b-stay-panel">
+    <details class="mad4b-stay-panel__accordion" open>
+     <summary class="mad4b-stay-panel__summary"><span class="mad4b-stay-panel__heading"><small>Accommodation pricing</small><strong>Accommodation & Unit Pricing</strong></span><span class="mad4b-stay-panel__summary-note">Source · Unit · Optional Rates</span></summary>
+     <div class="mad4b-stay-panel__body">
+      <p class="mad4b-stay-panel__intro">Contracted supplier first; self second</p>
+      <div class="mad4b-stay-panel__layers"><span><b>1</b><strong>Unit Rate</strong></span><span><b>2</b><strong>Unit Direct</strong></span><span><b>3</b><strong>Property Rate</strong></span><span><b>4</b><strong>Property Direct</strong></span></div>
+      <div class="mad4b-stay-panel__layout">
+       <div class="mad4b-stay-panel__catalog">
+        <section class="mad4b-stay-panel__group"><header class="mad4b-stay-panel__group-head"><h3>Choose a Property</h3></header><label class="mad4b-stay-panel__field"><span>Search hotels</span><input type="search" placeholder="Hotel or cruise"/></label><details class="mad4b-stay-panel__filters"><summary>Classification filters</summary><div class="mad4b-stay-panel__filter-grid"><label>Stars<select><option>All</option></select></label></div></details><div class="mad4b-stay-panel__results"><div class="mad4b-stay-panel__result-row"><button class="mad4b-stay-panel__pick">Sample hotel</button></div></div></section>
+       </div>
+       <section class="mad4b-stay-panel__quote"><header class="mad4b-stay-panel__group-head"><h3>Price source preview</h3></header><div class="mad4b-stay-panel__quote-fields"><label class="mad4b-stay-panel__field"><span>Check-in</span><input type="date"/></label><label class="mad4b-stay-panel__field"><span>Nights</span><input type="number" value="2"/></label></div><div class="mad4b-stay-panel__preview-result">Awaiting original supplier quote</div></section>
+      </div>
+     </div>
+    </details>
+   </section>
+   <section class="mad4b-ts-panel" style="margin-top:22px">
+    <details class="mad4b-ts-accordion" open>
+     <summary><span><small>Transportation · Company Self Provider</small><strong>Transfer Pricing Controls</strong></span></summary>
+     <div class="mad4b-ts-body">
+      <div class="mad4b-ts-source"><span><b>Provider</b><strong>self</strong></span><span><b>Source</b><strong>2026 Rate</strong></span><span><b>Currency</b><strong>EGP</strong></span><span><b>Profile</b><strong>Company</strong></span></div>
+      <div class="mad4b-ts-steps"><span><b>1</b>Select transfer</span><span><b>2</b>Configure pricing</span><span><b>3</b>Review readiness</span></div>
+      <div class="mad4b-ts-columns">
+       <div class="mad4b-ts-stack"><section class="mad4b-ts-card"><h3>Select Transportation</h3><label>Origin<select><option>All Origins</option></select></label><label>Transfer<input type="search"/></label><details class="mad4b-ts-extra"><summary>Advanced filters</summary><div class="mad4b-ts-grid"><label>Passengers<input type="number" value="2"/></label></div></details></section></div>
+       <div class="mad4b-ts-rail"><section class="mad4b-ts-card mad4b-ts-rail-card"><h3>Live source preview</h3><button type="button">Calculate reference price</button><div class="mad4b-ts-result">Saved source policy only</div></section></div>
+      </div>
+     </div>
+    </details>
+   </section>
+  </section>
+  <section id="mad4b-guide-taxonomy-cost-panel" class="postbox" style="margin:16px 20px;padding:14px;max-width:1300px">
+   <h2>Guide Service · Supplier Cost per Language</h2>
+   <p>One original taxonomy source and approved cost receipt</p>
+   <section><h3>Global Defaults · EGP / guide day</h3><form id="mad4b-guide-default-form"><label>Arabic<input name="ar" type="number" value="2000" style="width:110px"/></label><label>English<input name="en" type="number" value="2500" style="width:110px"/></label><button type="submit">Update global fallback</button></form></section>
+   <section><h3>Guide Languages · JetEngine Taxonomy Overrides</h3><div style="overflow-x:auto"><table class="widefat striped"><thead><tr><th>Language</th><th>Mode</th><th>Supplier cost</th><th>Currency</th><th>Evidence</th><th>Action</th></tr></thead><tbody><tr><td>English</td><td><select><option>Inherit</option></select></td><td><input type="number" value="2500"/></td><td><select><option>EGP</option></select></td><td><textarea rows="2">Reviewed</textarea></td><td><button type="button">Approve</button></td></tr></tbody></table></div></section>
+  </section>
+  <section class="mad4b-ws-source-test">
+   <details class="mad4b-ws-dimension-group"><summary>Audience targeting</summary><div><p>Select JetEngine terms</p></div></details>
+   <details class="mad4b-ws-provider-panel"><summary>Provider source policies</summary><div><p>Company / Suppliers</p></div></details>
+   <div class="mad4b-supplier-readiness"><details><summary>Package supplier cost readiness</summary><p>Read only</p></details></div>
+  </section>
+</div></body></html>

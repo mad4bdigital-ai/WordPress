@@ -1,0 +1,370 @@
+/*
+ * MAD4B Pricing Workspace UI · one reusable product-and-policy presentation.
+ *
+ * Design source: modern flat company settings, extended to comparable native
+ * Accommodation, Transportation, Guide taxonomy, source-policy and inspection
+ * widgets. This is PRESENTATION ONLY: no source editor, quote or Save changes.
+ * All rules scoped to the composed and authorized Pricing Controls view;
+ * do not style original JetEngine native field mode or other admin screens.
+ */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas {
+  --mad4b-ui-line: #e3ebe8;
+  --mad4b-ui-text: #243c40;
+  --mad4b-ui-muted: #647a7b;
+  --mad4b-ui-accent: #216e63;
+  --mad4b-ui-hover: #f4f8f7;
+  --mad4b-ui-soft: #f7faf9;
+  --mad4b-ui-focus: #7eb4a8;
+  --mad4b-ui-gap: 14px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  .mad4b-ws-external-section {
+  margin: 0 !important;
+  padding: 0 !important;
+  min-width: 0;
+  width: 100%;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  .mad4b-ws-external-section :is(
+    .mad4b-stay-panel, .mad4b-ts-panel) {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100%;
+  min-width: 0;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+/* One primary section disclosure, consistently styled across suppliers,
+   native source policies and read-only Cost Inspector. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  :is(.mad4b-stay-panel__accordion, .mad4b-ts-accordion,
+      .mad4b-ws-provider-panel, .mad4b-supplier-readiness>details) {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  overflow: visible !important;
+  min-width: 0;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  :is(.mad4b-stay-panel__summary, .mad4b-ts-accordion>summary,
+      .mad4b-ws-provider-panel>summary, .mad4b-supplier-readiness>details>summary) {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 53px;
+  padding: 12px 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--mad4b-ui-line) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  cursor: pointer;
+  color: var(--mad4b-ui-text) !important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  :is(.mad4b-stay-panel__heading strong, .mad4b-ts-accordion>summary strong) {
+  font-size: 16px !important;
+  line-height: 1.35;
+  letter-spacing: -.012em;
+  color: var(--mad4b-ui-text) !important;
+  font-weight: 720 !important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  :is(.mad4b-stay-panel__heading small, .mad4b-ts-accordion>summary small,
+      .mad4b-stay-panel__summary-note, .mad4b-ts-muted) {
+  color: var(--mad4b-ui-muted) !important;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  :is(.mad4b-stay-panel__body, .mad4b-ts-body) {
+  padding: 17px 0 0 !important;
+  background: transparent !important;
+  min-width: 0;
+}
+/* Primary information tiers become a single, quiet horizontal stepstrip. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  :is(.mad4b-stay-panel__layers, .mad4b-ts-source, .mad4b-ts-steps) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(min(100%,135px),1fr)) !important;
+  gap: 0 !important;
+  margin: 13px 0 17px !important;
+  padding: 8px 10px !important;
+  border-radius: 7px !important;
+  background: var(--mad4b-ui-soft) !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  :is(.mad4b-stay-panel__layers>span, .mad4b-ts-source>span,
+      .mad4b-ts-steps>span) {
+  display: grid;
+  align-content: center;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 8px 11px !important;
+  border: 0 !important;
+  border-inline-end: 1px solid var(--mad4b-ui-line) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--mad4b-ui-text) !important;
+  overflow-wrap: anywhere;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  :is(.mad4b-stay-panel__layers>span, .mad4b-ts-source>span,
+      .mad4b-ts-steps>span):last-child {
+  border-inline-end: 0 !important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  :is(.mad4b-stay-panel__layers b, .mad4b-ts-source b,
+      .mad4b-ts-steps b) {
+  font-size: 11px;
+  color: var(--mad4b-ui-accent) !important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  :is(.mad4b-stay-panel__layers strong, .mad4b-ts-source strong) {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--mad4b-ui-text) !important;
+}
+/* Full product editor and live preview belong to the same workspace:
+   use section dividers instead of nested card borders. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  :is(.mad4b-stay-panel__layout, .mad4b-ts-columns) {
+  gap: 19px !important;
+  align-items: start;
+  min-width: 0;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  :is(.mad4b-stay-panel__group, .mad4b-stay-panel__quote,
+      .mad4b-ts-card, .mad4b-ts-rail-card) {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  padding: 12px 0 17px !important;
+  margin: 0 !important;
+  min-width: 0;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  :is(.mad4b-stay-panel__quote,.mad4b-ts-rail-card) {
+  border-inline-start: 1px solid var(--mad4b-ui-line) !important;
+  padding-inline-start: 17px !important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  :is(.mad4b-stay-panel__group-head, .mad4b-ts-card>h3,
+      .mad4b-ts-component>h3) {
+  font-size: 14px !important;
+  line-height: 1.4;
+  color: var(--mad4b-ui-text) !important;
+  border-bottom: 1px solid var(--mad4b-ui-line) !important;
+  padding: 0 0 10px !important;
+  margin: 0 0 12px !important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  :is(.mad4b-stay-panel__field, .mad4b-ts-card label) {
+  font-size: 12px;
+  color: var(--mad4b-ui-text);
+  font-weight: 650;
+  gap: 6px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  :is(.mad4b-stay-panel input, .mad4b-stay-panel select,
+      .mad4b-ts-card input, .mad4b-ts-card select,
+      #mad4b-guide-taxonomy-cost-panel input,
+      #mad4b-guide-taxonomy-cost-panel select,
+      #mad4b-guide-taxonomy-cost-panel textarea) {
+  max-width: 100%;
+  min-width: 0;
+  border-color: #cfddd8;
+  border-radius: 6px;
+  box-shadow: none;
+  background: #fff;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  :is(.mad4b-stay-panel input, .mad4b-stay-panel select,
+      .mad4b-ts-panel input, .mad4b-ts-panel select,
+      #mad4b-guide-taxonomy-cost-panel input,
+      #mad4b-guide-taxonomy-cost-panel select,
+      #mad4b-guide-taxonomy-cost-panel textarea):focus-visible {
+  outline: 2px solid var(--mad4b-ui-focus);
+  outline-offset: 1px;
+}
+/* Repeated detail filters, pricing rules and source settings share the
+   SAME secondary accordion treatment, not separate native skins. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  :is(.mad4b-stay-panel__filters, .mad4b-stay-panel__rates,
+      .mad4b-ts-extra, .mad4b-ws-dimension-group,
+      .mad4b-ws-nested-policy, .mad4b-ws-policy-advanced,
+      .mad4b-ws-policy-scope-details) {
+  border: 0 !important;
+  border-bottom: 1px solid var(--mad4b-ui-line) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  margin-block: 9px !important;
+  min-width: 0;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  :is(.mad4b-stay-panel__filters>summary,.mad4b-stay-panel__rates>summary,
+      .mad4b-ts-extra>summary,.mad4b-ws-dimension-group>summary,
+      .mad4b-ws-nested-policy>summary,.mad4b-ws-policy-advanced>summary,
+      .mad4b-ws-policy-scope-details>summary) {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  min-height: 40px;
+  padding: 10px 2px !important;
+  color: var(--mad4b-ui-accent) !important;
+  font-size: 12px !important;
+  cursor: pointer;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  :is(.mad4b-stay-panel__filters>summary,.mad4b-stay-panel__rates>summary,
+      .mad4b-ts-extra>summary,.mad4b-ws-dimension-group>summary,
+      .mad4b-ws-nested-policy>summary,.mad4b-ws-policy-advanced>summary,
+      .mad4b-ws-policy-scope-details>summary):focus-visible {
+  outline: 2px solid var(--mad4b-ui-focus);
+  outline-offset: 2px;
+}
+/* Selection and quote output can be visually distinct; they're DATA states,
+   not container-heavy settings pages. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  :is(.mad4b-stay-panel__selection,.mad4b-stay-panel__preview-result,
+      .mad4b-ts-result,.mad4b-ts-preview,.mad4b-ts-dirty,
+      .mad4b-supplier-readiness__component) {
+  box-shadow: none !important;
+  border: 1px solid var(--mad4b-ui-line) !important;
+  border-radius: 7px !important;
+  background: var(--mad4b-ui-soft) !important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  :is(.mad4b-stay-panel__pick,.mad4b-ts-preview,.mad4b-stay-panel__result-row) {
+  transition: background .15s ease;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  :is(.mad4b-stay-panel__pick,.mad4b-stay-panel__result-row):hover {
+  background: var(--mad4b-ui-hover) !important;
+}
+/* Guide taxonomy is a service-specific editor, not a WordPress "postbox
+   inside a page". Keep the real independent cost form and full-width table. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  #mad4b-guide-taxonomy-cost-panel.postbox {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  max-width: 100% !important;
+  min-width: 0;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  #mad4b-guide-taxonomy-cost-panel>h2 {
+  color: var(--mad4b-ui-text);
+  font-size: 17px;
+  font-weight: 730;
+  margin: 4px 0 7px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  #mad4b-guide-taxonomy-cost-panel>section {
+  padding: 17px 0 !important;
+  margin: 10px 0 !important;
+  border: 0 !important;
+  border-top: 1px solid var(--mad4b-ui-line) !important;
+  background: transparent !important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  #mad4b-guide-taxonomy-cost-panel>section h3 {
+  font-size: 14px !important;
+  color: var(--mad4b-ui-text);
+  font-weight: 720;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  #mad4b-guide-default-form {
+  display: flex;
+  align-items: end;
+  gap: 12px 18px;
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  #mad4b-guide-default-form>label {
+  display: flex !important;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 110px;
+  margin: 0 !important;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--mad4b-ui-text);
+  font-weight: 650;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  #mad4b-guide-default-form>button {
+  min-height: 35px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  #mad4b-guide-taxonomy-cost-panel .widefat {
+  width: 100%;
+  border: 1px solid var(--mad4b-ui-line);
+  box-shadow: none !important;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #fff;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  #mad4b-guide-taxonomy-cost-panel .widefat th {
+  padding: 10px;
+  background: var(--mad4b-ui-soft);
+  color: var(--mad4b-ui-text);
+  border-bottom: 1px solid var(--mad4b-ui-line);
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  #mad4b-guide-taxonomy-cost-panel .widefat td {
+  padding: 10px;
+  border-bottom: 1px solid var(--mad4b-ui-line);
+  vertical-align: middle;
+}
+/* All structured supplier panels get a single adaptive layout; no forced
+   two-column clipping inside the central canvas and no overlay on mobile. */
+@container (max-width: 860px) {
+  .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+    :is(.mad4b-stay-panel__layout,.mad4b-ts-columns) {
+    grid-template-columns: minmax(0,1fr) !important;
+  }
+  .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+    :is(.mad4b-stay-panel__quote,.mad4b-ts-rail) {
+    position: static !important;
+  }
+  .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+    :is(.mad4b-stay-panel__quote,.mad4b-ts-rail-card) {
+    border-inline-start: 0 !important;
+    border-top: 1px solid var(--mad4b-ui-line) !important;
+    padding-inline-start: 0 !important;
+  }
+}
+@media (max-width: 680px) {
+  .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+    :is(.mad4b-stay-panel__layers,.mad4b-ts-source,.mad4b-ts-steps) {
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+  }
+  .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+    #mad4b-guide-default-form {
+    display: grid;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 10px;
+  }
+  .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+    #mad4b-guide-default-form>button {
+    grid-column: 1/-1;
+    justify-self: start;
+  }
+}

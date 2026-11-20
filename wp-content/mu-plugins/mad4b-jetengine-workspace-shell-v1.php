@@ -25,6 +25,17 @@ final class MAD4B_JetEngine_Workspace_Shell_V1 {
            !wp_script_is('mad4b-jetengine-functional-modes','registered'))return;
         wp_enqueue_style(self::SCRIPT,content_url('mu-plugins/assets/'.basename($css)),
             ['mad4b-jetengine-functional-modes'],(string)filemtime($css));
+        // One shared visual system for all comparable Pricing Controls
+        // components (Stay, Transport, Guide, Policy and Cost Inspector).
+        // It deliberately runs after the original JetEngine shell and
+        // original service styles, without replacing their controllers.
+        if($slug==='etg-dynamic-pricing-controls'){
+            $system=$base.'mad4b-pricing-interface-v2.css';
+            if(is_readable($system))
+                wp_enqueue_style('mad4b-pricing-interface-v2',
+                    content_url('mu-plugins/assets/'.basename($system)),
+                    [self::SCRIPT],(string)filemtime($system));
+        }
         // Append our overrides after every registered service styling layer,
         // without touching the original vendor or composed panel files.
         wp_enqueue_script(self::SCRIPT,content_url('mu-plugins/assets/'.basename($js)),

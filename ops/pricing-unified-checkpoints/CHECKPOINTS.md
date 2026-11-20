@@ -143,3 +143,25 @@ Acceptance:
 - Real WordPress server: verify-jetengine-composed-workspace.php, verify-jetengine-shell-ui.php, verify-native-jetengine-form-markup.php PASS on Tours.dev and Wayfatours. Original option source revision unchanged.
 - Rollback backups: /opt/mad4b-company-provisioning/backups/jetengine-flat-canvas-20261120/
 - OPEN: live logged-in browser real-data responsive and repeater evaluation, cross-browser and full business E2E. Not a certified commercial save or rate generation.
+
+## CP2.5 — Shared product/interface language (20 Nov 2026)
+
+Owner extended the reference design to all comparable settings/policy/price-source areas, not only the selected screenshot.
+
+Problem: Accommodation, Transport and Guide were rendered by separate component owners with different presentation layers. Stay had separate group/quote boxes; Transport had independent source metrics, cards and steps; Guide had a WordPress postbox form and wide taxonomy table. Flattening native JetEngine fields left these product views looking like nested applications.
+
+Introduced presentation-only asset mad4b-pricing-interface-v2.css, enqueued after the existing grouped shell by mad4b-jetengine-workspace-shell-v1.php, scoped to authorized Pricing Controls and the active mad4b-ws-flat-canvas view. One token set and common component rules cover:
+- Accommodation original Property/Unit selection, step levels, filters and supplier preview.
+- Transportation original transfer/route controls, source summary, steps and reference calculator.
+- Guide Taxonomy original fallback form and native language/approval table, preserving independent horizontal scroll.
+- Reusable dimension/policy/provider accordions and read-only supplier-cost inspection.
+- Keyboard focus, adaptive fields, responsive source-preview placement and quieter selection/status components.
+
+No service vendor file, supplier amount, approval contract, Rate, Checkout, source field, original Save or independent product Save was changed.
+
+Checks:
+- Design CSS static syntax/structure checks passed.
+- verify-pricing-components-v2-playwright.py rendered original Stay and Transport vendor CSS followed by central style at 1440/1024/768/390/320, with no page overflow, consistent primary disclosure heights, Guide table internal scroll, and independent supplier form retained. This is fixture QA, not a live logged-in screenshot.
+- verify-pricing-interface-v2.php passed on staging and Wayfatours. Original native shell and markup verification passed with unchanged source revision.
+- VPS rollback copies at /opt/mad4b-company-provisioning/backups/pricing-interface-v2-20261120/{staging,wayfatours}/.
+- OPEN: authenticated browser QA for all product modes, original JetEngine Save/Repeater, independent service Save/Approve, and commercial Rate/Checkout E2E.
