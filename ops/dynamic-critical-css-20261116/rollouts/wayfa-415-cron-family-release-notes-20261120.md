@@ -12,3 +12,42 @@ Private receipts:
 - /var/lib/mad4b/company-code-release/receipts/wayfa-css-v2-family-source-20261120/
 
 Direct VPS deployment only. No signed Broker grant, no PR merge, and no source-staging production activation.
+
+## Source-current CSS audit correction and First Fold closure
+
+On 20 November at 17:53 UTC the live Wayfatours health audit
+returned healthy_with_safe_fallback: 0 issues, 0 warnings.
+The prior degraded warning was caused by legacy v1 historical
+certificates for About Us and Interests using CSS Epoch 39, whereas
+the current WordPress CSS Epoch is 252. Their ledger records retained
+the old certified status, but the first-party source keys no longer
+matched the current WordPress source identity. No historical v1 cert
+was reactivated, reapproved or published.
+
+Audit now only samples records with exact source_current route keys.
+30 outdated rows are still recorded as stale_certified_source_records,
+rather than interpreted as current CSS delivery failures.
+Readback samples are selected across both EN and ES. Both actual
+source-current public routes returned CCSS Ready=1 with exact
+market-specific v2 certificates.
+
+The audit now uses the same first-party verified Elementor template
+variant index as the native company Cron family registry. It does
+not merge different DOM variants into one reusable CSS grant.
+The current site snapshot shows 239 routes, 24 source groups,
+3 qualified singletons, 4 current certified v2 routes and
+235 other routes without exact route certificates.
+
+The source-corrected First Fold runner was independently observed
+succeeding through WordPress Cron job 102. EN and ES homepage CSS
+both passed, native event ledger committed and WordPress ACK sent.
+
+Production Wayfa site renderer SHA after the health readback fix:
+854a724f5c060fc72073d93682f38517b96dc1e1e6f4286dbe1aab2fff40765f.
+Rollback backups and receipt:
+ /var/lib/mad4b/company-code-release/receipts/wayfa-css-source-current-health-20261120/
+
+The audit is read-only. Its result cannot qualify a different
+route, bypass the native admission, or publish a CSS certificate.
+No signed Broker grant, whole-site cache purge, PR merge, or
+Tours.dev release was implied.

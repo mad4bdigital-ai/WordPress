@@ -36,6 +36,7 @@ status=load(D/'public-route-status.py','ccss_health_status')
 assess=load(D/'assess.py','ccss_health_original_home_assess')
 runner=load(D/'run-public-route.py','ccss_health_runner')
 source_family=load(D/'public-source-families.py','ccss_health_source_families')
+source_variants=load(D/'public-template-variant-index.py','ccss_health_template_variants')
 route_resume=load(D/'public-route-resume.py','ccss_health_route_resume')
 def command(args,timeout=25):
     return subprocess.run(args,capture_output=True,text=True,check=True,timeout=timeout).stdout.strip()
@@ -350,7 +351,18 @@ def run_site(site,run_http=True):
     result['coverage_by_language']=coverage['by_language']
     # Source/template canary certification is the primary QA unit. Keep
     # per-route CSS-ready evidence separate; unsampled objects remain native.
-    sources=source_family.build(site,catalog,state,ledger,root)
+    # Observe only first-party source-bound template variant facts. The
+    # scheduled registry and this audit must not disagree because one
+    # omitted the same verified index. Missing/stale observations never
+    # qualify a variant and never grant cross-route Critical CSS.
+    variantpath=Path('/opt/mad4b-company-provisioning/reports/public-critical-css-v1')/site/'template-variant-index.json'
+    try:
+        variant_index=source_variants.read(variantpath,site)
+        result['source_variant_index']='source_bound_observations'
+    except (OSError,ValueError,TypeError,KeyError):
+        variant_index=source_variants.empty(site)
+        result['source_variant_index']='unavailable_or_invalid_no_grants'
+    sources=source_family.build(site,catalog,state,ledger,root,variant_index=variant_index)
     result['source_certification']={k:sources[k] for k in (
        'source_groups_total','source_groups_by_status',
        'source_canary_qualified_groups','routes_discovered',
@@ -444,13 +456,21 @@ def run_site(site,run_http=True):
                         warnings.append('home_native_css_fallback_not_verified_in_browser:'+lang)
             except (OSError,ValueError,subprocess.CalledProcessError,subprocess.TimeoutExpired) as exc:
                 warnings.append('home_http_probe_failed:'+lang+':'+str(exc)[:80])
-        # Check a small bounded number of ledger-certified public URLs.
+        # Only source-current certified ledger rows may be probed as live.
+        # Historical v1 certs remain in immutable storage for forensic
+        # evidence, but their 422 source keys are no longer current.
+        # Do NOT count a stale row as an active cert, or as a failed CSS
+        # optimization. The original native CSS fallback is intentional.
+        current_routes,stale_routes=source_current_route_readback_candidates(
+            catalog,state,ledger,limit=2)
+        result['stale_certified_source_records']={
+            'count':len(stale_routes),'sample_paths':stale_routes[:10],
+            'reason':'certified_ledger_source_key_no_longer_current',
+            'native_css_fallback_expected':True}
         result['public_route_readback']=[]
         result['safe_route_profile_fallbacks']=[]
-        for route in catalog['routes']:
-            rec=ledger['routes'].get(route['route_key'],{})
-            if rec.get('status')!='certified':continue
-            if len(result['public_route_readback'])>=2:break
+        for route in current_routes:
+            rec=ledger['routes'][route['route_key']]
             try:
                 probe=http_get(host,route['path'])
                 variant={'path':route['path'],'language':route['language'],**probe}
@@ -462,8 +482,28 @@ def run_site(site,run_http=True):
                     fingerprint=hashlib.sha256(
                         (host+'|'+route['language']+'|'+route['path']+'|'
                          +country+'|'+currency).encode()).hexdigest()
-                    current=root/'mad4b-public-critical-css-v1/certs'/(fingerprint+'.json')
-                    variant['certificate_for_observed_market']=current.is_file() and not current.is_symlink()
+                    legacy=root/'mad4b-public-critical-css-v1/certs'/(fingerprint+'.json')
+                    current_v2=root/'mad4b-public-critical-css-v1/certs-v2'/(fingerprint+'.json')
+                    variant['certificate_for_observed_market']=False
+                    for current in (current_v2,legacy):
+                        if current.is_symlink() or not current.is_file() or current.stat().st_size>180000:
+                            continue
+                        try:
+                            c=json.loads(current.read_text())
+                            valid=(c.get('status')=='certified'
+                              and c.get('host')==host
+                              and c.get('language')==route['language']
+                              and c.get('path')==route['path']
+                              and c.get('market_country')==country
+                              and c.get('currency')==currency
+                              and c.get('css_epoch')==state['css_epoch']
+                              and c.get('runtime_sha')==state['runtime_sha'])
+                            if valid:
+                                variant['certificate_for_observed_market']=True
+                                variant['certificate_contract']=c.get('contract')
+                                break
+                        except (OSError,ValueError,KeyError,TypeError,UnicodeError):
+                            continue
                 else:variant['certificate_for_observed_market']=False
                 variant['active_in_observed_market']=(probe['ready_public']=='1')
                 result['public_route_readback'].append(variant)
@@ -485,9 +525,39 @@ def run_site(site,run_http=True):
                       'healthy_with_safe_fallback' if (
                           result.get('safe_profile_fallbacks')
                           or result.get('safe_route_profile_fallbacks')
-                          or result.get('native_fallback_after_source_dependency_change'))
+                          or result.get('native_fallback_after_source_dependency_change')
+                          or result.get('stale_certified_source_records',{}).get('count',0))
                       else 'healthy')
     return result
+def source_current_route_readback_candidates(catalog,state,ledger,limit=2):
+    # A site can keep immutable historical artifacts. The only current
+    # admission is a source key derived from the live WordPress context,
+    # NOT the row's historical 'certified' label.
+    active=[];stale=[]
+    for route in catalog['routes']:
+        rec=ledger['routes'].get(route['route_key'],{})
+        if not isinstance(rec,dict) or rec.get('status')!='certified':
+            continue
+        expected=queue.source_key(catalog,route,state,
+                                  bool(rec.get('depends_on_listings')))
+        if rec.get('source_key')!=expected:
+            stale.append(route['path'])
+        else:
+            active.append(route)
+    # Two samples, biased toward two distinct WPML languages if present.
+    # No sampling rule grants CSS to another route.
+    selected=[];sampled_languages=set()
+    for row in active:
+        if row['language'] not in sampled_languages:
+            selected.append(row)
+            sampled_languages.add(row['language'])
+            if len(selected)>=limit:return selected,stale
+    for row in active:
+        if row not in selected:
+            selected.append(row)
+            if len(selected)>=limit:break
+    return selected,stale
+
 def write(path,payload):
     if path.parent.is_symlink() or path.is_symlink():
         raise ValueError('untrusted-audit-report-symlink')
