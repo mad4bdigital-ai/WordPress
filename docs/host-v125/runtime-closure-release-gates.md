@@ -107,3 +107,41 @@ Original305 sealed-command definition is **not** included. This confirms
 source path selection on the *current live Staging installation*, but does
 not establish transitive bootstrap availability, authorization or safety
 when reconstituted from the incomplete master repository.
+
+## Source reconciliation of live dependent plugins (Staging only)
+
+The actual live MU bootstrap was opened and inspected. It loads a **379-entry**
+integrity-checked manifest (320 platform modules and 59 commerce modules),
+not 377 entries as an older note said. This manifest is independently
+verified by \`MAD4B_MU_Map_Contract_V1::verify()\` against its SHA-256,
+module names, source paths and family counts.
+
+A **source-only snapshot** of the 64 Portfolio Manager PHP files actually
+included by WP-CLI plus six supplementary PHP module/loader/profile sources
+and the exact MU map JSON integrity contract (**71 source/contract files**)
+is preserved under \`deploy/host-authority/reconciliation/v125/live-dependency-sources/\`.
+The snapshot contains **no WordPress autoload changes** and no secret
+signing key or private Host artifact. The original byte hashes are recorded
+in \`governance/host-authority/live-dependency-source-parity-v125.json\`.
+
+Of 71 preserved files, 70 are not present at the same path in current
+master; the one that exists has a different hash. No active master source
+is overwritten. The SCP live Site Profile and Skill Set are kept as
+alternative evidence; blindly replacing the master Site Profile would
+discard a conflicting newer/older evolution without proof.
+
+### Permission baseline, not yet an executable acceptance certificate
+
+The original live Staging Portfolio Manager was tested as anonymous
+\`user_id=0\` without executing any write. Original
+\`admin_permission()\` rejects with \`mad4b_manager_admin_required\`;
+\`read_permission()\` rejects with \`mad4b_manager_login_required\`.
+The WordPress route registry showed 13 company/host/owner routes.
+This verifies a **negative baseline**, not full REST/AJAX role/nonce/
+OAuth coverage. A new executable release must reproduce these denials
+and validate the signed Original318/312/313 contracts independently.
+
+A full authenticated admin/runtime cycle, front-end anonymous fast-path
+and site-specific Production parity are still outstanding. **Do not
+deploy this inert snapshot as a complete plugin** or run either its
+Portfolio Manager main file or MU runtime router as a standalone script.
