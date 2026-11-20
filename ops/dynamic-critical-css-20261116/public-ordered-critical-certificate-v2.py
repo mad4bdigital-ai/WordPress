@@ -17,6 +17,7 @@ import re
 import stat
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 HERE=Path(__file__).resolve().parent
@@ -47,6 +48,16 @@ def certificate(catalog,route,state,job,wp_content,runtime,consumer):
     decision=admission.proof(job)
     if decision['decision']!='qualified_for_delivery_review':
         raise ValueError('multi-css-FCP-LCP-or-interaction-qualification-HOLD')
+    # A browser performance observation is not an indefinite grant.
+    # The private, root-owned QA artifact must be freshly generated. An
+    # old but hash-consistent receipt must never authorize a new release.
+    qa_file=Path(job)/'ordered-native-critical-qa.json'
+    if qa_file.is_symlink() or not qa_file.is_file():
+        raise ValueError('missing-private-browser-QA')
+    attested_at=qa_file.stat().st_mtime
+    age=time.time()-attested_at
+    if age < -300 or age > 6*3600:
+        raise ValueError('stale-multi-css-browser-performance-QA')
     original=data(Path(job)/'multi-css-source-report.json')
     source_manifest=data(Path(job)/'css-dependencies.json')
     candidate=data(Path(job)/'ordered-critical-candidate.json')
@@ -145,8 +156,8 @@ def certificate(catalog,route,state,job,wp_content,runtime,consumer):
           'qa_sha256':sha((Path(job)/'ordered-native-critical-qa.json').read_bytes()),
           'minimum_mobile_fcp_gain_ms':min(v['fcp_gain_ms'] for v in values[:4]),
           'worst_lcp_reg_ms':max(v['lcp_reg_ms'] for v in values),
-          'verified_at':int(os.environ.get('SOURCE_ATTESTED_UNIX_TIME','0'))},
-       'certified_at':int(os.environ.get('SOURCE_ATTESTED_UNIX_TIME','0'))}
+          'verified_at':int(attested_at)},
+       'certified_at':int(time.time())}
 
 def publish(cert,job,wp_content):
     wp=Path(wp_content)

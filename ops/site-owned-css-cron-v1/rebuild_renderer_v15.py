@@ -42,7 +42,7 @@ def build(out):
             path=Path(name)
             if path.is_absolute() or '..' in path.parts or not path.parts:
                 raise ValueError('renderer_unsafe_relative_file')
-            original=(V15_OVERRIDES/path if path.as_posix()=='run-public-route.py'
+            original=(V15_OVERRIDES/path if path.as_posix() in ('run-public-route.py','tools/capture-ordered-critical.js')
                       else BASE/path if path.as_posix() in (
                         'public-route-queue.py','public-source-families.py',
                         'tests/test-public-route-queue.py',

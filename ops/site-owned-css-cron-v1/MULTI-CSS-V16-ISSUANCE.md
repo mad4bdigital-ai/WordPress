@@ -14,6 +14,9 @@ is established. No parallel public WordPress hook was introduced.
   wp-content/mad4b-public-critical-css-v1/certs-v2/{sha256(host|lang|route|market|currency)}.json
 - Critical CSS assets remain content-addressed in the original
   wp-content/mad4b-public-critical-css-v1/assets/{sha256}.css directory.
+- Performance QA evidence expires six hours after its private file write;
+  untrusted future timestamps beyond five minutes are denied. Each
+  certificate is dated at the current issuer time, never Unix epoch zero.
 - V2 requires exact 422 runtime and V2 companion release SHAs, source
   manifesto canonical SHA, every ordered original file SHA/size/path,
   per-slot CSS SHA/size, trusted WPML/WCML dimensions, current CSS epoch,
@@ -71,3 +74,39 @@ is established. No parallel public WordPress hook was introduced.
 - The code was validated in an isolated Git worktree and PHP 8.5 CLI;
   no site WordPress files, live options, FastCGI entries, public
   certificates or asset directories were mutated in this change.
+
+
+## 20 November follow-up: live Wayfatours requalification gate
+
+A new first-party anonymous observation of Dolphin House generated 5 ordered
+CSS files, 2 Cascade slots, and source manifest
+9bc2d22f61a683569329e59bdfefeed2c5ce6859d17b1a98ec6729757fb182a7.
+The earlier successful candidate had a different manifest and MUST NOT be
+reused or backfilled to a new certificate.
+
+Unmodified mobile Chromium timed out waiting for DOMContentLoaded at both
+55 and 110 seconds. The public HTML GET itself was fast. With JavaScript
+disabled DOMContentLoaded took 97 ms; disabling all inline scripts took
+615 ms, but neither mode is an acceptable certification measurement.
+
+Chrome DevTools Debugger paused twice in the real LiteSpeed JS bundle on
+MAD4BTransportForm6Dropoff translate()/update() (bundle lines 642-643).
+A document-wide MutationObserver recursively called update() while
+translate() reassigned unchanged SELECT option text. The single idempotent
+text write guard in a PRIVATE response-only rehearsal restored page load
+and Fluent Form 6 hotel/drop-off fields across 320, 390, 414, 767 and
+768px. The independent source fix is draft PR #976, stacked on the
+transport-source PR #959, which currently has an unresolved Release Verdict.
+
+The experimental browser patch has NOT been deployed to Wayfatours.
+A valid v2 certificate requires a fresh, unmodified production/browser
+retest after the transport patch is approved, installed and its LiteSpeed
+JS is regenerated. No testing-only HTML/script interception may promote
+an actual route certificate.
+
+Two read-only public HTTP HEAD probes of the same Wayfatours tour, with
+and without sample country/currency cookies, both returned
+X-Wayfa-Origin-Cache: BYPASS, X-MAD4B-Cache-Policy: private-context,
+and Cache-Control: private, no-store, max-age=0. Safe FastCGI
+MISS/HIT certification remains separate and is NOT inferred from
+a successful CSS runtime unit test.

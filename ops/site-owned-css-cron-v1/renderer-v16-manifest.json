@@ -18,7 +18,7 @@
     "public-css-dependency-manifest.py": "df8c7cc92b7017c3d37e74216a72a38fffa0e73766ef51ce6af3d93550e51e7b",
     "public-css-manifest-observer.py": "804723259db3428b6feca84930644698e90e18d9c9a13a4b4df0c4c6ebbc049a",
     "public-ordered-critical-admission.py": "7f7bca51b7d5ad3dd5e06cf16745969a9e3fa88f303dec805dd6d66dc096956a",
-    "public-ordered-critical-certificate-v2.py": "4218b29becddac2d4e51cd1a09048d1c99b81c484d58b7aeca83125b76e0a966",
+    "public-ordered-critical-certificate-v2.py": "94a0631f10b0f094406d7fda1d20aaf2d57ca6a51f533270ac2e1137430ae9ac",
     "public-route-cache-release.py": "9592a72ab5de80bec9d2a33be370c3fc7484858021b230c942fbdf75e399f16b",
     "public-route-capture-preflight.py": "5ff8053eb0358a54e06d207db62286e6fdcfaa13fd1ee03932461058d937914c",
     "public-route-certificate.py": "e9342e068cbdc294f10c9d2179d4f1822aa819cdc2fd425b52d88f27204d3874",
@@ -80,7 +80,7 @@
     "tests/test-public-css-directory-admission.py": "4723723ab8c940e359e2e5b9eadc1f079310b8e1bd864c1e8e769a3667ee6625",
     "tests/test-public-css-manifest-observer.py": "09e10e2badbbd9fca9ee6540f7851adb4ca0942453b19894059bb7eec7ed896f",
     "tests/test-public-ordered-critical-admission.py": "1c06a5deac9de541958bb2d62e8172ea54f8595528a6578c302a84f35861814c",
-    "tests/test-public-ordered-critical-certificate-v2.py": "f8dbd3bfaea5383e98587a06102cb8286cf254deb32df5b929a76c495171b700",
+    "tests/test-public-ordered-critical-certificate-v2.py": "8dfcd736a7e43c63500cec1c130dcf8e7a4955404776f1e33df1ebd31e73ec86",
     "tests/test-public-route-cache-release.py": "50bf110912736e51caf29283ea9d899a995d45a1c09509d23a0eddce2b326ef0",
     "tests/test-public-route-capture-preflight.py": "580caf70cba4e09a69286fd35c92a7c5f2c0fd514ca75dfc8db0552d9e645804",
     "tests/test-public-route-cpu-guard.py": "5b3a5292b9f30446739400c9a744a84d23466889f52babde45a107d01524ad31",
@@ -116,7 +116,7 @@
     "tests/test-wpml-coverage-queue.py": "795f0dcf8afb129ac6a3205dbf9d270f61693b5f38d0925c5485d25e2a5db1ee",
     "tests/test-wpml-firstpaint-bridge.php": "568c16f74ef054906aacb88a19f5f1df4125bf18651a989297d160b008dab3e8",
     "tools/assemble.js": "d9997e80402952c44f4211db3e8fb69545c15239c26a3f8d8203ea8a1d3f2a64",
-    "tools/capture-ordered-critical.js": "95bb084873a279181ecf93d1c80c08efd7df0e5279fd6b58346448a6e58683f7",
+    "tools/capture-ordered-critical.js": "1bfd1c1de6be7cca430cbdaeececaf94c2fa444f8f0c6191ed7f0d402eaf8db5",
     "tools/capture.js": "31cc1cbd94ab0f9321385db880d90541655bfb63c5a10da4106828f4a2c00255",
     "tools/lcp-observation-window.js": "f9ca26976c1964928274cad065ab72402028f8d90a26f5a8ae1e68767ae2532f",
     "tools/observe-public-visual.js": "7245f60495410575fe17e23028390f855dbf0f841ea1770cffdd255fcc3905c7",
@@ -133,5 +133,5 @@
     "wpcron/429-mad4b-css-wpcron-dispatch-v1.php": "c5a9866909a16b40662a69187d0c9176dde6c774f650239f5c85f512eaba55e5",
     "wpcron/mad4b-css-wpcron.cron": "c27c956a1da4e45351fd72e42349291616778a89b3b754d080a1fcca27d1ed29"
   },
-  "tree_sha256": "4da20003ea4a711235452f8d4c6137c5ed17f3bc32ac72f41589c0dd45fb3dea"
+  "tree_sha256": "e238d0755bc2b3ac715f3f043353e6a5cba87bca19d5678bba19a658549e5aa4"
 }

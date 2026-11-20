@@ -3,6 +3,8 @@
 import copy
 import importlib.util
 import json
+import os
+import time
 import pathlib
 import sys
 import tempfile
@@ -111,6 +113,12 @@ with tempfile.TemporaryDirectory(prefix='mad4b-v2-issuer-') as tmp:
  (folder/'b.css').write_text(files[1]*50+'/* drift */')
  hold('changed WordPress source CSS blocks issuance',proof)
  (folder/'b.css').write_text(files[1]*50)
+ qa_path=job/'ordered-native-critical-qa.json'
+ os.utime(qa_path,(time.time()-7*3600,time.time()-7*3600))
+ hold('seven-hour-old browser performance proof cannot issue a new certificate',proof)
+ os.utime(qa_path,(time.time()+900,time.time()+900))
+ hold('future-dated browser performance proof is not an admission',proof)
+ os.utime(qa_path,None)
  bad=copy.deepcopy(candidate);bad['critical_slots'][1]['critical_bytes']=12345
  put('ordered-critical-candidate.json',bad)
  hold('tampered critical chunk blocks issuance',proof)

@@ -8,6 +8,10 @@ const original=require('./verify-ordered-css.js');
 const {assemble}=require('./assemble.js');
 const {manifest,summary,source,origin,pathname,OUT,styleUrls,sha,rewrite}=original;
 const widths=[320,390,414,768];
+const navTimeout=Number(process.env.MAD4B_NAV_TIMEOUT_MS||55000);
+if(!Number.isInteger(navTimeout)||navTimeout<55000||navTimeout>120000)
+  throw Error('INVALID_BOUNDED_CAPTURE_NAV_TIMEOUT');
+
 const allowedWidths=(process.env.MAD4B_WIDTHS||'320,390,414,768').split(',').map(Number);
 if(JSON.stringify(allowedWidths)!==JSON.stringify(widths))
   throw Error('FOUR_SOURCE_CAPTURES_REQUIRED');
@@ -41,7 +45,7 @@ async function capture(browser,width){
  let observation;
  try{
   await page.coverage.startCSSCoverage({resetOnNavigation:false});
-  const r=await page.goto(origin+pathname,{waitUntil:'domcontentloaded',timeout:55000});
+  const r=await page.goto(origin+pathname,{waitUntil:'domcontentloaded',timeout:navTimeout});
   await page.waitForTimeout(1100);
   const css=await page.coverage.stopCSSCoverage();
   const map=new Map(css.map(x=>[x.url,x]));
