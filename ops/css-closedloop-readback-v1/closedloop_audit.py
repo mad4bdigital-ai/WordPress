@@ -141,7 +141,8 @@ def cert_summary(certs: Path, wp_content: Path, epoch: int, runtime_sha: str) ->
 
 
 def build(site: str, wp_content: Path, registry: Path,
-          sample_manifest: Path | None = None, cron: Path | None = None) -> dict:
+          sample_manifest: Path | None = None, cron: Path | None = None,
+          cron_profile: Path | None = None) -> dict:
     if site not in ('source','wayfa'):
         raise ValueError('site-not-allowed')
     families = json.loads(read_regular(registry, 2_000_000))
@@ -188,6 +189,19 @@ def build(site: str, wp_content: Path, registry: Path,
             headers=read_regular(Path(item['headers']),50_000).decode(errors='replace')
             html=read_regular(Path(item['html'])).decode(errors='replace')
             result['html_samples'].append({'name':item['name'],**html_delivery(headers,html)})
+    enrolled_jobs = None
+    if cron_profile is not None:
+        profile=json.loads(read_regular(cron_profile, 100_000))
+        if (profile.get('contract')!='mad4b.css.site-owned-cron.profile.v1'
+                or profile.get('site_id')!=site
+                or profile.get('site_host')!=families['host']):
+            raise ValueError('wrong-site-or-contract-for-cron-profile')
+        jobs=profile.get('tasks')
+        if (not isinstance(jobs,list) or not jobs
+                or len(jobs)!=len(set(map(str,jobs)))):
+            raise ValueError('invalid-cron-profile-task-list')
+        enrolled_jobs=set(jobs)
+        result['site_owned_css_tasks_enrolled_in_profile']=sorted(enrolled_jobs)
     if cron is not None:
         receipts={}
         for job in ('public','first_fold','families','visual','audit'):
@@ -197,7 +211,10 @@ def build(site: str, wp_content: Path, registry: Path,
                 receipts[job]={'at':data.get('at'),'deferred':data.get('deferred'),
                     'worker_complete':data.get('worker_complete'),
                     'completion_reason':data.get('completion_reason')}
-            else: receipts[job]={'receipt':'missing_not_proof_of_unscheduled'}
+            else:
+                reason=('not_enrolled_in_site_owned_profile' if enrolled_jobs is not None and job not in enrolled_jobs
+                        else 'missing_receipt_not_proof_of_runtime_schedule')
+                receipts[job]={'receipt':reason}
         result['cron_receipts']=receipts
     return result
 
@@ -209,9 +226,10 @@ def main() -> int:
     parser.add_argument('--family-registry',type=Path,required=True)
     parser.add_argument('--samples-manifest',type=Path)
     parser.add_argument('--cron-receipts',type=Path)
+    parser.add_argument('--cron-profile',type=Path)
     args=parser.parse_args()
     report=build(args.site,args.wp_content,args.family_registry,
-                 args.samples_manifest,args.cron_receipts)
+                 args.samples_manifest,args.cron_receipts,args.cron_profile)
     print(json.dumps(report,sort_keys=True,indent=2,ensure_ascii=False))
     return 0
 

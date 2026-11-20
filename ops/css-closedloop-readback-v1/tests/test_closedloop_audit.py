@@ -108,6 +108,16 @@ with tempfile.TemporaryDirectory(prefix='css-closedloop-test-') as td:
  (root/'samples.json').write_text(json.dumps(samples))
  check('independent public cache sample is not counted as certified',
        audit.build('source',wp,fam,root/'samples.json')['html_samples'][0]['cache_hit_without_ccss_markup'])
+ profile=root/'profile.json'
+ profile.write_text(json.dumps({'contract':'mad4b.css.site-owned-cron.profile.v1',
+      'site_id':'source','site_host':'example.test','tasks':['public','first_fold']}))
+ cron=root/'cron';cron.mkdir()
+ report_with_profile=audit.build('source',wp,fam,root/'samples.json',cron,profile)
+ check('profile confirms missing families visual audit are not enrolled',
+       all(report_with_profile['cron_receipts'][job]['receipt']=='not_enrolled_in_site_owned_profile'
+           for job in ['families','visual','audit']))
+ check('enrolled job without receipt stays unknown, never treated as completed',
+       report_with_profile['cron_receipts']['public']['receipt']=='missing_receipt_not_proof_of_runtime_schedule')
  deny('site identity mismatch refused',lambda:audit.build('wayfa',wp,fam))
  (root/'tour.html').unlink();(root/'tour.html').symlink_to(root/'tour.headers')
  deny('symlink evidence refused',lambda:audit.build('source',wp,fam,root/'samples.json'))

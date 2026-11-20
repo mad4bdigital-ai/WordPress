@@ -97,11 +97,17 @@ Its public report marks
 3. **Canary reuse:** qualify actual independent exemplars for each
    template variant, language, country and WCML currency. Evidence
    reuse is not CSS asset reuse across distinct routes.
-4. **Site-owned schedule:** source `families`, `visual`, `audit`
-   receipts exist; Wayfa's missing corresponding receipts must be
-   diagnosed, not considered proof of disabled jobs. Both public
-   workers have recently deferred on source/browser admission; retain
-   resource locks and explicit failures.
+4. **Site-owned schedule:** independently read the live WordPress
+   `mad4b_css_wpcron_site_profile_v1` option on 20 November. Tours.dev
+   enrolls `public`, `first_fold`, `families`, `visual`, `audit`,
+   `retention`, while **Wayfatours explicitly enrolls only `public`
+   and `first_fold`**. This confirms a real schedule coverage gap,
+   not merely missing job receipts. To expand it, enroll the new
+   company-owned tasks with bounded intervals and resource admission;
+   do not infer task authorization from the PHP allowlist alone.
+   Both public workers recently deferred on source/browser admission.
+   Keep CPU/Chromium locks, resource limits, independent company
+   job receipts and no silent success statuses.
 5. **FastCGI:** HTML may be cacheable without being CSS-optimized.
    Label CCSS readiness only from source-, delivery- and
    context-verified proof; ensure a cached native fallback is never
@@ -125,6 +131,7 @@ python3 ops/css-closedloop-readback-v1/closedloop_audit.py \
   --wp-content /path/to/wayfa/site/wp-content \
   --family-registry /path/to/private/wayfa/source-families-latest.json \
   --cron-receipts /path/to/private/wpcron-css-v1 \
+  --cron-profile /path/to/company-owned/site-profile.json \
   --samples-manifest /path/to/private/wayfa-samples.json
 ```
 
