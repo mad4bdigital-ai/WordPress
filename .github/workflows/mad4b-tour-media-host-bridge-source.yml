@@ -1,0 +1,63 @@
+name: MAD4B Tour Media Host Bridge Source
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-tour-media-host-bridge/**'
+      - 'docs/source-reconciliation/tour-media-standalone-source-provenance-20261120.json'
+      - '.github/workflows/mad4b-tour-media-host-bridge-source.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/plugins/mad4b-tour-media-host-bridge/**'
+      - 'docs/source-reconciliation/tour-media-standalone-source-provenance-20261120.json'
+      - '.github/workflows/mad4b-tour-media-host-bridge-source.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-tour-media-source-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  optional-media-provider:
+    name: Tourism media source / PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.1', '8.5']
+    steps:
+      - name: Checkout exact review head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Setup supported PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Assert exact source and opt-in domain boundary
+        run: |
+          python3 wp-content/plugins/mad4b-tour-media-host-bridge/tests/source-domain-contract.py
+          python3 wp-content/plugins/mad4b-tour-media-host-bridge/tests/verify_source_origin.py
+      - name: Lint all optional source modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=wp-content/plugins/mad4b-tour-media-host-bridge
+          php -l "$root/mad4b-tour-media-host-bridge.php"
+          for file in "$root"/includes/*.php "$root"/tests/*.php; do php -l "$file"; done
+      - name: Fail closed when Host or tourism CPT is missing
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=wp-content/plugins/mad4b-tour-media-host-bridge
+          for scenario in eligible no-host no-tour-cpt; do php "$root/tests/optional-provider-gate.php" "$scenario"; done
+      - name: Preserve Host signed-request and missing-provider regression
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-signed-host-agent-negative-runtime.php
