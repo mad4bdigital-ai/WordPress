@@ -63,6 +63,8 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # The fixture runs without WordPress, DB, HTTP or production credentials.
     # No other Context PHP path gains standalone execution.
     "wp-content/plugins/mad4b-site-control-plane/tests/context-classification-title-contract.php",
+    # Exact Host UUID first enrollment only; synthetic and no WordPress runtime.
+    "wp-content/plugins/mad4b-site-control-plane/tests/site-profile-host-pinned-uuid-hermetic.php",
     # Historical indexed scan readback: synthetic evidence, no external access.
     "wp-content/plugins/mad4b-site-control-plane/tests/context-indexed-scan-readback-hermetic.php",
     # Exact synthetic-only metadata reconciliation: neither live WordPress nor site writes.
