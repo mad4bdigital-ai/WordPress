@@ -1,0 +1,246 @@
+/*
+ * MAD4B Unified JetEngine Workspace surface v1.
+ * Styling only. Native <form>, .cx-control inputs, JetEngine repeaters, and all
+ * service panels retain their original DOM location and Save authority.
+ * Deliberately scoped to Grouped JetEngine view: raw native mode is untouched.
+ */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell{
+ --mad4b-shell-paper:#fff;
+ --mad4b-shell-border:#dbe4e8;
+ --mad4b-shell-accent:#17675d;
+ --mad4b-shell-tint:#f3f8f6;
+ --mad4b-shell-ink:#253f49;
+ --mad4b-shell-gap:14px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell
+ .mad4b-ws-nav-group-label{
+ padding:12px 10px 7px;
+ margin-top:9px;
+ font-size:10px;
+ font-weight:800;
+ letter-spacing:.07em;
+ text-transform:uppercase;
+ color:#637d80;
+ border-top:1px solid #e6ecef;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell
+ .mad4b-ws-nav-group-label:first-child{
+ margin-top:0;
+ padding-top:5px;
+ border-top:0;
+}
+/* Company settings: Workspace section heading and original JetEngine form
+   are TWO independent DOM elements yet ONE visual column, joined seamlessly. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell:not([data-mad4b-pricing-pane])
+ .mad4b-ws-content{
+ border:1px solid var(--mad4b-shell-border);
+ border-bottom:0;
+ border-radius:13px 13px 0 0;
+ background:var(--mad4b-shell-paper);
+ padding-bottom:9px;
+ box-shadow:none;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell:not([data-mad4b-pricing-pane])
+ >.mad4b-ws-original{
+ background:var(--mad4b-shell-paper)!important;
+ border:1px solid var(--mad4b-shell-border)!important;
+ border-top:0!important;
+ border-radius:0 0 13px 13px!important;
+ box-shadow:none!important;
+ padding:0 15px 15px!important;
+ margin-top:calc(-1 * var(--mad4b-shell-gap))!important;
+ box-sizing:border-box;
+ min-width:0;
+ position:relative;
+}
+/* Remove the duplicated JetEngine page shell (including the native H1-like
+   title), NOT the form, field legends, tooltips, repeater or Save button. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell
+ >.mad4b-ws-original .cx-section__info{
+ display:none!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell
+ >.mad4b-ws-original :is(.cx-section__holder,.cx-section__inner){
+ border:0!important;
+ border-radius:0!important;
+ background:transparent!important;
+ box-shadow:none!important;
+ padding:0!important;
+ margin:0!important;
+ max-width:100%;
+ min-width:0;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell
+ >.mad4b-ws-original .cx-section__holder{
+ overflow:visible!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell
+ >.mad4b-ws-original form{
+ background:transparent!important;
+ box-shadow:none!important;
+ border:0!important;
+ max-width:100%;
+ min-width:0;
+}
+/* The product source panels are already mounted by the original pricing
+   workspace composer. Do not put a white card INSIDE a white card. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell[data-mad4b-pricing-pane]
+ .mad4b-ws-content{
+ background:var(--mad4b-shell-paper);
+ border:1px solid var(--mad4b-shell-border);
+ border-radius:13px!important;
+ box-shadow:none!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell[data-mad4b-pricing-pane]
+ .mad4b-ws-external-section{
+ background:transparent;
+ border:0;
+ box-shadow:none;
+ padding:0;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell[data-mad4b-pricing-pane]
+ .mad4b-ws-external-section :is(.mad4b-stay-panel,.mad4b-ts-panel){
+ margin:9px 0 0;
+ background:transparent;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell[data-mad4b-pricing-pane]
+ .mad4b-ws-external-section :is(.mad4b-stay-panel__accordion,.mad4b-ts-accordion){
+ background:transparent!important;
+ border:0!important;
+ border-radius:0!important;
+ box-shadow:none!important;
+ overflow:visible!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell[data-mad4b-pricing-pane]
+ .mad4b-ws-external-section :is(.mad4b-stay-panel__body,.mad4b-ts-body){
+ background:transparent;
+ padding:12px 0 0!important;
+}
+/* Normalize the interaction affordance of TOP-LEVEL accordions and the
+   reusable pricing dimension controller. Nested controls keep their semantic
+   native markup, focus, keyboard handlers and independent state. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-ws-provider-panel,
+ .mad4b-ws-dimension-group,
+ .mad4b-supplier-readiness>details){
+ border:1px solid var(--mad4b-shell-border)!important;
+ border-radius:9px!important;
+ background:var(--mad4b-shell-paper)!important;
+ box-shadow:none!important;
+ overflow:hidden;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-ws-provider-panel>summary,
+ .mad4b-ws-dimension-group>summary,
+ .mad4b-supplier-readiness>details>summary,
+ .mad4b-stay-panel__accordion>.mad4b-stay-panel__summary,
+ .mad4b-ts-accordion>summary){
+ display:flex;
+ align-items:center;
+ gap:10px;
+ padding:12px 14px!important;
+ min-height:44px;
+ font-size:13px!important;
+ font-weight:700;
+ line-height:1.45;
+ color:var(--mad4b-shell-ink)!important;
+ background:var(--mad4b-shell-tint)!important;
+ border-bottom:1px solid transparent;
+ list-style:none!important;
+ cursor:pointer;
+ box-sizing:border-box;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-ws-provider-panel>summary,
+ .mad4b-ws-dimension-group>summary,
+ .mad4b-supplier-readiness>details>summary,
+ .mad4b-stay-panel__accordion>.mad4b-stay-panel__summary,
+ .mad4b-ts-accordion>summary)::-webkit-details-marker{
+ display:none;
+}
+/* A consistent right chevron, without replacing the native <summary>. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-ws-provider-panel>summary,
+ .mad4b-ws-dimension-group>summary,
+ .mad4b-supplier-readiness>details>summary,
+ .mad4b-stay-panel__accordion>.mad4b-stay-panel__summary,
+ .mad4b-ts-accordion>summary)::after{
+ content:"";
+ width:7px;
+ height:7px;
+ flex:0 0 7px;
+ margin-inline-start:auto;
+ border-inline-end:2px solid #447d71;
+ border-bottom:2px solid #447d71;
+ transform:rotate(45deg);
+ transition:transform .15s ease;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-ws-provider-panel[open]>summary,
+ .mad4b-ws-dimension-group[open]>summary,
+ .mad4b-supplier-readiness>details[open]>summary,
+ .mad4b-stay-panel__accordion[open]>.mad4b-stay-panel__summary,
+ .mad4b-ts-accordion[open]>summary){
+ border-bottom-color:var(--mad4b-shell-border);
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-ws-provider-panel[open]>summary,
+ .mad4b-ws-dimension-group[open]>summary,
+ .mad4b-supplier-readiness>details[open]>summary,
+ .mad4b-stay-panel__accordion[open]>.mad4b-stay-panel__summary,
+ .mad4b-ts-accordion[open]>summary)::after{
+ transform:rotate(225deg);
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-ws-provider-panel>summary,
+ .mad4b-ws-dimension-group>summary,
+ .mad4b-supplier-readiness>details>summary,
+ .mad4b-stay-panel__accordion>.mad4b-stay-panel__summary,
+ .mad4b-ts-accordion>summary):focus-visible{
+ outline:2px solid var(--mad4b-shell-accent)!important;
+ outline-offset:2px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-ws-provider-panel>summary,
+ .mad4b-ws-dimension-group>summary,
+ .mad4b-supplier-readiness>details>summary,
+ .mad4b-stay-panel__accordion>.mad4b-stay-panel__summary,
+ .mad4b-ts-accordion>summary):hover{
+ background:#eaf4f0!important;
+}
+/* Nested disclosure gets the same indentation/type rhythm, without the
+   parent-level border and without manufacturing extra clickable controls. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-ws-nested-policy,
+ .mad4b-ws-policy-advanced,
+ .mad4b-ws-policy-scope-details,
+ .mad4b-stay-panel__filters,
+ .mad4b-stay-panel__rates){
+ border:1px solid var(--mad4b-shell-border);
+ border-radius:8px;
+ box-shadow:none;
+ background:#fff;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-ws-nested-policy>summary,
+ .mad4b-ws-policy-advanced>summary,
+ .mad4b-ws-policy-scope-details>summary,
+ .mad4b-stay-panel__filters>summary,
+ .mad4b-stay-panel__rates>summary){
+ font-size:12px;
+ font-weight:650;
+ line-height:1.5;
+ padding:10px 12px;
+ color:#28594f;
+ cursor:pointer;
+}
+/* Responsive layout: the native Save remains in document flow after the
+   content. Never modify native input widths or field modes. */
+@media(max-width:900px){
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell:not([data-mad4b-pricing-pane])>.mad4b-ws-original{
+  padding-inline:11px!important;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .jet-engine-options-page-wrap.mad4b-ws-unified-shell summary::after{transition:none!important}
+}

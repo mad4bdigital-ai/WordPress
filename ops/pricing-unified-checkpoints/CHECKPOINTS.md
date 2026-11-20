@@ -1,3 +1,14 @@
+## JetEngine Unified Workspace Shell — 20 November 2026
+- Root cause of disconnected-looking settings: JetEngine renders a second native cx-section header/container following the MAD4B workspace, while product modules (Accommodation and Transportation) bring separate details outer cards and distinct accordion CSS. These are separate DOM and Save owners by design.
+- A presentation-only MU layer mad4b-jetengine-workspace-shell-v1.php plus assets/mad4b-jetengine-workspace-shell-v1.js and .css now unifies the Grouped JetEngine View across supported Options Pages. It does not change native mode, input width, field storage, JS handlers, supplier pricing or Rate authority.
+- Native mad4b-ws-content and original mad4b-ws-original remain separate DOM elements but share one visual panel (joined border/radius and zero visual gap). Only the duplicated page-level native cx-section__info is visually hidden; native input labels, repeater values, validation and the original vendor Save remain mounted and working.
+- In Product panes, the Pricing Workspace's single service content panel is retained. An extra top-level Accommodation/Transportation accordion box is visually flattened, but each original details/summary and provider editor remains interactive.
+- Shared disclosure tokens and chevrons now cover Dimensions, Provider Sources, Supplier Inspector, Accommodation and Transportation main accordions, while nested scope/filters/rates get consistent typography and borders.
+- Sidebar adds accessible Company-wide settings / Products & supplier services groups. The latter is inserted only when the original service composer dynamically adds the first product navigation button; no native buttons are replaced.
+- Rollback is deleting the standalone MU PHP, JS and CSS files; live original functional modes, pricing-workspace-unified composer, vendor and service modules stay untouched.
+- Staging and Wayfatours: PHP syntax, script DOM nav test, authorized enqueue/guest denial, original source revision unchanged, identical 3-file SHA, public HTTP 200. service-activation is tested as a second JetEngine Options Page on both sites. Browser-authenticated visual/keyboard/mobile acceptance remains OPEN.
+- Reconciliation caveat: mad4b-pricing-registry/assets/pricing-workspace-unified.js is present identically on both live sites but not in this branch's tracked source. The MU shell deliberately does not overwrite or vendor-copy this unrelated live module. Its source enrollment requires separate reconciliation.
+
 # MAD4B Unified Pricing & JetEngine UX — Release Checkpoints
 Snapshot date: 20 November 2026. Primary source: Tours.dev staging; target: Wayfatours production. This branch is stacked on PR #965.
 

@@ -73,3 +73,14 @@ Both sites passed tests/verify-native-jetengine-form-markup.php using the real n
 ### Supplier Readiness UX placement
 
 Moved full read-only Inspector into Price Sources and reduced Overview to a compact summary. The published Tour Preview is the canonical Tour selection; its CTA opens the inspector and switching tours clears old diagnostic receipts. Original JetEngine inputs and Save remain untouched. Both sites passed backend dependency and actual form markup checks, plus standalone DOM tests. Two staging attempts were rolled back automatically: first STAGING_WPCLI_BUSY, then a WP-CLI test that needed to reproduce the real priority-55 native script enqueue. Corrected staging and Wayfatours deployments passed with matching four source hashes and HTTP 200. Authenticated graphical browser/mobile checks are pending.
+
+
+### 20 November addendum: JetEngine single workspace surface
+
+Source inspection found a duplicate native JetEngine cx-section__info title and visual gap between the original form and MAD4B workspace. Accommodation and Transportation each wrapped their source tools in additional differently styled details cards.
+
+A separately reversible MU presentation layer now joins the native form and workspace into one visual paper in Grouped View, hides only the duplicated page title, flattens the outer Product accordion shell, standardizes native disclosure styling, and adds Company-wide versus Product / Supplier navigation headings. No original control is moved, named differently or saved through an alternative writer. Native JetEngine View stays unchanged.
+
+Accepted on Tours.dev and Wayfatours: PHP syntax, CSS brace check, standalone JS navigation/late-service DOM tests, pricing admin enqueue/authorization, Site Service Activation Options Page enqueue, unchanged native source revision, 3/3 live/source file SHA, public HTTP 200. Authenticated graphical browser comparison at mobile/tablet/desktop is still pending.
+
+Deployment caveat: original pricing composition JS and CSS already exist on both live sites but their script sources are not tracked on the current #987 branch; this new layer does not overwrite them. Reconcile their baseline source separately before any broader plugin re-release.
