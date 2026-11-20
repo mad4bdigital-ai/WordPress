@@ -9,12 +9,22 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: mad4b-commerce-first-enrollment-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
 jobs:
   first-enrollment-contract:
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify exact source HEAD
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
       - name: Check PHP runtime and syntax
         run: |
           php -v
