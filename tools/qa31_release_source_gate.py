@@ -594,6 +594,111 @@ def reviewed_rc129_company_staff_ceiling_successor(repo:Path,path:str,contents:b
         return None
 
 
+def reviewed_pr970_wayfa_drive_exact_evidence_source(repo:Path,path:str,contents:bytes):
+    """Exact SHA-pinned original Google Drive evidence only, not a release."""
+    manifest=repo/'governance/release-parity/qa31-pr970-wayfa-drive-exact-evidence-source-20261120.json'
+    parent='beececa3eeafe784b1bbeee21844a73755fa7b17'
+    prior_media='governance/release-parity/qa31-rc129-context-media-successors-20261118.json'
+    prior_media_sha='04d37d3c6dfcdc66e74f42399a445161b98659a981c4f22afcd7a0dbdc54fa02'
+    paths={
+        'includes/class-mad4b-scp-google-drive-context.php':(
+            'baa55d92c01aeaaaeb47c815c96a0c492ee49f24',
+            '440edf20b7588f30a834b6fa21f616a6835cb64bb3b9404e9b7b5629a5db9e89',
+            '9e28d611064381ce9a85413d9390fb049e4b6b6d',
+            'ce7e60da92094e6f366f9e5edf6341fd090f1ba52543c3777e573f43eb295b97',
+            'wp-content/plugins/mad4b-site-control-plane/tests/google-drive-exact-review-provider-hermetic.php'),
+        'includes/class-mad4b-scp-ai-review-lifecycle.php':(
+            'e4f86724f02bd2d92ddffbd47b91268fa1a09bc6',
+            '273bcb162bcd1e45a428bf9163e4c0d54e7029f9d0552b0dc7d6650fe8a5bed6',
+            'e249286f0a0f3e82432c4327982891e20ca77bb4',
+            '80f621df063ff2376b8f5f34cbf110b3ec47b85b100adbafeba795b5b6681823',
+            'wp-content/plugins/mad4b-site-control-plane/tests/ai-review-drive-exact-evidence-hermetic.php')
+    }
+    if path not in paths or not isinstance(contents,bytes):return None
+    old_blob,old_sha,new_blob,new_sha,test=paths[path]
+    controls=['GOVERNANCE-02','SECURITY-01','PLATFORM-01','EXECUTION-01']
+    negative='tests/qa31_wayfa_drive_exact_evidence_source_contract.py'
+    try:
+        m=json.loads(manifest.read_text(encoding='utf-8'))
+        entries=m.get('reviewed_source_entries')
+        if (m.get('contract')!='mad4b.qa31-pr970-wayfa-drive-exact-evidence-source.v1'
+            or m.get('original_github_head_sha')!=parent
+            or m.get('negative_contract')!=negative
+            or m.get('previous_visual_media_source_review_path')!=prior_media
+            or m.get('previous_visual_media_source_review_sha256')!=prior_media_sha
+            or hashlib.sha256((repo/prior_media).read_text(encoding='utf-8').encode('utf-8')).hexdigest()!=prior_media_sha
+            or m.get('source_only') is not True
+            or m.get('reviewed_for_ci_only') is not True
+            or m.get('authorizing') is not False
+            or m.get('production_authorized') is not False
+            or m.get('source_promotion_approved') is not False
+            or m.get('is_build_provenance') is not False
+            or m.get('live_evidence_required') is not True
+            or m.get('automated_drive_review_approval_authorized') is not False
+            or m.get('oauth_refresh_in_read_path_allowed') is not False
+            or m.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or len(m.get('review_rationale',''))<350
+            or not isinstance(entries,list) or len(entries)!=2
+            or [row.get('source_path') for row in entries]!=list(paths)
+            or not (repo/negative).is_file()
+            or (repo/negative).is_symlink()):
+            return None
+        known={item['id'] for item in json.loads(
+            (repo/'governance/production-readiness/controls.json').read_text()
+        ).get('controls',[]) if isinstance(item,dict)}
+        if not set(controls)<=known:return None
+        for row in entries:
+            name=row['source_path']
+            before_blob,before_sha,after_blob,after_sha,regression=paths[name]
+            if (row.get('original_parent_blob_sha')!=before_blob
+                or row.get('original_parent_sha256')!=before_sha
+                or row.get('reviewed_blob_sha')!=after_blob
+                or row.get('reviewed_sha256')!=after_sha
+                or row.get('required_regression')!=regression
+                or row.get('control_ids')!=controls
+                or row.get('status')!='reviewed_for_ci_only'
+                or row.get('production_authorized') is not False
+                or row.get('live_evidence_required') is not True
+                or len(row.get('review_rationale',''))<260
+                or not (repo/regression).is_file()
+                or (repo/regression).is_symlink()):
+                return None
+            parent_bytes=subprocess.check_output(
+                ['git','show',parent+':wp-content/plugins/mad4b-site-control-plane/'+name],
+                cwd=repo,stderr=subprocess.DEVNULL,timeout=8)
+            if (hashlib.sha1(b'blob '+str(len(parent_bytes)).encode('ascii')+bytes([0])+parent_bytes).hexdigest()!=before_blob
+                or hashlib.sha256(parent_bytes).hexdigest()!=before_sha):
+                return None
+        if subprocess.run(['git','merge-base','--is-ancestor',parent,'HEAD'],
+            cwd=repo,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=8).returncode!=0:
+            return None
+        if (hashlib.sha1(b'blob '+str(len(contents)).encode('ascii')+bytes([0])+contents).hexdigest()!=new_blob
+            or hashlib.sha256(contents).hexdigest()!=new_sha):
+            return None
+        code=contents.decode('utf-8')
+        if path.endswith('class-mad4b-scp-google-drive-context.php'):
+            for token in (
+                'function exact_review_text_evidence(array $asset, array $source)',
+                "||empty($connection['credential_fresh'])||!empty($connection['refresh_required'])",
+                "||$site_uuid!==(string)($asset['site_uuid']??'')",
+                "if(!hash_equals($hash,hash('sha256',$content)))",
+                "||!hash_equals($source_id,(string)($current['source_id']??''))",
+                "'mutation_performed'=>false,'publication_authorized'=>false"):
+                if code.count(token)!=1:return None
+        else:
+            for token in (
+                "($source['provider']??'')==='google_drive'",
+                "MAD4B_SCP_Google_Drive_Context::exact_review_text_evidence($asset,$source)",
+                "'mad4b_ai_evidence_registry_changed'",
+                "'mad4b_ai_evidence_queue_unavailable'",
+                "'publication_authorized'=>false"):
+                if token not in code:return None
+        return test
+    except (OSError,ValueError,KeyError,TypeError,UnicodeError,
+            subprocess.CalledProcessError,subprocess.TimeoutExpired):
+        return None
+
+
 def reviewed_pr970_optional_host_catalog_recursion_successor(repo:Path,path:str,contents:bytes):
     """One exact CI-only source fix to prevent recursive optional Host lookup."""
     name='includes/class-mad4b-scp-server-core-catalog.php'
@@ -988,6 +1093,8 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     requested=reviewed_rc129_dormant_ollama_bootstrap_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_rc129_wayfa_source_followup_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_pr970_wayfa_drive_exact_evidence_source(repo,path,contents)
     if requested is None:
         requested=reviewed_pr970_optional_host_catalog_recursion_successor(repo,path,contents)
     if requested is None:

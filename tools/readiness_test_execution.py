@@ -431,6 +431,12 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/company-email-routing-original-hermetic.php",
     # PR #937: bounded read-only Host source admission catalogue fixture.
     "tests/authority/test-optional-source-read-catalog.php",
+    # PR970 Wayfatours original Drive evidence and AI Review consumer parity.
+    # Both fixtures run against isolated in-memory WordPress data only; no
+    # actual Google HTTP, OAuth refresh, review receipt, source write or mail.
+    # Preserve explicit allowlist; arbitrary PHP remains denied.
+    "wp-content/plugins/mad4b-site-control-plane/tests/google-drive-exact-review-provider-hermetic.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-drive-exact-evidence-hermetic.php",
     # PR #951 + #937 source-only merger fixtures: original PHP scripts with
     # first-party fake WordPress state, no network, no grants, no live mail,
     # no signed Host writes or persistent DB mutations. Each was executed on
@@ -931,6 +937,11 @@ def self_test():
     else:
         raise AssertionError("Unreviewed operations PHP fixture admitted")
     assert command_for("tests/authority/test-optional-source-read-catalog.php")[0] == "php"
+    for exact in (
+        "wp-content/plugins/mad4b-site-control-plane/tests/google-drive-exact-review-provider-hermetic.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-drive-exact-evidence-hermetic.php",
+    ):
+        assert command_for(exact)[0] == "php"
     for exact in (
         "wp-content/plugins/mad4b-site-control-plane/tests/authorization-replay-audit-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-remote-denial-runtime.php",

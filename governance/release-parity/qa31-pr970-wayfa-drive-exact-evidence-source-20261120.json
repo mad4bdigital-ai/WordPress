@@ -1,0 +1,61 @@
+{
+  "contract": "mad4b.qa31-pr970-wayfa-drive-exact-evidence-source.v1",
+  "original_github_head_sha": "beececa3eeafe784b1bbeee21844a73755fa7b17",
+  "frozen_wayfatours_source_snapshot": "2026-11-19 original Wayfatours control-plane TAR; not an original release authority",
+  "reviewed_source_entries": [
+    {
+      "source_path": "includes/class-mad4b-scp-google-drive-context.php",
+      "reviewed_blob_sha": "9e28d611064381ce9a85413d9390fb049e4b6b6d",
+      "reviewed_sha256": "ce7e60da92094e6f366f9e5edf6341fd090f1ba52543c3777e573f43eb295b97",
+      "original_parent_blob_sha": "baa55d92c01aeaaaeb47c815c96a0c492ee49f24",
+      "original_parent_sha256": "440edf20b7588f30a834b6fa21f616a6835cb64bb3b9404e9b7b5629a5db9e89",
+      "required_regression": "wp-content/plugins/mad4b-site-control-plane/tests/google-drive-exact-review-provider-hermetic.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "EXECUTION-01"
+      ],
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Read-only original Google Drive evidence provider validates original site UUID, brand/source ownership, registered asset and file identity, fresh non-revoked OAuth read token without refresh, bounded normalized content and original sha256 from current remote metadata and ancestor scope; rejects unknown identity/hash or revoked credential and never mints AI approval. The source-only provider fixture confirms 10 independent fail-closed cases on PHP 7.4 and 8.5; existing provider normalization functions are unchanged."
+    },
+    {
+      "source_path": "includes/class-mad4b-scp-ai-review-lifecycle.php",
+      "reviewed_blob_sha": "e249286f0a0f3e82432c4327982891e20ca77bb4",
+      "reviewed_sha256": "80f621df063ff2376b8f5f34cbf110b3ec47b85b100adbafeba795b5b6681823",
+      "original_parent_blob_sha": "e4f86724f02bd2d92ddffbd47b91268fa1a09bc6",
+      "original_parent_sha256": "273bcb162bcd1e45a428bf9163e4c0d54e7029f9d0552b0dc7d6650fe8a5bed6",
+      "required_regression": "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-drive-exact-evidence-hermetic.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "EXECUTION-01"
+      ],
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "AI Review Lifecycle delegates original governed Google Drive provider evidence only to the exact first-party provider. It propagates provider errors; verifies registry asset hash again after read, confirms a current review queue, returns normalized read-only evidence with original registry revision, and never approves or publishes. The hermetic consumer covers 10 positive and negative cases per PHP version. WordPress Media existing local-file evidence remains unchanged."
+    }
+  ],
+  "negative_contract": "tests/qa31_wayfa_drive_exact_evidence_source_contract.py",
+  "additional_regressions": [
+    "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-media-evidence-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-lifecycle-runtime.php"
+  ],
+  "source_only": true,
+  "reviewed_for_ci_only": true,
+  "authorizing": false,
+  "production_authorized": false,
+  "source_promotion_approved": false,
+  "is_build_provenance": false,
+  "live_evidence_required": true,
+  "automated_drive_review_approval_authorized": false,
+  "oauth_refresh_in_read_path_allowed": false,
+  "release_gate": "BLOCKED_SOURCE_RECONCILIATION",
+  "review_rationale": "Restore only original read-bound Google Drive evidence and the original AI Review Lifecycle consumer. This does not include automatic AI approval, provider mutation, site-local source handoff, classification repair, Fluent Forms notification scheduler, CSS deployment or Production release admission. Both changed PHP files have exact SHA-blobs and positive/negative hermetic tests; a signed Host admission and current Wayfatours live parity remain independent blockers.",
+  "previous_visual_media_source_review_path": "governance/release-parity/qa31-rc129-context-media-successors-20261118.json",
+  "previous_visual_media_source_review_sha256": "04d37d3c6dfcdc66e74f42399a445161b98659a981c4f22afcd7a0dbdc54fa02"
+}

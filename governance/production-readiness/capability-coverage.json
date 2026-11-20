@@ -24480,6 +24480,46 @@
       "coverage_reuse_rationale": "The same original exact WordPress Ability, canonical descriptor, MCP consumer and execution authority controls govern registered optional Host declarations. Reentrant catalog calls cannot create new grants and the source reviewer is CI-only.",
       "review_rationale": "A real registered optional WordPress Ability may require canonical descriptor inspection. Descriptor provider classification asks for server core tools, recursively calling the same optional Host descriptor before the initial catalog is built. The prior clean plugin test used a non-recursive descriptor fake and missed this crash. The new test first proves that the original code fails under bounded catalog/descriptor reentry and that the reviewed successor defers ONLY optional Host descriptor re-inspection in nested server projection. A request-local try/finally guard resets the state after the original call. Registered WordPress Ability plus canonical structural descriptor binding remain mandatory before optional exposure; required core tools, OAuth, actual execution-time authority, Site Owner, signed Host admission, rollback, audit and all Production runtime gates remain intact. This source-only review explicitly does not certify any live WordPress runtime, Host signature or release permission.",
       "execution_note": "Source-level recursion proof only. No live WordPress mutation, production release, owner grant, or signed Host approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+      "source_blob_sha": "9e28d611064381ce9a85413d9390fb049e4b6b6d",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/google-drive-exact-review-provider-hermetic.php"
+      ],
+      "owner_role": "MAD4B source integrity reviewer; original Site Owner & signed Host approval separate",
+      "review_rationale": "Read-only original Google Drive evidence provider validates original site UUID, brand/source ownership, registered asset and file identity, fresh non-revoked OAuth read token without refresh, bounded normalized content and original sha256 from current remote metadata and ancestor scope; rejects unknown identity/hash or revoked credential and never mints AI approval. The source-only provider fixture confirms 10 independent fail-closed cases on PHP 7.4 and 8.5; existing provider normalization functions are unchanged.",
+      "coverage_reuse_rationale": "Existing source identity, provider read-only, Content Registry and AI review receipt controls govern the original exact-bound provider. No new provider scope, MCP Ability, business grant, deployment capability or auto-approval is created.",
+      "execution_note": "Exact Git SHA-bound read-only evidence tests; Production source parity, OAuth live read, original Host admission and rollback remain unverified.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-review-lifecycle.php",
+      "source_blob_sha": "e249286f0a0f3e82432c4327982891e20ca77bb4",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/ai-review-drive-exact-evidence-hermetic.php"
+      ],
+      "owner_role": "MAD4B source integrity reviewer; original Site Owner & signed Host approval separate",
+      "review_rationale": "AI Review Lifecycle delegates original governed Google Drive provider evidence only to the exact first-party provider. It propagates provider errors; verifies registry asset hash again after read, confirms a current review queue, returns normalized read-only evidence with original registry revision, and never approves or publishes. The hermetic consumer covers 10 positive and negative cases per PHP version. WordPress Media existing local-file evidence remains unchanged.",
+      "coverage_reuse_rationale": "Existing source identity, provider read-only, Content Registry and AI review receipt controls govern the original exact-bound provider. No new provider scope, MCP Ability, business grant, deployment capability or auto-approval is created.",
+      "execution_note": "Exact Git SHA-bound read-only evidence tests; Production source parity, OAuth live read, original Host admission and rollback remain unverified.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
