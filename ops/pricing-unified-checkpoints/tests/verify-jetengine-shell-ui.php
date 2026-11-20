@@ -17,12 +17,21 @@ if(!$js||!$css||!wp_script_is($handle,'enqueued')||
  WP_CLI::error('Unified shell not deferred to original native Workspace');
 $src=WPMU_PLUGIN_DIR.'/assets/'.$handle.'.css';
 $code=file_get_contents($src);
+$script=WPMU_PLUGIN_DIR.'/assets/'.$handle.'.js';
+$jsCode=file_get_contents($script);
+if(!str_contains($jsCode,'Step 2 · Choose active pricing dimensions') ||
+ !str_contains($jsCode,'mad4b-ws-nav-btn[data-section="overview"]') ||
+ !str_contains($jsCode,'mad4b-ws-dimension-open') ||
+ !str_contains($jsCode,'mad4b-guide-cost-tab-active'))
+ WP_CLI::error('Original shared-dimensions product handoff missing');
 foreach([
  '.mad4b-ws-content','>.mad4b-ws-original',
  '.cx-section__info','.mad4b-stay-panel__accordion','.mad4b-ts-accordion',
  '.mad4b-ws-dimension-group','.mad4b-ws-provider-panel',
  '.mad4b-ws-nav-group-label','.mad4b-guide-cost-tab-active',
- '#mad4b-guide-taxonomy-cost-panel','@media(max-width:900px)'
+ '#mad4b-guide-taxonomy-cost-panel','.mad4b-ws-product-context',
+ '.mad4b-ws-product-context__action','.mad4b-stay-panel__filters',
+ '.mad4b-ts-accordion[open]','@media(max-width:900px)'
 ] as $selector)if(!str_contains($code,$selector))
  WP_CLI::error('Missing shared surface styling: '.$selector);
 $before= MAD4B_JetEngine_Native_Pricing_CAS_V1::source_revision();

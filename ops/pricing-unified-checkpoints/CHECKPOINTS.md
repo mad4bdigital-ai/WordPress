@@ -101,3 +101,13 @@ Functional Modes source PHP and JS in Git match Tours.dev but differ from Wayfat
 
 ## Full closure criterion
 Commercial Rate generation requires per-component signed cost receipts, deterministic calculation order, no duplicated markups, currency and passenger correctness, provider readiness, audited approvals, UI acceptance and release CI. Record each blocked prerequisite explicitly and do not present a checkpoint as passed without testing it.
+
+## CP2 UX continuation — product dimensions and accordion harmony (20 Nov 2026)
+
+- Existing unified native JetEngine shell from commit 3c92bb9a86 and Guide Costs extension 87aceeef81 are retained. This checkpoint improves that same surface without adding another Workspace or option store.
+- Products & supplier services shows a single read-only progressive configuration line in Accommodation, Transportation and Guide Costs: Step 2 — Choose active pricing dimensions. It identifies the original source editor and that audience/schedule/destination dimensions are company-wide.
+- Configure dimensions clicks the existing Company-wide settings / General & availability section and opens the original dimension chooser. No duplicate dimension preference, taxonomy field, supplier cost, or POST field is created. Keyboard focus moves to the actual dimension control.
+- Top-level source disclosures (Stay, Transfer, Provider, Supplier Inspector) share a header, border, chevron and expanded state. Secondary native policy/filter disclosures remain subordinate. CSS specificity matches the original composer. Open panels allow dropdown overflow instead of clipping select popovers.
+- Residual grey JetEngine section chrome is removed only in Grouped JetEngine mode. The original form, repeaters, field widths and Save stay canonical. Native mode is untouched.
+- Source and Wayfatours have matching on-disk shell JS/CSS hashes and rollback copies in /opt/mad4b-company-provisioning/backups/jetengine-shell-unified-v2-20261120/. Native form readback and shell enqueue tests passed on both sites. DOM tests verify three service modes, navigation, focus handoff and no duplicate fields.
+- Authenticated browser visual checks at 320/390/768/1024/1440, native Save and repeater expansion remain OPEN. Commercial pricing checkout remains blocked. CP8 remains OPEN.

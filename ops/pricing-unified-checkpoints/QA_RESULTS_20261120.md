@@ -89,3 +89,19 @@ Deployment caveat: original pricing composition JS and CSS already exist on both
 ### Guide Costs shell parity follow-up
 
 Guide Costs is a separate Global + Taxonomy Term approval panel rather than an external pane owned by the Accommodation/Transport composer. The shared shell now recognizes the guide-cost-tab-active state as a Product section, avoids company form joined-bottom-border styling while native controls are hidden, flattens the Guide panel legacy postbox frame, and groups its navigation under Products & Supplier Services even if it mounts first. Staging/Production parity and tests passed. No Guide policy was saved.
+
+### 20 Nov follow-up: original JetEngine shell consolidation v2
+
+The existing shell was extended rather than replaced. Company-wide settings and product source panels remain separated in one navigation. Each Accommodation, Transportation and Guide Costs pane displays an inherited-dimensions Step 2 summary with a button to open the single existing company dimension controller. Keyboard focus follows the actual control. No product override store or new rate/source writer exists.
+
+CSS removes residual outer JetEngine grey chrome, normalizes primary/secondary accordions with consistent border, background, open divider and chevron, and ensures expanded service panels allow custom dropdown overflow. The original native form and fields are unchanged. Visual mode only.
+
+Read-only verified tests:
+- verify-jetengine-shell-nav-dom.js PASS.
+- verify-jetengine-shell-product-context-dom.js PASS (new).
+- verify-package-supplier-admin-ui-dom.js PASS.
+- CSS static scope/brace integrity PASS.
+- verify-jetengine-shell-ui.php PASS on both sites; original source revision unchanged.
+- verify-native-jetengine-form-markup.php PASS on both sites; real native form, Save and repeaters intact.
+
+The two shell JS/CSS files were deployed to staging and production with source SHA parity and rollback backups. No authenticated graphical browser/mobile/real Save certificate has been issued. Commercial pricing remains blocked by supplier evidence.
