@@ -30,6 +30,9 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+          # The existing trait-parity test reads a SHA-pinned historical Git commit.
+          # The exact commit is an ancestor, but shallow checkout omits its object.
+          fetch-depth: 0
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
