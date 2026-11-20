@@ -762,3 +762,59 @@ standalone Transportation pages and archives are NOT made public.
 - No actual traveler Form #6 submission or Woo order was created for tests.
 - Supplier price currency, availability, capacity and exact route points
   have not been certified: checkout_authorized remains false.
+
+## 20 November 2026 — Unified sticky Pricing Controls UX
+
+Owner-reported issue: the main MAD4B JetEngine Pricing Controls page uses
+a sticky left functional navigation and a right Tour Preview inspector,
+while independent Accommodation and Transportation modules append
+themselves below the main form, creating a disconnected stack and
+squeezed fields.
+
+### Page-scoped, presentation-only solution (both sites)
+
+- includes/pricing-workspace-unified.php
+- assets/pricing-workspace-unified.js
+- assets/pricing-workspace-unified.css
+
+Authorized users of the native dynamic-pricing-controls page now see
+Accommodation & Units and Transportation inside the existing sticky
+functional navigation, along with all six original JetEngine groups.
+
+The panels are moved as the original DOM elements into the same central
+workspace, never cloned, re-rendered or re-submitted. Existing event
+listeners, AJAX endpoints, field values, independent policy Save paths
+and original JetEngine form ownership are preserved.
+
+Selecting either service module hides the unrelated JetEngine form and
+right Tour Preview inspector visually, expands the main editor area
+and displays only that module. Returning to a native sidebar group or
+switching Native/Grouped mode restores the core JetEngine editor.
+The sticky navigation scrolls within viewport height as needed.
+
+Transport policy and accommodation fields use consistent heights,
+labels, spacing, focus, responsive source/filters layout and a sticky
+internal result panel only where the available container width permits.
+At smaller widths internal preview cards stack below the form. The
+native Save changes banner action hides for service-only modules to
+avoid confusion with the independent Transport policy Save.
+
+The frontend bridge is loaded only for authorized admin pricing pages,
+not public tours, checkout, other settings pages or Form #6.
+
+### Tests and release boundaries
+
+- Staging and Production PHP syntax passed; JS syntax passed.
+- DOM regression tests/pricing-workspace-unified-dom.test.js: 10/10.
+  Covers one sidebar, node move without clones, independent service
+  views, native field restoration and async late panel mounting.
+- Both sites return HTTP 200 for the new page-scoped CSS/JS and
+  register the assets for authorized pricing administrators only.
+- Existing Self Pricing 35/35 and Route/OR-AND 51/51 passed per site.
+- Wayfatours' live registry deliberately lacks five source-only
+  modules retained on Tours.dev. Production was modified additively,
+  preserving this difference instead of copying a staging entrypoint.
+- Authenticated Chrome visual screenshot QA is still independent from
+  the static and DOM smoke tests.
+- Transport service mode remains tour_only. No price, currency,
+  availability, stock, booking, checkout or CPT visibility changed.
