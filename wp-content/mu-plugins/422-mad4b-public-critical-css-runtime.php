@@ -11,6 +11,8 @@ final class MAD4B_Public_Critical_CSS_Runtime_V1 {
     private const REL = '/mad4b-public-critical-css-v1';
     private const MAX_CSS = 1048576;
     private static bool $verified_request = false;
+    private static bool $verified_multi_request = false;
+    private static ?string $multi_original_html = null;
     private static function diagnostic(string $code): void {
         if (function_exists('wp_get_environment_type')
             && wp_get_environment_type()==='staging'
@@ -213,9 +215,12 @@ final class MAD4B_Public_Critical_CSS_Runtime_V1 {
 
     public static function transform($html) {
         self::$verified_request=false;
+        self::$verified_multi_request=false;
+        self::$multi_original_html=null;
         if (!is_string($html) || strlen($html)<1000 || strlen($html)>6000000
             || str_contains($html,'id="mad4b-critical-css-v1"')
             || str_contains($html,'id="mad4b-public-critical-css-v1"')
+            || str_contains($html,'data-mad4b-ccss-v2-rest="1"')
             || !str_contains($html,'</head>')) return $html;
         $ctx=self::context(self::content_has_market_deps($html));
         if ($ctx && !headers_sent()) {
@@ -226,6 +231,19 @@ final class MAD4B_Public_Critical_CSS_Runtime_V1 {
         }
         if (!$ctx) {
             self::diagnostic('context');return $html;
+        }
+        // The optional companion is a strict V2 certificate consumer,
+        // never a source of route, market, cookie or mobile identity.
+        // Absence, failed proof, or opt-out falls back to the existing V1
+        // certificate path or untouched native CSS.
+        if (class_exists('MAD4B_Public_Critical_CSS_Consumer_V2',false)) {
+            $multi=MAD4B_Public_Critical_CSS_Consumer_V2::transform($html,$ctx);
+            if ($multi!==null) {
+                self::$multi_original_html=$html;
+                self::$verified_multi_request=true;
+                self::diagnostic('multi-transformed');
+                return $multi;
+            }
         }
         $cert=self::certificate($ctx);
         if (!$cert) return $html;
@@ -284,6 +302,19 @@ final class MAD4B_Public_Critical_CSS_Runtime_V1 {
         return $result;
     }
     public static function readback($html) {
+        if (self::$verified_multi_request && is_string($html)) {
+            self::$verified_multi_request=false;
+            $original=self::$multi_original_html;
+            self::$multi_original_html=null;
+            $valid=class_exists('MAD4B_Public_Critical_CSS_Consumer_V2',false)
+                && MAD4B_Public_Critical_CSS_Consumer_V2::readback($html);
+            // A later LiteSpeed/Elementor filter may unexpectedly rewrite
+            // only some of the source links. Never serve a half-optimized
+            // page: restore the original full, synchronous CSS HTML.
+            if (!$valid) return is_string($original)?$original:$html;
+            if (!headers_sent())header('X-MAD4B-Public-CCSS-Ready: 1',true);
+            return $html;
+        }
         if (!self::$verified_request || !is_string($html)) return $html;
         $ready=(substr_count($html,'id="mad4b-public-critical-css-v1"')===1
             && substr_count($html,'id="mad4b-public-css-rest-v1"')===1

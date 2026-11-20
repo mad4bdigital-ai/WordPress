@@ -9,6 +9,7 @@ HERE=Path(__file__).resolve().parent
 WORKTREE=HERE.parents[1]
 BASE=WORKTREE/'ops/dynamic-critical-css-20261116'
 OVERRIDES=HERE/'renderer-v10-overrides'
+V15_OVERRIDES=HERE/'renderer-v15-overrides'
 MANIFEST=HERE/'renderer-v15-manifest.json'
 
 def tree_digest(root):
@@ -41,7 +42,11 @@ def build(out):
             path=Path(name)
             if path.is_absolute() or '..' in path.parts or not path.parts:
                 raise ValueError('renderer_unsafe_relative_file')
-            original=(BASE/path if path.as_posix() in ('public-route-queue.py','public-source-families.py','run-public-route.py','tests/test-public-route-queue.py','tests/test-public-source-families.py','tools/assemble.js')
+            original=(V15_OVERRIDES/path if path.as_posix()=='run-public-route.py'
+                      else BASE/path if path.as_posix() in (
+                        'public-route-queue.py','public-source-families.py',
+                        'tests/test-public-route-queue.py',
+                        'tests/test-public-source-families.py','tools/assemble.js')
                       else OVERRIDES/path if (OVERRIDES/path).is_file()
                       else BASE/path)
             if path.as_posix()=='run-site.sh':

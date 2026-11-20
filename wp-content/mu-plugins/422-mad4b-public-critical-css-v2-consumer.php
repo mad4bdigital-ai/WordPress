@@ -1,0 +1,247 @@
+<?php
+/**
+ * Plugin Name: MAD4B Ordered Public Critical CSS Consumer V2
+ * Description: Strict, source-bound companion to the existing 422 V1 runtime.
+ * Version: 0.1.0
+ *
+ * No independent WordPress hook: the original 422 runtime owns the request
+ * context and calls this only after its own mobile/cookie/route checks.
+ */
+defined('ABSPATH') || exit;
+
+final class MAD4B_Public_Critical_CSS_Consumer_V2 {
+    private const CONTRACT='mad4b.public-critical-css.route-certificate.v2';
+    private const MANIFEST='mad4b.public-css.ordered-dependencies.v1';
+    private const ROOT='/mad4b-public-critical-css-v1';
+    private const MAX_SOURCE=25165824;
+    private const MAX_CRITICAL=1048576;
+    private const MAX_FILES=256;
+    private static int $expected_links=0;
+    private static int $expected_styles=0;
+
+    private static function digest($data): string {
+        if (is_array($data)) {
+            if (array_is_list($data)) $data=array_map([__CLASS__,'normalize'],$data);
+            else $data=self::normalize($data);
+        }
+        return hash('sha256',(string)json_encode($data,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
+    }
+    private static function normalize($data) {
+        if (!is_array($data))return $data;
+        if (array_is_list($data))return array_map([__CLASS__,'normalize'],$data);
+        ksort($data,SORT_STRING);
+        foreach ($data as &$item)$item=self::normalize($item);
+        return $data;
+    }
+    private static function sha($v): bool {
+        return is_string($v) && preg_match('/^[a-f0-9]{64}$/D',$v)===1;
+    }
+    private static function path(string $original): ?string {
+        if (!preg_match('~^/(?:wp-content|wp-includes)/[A-Za-z0-9_./-]+\.css$~D',$original)
+            || str_contains($original,'..') || str_contains($original,'//')) return null;
+        $wp=realpath(WP_CONTENT_DIR);
+        if (!$wp)return null;
+        if (str_starts_with($original,'/wp-content/')) {
+            $root=$wp;
+            $relative=substr($original,strlen('/wp-content/'));
+        } else {
+            $root=realpath(ABSPATH);
+            $relative=substr($original,1);
+        }
+        if (!$root)return null;
+        $file=realpath($root.'/'.$relative);
+        if (!$file || !str_starts_with($file,$root.'/') || !is_file($file))return null;
+        return $file;
+    }
+    private static function verify_deps(array $cert,array $ctx): bool {
+        $deps=$cert['dependencies']??null;
+        if (!is_array($deps)
+            || ($deps['global_generation']??null)!== (int)get_option('mad4b_ccss_global_generation_v1',0))
+            return false;
+        $revision=in_array($ctx['type'],['page','post','tours-and-activities','properties'],true)
+            ? (int)get_post_meta($ctx['object_id'],'_mad4b_ccss_route_generation_v1',true):0;
+        if (($deps['route_generation']??null)!==$revision)return false;
+        if (!empty($deps['contains_dynamic_listing']) ||
+            in_array($ctx['type'],['destinations','tour-types','property-types','tour-categories',
+                'category','tours-and-activities','properties',
+                'archive:tours-and-activities','archive:properties'],true))
+            if (($deps['listing_generation']??null)!==
+                (int)get_option('mad4b_ccss_listing_generation_v1',0))return false;
+        return true;
+    }
+    private static function certificate(array $ctx): ?array {
+        if ((string)get_option('mad4b_perf_multi_css_v2','off')!=='on')return null;
+        $routeKey=hash('sha256',$ctx['host'].'|'.$ctx['language'].'|'.$ctx['path']
+            .'|'.$ctx['market_country'].'|'.$ctx['currency']);
+        $path=WP_CONTENT_DIR.self::ROOT.'/certs-v2/'.$routeKey.'.json';
+        if (is_link($path)||!is_file($path)||filesize($path)>180000)return null;
+        $cert=json_decode((string)@file_get_contents($path),true);
+        if (!is_array($cert)
+            || ($cert['contract']??null)!==self::CONTRACT
+            || ($cert['status']??null)!=='certified'
+            || ($cert['runtime_sha']??null)!==hash_file('sha256',__DIR__.'/422-mad4b-public-critical-css-runtime.php')
+            || ($cert['consumer_sha']??null)!==hash_file('sha256',__FILE__)
+            || !self::verify_deps($cert,$ctx))return null;
+        foreach (['host','path','language','type','object_id','market_country','currency','css_epoch']
+                 as $field)if (($cert[$field]??null)!==($ctx[$field]??null))return null;
+        if (($cert['critical_cap_px']??null)!==767
+            || ($cert['native_mobile_breakpoint']??null)!==767)return null;
+        $e=$cert['evidence']??null;
+        if (!is_array($e)||($e['decision']??null)!=='passed_evidence'
+            || ($e['viewports']??null)!==[320,390,414,767,768]
+            || ($e['tested']??null)!==5
+            || ($e['performance_source']??null)!=='real-original-css-urls'
+            || !self::sha($e['qa_sha256']??null)
+            || !is_numeric($e['minimum_mobile_fcp_gain_ms']??null)
+            || $e['minimum_mobile_fcp_gain_ms']<150)return null;
+        $m=$cert['source_manifest']??null;
+        if (!is_array($m)||($m['contract']??null)!==self::MANIFEST
+            || ($m['host']??null)!==$ctx['host']
+            || !self::sha($m['manifest_sha256']??null)
+            || ($m['manifest_sha256']??null)!==($cert['source_manifest_sha256']??null)
+            || !is_array($m['files']??null)||count($m['files'])<2
+            || count($m['files'])>self::MAX_FILES
+            || !is_int($m['total_bytes']??null)||$m['total_bytes']>self::MAX_SOURCE
+            || $m['total_bytes']<0)return null;
+        $canonical=$m;unset($canonical['manifest_sha256']);
+        if (!hash_equals($m['manifest_sha256'],self::digest($canonical)))return null;
+        $chunks=$cert['critical_slots']??null;
+        if (!is_array($chunks)||count($chunks)<1||count($chunks)>self::MAX_FILES
+            || !is_int($cert['critical_total_bytes']??null)
+            || $cert['critical_total_bytes']<16000
+            || $cert['critical_total_bytes']>self::MAX_CRITICAL)return null;
+        return $cert;
+    }
+    private static function extract(array $ctx,string $html,array $manifest): ?array {
+        $headEnd=stripos($html,'</head>');
+        if ($headEnd===false || stripos($html,'<head')===false)return null;
+        $head=substr($html,0,$headEnd);
+        preg_match_all('~<style\b[^>]*>[\s\S]*?</style\s*>|<link\b[^>]*>~i',
+            $head,$tags,PREG_OFFSET_CAPTURE);
+        $positions=[];$index=0;$slot=0;$n=count($manifest);
+        foreach ($tags[0] as [$tag,$position]) {
+            if (preg_match('~^<style\b~i',$tag)){$slot++;continue;}
+            if (!preg_match('~\brel\s*=\s*(["\x27])([^"\x27]*)\1~i',$tag,$rel))continue;
+            $rels=preg_split('/\s+/',strtolower(trim($rel[2])));
+            if (!in_array('stylesheet',$rels,true))continue;
+            if (in_array('alternate',$rels,true)||preg_match('~\s(?:disabled|onload|onerror|integrity|crossorigin)(?:\s|=|>)~i',$tag))
+                return null;
+            if ($index >= $n
+                || !preg_match('~\bhref\s*=\s*(["\x27])([^"\x27]*)\1~i',$tag,$href))
+                return null;
+            $v=html_entity_decode($href[2],ENT_QUOTES,'UTF-8');
+            if (str_starts_with($v,'/'))$v='https://'.$ctx['host'].$v;
+            if ($v!==($manifest[$index]['href']??null))return null;
+            $media='all';
+            if (preg_match('~\bmedia\s*=\s*(["\x27])([^"\x27]*)\1~i',$tag,$originalMedia))
+                $media=strtolower(trim($originalMedia[2]));
+            if ($media!==($manifest[$index]['media']??null)
+                || $slot!==($manifest[$index]['slot']??null)
+                || $index!==($manifest[$index]['order']??null))return null;
+            $positions[]=[$tag,$position,$slot,$media];
+            $index++;
+        }
+        return $index===$n?$positions:null;
+    }
+    public static function transform(string $html,array $ctx): ?string {
+        self::$expected_links=0;self::$expected_styles=0;
+        $cert=self::certificate($ctx);
+        if (!$cert||str_contains($html,'data-mad4b-ccss-v2-rest='))return null;
+        $body=stripos($html,'<body');
+        if ($body===false)return null;
+        preg_match_all('/(?<![a-z0-9_-])elementor-(\d+)\b/i',substr($html,$body),$found);
+        $docs=array_values(array_unique(array_map('intval',$found[1])));
+        sort($docs,SORT_NUMERIC);
+        if (!self::sha($cert['elementor_doc_fingerprint']??null)
+            || !hash_equals($cert['elementor_doc_fingerprint'],hash('sha256',implode(',',$docs))))return null;
+        $m=$cert['source_manifest'];
+        $positions=self::extract($ctx,$html,$m['files']);
+        if ($positions===null)return null;
+        $total=0;$lastSlot=-1;$count=count($positions);
+        foreach ($m['files'] as $i=>$entry) {
+            if (!isset($positions[$i])||!is_array($entry)
+                || ($entry['order']??null)!==$i
+                || !is_int($entry['slot']??null)
+                || $entry['slot']<$lastSlot
+                || !is_int($entry['bytes']??null)
+                || $entry['bytes']<1 || $entry['bytes']>6291456
+                || !self::sha($entry['sha256']??null)
+                || !is_string($entry['path']??null)
+                || !preg_match('/^[a-z0-9\s(),:%.-]{1,180}$/D',$entry['media']??'')
+                )return null;
+            $lastSlot=$entry['slot'];
+            $source=self::path($entry['path']);
+            if (!$source||filesize($source)!==$entry['bytes']||
+                !hash_equals($entry['sha256'],(string)hash_file('sha256',$source)))return null;
+            $total+=$entry['bytes'];
+            if ($total>self::MAX_SOURCE)return null;
+        }
+        if ($total!==$m['total_bytes'])return null;
+        $chunks=[];$totalCritical=0;$lastChunk=-1;
+        foreach ($cert['critical_slots'] as $row) {
+            if (!is_array($row)||!is_int($row['slot']??null)
+                || $row['slot']<0 || $row['slot']<=$lastChunk
+                || !is_int($row['critical_bytes']??null)
+                || $row['critical_bytes']<0
+                || !self::sha($row['critical_sha256']??null))return null;
+            $lastChunk=$row['slot'];
+            $bytes=$row['critical_bytes'];$totalCritical+=$bytes;
+            if ($totalCritical>self::MAX_CRITICAL)return null;
+            $critical='';
+            if ($bytes) {
+                $filename=$row['critical_file']??null;
+                if (!is_string($filename)||$filename!==$row['critical_sha256'].'.css')return null;
+                $file=WP_CONTENT_DIR.self::ROOT.'/assets/'.$filename;
+                if (is_link($file)||!is_file($file)||filesize($file)!==$bytes)return null;
+                $critical=(string)file_get_contents($file);
+                if (!hash_equals($row['critical_sha256'],hash('sha256',$critical))
+                    || str_contains(strtolower($critical),'</style'))return null;
+            } elseif (($row['critical_file']??null)!==null)return null;
+            $chunks[$row['slot']]=$critical;
+        }
+        if ($totalCritical!==$cert['critical_total_bytes']||
+            array_keys($chunks)!==array_values(array_unique(array_column($m['files'],'slot'))))return null;
+        $changes=[];$used=[];
+        foreach ($positions as $i=>[$tag,$offset,$slot,$media]) {
+            $content='';
+            if (!isset($used[$slot])) {
+                $used[$slot]=true;
+                if ($chunks[$slot]!=='') {
+                    $content='<style id="mad4b-public-critical-css-v2-'.$slot
+                        .'" data-mad4b-ccss-v2-critical="1" media="(max-width:767px)">'
+                        .$chunks[$slot].'</style>';
+                    self::$expected_styles++;
+                }
+            }
+            $id='mad4b-public-css-rest-v2-'.$i;
+            // Original stylesheet URL and media are already exact-manifest
+            // verified. The full CSS stays at its original DOM position.
+            $url=esc_url($m['files'][$i]['href']);
+            $safeMedia=htmlspecialchars($media,ENT_QUOTES,'UTF-8');
+            $content.='<link id="'.$id.'" data-mad4b-ccss-v2-rest="1" rel="stylesheet"'
+                .' href="'.$url.'" data-mad4b-original-media="'.$safeMedia.'"'
+                .' media="(min-width:768px)" fetchpriority="auto"'
+                .' onload="this.onload=null;this.media=this.getAttribute(&#39;data-mad4b-original-media&#39;)" />';
+            $content.='<noscript>'.$tag.'</noscript>';
+            $changes[]=[$offset,strlen($tag),$content];
+        }
+        $result=$html;
+        foreach (array_reverse($changes) as [$at,$length,$replacement])
+            $result=substr_replace($result,$replacement,$at,$length);
+        self::$expected_links=$count;
+        return $result;
+    }
+    public static function readback(string $html): bool {
+        if (self::$expected_links<2)return false;
+        $linkCount=preg_match_all('~<link\b[^>]*data-mad4b-ccss-v2-rest="1"[^>]*>~i',$html);
+        $styleCount=preg_match_all('~<style\b[^>]*data-mad4b-ccss-v2-critical="1"[^>]*>~i',$html);
+        $valid=(substr_count($html,'data-mad4b-ccss-v2-rest="1"')===self::$expected_links
+            && substr_count($html,'data-mad4b-ccss-v2-critical="1"')===self::$expected_styles
+            && $linkCount===self::$expected_links
+            && $styleCount===self::$expected_styles
+            && substr_count($html,'media="(min-width:768px)"')>=self::$expected_links
+            && substr_count($html,'media="(max-width:767px)"')>=self::$expected_styles);
+        self::$expected_links=0;self::$expected_styles=0;
+        return $valid;
+    }
+}
