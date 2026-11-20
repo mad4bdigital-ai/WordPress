@@ -112,13 +112,27 @@ final class MAD4B_Pricing_Policy_Write_Preflight_V1 {
         if ($family==='jetengine_options') {
             if($operation!=='save_native')
                 return new WP_Error('policy_preflight_operation_invalid');
-            // The native JetEngine options controller currently increments
-            // revisions but does NOT compare expected revision before writes.
-            // Do not fake atomicity or start a parallel option store.
-            return self::result($family,$operation,'blocked',[
-                'reason'=>'native_options_writer_missing_compare_and_swap',
-                'native_writer'=>'JetEngine Options Page',
-                'required'=>'source-owned optimistic concurrency check and approved native Save receipt',
+            $cas='MAD4B_JetEngine_Native_Pricing_CAS_V1';
+            if(!class_exists($cas,false))
+                return self::result($family,$operation,'blocked',[
+                    'reason'=>'native_cas_provider_unavailable'
+                ]);
+            $expected=$params['source_revision']??null;
+            if(!is_string($expected)||!preg_match('/^[a-f0-9]{64}$/D',$expected))
+                return new WP_Error('policy_preflight_native_revision_required');
+            $now=$cas::source_revision();
+            if(is_wp_error($now))return $now;
+            if(!hash_equals($now,$expected))
+                return new WP_Error('policy_preflight_native_revision_stale');
+            return self::result($family,$operation,'native_validation_required',[
+                'native_writer'=>'Jet_Engine_Options_Page_Factory::save',
+                'source_storage'=>'separate_original_jetengine_options',
+                'source_revision'=>$now,
+                'cas_guard_registered'=>has_action('admin_init',[
+                    $cas,'before_native_save'])===39,
+                'native_signed_nonce_required'=>true,
+                'actual_save_performed'=>false,
+                'reason'=>'Signed original JetEngine Save still checks the source under a DB lock before updating options',
             ]);
         }
         if ($family==='checkout_activation') {

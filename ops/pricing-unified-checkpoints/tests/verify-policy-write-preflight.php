@@ -45,10 +45,21 @@ $invalid=$cls::inspect('policy_binding','bind_references',[
 ]);
 if(!is_wp_error($invalid)||$invalid->get_error_code()!=='policy_preflight_binding_refs_invalid')
  WP_CLI::error('Malformed binding ID accepted');
-$native=$cls::inspect('jetengine_options','save_native',['revision'=>0]);
-if(is_wp_error($native) || $native['state']!=='blocked' ||
-  $native['reason']!=='native_options_writer_missing_compare_and_swap')
- WP_CLI::error('Native JetEngine save wrongly implied atomicity');
+$cas='MAD4B_JetEngine_Native_Pricing_CAS_V1';
+$sourceRevision=$cas::source_revision();
+if(is_wp_error($sourceRevision))WP_CLI::error('Cannot read source CAS revision');
+$native=$cls::inspect('jetengine_options','save_native',[
+ 'revision'=>0,'source_revision'=>$sourceRevision]);
+if(is_wp_error($native) || $native['state']!=='native_validation_required' ||
+   $native['cas_guard_registered']!==true ||
+   $native['actual_save_performed']!==false ||
+   $native['native_signed_nonce_required']!==true)
+ WP_CLI::error('Native JetEngine CAS preflight did not defer to original signed Save');
+$oldSource=$cls::inspect('jetengine_options','save_native',[
+ 'revision'=>0,'source_revision'=>str_repeat('f',64)]);
+if(!is_wp_error($oldSource) ||
+   $oldSource->get_error_code()!=='policy_preflight_native_revision_stale')
+ WP_CLI::error('Native stale revision wrongly accepted');
 $activation=$cls::inspect('checkout_activation','activate', ['revision'=>0]);
 if(is_wp_error($activation)||$activation['state']!=='blocked' ||
    $activation['commercial_activation_approved']!==false)
@@ -71,7 +82,7 @@ echo 'POLICY_PREFLIGHT_ACCEPTANCE '.wp_json_encode([
  'site'=>home_url(),'lab_draft'=>'preflight_only',
  'binding_revision'=>$current['revision'],
  'stale_revision_rejected'=>true,'malformed_refs_rejected'=>true,
- 'jetengine_native_write'=>'blocked_missing_atomic_revision',
+ 'jetengine_native_write'=>'signed_source_guard_available_no_write',
  'checkout_activation'=>'blocked',
  'guests_denied'=>true,'writes'=>0,
 ],JSON_UNESCAPED_UNICODE).PHP_EOL;
