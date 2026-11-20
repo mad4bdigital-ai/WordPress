@@ -1,0 +1,13 @@
+[Unit]
+Description=MAD4B Root v121 signed Staging Owner readiness renewal
+
+[Timer]
+OnBootSec=15min
+OnUnitInactiveSec=3h
+AccuracySec=2min
+RandomizedDelaySec=2min
+Persistent=false
+Unit=mad4b-first-anchor-scoped-readiness-v121.service
+
+[Install]
+WantedBy=timers.target
