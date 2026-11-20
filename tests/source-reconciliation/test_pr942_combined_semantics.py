@@ -85,6 +85,31 @@ class CompositeReviewNegativeTests(TestCase):
         with self.assertRaises(AssertionError):
             m.validate(self.supplement,self.source)
 
+    def test_brand_trait_merged_governance_cannot_lose_service(self):
+        key=m.GOVERNANCE_PATH
+        x=json.loads(self.sources[key])
+        x['reviewed_capabilities']=[r for r in x['reviewed_capabilities']
+            if r.get('id')!='service:'+m.P+'includes/trait-mad4b-scp-brand-integrity-term-meta.php']
+        self.sources[key]=json.dumps(x)
+        with self.assertRaises(AssertionError):
+            m.validate(self.supplement,self.source)
+
+    def test_brand_trait_merged_governance_requires_exact_facade_review(self):
+        key=m.GOVERNANCE_PATH
+        x=json.loads(self.sources[key])
+        x['reviewed_changes']=[r for r in x['reviewed_changes']
+            if r.get('source_blob_sha')!=m.BRAND_TRAIT_REVIEWED_FACADE]
+        self.sources[key]=json.dumps(x)
+        with self.assertRaises(AssertionError):
+            m.validate(self.supplement,self.source)
+
+    def test_brand_trait_merged_governance_never_authorizes_production(self):
+        key=m.GOVERNANCE_PATH
+        x=json.loads(self.sources[key]);x['production_promotion_from_ci']=True
+        self.sources[key]=json.dumps(x)
+        with self.assertRaises(AssertionError):
+            m.validate(self.supplement,self.source)
+
     def test_fails_on_collision_sha_change(self):
         with patch.object(m, 'current_blob', lambda _p: '0' * 40):
             with self.assertRaises(AssertionError):
