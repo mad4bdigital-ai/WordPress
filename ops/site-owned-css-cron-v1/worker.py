@@ -77,6 +77,10 @@ def read_site_profile(path=None):
         raise ValueError('source_environment_mismatch')
     if site=='wayfa' and environment!='production':
         raise ValueError('wayfa_environment_mismatch')
+    # Report retention is a shared evidence-root operation in v17; one
+    # designated source owner only, never duplicate it on the company agent.
+    if site=='wayfa' and 'retention' in tasks:
+        raise ValueError('cross_site_retention_owner_denied')
     return data
 
 PROFILE=read_site_profile()
@@ -95,9 +99,9 @@ TASKS={
     ['/usr/bin/env','MAD4B_SOURCE_CSS_NETWORK_PROFILE=host',
      '/usr/bin/bash',str(SOURCE/'run-site.sh'),s] if s=='source'
     else ['/usr/bin/bash',str(SOURCE/'run-site.sh'),s]),
- 'families':lambda s:['/usr/bin/python3',str(SOURCE/'refresh-source-families.py')],
- 'visual':lambda s:['/usr/bin/python3',str(SOURCE/'post-policy-visual-watch.py')],
- 'audit':lambda s:['/usr/bin/python3',str(SOURCE/'health-audit.py'),'all'],
+ 'families':lambda s:['/usr/bin/python3',str(SOURCE/'refresh-source-families.py'),s],
+ 'visual':lambda s:['/usr/bin/python3',str(SOURCE/'post-policy-visual-watch.py'),s],
+ 'audit':lambda s:['/usr/bin/python3',str(SOURCE/'health-audit.py'),s],
  'retention':lambda s:['/usr/bin/flock','-n','-E','0',
                          '/run/lock/mad4b-native-lazy-browser-global.lock',
                          '/usr/bin/python3',str(SOURCE/'report-retention.py'),'--apply']
@@ -330,16 +334,19 @@ def verified_task_outcome(site,job,returncode,stdout,stderr):
                                 'SKIP_SOURCE_FAMILY_REFRESH_ALREADY_RUNNING'))
                for line in lines):
             return False,'host_resource_deferred'
-        success=all(
-            any(line.startswith('SOURCE_FAMILY_REGISTRY_REFRESH '+s+' ') for line in lines)
-            for s in ('source','wayfa'))
-        return success,'verified_source_family_reports' if success else 'source_family_partial_or_deferred'
+        success=any(line.startswith('SOURCE_FAMILY_REGISTRY_REFRESH '+site+' ') for line in lines)
+        # A source worker cannot ACK Wayfatours receipts, nor vice versa.
+        other='wayfa' if site=='source' else 'source'
+        if any(line.startswith('SOURCE_FAMILY_REGISTRY_REFRESH '+other+' ') for line in lines):
+            return False,'cross_site_family_receipt_denied'
+        return success,'verified_site_family_report' if success else 'source_family_partial_or_deferred'
     if job=='visual':
-        success=(all(
-            any(line.startswith('POST_POLICY_VISUAL_OBSERVED '+s+' ') for line in lines)
-            for s in ('source','wayfa'))
-            and 'POST_POLICY_VISUAL_MONITOR_NO_CERTIFICATE_OR_POLICY_MUTATION' in stdout)
-        return success,'verified_two_site_visual_reports' if success else 'visual_observer_partial_or_deferred'
+        other='wayfa' if site=='source' else 'source'
+        if any(line.startswith('POST_POLICY_VISUAL_OBSERVED '+other+' ') for line in lines):
+            return False,'cross_site_visual_receipt_denied'
+        success=(any(line.startswith('POST_POLICY_VISUAL_OBSERVED '+site+' ') for line in lines)
+                 and 'POST_POLICY_VISUAL_MONITOR_NO_CERTIFICATE_OR_POLICY_MUTATION' in stdout)
+        return success,'verified_site_visual_report' if success else 'visual_observer_partial_or_deferred'
     if job=='audit':
         # A health warning is an observation, not a CSS deployment veto;
         # an actual deferred or error status is not a completed audit.
@@ -350,11 +357,10 @@ def verified_task_outcome(site,job,returncode,stdout,stderr):
                 except (TypeError,ValueError):
                     return False,'audit_receipt_invalid'
                 states=payload.get('sites',{})
-                success=(isinstance(states,dict) and
-                         all(isinstance(states.get(s),dict) and
-                             states[s].get('status') in ('healthy','healthy_with_safe_fallback','degraded')
-                             for s in ('source','wayfa')))
-                return success,'verified_two_site_integrity' if success else 'audit_incomplete'
+                success=(isinstance(states,dict) and set(states)=={site}
+                         and isinstance(states[site],dict)
+                         and states[site].get('status') in ('healthy','healthy_with_safe_fallback','degraded'))
+                return success,'verified_site_integrity' if success else 'audit_incomplete'
         return False,'audit_receipt_missing'
     if job=='retention':
         for line in lines:
