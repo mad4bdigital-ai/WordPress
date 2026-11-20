@@ -594,6 +594,104 @@ def reviewed_rc129_company_staff_ceiling_successor(repo:Path,path:str,contents:b
         return None
 
 
+def reviewed_rc129_company_email_native_preflight_successor(repo:Path,path:str,contents:bytes):
+    """One exact title-/feed-bound, read-only company notice successor."""
+    name='includes/class-mad4b-scp-company-email-routing.php'
+    if path!=name or not isinstance(contents,bytes):return None
+    previous=repo/'governance/release-parity/qa31-rc129-company-email-recipient-safety-successor-20261119.json'
+    manifest=repo/'governance/release-parity/qa31-rc129-company-email-native-preflight-successor-20261120.json'
+    old_blob='a722124f023290f6fe2f167cf04c02fb413e647d'
+    old_sha='77379941659f3a87591d7fb545309cf18f7d0ea9dfc3a1ba7bde51ffbefafe83'
+    new_blob='c3c4392cf805a5c4b4b10f12d699721256629e07'
+    new_sha='aff9b7b3bde6f1628a964d984f26b5af9924b47ad3b6f82dd39ca458d9b357f0'
+    frozen_parent_sha='b77fe30152dd2c4c977aae97402a6018c4be6ac2e2401d624b8ded9f22888845'
+    regression='tests/company-email-routing-original-hermetic.php'
+    negative='tests/qa31_company_email_native_preflight_successor_contract.py'
+    ids=['GOVERNANCE-01','PLATFORM-01','SECURITY-01','EXECUTION-01']
+    try:
+        m=json.loads(manifest.read_text(encoding='utf-8'))
+        parent=json.loads(previous.read_text(encoding='utf-8'))
+        controls=json.loads((repo/'governance/production-readiness/controls.json').read_text())
+        known={x['id'] for x in controls.get('controls',[]) if isinstance(x,dict)}
+        if (digest(previous)!=frozen_parent_sha
+            or parent.get('contract')!='mad4b.qa31-rc129-company-email-recipient-safety.v1'
+            or parent.get('prior_review_sha256')!='dce059a5058b66cc1cb5f6d4cd01aab24b1e6b75a8fba6a1655579de038ff821'
+            or parent.get('prior_review_path')!='governance/release-parity/qa31-rc129-reviewed-successors-20261118.json'
+            or parent.get('previous_source_git_blob_sha')!='65a3e14d0738e66bf86d9268fa6ba941523ce669'
+            or parent.get('previous_source_sha256')!='094517b0cdf5e117dc6d6f1a7ea78a49d6e2cbfb4cd6c5fed473fa99051114a6'
+            or parent.get('required_regression')!=regression
+            or parent.get('control_ids')!=ids
+            or parent.get('authorizing') is not False
+            or parent.get('production_authorized') is not False
+            or parent.get('source_promotion_approved') is not False
+            or parent.get('is_build_provenance') is not False
+            or parent.get('live_evidence_required') is not True
+            or parent.get('reviewed_for_ci_only') is not True
+            or parent.get('native_notification_writes_added') is not False
+            or parent.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or m.get('contract')!='mad4b.qa31-rc129-company-email-native-preflight.v1'
+            or m.get('source_path')!=name
+            or m.get('parent_review_path')!='governance/release-parity/qa31-rc129-company-email-recipient-safety-successor-20261119.json'
+            or m.get('parent_review_sha256')!=frozen_parent_sha
+            or parent.get('current_source_git_blob_sha')!=old_blob
+            or parent.get('current_source_sha256')!=old_sha
+            or m.get('previous_source_git_blob_sha')!=old_blob
+            or m.get('previous_source_sha256')!=old_sha
+            or m.get('current_source_git_blob_sha')!=new_blob
+            or m.get('current_source_sha256')!=new_sha
+            or m.get('required_regression')!=regression
+            or m.get('qa31_negative_regression')!=negative
+            or m.get('test_count')!=44
+            or m.get('control_ids')!=ids or not set(ids)<=known
+            or len(str(m.get('review_rationale','')))<150
+            or m.get('native_notification_writes_added') is not False
+            or m.get('scheduled_jobs_added') is not False
+            or m.get('authorizing') is not False
+            or m.get('production_authorized') is not False
+            or m.get('source_promotion_approved') is not False
+            or m.get('is_build_provenance') is not False
+            or m.get('live_evidence_required') is not True
+            or m.get('reviewed_for_ci_only') is not True
+            or m.get('source_release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or not (repo/regression).is_file() or (repo/regression).is_symlink()
+            or not (repo/negative).is_file() or (repo/negative).is_symlink()
+            or hashlib.sha256(contents).hexdigest()!=new_sha
+            or hashlib.sha1(b'blob '+str(len(contents)).encode('ascii')+b'\0'+contents).hexdigest()!=new_blob):
+            return None
+        code=contents.decode('utf-8')
+        a=code.index('public static function native_notice_preflight(')
+        b=code.index('public static function readiness_issues()',a)
+        preview=code[a:b]
+        expected=(
+            "if (!self::is_company_admin())",
+            "'status' => 'BLOCKED'",
+            "'read_only' => true",
+            "'mutation_performed' => false",
+            "'messages_sent' => 0",
+            "'authorizing' => false",
+            "count($managed) !== 1",
+            "managed_feed_exact_binding_missing_or_stale",
+            "company_email_identity_unverified",
+            "native_form_not_published",
+            "native_form_read_failed",
+            "native_contact_provider_error",
+            "ORDER BY id ASC LIMIT 120",
+            "if (!is_array($rows) || count($rows) >= 120)",
+            "true !== MAD4B_SCP_Company_Communication::canSend()",
+            "hash_equals((string)($entry['source_sha256'] ?? ''), $hash)",
+            "if ($formId !== self::native_booking_form_id() && !$boundForm && !$managed)",
+            "'methods' => 'GET'",
+        )
+        if any(x not in code for x in expected):return None
+        for dangerous in ('update_option(', 'wp_schedule_event(', 'SettingsService(', 'wp_mail('):
+            if dangerous in preview:return None
+        if 'return $managed ?' not in code or "if ($managed) return ''" not in code:
+            return None
+        return regression
+    except (OSError,ValueError,KeyError,TypeError,StopIteration,UnicodeError):
+        return None
+
+
 def reviewed_rc129_company_email_recipient_safety_successor(repo:Path,path:str,contents:bytes):
     """Exact non-authorizing live recipient policy hardening; no mail writes."""
     name='includes/class-mad4b-scp-company-email-routing.php'
@@ -740,6 +838,8 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     requested=reviewed_rc129_dormant_ollama_bootstrap_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_rc129_wayfa_source_followup_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_rc129_company_email_native_preflight_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_rc129_company_email_recipient_safety_successor(repo,path,contents)
     if requested is None:

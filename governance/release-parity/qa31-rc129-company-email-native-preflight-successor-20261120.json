@@ -1,0 +1,30 @@
+{
+  "contract": "mad4b.qa31-rc129-company-email-native-preflight.v1",
+  "source_path": "includes/class-mad4b-scp-company-email-routing.php",
+  "parent_review_path": "governance/release-parity/qa31-rc129-company-email-recipient-safety-successor-20261119.json",
+  "parent_review_sha256": "b77fe30152dd2c4c977aae97402a6018c4be6ac2e2401d624b8ded9f22888845",
+  "previous_source_git_blob_sha": "a722124f023290f6fe2f167cf04c02fb413e647d",
+  "previous_source_sha256": "77379941659f3a87591d7fb545309cf18f7d0ea9dfc3a1ba7bde51ffbefafe83",
+  "current_source_git_blob_sha": "c3c4392cf805a5c4b4b10f12d699721256629e07",
+  "current_source_sha256": "aff9b7b3bde6f1628a964d984f26b5af9924b47ad3b6f82dd39ca458d9b357f0",
+  "required_regression": "tests/company-email-routing-original-hermetic.php",
+  "qa31_negative_regression": "tests/qa31_company_email_native_preflight_successor_contract.py",
+  "control_ids": [
+    "GOVERNANCE-01",
+    "PLATFORM-01",
+    "SECURITY-01",
+    "EXECUTION-01"
+  ],
+  "test_count": 44,
+  "review_rationale": "A real Wayfatours native Booking/Contact reconciliation engine schedules persistent Fluent Forms writes without independent principal attestation, and uses truthy canSend() results. Rather than transplant it, the current source adds a company-operations-permissioned GET-only native source preflight deriving booking/contact form IDs from each registered provider and checking current exact tenant verification, SMTP true, form published, managed owner, enabled email type, sender and recipients, unique notification and exact saved SHA binding. It returns only bounded aggregate status and performs no SettingsService, cron, mail or option writes. It removes legacy form ID 6 as universal identity. Forty-four PHP 7.4/8.5 no-network hermetic tests and a negative mutation verify this behavior. This evidence does not promote code to Production and is not a Host certificate. A saturated LIMIT 120 result cannot prove feed uniqueness and is rejected without a mutation. Provider and WordPress database read exceptions are bounded blockers rather than unhandled runtime errors.",
+  "authorizing": false,
+  "production_authorized": false,
+  "reviewed_for_ci_only": true,
+  "is_build_provenance": false,
+  "source_promotion_approved": false,
+  "live_evidence_required": true,
+  "native_notification_writes_added": false,
+  "scheduled_jobs_added": false,
+  "source_release_gate": "BLOCKED_SOURCE_RECONCILIATION",
+  "status": "reviewed_for_ci_only"
+}

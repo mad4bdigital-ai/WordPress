@@ -24091,6 +24091,25 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "execution_note": "Only the existing opt-in email filter is made site/owner safe. Original Wayfatours cron and native Fluent Forms SettingsService writes are not included."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-email-routing.php",
+      "source_blob_sha": "c3c4392cf805a5c4b4b10f12d699721256629e07",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/company-email-routing-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B source/tenant security reviewer, CI-only; not enrolled Production Site Owner",
+      "review_rationale": "A real Wayfatours native Booking/Contact reconciliation engine schedules persistent Fluent Forms writes without independent principal attestation, and uses truthy canSend() results. Rather than transplant it, the current source adds a company-operations-permissioned GET-only native source preflight deriving booking/contact form IDs from each registered provider and checking current exact tenant verification, SMTP true, form published, managed owner, enabled email type, sender and recipients, unique notification and exact saved SHA binding. It returns only bounded aggregate status and performs no SettingsService, cron, mail or option writes. It removes legacy form ID 6 as universal identity. Forty-four PHP 7.4/8.5 no-network hermetic tests and a negative mutation verify this behavior. This evidence does not promote code to Production and is not a Host certificate. A saturated LIMIT 120 result cannot prove feed uniqueness and is rejected without a mutation. Provider and WordPress database read exceptions are bounded blockers rather than unhandled runtime errors.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "execution_note": "Forty-four positive/negative offline PHP checks and one failed mutation prove dynamic per-company Form provider, exact source binding, no writes. Never adopt old Wayfatours auto-mutating notification scheduler or assume a Production release."
     }
   ],
   "code_change_rules": {

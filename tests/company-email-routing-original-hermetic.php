@@ -14,7 +14,7 @@ function sanitize_key($v){return preg_replace('/[^a-z0-9_-]/','',strtolower((str
 function is_email($s){return filter_var($s,FILTER_VALIDATE_EMAIL)!==false;}
 function wp_get_environment_type(){return $GLOBALS['test_env'];}
 function wp_json_encode($v,$flags=0){return json_encode($v,$flags);}
-function current_user_can($cap){return $cap==='mad4b_manage_company_operations';}
+function current_user_can($cap){return ($GLOBALS['allowCompanyOps']??true) && $cap==='mad4b_manage_company_operations';}
 function get_option($key,$default=null){return $GLOBALS['opts'][$key]??$default;}
 function add_filter($name,$callback,$prio=10,$argc=1){$GLOBALS['filters'][$name]=$callback;}
 function add_action($name,$callback,$prio=10){$GLOBALS['actions'][$name]=$callback;}
@@ -23,8 +23,18 @@ function rest_ensure_response($v){return $v;}
 class OriginalWpDb {
  public $prefix='wp_';
  public $record='';
+ public $form_id=6;
+ public $form_status='published';
+ public $managed_rows=[];
+ public $read_fail=false;
  function prepare($sql,...$args){return $sql;}
- function get_row($sql,$mode){return ['form_id'=>6,'value'=>$this->record];}
+ function get_row($sql,$mode){
+  if($this->read_fail) throw new RuntimeException('synthetic database error');
+  if(strpos($sql,'fluentform_forms')!==false)
+   return ['id'=>$this->form_id,'status'=>$this->form_status];
+  return ['form_id'=>6,'value'=>$this->record];
+ }
+ function get_results($sql,$mode){return $this->managed_rows;}
 }
 $wpdb=new OriginalWpDb();
 class MAD4B_SCP_Company_Communication {
@@ -159,5 +169,169 @@ MAD4B_SCP_Company_Communication::$send=new WP_Error('denied');
 email_assert($c::fluent_form_recipient('old@outside.test',$managed,[],$form)==='',
  'Managed native mail cannot send when canSend returns WP_Error');
 MAD4B_SCP_Company_Communication::$send=true;
+
+// Native notification planning must derive each company's current form ID
+// from the correct provider, never assume a global Fluent Forms numeric ID.
+class NativeBookingRouterFixture {
+ public static $formId=19;
+ public static $enabled='yes';
+ public static $fail=false;
+ public static function config(){
+  if(self::$fail)throw new RuntimeException('synthetic booking provider failure');
+  return ['enabled'=>self::$enabled,'form_id'=>self::$formId];
+ }
+}
+class_alias('NativeBookingRouterFixture','Commerce\Composition\SingleFluentPaymentRouter');
+// Clear the earlier fixture's exact form 6 binding before testing that a
+// historical number alone never establishes company ownership.
+$GLOBALS['opts'][$c::BINDINGS_OPTION]=[];
+class MAD4B_Company_Contact_Delivery {
+ public static $formId=29;
+ public static $fail=false;
+ public static function configured_form(){
+  if(self::$fail)throw new RuntimeException('synthetic contact provider failure');
+  return self::$formId;
+ }
+}
+$email=$c::fluent_form_recipient('unrelated@outside.test',
+ ['name'=>'Unrelated legacy form','sendTo'=>['type'=>'email']],[],(object)['id'=>6]);
+email_assert($email==='unrelated@outside.test',
+ 'Legacy form ID 6 is not governed unless configured by this company');
+$email=$c::fluent_form_recipient('persisted@outside.test',
+ ['name'=>'Not yet bound','sendTo'=>['type'=>'email']],[],(object)['id'=>19]);
+email_assert($email==='','Dynamically configured booking form blocks unknown recipient until exact binding');
+$preflight=$c::native_notice_preflight('unknown');
+email_assert($preflight['status']==='BLOCKED' && in_array('native_kind_unknown',$preflight['blockers'],true)
+ && $preflight['mutation_performed']===false,'Unknown notice source remains blocked and read-only');
+$GLOBALS['allowCompanyOps']=false;
+$preflight=$c::native_notice_preflight('reservation');
+email_assert(in_array('company_operations_permission_required',$preflight['blockers'],true),
+ 'Native preflight requires company operations authority');
+$GLOBALS['allowCompanyOps']=true;
+$wpdb->form_id=19;
+$wpdb->form_status='published';
+$reservationRecord=[
+ 'name'=>'MAD4B — Reservations — New travel request',
+ 'enabled'=>true,'mad4b_native_owner'=>'reservation_company_v1',
+ 'sendTo'=>['type'=>'email','email'=>'ops@wayfatours.com'],
+ 'fromEmail'=>'bookings@wayfatours.com'
+];
+$raw=json_encode($reservationRecord);
+$wpdb->managed_rows=[['id'=>78,'value'=>$raw]];
+$GLOBALS['opts'][$c::BINDINGS_OPTION]=[
+ 'contract'=>'mad4b.company-notification-bindings.v1',
+ 'site_uuid'=>MAD4B_SCP_Site_Profile::$uuid,
+ 'identity_sha256'=>$verified_digest,
+ 'entries'=>[[
+  'consumer'=>'fluent_forms','form_id'=>19,'event'=>'new_request',
+  'notification_name'=>$reservationRecord['name'],
+  'feed_id'=>78,'source_sha256'=>hash('sha256',$raw)
+ ]]
+];
+$preflight=$c::native_notice_preflight('reservation');
+email_assert($preflight['status']==='READY_READ_ONLY' && $preflight['form_id']===19
+ && $preflight['bound_feed_verified']===true && $preflight['recipient_count']===1
+ && $preflight['mutation_performed']===false && $preflight['messages_sent']===0
+ && $preflight['authorizing']===false,
+ 'Exact registered booking, verified sender, current feed hash and site binding give read-only ready');
+$wpdb->form_status='draft';
+$preflight=$c::native_notice_preflight('reservation');
+email_assert(in_array('native_form_not_published',$preflight['blockers'],true),
+ 'Draft booking form can never be preflight ready');
+$wpdb->form_status='published';
+$wpdb->read_fail=true;
+$preflight=$c::native_notice_preflight('reservation');
+email_assert(in_array('native_form_read_failed',$preflight['blockers'],true),
+ 'Native database exception returns a bounded blocker without a write');
+$wpdb->read_fail=false;
+NativeBookingRouterFixture::$fail=true;
+$preflight=$c::native_notice_preflight('reservation');
+email_assert(in_array('native_form_not_configured',$preflight['blockers'],true),
+ 'Booking source exception cannot authorize a guessed numeric form');
+NativeBookingRouterFixture::$fail=false;
+$wpdb->managed_rows[]=['id'=>79,'value'=>$raw];
+$preflight=$c::native_notice_preflight('reservation');
+email_assert(in_array('multiple_company_owned_feeds',$preflight['blockers'],true),
+ 'Duplicate managed booking notifications fail closed');
+$wpdb->managed_rows=[['id'=>78,'value'=>$raw]];
+$wpdb->managed_rows=array_fill(0,120,['id'=>78,'value'=>$raw]);
+$preflight=$c::native_notice_preflight('reservation');
+email_assert(in_array('native_feed_inventory_invalid',$preflight['blockers'],true),
+ 'Limit-saturated notification readback must never prove unique company ownership');
+$wpdb->managed_rows=[['id'=>78,'value'=>$raw]];
+$reservationRecord['sendTo']['type']='field';
+$wpdb->managed_rows=[['id'=>78,'value'=>json_encode($reservationRecord)]];
+$preflight=$c::native_notice_preflight('reservation');
+email_assert(in_array('managed_feed_disabled_or_invalid_type',$preflight['blockers'],true),
+ 'Managed company native email cannot be converted to a traveler field');
+email_assert($c::fluent_form_recipient('persisted@outside.test',
+ $reservationRecord,[],(object)['id'=>19])==='',
+ 'Managed recipient filter rejects non-email transport bypass');
+$reservationRecord['sendTo']['type']='email';
+$reservationRecord['sendTo']['email']='legacy@outside.test';
+$wpdb->managed_rows=[['id'=>78,'value'=>json_encode($reservationRecord)]];
+$preflight=$c::native_notice_preflight('reservation');
+email_assert(in_array('managed_feed_sender_or_recipient_drift',$preflight['blockers'],true),
+ 'Persisted old recipient cannot pass read-only native reconciliation preflight');
+$reservationRecord['sendTo']['email']='ops@wayfatours.com';
+$reservationRecord['enabled']=false;
+$wpdb->managed_rows=[['id'=>78,'value'=>json_encode($reservationRecord)]];
+$preflight=$c::native_notice_preflight('reservation');
+email_assert(in_array('managed_feed_disabled_or_invalid_type',$preflight['blockers'],true),
+ 'Previously disabled native editor feed must remain disabled');
+$reservationRecord['enabled']=true;
+$reservationRecord['subject']='Revised booking notification'; // change SHA only.
+$wpdb->managed_rows=[['id'=>78,'value'=>json_encode($reservationRecord)]];
+$rawUpdated=json_encode($reservationRecord);
+$recordBeforeBinding=$c::native_notice_preflight('reservation');
+email_assert(in_array('managed_feed_exact_binding_missing_or_stale',$recordBeforeBinding['blockers'],true),
+ 'Changing a managed feed requires its matching current SHA receipt');
+MAD4B_SCP_Company_Communication::$send=new WP_Error('send_gate_disabled');
+$preflight=$c::native_notice_preflight('reservation');
+email_assert(in_array('company_mail_transport_unverified',$preflight['blockers'],true),
+ 'WP_Error cannot assert native email send readiness');
+MAD4B_SCP_Company_Communication::$send=true;
+MAD4B_SCP_Site_Profile::$matches=new WP_Error('origin_unverified');
+$preflight=$c::native_notice_preflight('reservation');
+email_assert(in_array('company_email_identity_unverified',$preflight['blockers'],true),
+ 'Wrong site origin cannot reuse company email receipt');
+MAD4B_SCP_Site_Profile::$matches=true;
+$wpdb->form_id=29;
+$GLOBALS['opts']['mad4b_company_contact_form_public_enabled_v1']='yes';
+$contactRecord=[
+ 'name'=>'MAD4B Company Contact Inbox (managed)',
+ 'enabled'=>true,'mad4b_native_owner'=>'company_contact_v1',
+ 'sendTo'=>['type'=>'email','email'=>'ops@wayfatours.com'],
+ 'fromEmail'=>'bookings@wayfatours.com'
+];
+$contactRaw=json_encode($contactRecord);
+$wpdb->managed_rows=[['id'=>80,'value'=>$contactRaw]];
+$GLOBALS['opts'][$c::BINDINGS_OPTION]['entries']=[[
+ 'consumer'=>'fluent_forms','form_id'=>29,'event'=>'traveler_support',
+ 'notification_name'=>$contactRecord['name'],'feed_id'=>80,
+ 'source_sha256'=>hash('sha256',$contactRaw)
+]];
+$preflight=$c::native_notice_preflight('contact');
+email_assert($preflight['status']==='READY_READ_ONLY' && $preflight['form_id']===29
+ && $preflight['bound_feed_verified']===true,
+ 'Current native contact form uses its own provider and exact current feed binding');
+MAD4B_Company_Contact_Delivery::$fail=true;
+$preflight=$c::native_notice_preflight('contact');
+email_assert(in_array('native_contact_provider_error',$preflight['blockers'],true),
+ 'Contact source exception cannot authorize an arbitrary form');
+MAD4B_Company_Contact_Delivery::$fail=false;
+$GLOBALS['opts']['mad4b_company_contact_form_public_enabled_v1']='no';
+$preflight=$c::native_notice_preflight('contact');
+email_assert(in_array('native_contact_public_form_disabled',$preflight['blockers'],true),
+ 'Disabled public contact feed cannot be treated as a ready notification');
+$GLOBALS['actions']['rest_api_init']();
+$rest=$GLOBALS['routes']['mad4b/v1/admin/company-notification-routing/native-preflight'];
+email_assert($rest['methods']==='GET' && is_callable($rest['permission_callback']),
+ 'Scoped admin preflight is GET-only and has separate company permission callback');
+email_assert($rest['permission_callback']()===true,'Company operations editor can read preflight');
+$GLOBALS['allowCompanyOps']=false;
+email_assert($rest['permission_callback']()===false,'Unauthorized operator cannot access preflight');
+$GLOBALS['allowCompanyOps']=true;
+
 echo 'PASS: COMPANY_EMAIL_ROUTING '.($GLOBALS['checks']??0).
  ' original cross-company and no-send preview checks'.PHP_EOL;

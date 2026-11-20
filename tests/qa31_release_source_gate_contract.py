@@ -78,6 +78,7 @@ runpy.run_path(str(repo / 'tests/qa31_wayfa_followup_source_successor_contract.p
 runpy.run_path(str(repo / 'tests/qa31_company_staff_ceiling_source_successor_contract.py'), run_name='__main__')
 runpy.run_path(str(repo / 'tests/qa31_context_title_authority_successor_contract.py'), run_name='__main__')
 runpy.run_path(str(repo / 'tests/qa31_company_email_recipient_safety_successor_contract.py'), run_name='__main__')
+runpy.run_path(str(repo / 'tests/qa31_company_email_native_preflight_successor_contract.py'), run_name='__main__')
 chk(reviewed_bootstrap_successor(plugin,'mad4b-site-control-plane.php',current),
     'original305_bootstrap_reviewed_exactly')
 for item in entries:
