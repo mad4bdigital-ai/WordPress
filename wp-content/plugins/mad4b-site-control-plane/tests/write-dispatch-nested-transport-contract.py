@@ -17,6 +17,13 @@ if ("require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php';" not 
 abilities = abilities_facade + abilities_registration
 servers = (root / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 authorization = (root / "includes" / "class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
+# Observation and remote denial methods are exact first-party traits, included
+# by Authorization. Keep validating both source ownership and original policy.
+for trait_name in ("class-mad4b-scp-authorization-observation.php", "class-mad4b-scp-authorization-remote-denial.php"):
+    if f"require_once __DIR__ . '/{trait_name}';" not in authorization:
+        raise SystemExit("authorization first-party trait is not loaded: " + trait_name)
+observation = (root / "includes/class-mad4b-scp-authorization-observation.php").read_text(encoding="utf-8")
+remote_denial = (root / "includes/class-mad4b-scp-authorization-remote-denial.php").read_text(encoding="utf-8")
 decision_graph = (root / "includes" / "class-mad4b-scp-authorization-decision-graph.php").read_text(encoding="utf-8")
 execution_fence = (root / "includes" / "class-mad4b-scp-execution-fence.php").read_text(encoding="utf-8")
 planning_guard = (root / "includes" / "class-mad4b-scp-staging-write-planning-guard.php").read_text(encoding="utf-8")
@@ -118,15 +125,19 @@ required_authorization_boundary = [
     "public static function permission_result_from_authorization",
     "MAD4B_SCP_Authorization_Decision_Graph::permission_result( $result )",
     "MAD4B_SCP_Authorization::permission_result_from_authorization( $result )",
-    "public static function begin_execution_callback_observation",
-    "public static function mark_execution_callback_started",
-    "public static function execution_callback_started",
-    "public static function clear_execution_callback_observation",
     "MAD4B_SCP_Authorization::mark_execution_callback_started( $name );",
 ]
 for marker in required_authorization_boundary:
     if marker not in authorization:
         raise SystemExit("execution callback boundary invariant missing: " + marker)
+for marker in (
+    "public static function begin_execution_callback_observation",
+    "public static function mark_execution_callback_started",
+    "public static function execution_callback_started",
+    "public static function clear_execution_callback_observation",
+):
+    if marker not in observation:
+        raise SystemExit("extracted observation execution boundary invariant missing: " + marker)
 
 if "return true === $result['allowed'] && 'preflight_allowed' === (string) $result['reason_code'];" not in decision_graph:
     raise SystemExit("permission verdict graph lost exact fail-closed preflight truth")
@@ -228,7 +239,7 @@ echo "mad4b.authorization-permission-wrapper.runtime.v2: PASS\\n";
         check=True,
     )
 
-if "'mad4b_approval_replay_denied' !== (string) $error->get_error_code()" in authorization:
+if "'mad4b_approval_replay_denied' !== (string) $error->get_error_code()" in authorization + remote_denial:
     raise SystemExit("remote permission denial audit must not hide non-replay denial reason codes")
 
 # Inspect the exact dispatcher function, not its neighboring, separately

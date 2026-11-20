@@ -11,7 +11,7 @@ trait MAD4B_SCP_Server_Core_Catalog {
 			'mad4b-read' => array_merge( array(
 				'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/environment-journey', 'mad4b/site-autopilot-fast-status', 'mad4b/list-post-types', 'mad4b/post-identity', 'mad4b/list-plugins', 'mad4b/abilities-inventory', 'mad4b/filesystem-list', 'mad4b/filesystem-read',
 				'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/diagnostics-health', 'mad4b/security-site-posture', 'mad4b/security-provider-evidence', 'mad4b/runtime-authority-status', 'mad4b/schema-status', 'mad4b/multi-authority-registry-status', 'mad4b/connection-status', 'mad4b/connector-preflight', 'mad4b/session-safe-diagnostics', 'mad4b/read-snapshot-header', 'mad4b/read-diagnostic-bundle', 'mad4b/read-metadata-envelope', 'mad4b/context-authority-status',
-				'mad4b/plugin-lifecycle-plan', 'mad4b/plugin-package-plan', 'mad4b/plugin-remote-update-plan', 'mad4b/plugin-deployment-sources', 'mad4b/plugin-deployment-plan', 'mad4b/plugin-deployment-intake-plan', 'mad4b/control-plane-update-status', 'mad4b/control-plane-upload-plan', 'mad4b/control-plane-native-plan', 'mad4b/control-plane-selected-head-plan', 'mad4b/control-plane-test-route', 'mad4b/workflow-provider-status', 'mad4b/workflow-plan', 'mad4b/runtime-functional-gap-diagnostic', 'mad4b/code-snippets-rest-bootstrap-diagnostic',
+				'mad4b/plugin-lifecycle-plan', 'mad4b/plugin-package-plan', 'mad4b/plugin-remote-update-plan', 'mad4b/plugin-deployment-sources', 'mad4b/plugin-deployment-plan', 'mad4b/plugin-deployment-intake-plan', 'mad4b/control-plane-update-status', 'mad4b/control-plane-upload-plan', 'mad4b/control-plane-native-plan', 'mad4b/control-plane-selected-head-plan', 'mad4b/workflow-provider-status', 'mad4b/workflow-plan', 'mad4b/runtime-functional-gap-diagnostic', 'mad4b/code-snippets-rest-bootstrap-diagnostic',
 				'mad4b/operating-model-status', 'mad4b/semantic-identity-map', 'mad4b/site-feature-bundle-validate', 'mad4b/state-diff', 'mad4b/operation-plan', 'mad4b/evidence-invalidation-plan', 'mad4b/invariant-evaluate', 'mad4b/candidate-state', 'mad4b/workflow-compile',
 				'mad4b/capability-trait-profile', 'mad4b/capability-trait-resolve', 'mad4b/provider-execution-binding', 'mad4b/provider-execution-binding-revalidate', 'mad4b/addon-registry-status',
 				'mad4b/data-processing-evaluate', 'mad4b/rights-record-plan', 'mad4b/data-processing-profile-plan', 'mad4b/rights-takedown-plan',
@@ -55,7 +55,7 @@ trait MAD4B_SCP_Server_Core_Catalog {
 				'mad4b/developer-discover', 'mad4b/developer-info', 'mad4b/developer-execute',
 				'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute',
 				'mad4b/chatgpt-tool-projection-status', 'mad4b/chatgpt-tool-projection-discover', 'mad4b/chatgpt-tool-projection-plan', 'mad4b/chatgpt-tool-projection-recovery-plan', 'mad4b/chatgpt-tool-projection-apply', 'mad4b/frontend-origin-diagnostic',
-				'mad4b/plugin-package-plan', 'mad4b/plugin-remote-update-plan', 'mad4b/control-plane-upload-plan', 'mad4b/control-plane-native-plan', 'mad4b/control-plane-selected-head-plan', 'mad4b/control-plane-test-route',
+				'mad4b/plugin-package-plan', 'mad4b/plugin-remote-update-plan', 'mad4b/control-plane-upload-plan', 'mad4b/control-plane-native-plan', 'mad4b/control-plane-selected-head-plan',
 				'mad4b/operation-discover', 'mad4b/operation-route-discover', 'mad4b/operation-route-plan', 'mad4b/provider-closure-matrix', 'mad4b/provider-candidate-matrix', 'mad4b/plugin-capability-graph', 'mad4b/plugin-capability-route-plan', 'mad4b/native-mcp-candidates', 'mad4b/native-mcp-catalog', 'mad4b/native-mcp-hybrid-plan', 'mad4b/native-mcp-read-call', 'mad4b/native-mcp-hybrid-read', 'mad4b/production-certification-readonly-evidence', 'mad4b/production-certification-status', 'mad4b/production-certification-plan', 'mad4b/feature-007-workstream-certification-status', 'mad4b/governed-provider-plan-build', 'mad4b/governed-provider-plan-revalidate', 'mad4b/production-readiness-evaluate', 'mad4b/test-attestation-verify',
 			), class_exists( 'MAD4B_SCP_Operation_Registry' ) ? MAD4B_SCP_Operation_Registry::read_projection( 'direct' ) : array(), $governed_status, $cso_read ),
 			'mad4b-enrollment' => array_values( array_unique( array_merge(
@@ -105,6 +105,39 @@ trait MAD4B_SCP_Server_Core_Catalog {
 			'mad4b-developer-breakglass' => class_exists( 'MAD4B_SCP_Developer_Runtime' ) ? MAD4B_SCP_Developer_Runtime::tool_names( true ) : array(),
 			'mad4b-breakglass' => array( 'mad4b/database-raw-query' ),
 		);
+        // These features belong to optional live-host or site-specific
+        // modules, not the portable Control Plane plugin. Mount each only
+        // where its WordPress Ability AND canonical MCP descriptor exist;
+        // preserve the exact original read/ChatGPT surfaces per ability.
+        // Never downgrade descriptor verification for the required catalog.
+        $optional_host_reads = array(
+            'mad4b/control-plane-test-route' => array( 'mad4b-read', 'mad4b-chatgpt' ),
+            'mad4b/execution-unified-plan' => array( 'mad4b-read' ),
+            'mad4b/scoped-build-verification' => array( 'mad4b-read' ),
+        );
+        if ( function_exists( 'wp_has_ability' )
+            && class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry', false ) ) {
+            foreach ( $optional_host_reads as $ability_name => $surfaces ) {
+                if ( ! in_array( $server_id, $surfaces, true )
+                    || ! wp_has_ability( $ability_name ) ) continue;
+                $descriptor = MAD4B_SCP_Capability_Descriptor_Registry::binding( $ability_name, 'servers' );
+                if ( ! is_wp_error( $descriptor ) ) $map[ $server_id ][] = $ability_name;
+            }
+        }
+        // Source Preflight is an optional first-party MU component. In a
+        // plugin-only installation (e.g. CI), no MU registration exists, and
+        // the MCP read server must never advertise an absent Ability.
+        if ( 'mad4b-read' === $server_id && class_exists( 'MAD4B_Release_Source_Admission', false )
+            && function_exists( 'wp_has_ability' ) && wp_has_ability( MAD4B_Release_Source_Admission::ABILITY )
+            && class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry', false ) ) {
+            // A WordPress Ability can exist before its first-party MCP schema
+            // descriptor has been bound (especially in minimal CI installs).
+            // An optional read status must never break the required read MCP.
+            $binding = MAD4B_SCP_Capability_Descriptor_Registry::binding(
+                MAD4B_Release_Source_Admission::ABILITY, 'servers' );
+            if ( ! is_wp_error( $binding ) )
+                $map['mad4b-read'][] = MAD4B_Release_Source_Admission::ABILITY;
+        }
 		if ( 'mad4b-write' === $server_id ) return self::write_tools();
 		$tools = isset( $map[ $server_id ] ) ? $map[ $server_id ] : array();
 		// Company-only Abilities ride the existing authenticated MCP catalog.

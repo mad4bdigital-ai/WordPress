@@ -7,8 +7,16 @@ if ( ! class_exists( 'MAD4B_SCP_Execution_Receipt' ) ) require_once __DIR__ . '/
 if ( ! class_exists( 'MAD4B_SCP_Authorization_Target_Fingerprint' ) ) require_once __DIR__ . '/class-mad4b-scp-authorization-target-fingerprint.php';
 require_once __DIR__ . '/trait-mad4b-scp-authorization-recovery-state.php';
 
+require_once __DIR__ . '/class-mad4b-scp-authorization-claimed-callback.php';
+require_once __DIR__ . '/class-mad4b-scp-authorization-observation.php';
+require_once __DIR__ . '/class-mad4b-scp-authorization-remote-denial.php';
+
 final class MAD4B_SCP_Authorization {
 	use MAD4B_SCP_Authorization_Recovery_State_Trait;
+
+    use MAD4B_SCP_Authorization_Claimed_Callback;
+    use MAD4B_SCP_Authorization_Observation;
+    use MAD4B_SCP_Authorization_Remote_Denial;
 	const TARGET_FINGERPRINT_CONTRACT = 'mad4b.authorization-target.v1';
 	const EXECUTION_BOUNDARY_CONTRACT = 'mad4b.authorization-execution-boundary.v1';
 	const PERMISSION_DENIAL_AUDIT_CONTRACT = 'mad4b.authorization-permission-denial-audit.v1';
@@ -18,105 +26,10 @@ final class MAD4B_SCP_Authorization {
 	private static $booted = false;
 	private static $execution_callback_started = array();
 	private static $trusted_execution_boundaries = array();
-    /** Ephemeral proof minted ONLY inside the existing governed callback. */
-    private static $operation_claim_in_callback = array();
-
-    public static function native_binding_callback_is_claimed( $input ) {
-        return self::operation_callback_is_claimed( 'mad4b/deployment-binding-native-apply', $input );
-    }
-
-    public static function google_revocation_callback_is_claimed( $input ) {
-        return self::operation_callback_is_claimed( 'mad4b/google-revocation-retry', $input );
-    }
-
-    private static function operation_callback_is_claimed( $name, $input ) {
-        if ( ! is_array( $input )
-            || ! is_array( self::$operation_claim_in_callback )
-            || $name !== ( self::$operation_claim_in_callback['ability'] ?? '' )
-            || empty( self::$operation_claim_in_callback['claim_sha256'] )
-            || empty( self::$operation_claim_in_callback['approval_ticket_id'] ) )
-            return false;
-        $ticket_id = (string) ( $input['_mad4b_approval_ticket_id'] ?? '' );
-        if ( ! hash_equals( (string) self::$operation_claim_in_callback['approval_ticket_id'], $ticket_id ) )
-            return false;
-        $encoded = wp_json_encode( $input, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-        return is_string( $encoded ) && hash_equals(
-            (string) self::$operation_claim_in_callback['claim_sha256'],
-            hash( 'sha256', $encoded ) );
-    }
-
-
-    /**
-     * Called solely by the immutable wrapper after the first and only
-     * claim_mutation and provider-entry durable checkpoint. The receipt is
-     * scoped to one exact ticket + input, erased even on PHP exceptions.
-     */
-    private static function invoke_claimed_callback( $name, array $claim, $input, $callback ) {
-        // An unrelated/nested callback must not borrow the outer operation's
-        // proof. These two operations alone consume this ephemeral receipt.
-        self::$operation_claim_in_callback = array();
-        if ( in_array( (string) $name, array( 'mad4b/deployment-binding-native-apply', 'mad4b/google-revocation-retry' ), true )
-            && true === ( $claim['allowed'] ?? false )
-            && 'execution_claimed' === (string) ( $claim['reason_code'] ?? '' )
-            && ! empty( $claim['approval_required'] )
-            && ! empty( $claim['approval_claimed'] )
-            && ! empty( $claim['approval_ticket_id'] )
-            && is_array( $input )
-            && hash_equals( (string) $claim['approval_ticket_id'],
-                (string) ( $input['_mad4b_approval_ticket_id'] ?? '' ) ) ) {
-            $encoded = wp_json_encode( $input, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-            if ( is_string( $encoded ) )
-                self::$operation_claim_in_callback = array(
-                    'ability' => (string) $name,
-                    'approval_ticket_id' => (string) $claim['approval_ticket_id'],
-                    'claim_sha256' => hash( 'sha256', $encoded ) );
-        }
-        try {
-            return call_user_func( $callback, $input );
-        } finally {
-            self::$operation_claim_in_callback = array();
-        }
-    }
-
 	public static function boot() {
 		if ( self::$booted || ! function_exists( 'add_filter' ) ) return;
 		self::$booted = true;
 		add_filter( 'wp_register_ability_args', array( __CLASS__, 'wrap_execution_boundary' ), 190, 2 );
-	}
-
-	private static $remote_permission_denial_codes = array();
-
-	public static function begin_execution_callback_observation( $ability_name ) {
-		$ability_name = (string) $ability_name;
-		if ( '' !== $ability_name ) {
-			self::$execution_callback_started[ $ability_name ] = false;
-			unset( self::$remote_permission_denial_codes[ $ability_name ] );
-		}
-	}
-
-	public static function mark_execution_callback_started( $ability_name ) {
-		$ability_name = (string) $ability_name;
-		if ( '' !== $ability_name ) self::$execution_callback_started[ $ability_name ] = true;
-	}
-
-	public static function execution_callback_started( $ability_name ) {
-		$ability_name = (string) $ability_name;
-		return '' !== $ability_name && ! empty( self::$execution_callback_started[ $ability_name ] );
-	}
-
-	public static function remote_permission_denial_code( $ability_name ) {
-		$ability_name = (string) $ability_name;
-		// Request-local, ability-scoped diagnostic only. No ticket or OAuth evidence is exposed.
-		return array_key_exists( $ability_name, self::$execution_callback_started )
-			? ( isset( self::$remote_permission_denial_codes[ $ability_name ] ) ? (string) self::$remote_permission_denial_codes[ $ability_name ] : '' ) : '';
-	}
-
-	public static function clear_execution_callback_observation( $ability_name ) {
-		$ability_name = (string) $ability_name;
-		if ( '' !== $ability_name ) {
-			unset( self::$execution_callback_started[ $ability_name ] );
-			unset( self::$remote_permission_denial_codes[ $ability_name ] );
-		}
 	}
 
 	public static function request_scope_state() {
@@ -266,6 +179,18 @@ final class MAD4B_SCP_Authorization {
 			}
 		}
 
+        // A draft content write can ignore *unrelated* package drift only when
+        // all code-owned material dependencies exactly match their manifest.
+        // Existing NHI grants, candidate binding and one-time tickets still apply.
+        if ( 'mad4b-write' === $server_id
+            && class_exists( 'MAD4B_SCP_Scoped_Build_Verification' )
+            && MAD4B_SCP_Scoped_Build_Verification::governs_content_write( $ability_name ) ) {
+            $build_proof = MAD4B_SCP_Scoped_Build_Verification::verify( $ability_name, $input );
+            if ( is_wp_error( $build_proof ) || ! is_array( $build_proof ) || empty( $build_proof['verification_ready'] ) ) {
+                return self::error( 'mad4b_content_material_build_not_verified',
+                    'Content mutation requires current material-file integrity or full exact package provenance.' );
+            }
+        }
 		$authorization_input = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::authorization_input( $input, $ability_name ) : $input;
 		if ( ! class_exists( 'MAD4B_SCP_Resource_Constraint_Set' ) ) return self::error( 'mad4b_resource_constraint_compiler_unavailable', 'Provider-neutral resource constraint compiler is unavailable at mutation admission.' );
 		$resource_set = MAD4B_SCP_Resource_Constraint_Set::compile( $ability_name, $provider, is_array( $authorization_input ) ? $authorization_input : array() );
@@ -893,40 +818,6 @@ final class MAD4B_SCP_Authorization {
 	public static function authority_status() {
 		require_once __DIR__ . '/class-mad4b-scp-authority-health-projection.php';
 		return MAD4B_SCP_Authority_Health_Projection::authority_status();
-	}
-
-	public static function audit_remote_permission_denial( $ability_name, $error, $input = null ) {
-		if ( ! is_wp_error( $error ) ) return false;
-		$server_id = class_exists( 'MAD4B_SCP_Transport_Context' ) ? MAD4B_SCP_Transport_Context::current_server_id() : '';
-		if ( ! in_array( $server_id, array( 'mad4b-chatgpt', 'mad4b-write', 'mad4b-developer', 'mad4b-developer-breakglass' ), true ) ) return false;
-		$ability_name = (string) $ability_name;
-		if ( array_key_exists( $ability_name, self::$execution_callback_started ) ) {
-			self::$remote_permission_denial_codes[ $ability_name ] = sanitize_key( (string) $error->get_error_code() );
-		}
-		self::audit_execution_denial( $ability_name, $error, $input );
-		return true;
-	}
-
-	private static function audit_execution_denial( $ability_name, $error, $input = null ) {
-		if ( ! is_wp_error( $error ) ) return;
-		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : array();
-		$ticket_id = is_array( $identity ) && isset( $identity['approval_ticket_id'] ) && preg_match( '/^[a-f0-9-]{36}$/', (string) $identity['approval_ticket_id'] )
-			? strtolower( (string) $identity['approval_ticket_id'] )
-			: '';
-
-		if ( '' === $ticket_id
-			&& 'mad4b_approval_replay_denied' === (string) $error->get_error_code()
-			&& class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ) {
-			$input_ticket = strtolower( trim( (string) MAD4B_SCP_Staging_Write_Authority::approval_ticket_from_input( $input ) ) );
-			if ( 1 === preg_match( '/^[a-f0-9-]{36}$/', $input_ticket ) ) $ticket_id = $input_ticket;
-		}
-
-		self::audit( $ability_name, array(
-			'allowed' => false,
-			'reason_code' => $error->get_error_code(),
-			'request_id' => is_array( $identity ) && isset( $identity['request_id'] ) ? (string) $identity['request_id'] : '',
-			'approval_ticket_id' => $ticket_id,
-		), 'denied' );
 	}
 
 	private static function error( $code, $message ) { return new WP_Error( $code, $message ); }

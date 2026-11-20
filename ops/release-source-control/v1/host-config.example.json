@@ -1,0 +1,8 @@
+{
+  "contract":"mad4b.release-source-host-config.v1",
+  "repo":"/opt/mad4b-company-provisioning/worktrees/CHOSEN_REPOSITORY_WORKTREE",
+  "toursdev":"/opt/hostinger-migrations/hosting-3/etg-commerce-staging/site-copy",
+  "wayfa":"/opt/wayfa-rebuild-20261102/site-copy",
+  "reports_dir":"/opt/mad4b-company-provisioning/reports/release-source-preflight-20261119",
+  "selection_file":"/opt/mad4b-company-provisioning/config/release-source-selected.json"
+}

@@ -8853,6 +8853,65 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing source-bound Site Profile, Content Readiness, Admin, Security and provider-scope controls apply to the extracted service; no broad privilege or release mutation is introduced.",
       "review_rationale": "Independent review of class-mad4b-scp-readiness-reconciliation-trait.php preserves original behavior and dependent guard checks in an executed test suite. This service is source-only until its actual enrolled runtime is separately tested."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-claimed-callback.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php"
+      ],
+      "owner_role": "MAD4B authorization security CI reviewer; independent production owner and host authority required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing decision graph, scoped ticket claim, exact execution boundary, request-local denial audit, and replay protections are reused without any new permission capability or executor.",
+      "review_rationale": "The exact Authorization method bodies and request-local state were moved verbatim into first-party traits. Existing class callback names, private operation claim lifetime, exception-safe cleanup, denial audit semantics and public MCP permission decision remain the same. The facade shrinks from 1046 to 923 lines, below the existing 950-line quality budget. The three hermetic fixtures cover ticket-bound native/Google claim and replay, request-local execution observations, remote permission denial audits; the source review creates no grant or production authority. Domain: claimed-callback."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-observation.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/authorization-replay-audit-runtime.php"
+      ],
+      "owner_role": "MAD4B authorization security CI reviewer; independent production owner and host authority required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing decision graph, scoped ticket claim, exact execution boundary, request-local denial audit, and replay protections are reused without any new permission capability or executor.",
+      "review_rationale": "The exact Authorization method bodies and request-local state were moved verbatim into first-party traits. Existing class callback names, private operation claim lifetime, exception-safe cleanup, denial audit semantics and public MCP permission decision remain the same. The facade shrinks from 1046 to 923 lines, below the existing 950-line quality budget. The three hermetic fixtures cover ticket-bound native/Google claim and replay, request-local execution observations, remote permission denial audits; the source review creates no grant or production authority. Domain: observation."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-remote-denial.php",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-remote-denial-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/authorization-replay-audit-runtime.php"
+      ],
+      "owner_role": "MAD4B authorization security CI reviewer; independent production owner and host authority required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing decision graph, scoped ticket claim, exact execution boundary, request-local denial audit, and replay protections are reused without any new permission capability or executor.",
+      "review_rationale": "The exact Authorization method bodies and request-local state were moved verbatim into first-party traits. Existing class callback names, private operation claim lifetime, exception-safe cleanup, denial audit semantics and public MCP permission decision remain the same. The facade shrinks from 1046 to 923 lines, below the existing 950-line quality budget. The three hermetic fixtures cover ticket-bound native/Google claim and replay, request-local execution observations, remote permission denial audits; the source review creates no grant or production authority. Domain: remote-denial."
     }
   ],
   "lifecycle": [],
@@ -24110,6 +24169,296 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "execution_note": "Forty-four positive/negative offline PHP checks and one failed mutation prove dynamic per-company Form provider, exact source binding, no writes. Never adopt old Wayfatours auto-mutating notification scheduler or assume a Production release."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-components-admin-ui.php",
+      "source_blob_sha": "c3a164049726a886b2db54812040406523956fd5",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "tests/authority/test-release-source-admission-integration.py"
+      ],
+      "owner_role": "Release source and site security maintainer, CI-only source review; independent Host signers retain approval authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing site-bound owner approval, package identity, signed source evidence, transport catalog, update rollback and execution-denial controls cover this exact code change; no additional permission is created.",
+      "review_rationale": "Exact Git blob review of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-components-admin-ui.php. This change introduces a nonauthorizing signed Host reconciliation prerequisite, or renders its source status, before the established certified code release paths. The existing original approval and rollback requirements remain; no Host Original313 mutation provider was enrolled and no Production write grant was issued."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-selected-head-update.php",
+      "source_blob_sha": "a5dc0163a3a70d53002c458bf1f019426c6d1da2",
+      "control_ids": [
+        "UPDATES-01",
+        "SECURITY-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "tests/authority/test-release-source-admission-integration.py"
+      ],
+      "owner_role": "Release source and site security maintainer, CI-only source review; independent Host signers retain approval authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing site-bound owner approval, package identity, signed source evidence, transport catalog, update rollback and execution-denial controls cover this exact code change; no additional permission is created.",
+      "review_rationale": "Exact Git blob review of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-selected-head-update.php. This change introduces a nonauthorizing signed Host reconciliation prerequisite, or renders its source status, before the established certified code release paths. The existing original approval and rollback requirements remain; no Host Original313 mutation provider was enrolled and no Production write grant was issued."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+      "source_blob_sha": "2b415517d6629918bf2477a98b4602efabe8e108",
+      "control_ids": [
+        "UPDATES-01",
+        "SECURITY-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "tests/authority/test-release-source-admission-integration.py"
+      ],
+      "owner_role": "Release source and site security maintainer, CI-only source review; independent Host signers retain approval authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing site-bound owner approval, package identity, signed source evidence, transport catalog, update rollback and execution-denial controls cover this exact code change; no additional permission is created.",
+      "review_rationale": "Exact Git blob review of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php. This change introduces a nonauthorizing signed Host reconciliation prerequisite, or renders its source status, before the established certified code release paths. The existing original approval and rollback requirements remain; no Host Original313 mutation provider was enrolled and no Production write grant was issued."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php",
+      "source_blob_sha": "9110e889d67d15e71648da4ff5aff6a33d016762",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/authority/test-optional-source-read-catalog.php"
+      ],
+      "owner_role": "Release source and site security maintainer, CI-only source review; independent Host signers retain approval authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing site-bound owner approval, package identity, signed source evidence, transport catalog, update rollback and execution-denial controls cover this exact code change; no additional permission is created.",
+      "review_rationale": "Exact Git blob review of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php. This change introduces a nonauthorizing signed Host reconciliation prerequisite, or renders its source status, before the established certified code release paths. The existing original approval and rollback requirements remain; no Host Original313 mutation provider was enrolled and no Production write grant was issued."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+      "source_blob_sha": "48bbd4ecbcb1905da1fa0269cd5575aa9c452d80",
+      "control_ids": [
+        "UPDATES-01",
+        "SECURITY-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "tests/authority/test-release-source-admission-integration.py"
+      ],
+      "owner_role": "Release source security CI reviewer; exact Host signer and site owner authority stay independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing signed source admission, certified package identity, MCP read projection, rollback and owner authorization safeguards remain mandatory; no new mutation permission is introduced.",
+      "review_rationale": "Review of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php after restoring the fixed-channel trusted master release candidate check and requiring actual Ability registration before optional MCP exposure. The first-party Host preflight remains an additional nonauthorizing gate; live production writes are not enabled by this source-only CI review."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php",
+      "source_blob_sha": "1200a3be2fc2848880a73e0f5083e0f431d44ccd",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/authority/test-optional-source-read-catalog.php"
+      ],
+      "owner_role": "Release source security CI reviewer; exact Host signer and site owner authority stay independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing signed source admission, certified package identity, MCP read projection, rollback and owner authorization safeguards remain mandatory; no new mutation permission is introduced.",
+      "review_rationale": "Review of wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php after restoring the fixed-channel trusted master release candidate check and requiring actual Ability registration before optional MCP exposure. The first-party Host preflight remains an additional nonauthorizing gate; live production writes are not enabled by this source-only CI review."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php",
+      "source_blob_sha": "bd0c5b5cab99598b77cec950b51b70082017ea82",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/authority/test-optional-source-read-catalog.php"
+      ],
+      "owner_role": "Release source security reviewer; CI-only, no Owner or Production promotion rights",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact MCP read descriptor, schema validation, optional registry and execution boundary controls govern this registered Ability without expanding its permissions.",
+      "review_rationale": "The optional source-preflight Ability is mounted on the read server only after WordPress registration and validated descriptor binding. This avoids fail-closed registration errors in minimal CI and preserves signed source verification on live sites. No execution grant or Production mutation is enabled."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php",
+      "source_blob_sha": "7f508bf4210fef1c80855475ac85eb0a81d67046",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/authority/test-optional-source-read-catalog.php"
+      ],
+      "owner_role": "MCP source catalog and site governance reviewer; CI source review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP descriptor and first-party WordPress ability binding controls govern the optional live-host read-only tools. No new execution permission, grant, approval or bypass is introduced.",
+      "review_rationale": "Fixes root cause seen in disposable WordPress CI: the clean plugin does not register control-plane-test-route, execution-unified-plan and scoped-build-verification, which are provided by optional live-host/site modules. The exact 3 abilities are now projected only when individually WordPress-registered and descriptor-bound, on their existing read/ChatGPT surfaces. Missing required core abilities remain fail-closed, and production operation authority remains unchanged."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-claimed-callback.php",
+      "source_blob_sha": "9d350593bb03c745364ca6d25a432afec7275a7f",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php"
+      ],
+      "owner_role": "MAD4B authorization CI reviewer, nonauthorizing, source-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "No new authorizing action; same original private function bodies and exact authorization guards, extracted for maintainability.",
+      "review_rationale": "The exact Authorization method bodies and request-local state were moved verbatim into first-party traits. Existing class callback names, private operation claim lifetime, exception-safe cleanup, denial audit semantics and public MCP permission decision remain the same. The facade shrinks from 1046 to 923 lines, below the existing 950-line quality budget. The three hermetic fixtures cover ticket-bound native/Google claim and replay, request-local execution observations, remote permission denial audits; the source review creates no grant or production authority. Exact Git blob reviewed for claimed-callback."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-observation.php",
+      "source_blob_sha": "9c4dd452b93bb09d30d97fd50cad1afcae33f6e1",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/authorization-replay-audit-runtime.php"
+      ],
+      "owner_role": "MAD4B authorization CI reviewer, nonauthorizing, source-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "No new authorizing action; same original private function bodies and exact authorization guards, extracted for maintainability.",
+      "review_rationale": "The exact Authorization method bodies and request-local state were moved verbatim into first-party traits. Existing class callback names, private operation claim lifetime, exception-safe cleanup, denial audit semantics and public MCP permission decision remain the same. The facade shrinks from 1046 to 923 lines, below the existing 950-line quality budget. The three hermetic fixtures cover ticket-bound native/Google claim and replay, request-local execution observations, remote permission denial audits; the source review creates no grant or production authority. Exact Git blob reviewed for observation."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-remote-denial.php",
+      "source_blob_sha": "7101838c3f05b6d596995cc20066af9c3df83114",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-remote-denial-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/authorization-replay-audit-runtime.php"
+      ],
+      "owner_role": "MAD4B authorization CI reviewer, nonauthorizing, source-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "No new authorizing action; same original private function bodies and exact authorization guards, extracted for maintainability.",
+      "review_rationale": "The exact Authorization method bodies and request-local state were moved verbatim into first-party traits. Existing class callback names, private operation claim lifetime, exception-safe cleanup, denial audit semantics and public MCP permission decision remain the same. The facade shrinks from 1046 to 923 lines, below the existing 950-line quality budget. The three hermetic fixtures cover ticket-bound native/Google claim and replay, request-local execution observations, remote permission denial audits; the source review creates no grant or production authority. Exact Git blob reviewed for remote-denial."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+      "source_blob_sha": "a2ea7dd18c8dbe2326ef5c9d2f7c97bfc170f994",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-remote-denial-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/authorization-replay-audit-runtime.php"
+      ],
+      "owner_role": "MAD4B authorization CI reviewer, nonauthorizing, source-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "No new authorizing action; same original private function bodies and exact authorization guards, extracted for maintainability.",
+      "review_rationale": "The exact Authorization method bodies and request-local state were moved verbatim into first-party traits. Existing class callback names, private operation claim lifetime, exception-safe cleanup, denial audit semantics and public MCP permission decision remain the same. The facade shrinks from 1046 to 923 lines, below the existing 950-line quality budget. The three hermetic fixtures cover ticket-bound native/Google claim and replay, request-local execution observations, remote permission denial audits; the source review creates no grant or production authority. Exact Git blob reviewed for facade."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+      "source_blob_sha": "6283b4a2168dfbbb267d98e7600f896fed8a4f64",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/authorization-replay-audit-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php"
+      ],
+      "owner_role": "MAD4B independent code-only source integration reviewer; authorized Site Owner and signed Host signer separate",
+      "review_rationale": "Exact Authorization facade includes the independent PR951 execution-recovery trait and PR937 Claim, Observation and Remote Denial traits. PHP 7.4/8.5 executed original 45 native-schema, peer, policy, grant, claim and replay denial assertions. Trait composition preserves internal method bodies and request-local claim lifecycle, and does not add grants, authority, new public API or bypass the governed staging profile. The current precise source Git SHA and two original parents are independently pinned in the cross-PR QA31 composite review.",
+      "coverage_reuse_rationale": "Existing exact source rollout, lifecycle, rollback, signature and operator permission controls are retained. This private preview creates no new authority.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "execution_note": "Exact merged content privately reviewed; no Production site write and no Release certificate."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+      "source_blob_sha": "f8985784fd510af6f4bf9682a0a5a3b8b3f72785",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa27-candidate-upload-plan-rc118-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-dual-channel-contract.py",
+        "tests/authority/test-release-source-admission-integration.py"
+      ],
+      "owner_role": "MAD4B independent code-only source integration reviewer; authorized Site Owner and signed Host signer separate",
+      "review_rationale": "Exact merged Self Update retains PR951 dynamic Site Profile Staging write admission plus PR937 signed independently executed Host Source Admission at the final shared apply_verified_archive boundary. Candidate upload plans remain ineligible without source signature and original source verification, owner OAuth, exact plan SHA and transient target readback. PHP 7.4/8.5 QA27 and independent signature check pass; full dual-channel, selected-head, lineage and rollback source contracts are tested without real WordPress mutations. This review is not a Host signature or Production release authorization. The current precise source Git SHA and two original parents are independently pinned in the cross-PR QA31 composite review.",
+      "coverage_reuse_rationale": "Existing exact source rollout, lifecycle, rollback, signature and operator permission controls are retained. This private preview creates no new authority.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "execution_note": "Exact merged content privately reviewed; no Production site write and no Release certificate."
     }
   ],
   "code_change_rules": {

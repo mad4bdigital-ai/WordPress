@@ -7,6 +7,14 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 AUTH = (ROOT / "includes/class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
+# The original request-local observation and denial audit logic is now an
+# explicitly required, first-party Authorization trait. Validate the binding
+# before inspecting the identical method bodies in their new owning file.
+for trait_path in ("class-mad4b-scp-authorization-observation.php", "class-mad4b-scp-authorization-remote-denial.php"):
+    if f"require_once __DIR__ . '/{trait_path}';" not in AUTH:
+        raise SystemExit("BRAND_CONTEXT: missing exact first-party Authorization trait include: " + trait_path)
+OBSERVATION = (ROOT / "includes/class-mad4b-scp-authorization-observation.php").read_text(encoding="utf-8")
+REMOTE_DENIAL = (ROOT / "includes/class-mad4b-scp-authorization-remote-denial.php").read_text(encoding="utf-8")
 ABILITIES = (ROOT / "includes/class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
 CONTEXT = (ROOT / "includes/class-mad4b-scp-context-authority.php").read_text(encoding="utf-8")
 RESILIENCE = (ROOT / "includes/class-mad4b-scp-connector-resilience.php").read_text(encoding="utf-8")
@@ -15,7 +23,7 @@ for marker in (
     "self::$remote_permission_denial_codes",
     "unset( self::$remote_permission_denial_codes[ $ability_name ] )",
 ):
-    if marker not in AUTH:
+    if marker not in OBSERVATION and marker not in REMOTE_DENIAL:
         raise SystemExit(f"BRAND_CONTEXT: missing request-scoped permission invariant: {marker}")
 for marker in (
     "inspect_exact_permission_denial_then_replan",

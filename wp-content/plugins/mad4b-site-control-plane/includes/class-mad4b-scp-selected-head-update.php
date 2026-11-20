@@ -331,6 +331,10 @@ final class MAD4B_SCP_Selected_Head_Update {
         if ( is_wp_error( $resolved ) ) return $resolved;
         if ( self::REPO !== $resolved['repository'] )
             $blockers[] = 'selected_head_repository_unsupported';
+        $source_preflight = class_exists( 'MAD4B_Release_Source_Admission' )
+            ? MAD4B_Release_Source_Admission::check( (string) $resolved['resolved_sha'] ) : array();
+        if ( empty( $source_preflight['preflight_ready'] ) )
+            $blockers[] = 'signed_source_reconciliation_preflight_required';
         $package = self::REPO === $resolved['repository'] ? self::manifest( $resolved['resolved_sha'] )
             : self::fail( 'repository_unsupported', 'Only the installed plugin repository release is accepted.' );
         $upload_plan = array();
@@ -363,6 +367,7 @@ final class MAD4B_SCP_Selected_Head_Update {
                 'independent_signed_ci_outage_receipt_supported' => true,
             ),
             'source' => $resolved,
+            'source_reconciliation_preflight' => $source_preflight,
             'package_identity' => is_wp_error( $package ) ? array() : $package['identity'],
             'manifest_sha256' => is_wp_error( $package ) ? '' : $package['manifest_sha256'],
             'release_verdict_run_id' => is_wp_error( $package ) ? 0 : $package['release_verdict_run_id'],
@@ -437,6 +442,10 @@ final class MAD4B_SCP_Selected_Head_Update {
         // Plan generated an exact immutable GitHub-owned ZIP URL; the caller
         // cannot substitute a URL or local archive.
         $sha = $plan['source']['resolved_sha'];
+        $host_admission = class_exists( 'MAD4B_Release_Source_Admission' )
+            ? MAD4B_Release_Source_Admission::require_for_release( $sha )
+            : self::fail( 'signed_source_preflight_unavailable', 'Signed source preflight verifier is not installed.' );
+        if ( is_wp_error( $host_admission ) ) return $host_admission;
         $zip_url = 'https://github.com/' . self::REPO . '/releases/download/' .
             self::RELEASE_TAG . '/mad4b-site-control-plane-' . $sha . '.zip';
         $res = wp_safe_remote_get( $zip_url, array(

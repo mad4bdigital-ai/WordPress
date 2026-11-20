@@ -78,7 +78,13 @@ try{
    throw new Exception('missing_managed_profile_denial_'.$flag);
   MAD4B_SCP_Site_Profile::$$flag=true;
  }
- $plan=$check('remote_verified_staging_exact_match',$input,true);
+ // A GitHub source identity can be verified read-only, but may not be
+ // applied without a separate short-lived signed Host Source Admission.
+ $plan=$check('remote_verified_staging_exact_match',$input,false);
+ if (empty($plan['candidate_source']['remote_verified'])
+     || !in_array('signed_source_reconciliation_preflight_required',$plan['blockers'],true)
+     || $plan['release_channel_bound'] || $plan['production_allowed'])
+     throw new Exception('signed_host_source_admission_not_enforced');
  $unauthorized=MAD4B_SCP_Self_Update::upload_apply(array_merge($input,[
   'expected_plan_sha256'=>$plan['plan_sha256'],
   'candidate_confirmation'=>'INSTALL EXACT STAGING CANDIDATE',
@@ -99,4 +105,6 @@ try{
  $p=$check('remote_lookup_fails_closed',$bad,false);
  if(!in_array('mad4b_staging_source_lookup_failed',$p['blockers'],true))throw new Exception('missing_remote_lookup_blocker');
  echo "QA27_RC118_GITHUB_SOURCE_UPLOAD_PLAN_PASS\n";
+ // The readiness executor requires a positive assertion marker, not exit(0) alone.
+ echo "PASS: QA27 exact source and unsigned Host candidate denial verified\n";
 }finally{@rmdir($root);}

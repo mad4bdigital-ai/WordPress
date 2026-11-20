@@ -1,0 +1,32 @@
+{
+  "contract": "mad4b.release-source-preflight-policy.v1",
+  "repository": "mad4bdigital-ai/WordPress",
+  "allowed_sources": ["local_integration", "live_toursdev", "github_master", "github_candidate"],
+  "release_admission_default": false,
+  "source_identity_required": true,
+  "immutable_git_commit_required_for_package": true,
+  "site_specific_paths": [
+    "plugin/includes/class-mad4b-scp-site-profile.php",
+    "plugin/includes/class-mad4b-scp-content-experience-media-rights.php"
+  ],
+  "protected_components": [
+    "plugin/includes/class-mad4b-scp-authorization.php",
+    "plugin/includes/class-mad4b-scp-agent-grant-lifecycle.php",
+    "plugin/includes/class-mad4b-scp-impact-policy.php",
+    "plugin/includes/class-mad4b-scp-context-preflight.php",
+    "plugin/includes/class-mad4b-scp-site-profile.php",
+    "plugin/includes/class-mad4b-scp-content-experience-runtime.php",
+    "plugin/includes/class-mad4b-scp-content-experience-media-rights.php",
+    "plugin/includes/class-mad4b-scp-execution-fence.php",
+    "plugin/includes/class-mad4b-scp-execution-commit-guard.php",
+    "plugin/includes/class-mad4b-scp-selected-head-update.php",
+    "plugin/includes/class-mad4b-scp-staging-source-selector.php",
+    "plugin/includes/class-mad4b-scp-staging-write-authority.php",
+    "plugin/includes/class-mad4b-scp-staging-write-grant-reconciliation.php",
+    "plugin/includes/class-mad4b-scp-staging-write-candidate-binding.php"
+  ],
+  "protected_path_fragments": ["authorization", "authority", "candidate", "grant", "execution", "security", "pricing", "commerce", "checkout", "payment", "booking", "brand-integrity"],
+  "max_files": 6000,
+  "max_bytes": 268435456,
+  "max_differences_returned": 45
+}
