@@ -818,3 +818,111 @@ not public tours, checkout, other settings pages or Form #6.
   the static and DOM smoke tests.
 - Transport service mode remains tour_only. No price, currency,
   availability, stock, booking, checkout or CPT visibility changed.
+
+## 20 November 2026: Owner-confirmed self-provider EGP cost modeling
+
+The owner explicitly confirmed the original Transportation 2026 PDF
+amounts are REAL COMPANY COSTS in Egyptian pounds (EGP). The PDF itself
+does not print the currency or identify the cost role. This owner
+confirmation is recorded separately; original SHA256 remains
+c3bde2be4ac89f1b7b9671720b552d39646c93ea9fa5a786fe2a9bde8f1644cd.
+
+### Source reconciliation
+
+- Source policy: currency EGP, price_role self_cost, provider self.
+  Commercial sales and native Transport Rates remain unapproved.
+- Source PDF vehicle column correction: 13 Cairo operations have Hiace
+  as the second vehicle price and Luxury 7 Seats as the third. Original
+  PDF amounts are unchanged. Corrected source metadata on 78 translated
+  Tours.dev posts and 26 Wayfatours posts.
+- Source backups: mad4b_cairo_pdf_vehicle_label_backup_20261120_v1
+  and mad4b_transport_owner_cost_confirmation_backup_20261120_v1.
+- The PDF five-percent reduction applies once to Aswan and Luxor
+  pre-discount cost values for reference calibration, never twice.
+
+### Dedicated cost engine, non-commercial by design
+
+Files:
+  includes/transport-distance-time-pricing.php
+  assets/transport-distance-time-panel.html
+  assets/transport-distance-time.js
+  assets/transport-distance-time.css
+
+The engine is embedded under Transportation in the original unified
+Dynamic Pricing Controls page. Internal option:
+  mad4b_transport_distance_time_v1
+and audit:
+  mad4b_transport_distance_time_history_v1
+
+The company source model stores an EGP cost profile for six vehicle types:
+Limousine, Luxury 7 Seats, H1, Hiace, Coaster, Bus. Each supports a fixed
+dispatch EGP cost, cost per operating km, cost per driving minute,
+cost per waiting minute, overnight cost, minimum fare and deadhead %.
+
+Route estimation supports either two existing WordPress destination-term
+centroids, two custom coordinate pairs, or manually provided distance
+and driving minutes for previously unknown journeys. Term coordinates
+are WordPress JetEngine native location metadata. Haversine multiplied
+by a disclosed circuity factor and assumed route speed is a LOW-CONFIDENCE
+estimate, NOT an actual road-network driving distance or duration.
+
+Road types include city, highway and desert. Extra factors: road movement
+cost, night, peak, waiting, tolls, parking and other operating expenses.
+Commercial scenario = operating cost + policy markup/adjustments, with a
+minimum fare and an explicitly applied discount, no double tax or automatic
+currency conversion.
+
+Markup precedence: Tour Rate > route > service > vehicle > global.
+Modes inherit, override, adjustment preserve precedence without blindly
+summing successive overriding percentages. A native JetEngine Tour Rate
+field transport_markup_override_pct (blank inherit, zero explicit override)
+is added at position 53 by:
+  tools/reconcile-tour-rate-transport-markup-override.php
+Original 52 parent fields, 17 stage child fields and all existing Tour Rate
+values remain unchanged. Schema before-image backup on each site:
+  mad4b_tour_rate_markup_schema_backup_20261120_v1
+
+### Calibration — source is actual cost; decomposition is estimated
+
+Intercity one-way, single-destination actual supplier/company cost
+examples only. Multi-stops, day tours, roundtrips, overnights, Luxor:7
+anomaly and ambiguous geometry are excluded.
+
+Single trip total costs do not mathematically identify two independent
+distance/time marginal coefficients. The simulator therefore applies a
+transparent 25% time allocation assumption and robust median-based
+cost-per-unit-exposure fit with 35% outlier screening. Fit metrics are
+NOT a future route prediction guarantee.
+
+Seeded in company simulation option on BOTH sites:
+- Limousine: 7 examples, 6 retained; EGP 13.53/km and 4.51/min.
+- Hiace: 6, 5 retained; EGP 16.45/km and 5.48/min.
+- Coaster: 7, 6 retained; EGP 27.00/km and 9.00/min.
+- Bus: 7, 5 retained; EGP 61.60/km and 20.53/min.
+- Luxury 7 Seats: 1 example; insufficient for calibration.
+- H1: 0 examples; no invented profile.
+
+Model revision is 1, source policy revision 3, company scope independent.
+Native original supplier costs and markup scenario are never automatically
+added to a Tour Rate. Tax, stock, supplier day-specific availability,
+vehicle capacity, pickup/dropoff, and actual booking remain separate.
+
+### Test boundaries
+
+Source, language, protected price readback, cost-engine validation, route
+candidate matching, Source Review and native Tour Rate stage metadata are
+all checked live. HTTP-only public transport service remains disabled by
+tour_only. Cost engine is admin-only, nonce- and capability-gated, with a
+revision lock, audit history, readback, numeric validation and fail-closed
+unpriced vehicle profiles. There is no checkout or Woo order integration.
+
+Test coverage (both sites, post source correction):
+- Distance/time cost tests 32/32 each.
+- Source pricing integrity 35/35 each.
+- PDF and translations 381/381 on Tours.dev; 141/141 Wayfatours.
+- Native Tour Rate routing/field dimensions 52/52 each.
+- Operational readiness 24/24 Tours.dev; 12/12 Wayfatours.
+
+Deployment is live for internal admin preview on the two companies; source
+and UI code are maintained under Git review and cannot be called an approved
+production release until its new PR and exact-head governance checks pass.

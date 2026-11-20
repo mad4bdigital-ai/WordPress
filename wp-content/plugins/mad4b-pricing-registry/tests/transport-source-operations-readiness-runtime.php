@@ -35,8 +35,8 @@ $invalid=$c::inspect(1,[]);
 $check('non_source_rejected',($invalid['source_trusted']??true)===false &&
  ($invalid['booking_ready']??true)===false);
 $policy=MAD4B_Transport_Self_Pricing_Controls_V1::current();
-$check('source_currency_not_fabricated',($policy['currency']??null)==='');
-$check('source_amount_role_reference_only',($policy['price_role']??null)==='reference_only');
+$check('source_currency_owner_confirmed_EGP',($policy['currency']??null)==='EGP');
+$check('source_amount_role_actual_company_cost',($policy['price_role']??null)==='self_cost');
 $check('company_uses_tour_only',service_channel_mode('transportations')==='tour_only');
 $check('standalone_pages_not_available',!service_channel_allowed('transportations','standalone'));
 $failed=array_keys(array_filter($checks,static fn($ok)=>!$ok));
@@ -44,5 +44,5 @@ echo wp_json_encode(['site'=>$site,'tests'=>count($checks),
  'passed'=>count($checks)-count($failed),'failed'=>$failed,
  'source_languages'=>count($langs),'source_operations_per_language'=>51,
  'rates_approved'=>0,'availability'=>'on_request_unconfirmed',
- 'price_state'=>'reference_only','checkout_ready'=>false])."\n";
+ 'price_state'=>'actual_company_cost_not_checkout_approved','checkout_ready'=>false])."\n";
 if($failed)exit(1);
