@@ -91,7 +91,9 @@ jobs:
 
   runtime:
     name: Local OAuth runtime (${{ matrix.wordpress }} / PHP ${{ matrix.php }} / ${{ matrix.adapter }})
-    runs-on: ubuntu-latest
+    # Playwright 1.56.1 rejects Chromium on ubuntu26.04-x64.
+    # Real browser E2E stays mandatory; pin only this runtime job.
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:

@@ -11538,6 +11538,25 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The existing original Agent Registry exact grant, Staging-only provider review, site profile, mutation gate, owner approval, checkpoint, readback and audit safeguards govern this single diagnostic, without wildcard rights.",
       "review_rationale": "Exact source review allows a core grant to be considered only for mad4b/hub-queue-site-health-enqueue when the Ability is registered on the correct central Staging site. No grant is issued merely because this provider pair appears; broad hub-bulk-enqueue remains outside the reviewed policy and Production is not enabled."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+      "source_blob_sha": "cc6c4f735d6800ebb8de46ab1d07556baee890d9",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "RECOVERY-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "tests/host-v126/test_site_profile_runtime_cli.py",
+        "tests/host-v126/test_site_profile_source_contract.py"
+      ],
+      "review_rationale": "Exact Staging source identity reconciliation: WPML registered-language canonical origin, WP-CLI HTTPS saved-site scheme fail-closed comparison and reserved Site UUID attestation; same-PR adversarial host, locale, nonce-independent UUID rejection fixtures plus PHP 8.5 test compatibility. Comment scanner fix does not change runtime, Production remains unauthorized. Production Readiness executes the exact eight hermetic PHP behavior fixtures through a reviewed Python wrapper without weakening the PHP standalone allowlist or treating syntax-only checks as positive acceptance.",
+      "owner_role": "Repository code-security reviewer and CI-only impact reconciliation; no site owner or Production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
