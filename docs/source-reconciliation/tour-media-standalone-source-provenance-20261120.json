@@ -1,0 +1,19 @@
+{
+  "bootstrap_new_sha256": "9dbbcc74162eed345913aaea9544b543b02a7c4f39a8079f9f50b336b2af63ad",
+  "contract": "mad4b.tour-media-standalone-source-admission.review-only.v1",
+  "min_php_version": "8.1",
+  "module_count": 4,
+  "owner_attested": false,
+  "release_authorized": false,
+  "runtime_deployment_authorized": false,
+  "source_description": "Mounted Tours.dev Staging plugin source verified active through WordPress ReflectionClass; four modules copied byte-exact, bootstrap adds PHP-version compatibility guard",
+  "source_file_sha256": {
+    "includes/class-mad4b-scp-host-media-closure.php": "5981e19de9a5fc2b23ab20c3332b18ec6c8603d336dcb4f0a35a2ecc5fdb00b6",
+    "includes/class-mad4b-scp-host-media-intake.php": "fec2822fee2a009168491014d293d57fa85afe2186aacc4e11395cd3db4e1337",
+    "includes/class-mad4b-scp-host-media-reconcile-proposal.php": "afb13907aaffb19fc50f1d4c6179a194c499bb7e266b207f446b0139b6a22765",
+    "includes/class-mad4b-scp-host-visual-strategy-proposal.php": "9dfa29c067bfb3c5919c12fd3c271e9c2b0195b13db9f9edf4b5c227884dbe01"
+  },
+  "source_install_requires_explicit_activation": true,
+  "source_measured_date": "2026-11-20",
+  "wordpress_options_changed": false
+}
