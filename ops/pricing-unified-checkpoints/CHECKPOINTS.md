@@ -165,3 +165,30 @@ Checks:
 - verify-pricing-interface-v2.php passed on staging and Wayfatours. Original native shell and markup verification passed with unchanged source revision.
 - VPS rollback copies at /opt/mad4b-company-provisioning/backups/pricing-interface-v2-20261120/{staging,wayfatours}/.
 - OPEN: authenticated browser QA for all product modes, original JetEngine Save/Repeater, independent service Save/Approve, and commercial Rate/Checkout E2E.
+
+## CP2.7 — Align company/product panes, reclaim repeater space, deduplicate registry (20 Nov 2026)
+
+Owner screenshots highlighted inconsistent horizontal alignment between company settings and accommodation/transport, repeated policy information across tabs, and descriptions monopolizing space before the original JetEngine repeaters.
+
+Root cause:
+1. Legacy source composer allocated two root columns to product panes, while company settings used three with a Tour Inspector. At 1280 and 1024px, sidebar widths diverged due to unrelated breakpoints.
+2. JetEngine's original CX inline repeater kept a split label/content width even after ordinary fields were flattened.
+3. Read-only Unified Policy Registry was built in BOTH Overview and Pricing Policies, with its entire Policies table preceding editable native repeaters.
+4. Dimension chooser showed WPML/Rate authority and four long action descriptions ahead of the dimension groups; product pages repeated the global Step 2 heading.
+5. Company-only search was above the shared navigation, shifting the left sidebar on product pages.
+
+Resolution:
+- One composed Canvas layout contract aligns content x and sidebar widths at 1440/1280/1024/768/390/320; supplier quote rails remain native and adapt at container width.
+- The SAME company search input moves next to the company section title, preserving original handler and input value. Product-specific searches remain untouched.
+- Original CX native repeater content and heading fill 100% of available main editor width; no clone or field rename.
+- Full read-only policy registry has exactly one owner: Pricing Policies. A compact count and closed details precede native editable repeaters; Overview provides one direct navigation action opening that details view.
+- JetEngine dimension groups follow a compact four-action toolbar and readback status directly. Long WPML/Rate explanations and all four per-action captions remain available after groups through native disclosures with intact ARIA references.
+- Product tabs have a compact shared-inheritance note instead of repeating the company's Step 2 configuration page.
+- No original source controls, vendor templates, forms, nonces, Save/approval handlers, Tour Rates, checkout or prices were modified.
+
+Evidence:
+- verify-pricing-layout-regression-playwright.py uses the frozen real legacy composer CSS in fixtures/pricing-composer-vendor.css, the actual JetEngine styles and current UI shell. Chromium passed six viewports with exact company/product content-left alignment, zero overflow, full-width repeater content and verified descriptions order.
+- verify-jetengine-shell-product-context-dom.js, verify-jetengine-native-editor-composition-dom.js and verify-jetengine-shell-nav-dom.js passed.
+- verify-pricing-layout-ux-source.php, verify-jetengine-shell-ui.php, verify-pricing-interface-v2.php, verify-jetengine-composed-workspace.php and verify-native-jetengine-form-markup.php passed after deployment on Tours.dev and Wayfatours. Both retain 54 original fields and unmodified settings source revision.
+- VPS backups: /opt/mad4b-company-provisioning/backups/pricing-cp27-align-and-deduplicate-20261120 and /opt/mad4b-company-provisioning/backups/pricing-cp27-registry-compact-20261120.
+- OPEN: real authenticated browser visual, full native Repeater Save/Company setting persistence, independent product Save/Approval interactions, and commercial E2E. Fixture QA is not a live browser certificate.

@@ -19,7 +19,7 @@ $src=WPMU_PLUGIN_DIR.'/assets/'.$handle.'.css';
 $code=file_get_contents($src);
 $script=WPMU_PLUGIN_DIR.'/assets/'.$handle.'.js';
 $jsCode=file_get_contents($script);
-if(!str_contains($jsCode,'Step 2 · Choose active pricing dimensions') ||
+if(!str_contains($jsCode,'Company-wide dimensions apply here') ||
  !str_contains($jsCode,'mad4b-ws-nav-btn[data-section="overview"]') ||
  !str_contains($jsCode,'mad4b-ws-dimension-open') ||
  !str_contains($jsCode,'mad4b-guide-cost-tab-active'))

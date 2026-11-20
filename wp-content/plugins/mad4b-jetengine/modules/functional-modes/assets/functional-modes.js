@@ -938,6 +938,14 @@
       ['inherit','Auto-include all',
         'Use all current dimensions and automatically include new JetEngine dimensions discovered later.']
     ];
+    // Extensive explanatory text belongs in ONE optional help disclosure,
+    // not in four always-expanded cards preceding the repeater groups.
+    // aria-describedby continues to reference each original caption id.
+    const guidance=make('details','mad4b-ws-dimension-guidance');
+    const guidanceSummary=make('summary','','About targeting, WPML & source-price authority');
+    guidance.append(guidanceSummary);
+    const choiceHelp=make('details','mad4b-ws-dimension-choice-help');
+    choiceHelp.append(make('summary','','What do these four options do?'));
     const actionButtons=new Map();
     for(const [key,label,description] of actionHelp){
       const wrapper=make('div','mad4b-ws-dimension-action');
@@ -947,7 +955,8 @@
       button.type='button';
       button.setAttribute('aria-describedby',caption.id);
       button.title=description;
-      wrapper.append(button,caption);
+      wrapper.append(button);
+      choiceHelp.append(caption);
       toolbar.append(wrapper);
       actionButtons.set(key,button);
     }
@@ -1079,7 +1088,12 @@
       for(const item of all)selected.add(item.id);
       updateState(true);
     });
-    dimPanel.append(scopePanel,helper,toolbar,actionFeedback,container,pending,core,lab);
+    // Present the actual dimension groups directly after the action toolbar;
+    // long explanations and per-action guidance remain available on demand.
+    // No field, checkbox, form input or saved policy is cloned or removed.
+    guidance.append(scopePanel,helper,core);
+    dimPanel.append(toolbar,actionFeedback,container,pending,
+      guidance,choiceHelp,lab);
     updateState(false);
     updateLanguageScope(false);
   };

@@ -21,6 +21,22 @@
   // Restore the *same* nodes to their original location in Native mode.
   // Do not copy, serialize, or create another form.
   const workspaceContent=root.querySelector('.mad4b-ws-content');
+  // Put the original COMPANY field search beside the active section heading,
+  // not above the shared navigation. Product sections have their own search
+  // controls, while the navigation's start edge should never shift between
+  // company and product tabs. Move the SAME input with its listeners intact.
+  const fieldSearch=cfg.pricing?root.querySelector('.mad4b-ws-sidebar .mad4b-ws-search'):null;
+  if(workspaceContent && fieldSearch &&
+     !workspaceContent.querySelector('.mad4b-ws-find-settings')){
+    const find=document.createElement('div');
+    find.className='mad4b-ws-find-settings';
+    find.setAttribute('role','search');
+    find.setAttribute('aria-label','Find company pricing settings');
+    find.append(fieldSearch);
+    const title=workspaceContent.querySelector('.mad4b-ws-section-heading');
+    if(title)title.insertAdjacentElement('afterend',find);
+    else workspaceContent.prepend(find);
+  }
   const original=[...root.children].find(el=>
     typeof el.classList?.contains==='function' &&
     el.classList.contains('mad4b-ws-original'));
@@ -124,7 +140,7 @@
     const inner=document.createElement('div');
     const marker=document.createElement('span');
     marker.className='mad4b-ws-product-context__eyebrow';
-    marker.textContent='Product settings · inherit company-wide dimensions';
+    marker.textContent='Shared company targeting';
     const heading=document.createElement('strong');
     heading.className='mad4b-ws-product-context__title';
     const desc=document.createElement('p');
@@ -154,15 +170,15 @@
     const services={
       accommodation:{
         name:'Accommodation & Units',
-        note:'Choose the Property, Unit and supplier cost evidence in the original Stay panel below. Audience, schedule and destination targeting inherit the company policy.'
+        note:'Edit the Property, Unit and supplier-cost evidence below; targeting dimensions are inherited.'
       },
       transportation:{
         name:'Transportation',
-        note:'Choose the transfer and vehicle/route cost in the original Transport panel below. Supplier policy retains its own original Save; company targeting dimensions are shared.'
+        note:'Edit the original transfer/route costs below using Transport Save; targeting dimensions are inherited.'
       },
       guide:{
         name:'Guide Costs',
-        note:'Guide-day coverage and language costs remain in their original Tour and Guide Language taxonomy editors. Company targeting dimensions are shared.'
+        note:'Edit guide-day coverage and Guide Language taxonomy costs in their original editors; targeting dimensions are inherited.'
       }
     };
     const activeProduct=()=>{
@@ -175,7 +191,7 @@
       const key=root.classList.contains('mad4b-ws-visual')?activeProduct():'';
       context.hidden=!key;
       if(!key)return;
-      heading.textContent='Step 2 · Choose active pricing dimensions';
+      heading.textContent='Company-wide dimensions apply here';
       desc.textContent=services[key].name+': '+services[key].note;
       action.hidden=!root.querySelector('.mad4b-ws-dimension-open');
     };

@@ -90,6 +90,8 @@ vm.runInNewContext(source,ctx);
 const panel=content.querySelector('.mad4b-ws-product-context');
 assert.ok(panel,'Missing product step controller');
 assert.equal(panel.hidden,false,'Accommodation needs source scope context');
+assert.equal(panel.children[0].children[1].textContent,
+  'Company-wide dimensions apply here','Product pages must not duplicate the company Step 2 form');
 assert.match(panel.children[0].children[2].textContent,/Accommodation & Units/);
 assert.equal(panel.parentNode,content,'Must stay outside original native form');
 assert.equal(content.children[1],panel,'Scope should be after workspace heading');
@@ -108,7 +110,7 @@ assert.match(panel.children[0].children[2].textContent,/Transport/);
 root.classes.add('mad4b-guide-cost-tab-active');
 delete root.dataset.mad4bPricingPane;
 rootObserver.fn();
-assert.match(panel.children[0].children[2].textContent,/Guide-day coverage/);
+assert.match(panel.children[0].children[2].textContent,/guide-day coverage/i);
 root.classes.delete('mad4b-ws-visual');
 docListeners['mad4b:jetengine:mode-changed']();
 assert.equal(panel.hidden,true,'Native mode must hide grouped-only callout');

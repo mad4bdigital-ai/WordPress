@@ -122,73 +122,47 @@
       );
       details.append(metrics,make('p','mad4b-pricing-rule-explain',explain(s)));
       if(registry && Array.isArray(registry.rows)){
-        const wrapper=make('details','mad4b-pricing-unified-registry');
-        const summary=make('summary','',
-          'Unified policy registry · '+registry.rows.length+
-          ' entries from '+registry.source_count+' provider families');
-        wrapper.append(summary);
-        const note=make('p','mad4b-pricing-rule-explain',
-          'Read-only projection. Native JetEngine rules are the original source of truth; Pricing Lab is the Draft workspace. No rule is copied or activated by this panel.');
-        wrapper.append(note);
-        const tablebox=make('div','mad4b-pricing-rule-table-box');
-        const table=make('table','widefat striped mad4b-pricing-rule-table');
-        const head=make('thead'),hrow=make('tr');
-        for(const label of ['Family','Rule','Value','Status','Authoritative source']){
-          hrow.append(make('th','',label));
-        }
-        head.append(hrow);table.append(head);
-        const tbody=make('tbody');
-        const states={
-          preview_eligible:'Preview eligible · not live Checkout',
-          configured_native:'Configured native policy · not a verified sale',
-          configured_component:'Component source configured',
-          configured_supplier_cost:'Supplier cost source configured',
-          inherited_supplier_cost:'Guide cost · inherited EGP fallback',
-          approved_supplier_cost:'Guide cost · approved Term',
-          reference_only_no_cost_authority:'Reference only · supplier cost blocked',
-          blocked_term_gate:'Blocked · Taxonomy term gate',
-          blocked_source_or_conflict:'Blocked · source invalid or conflict',
-          draft:'Draft · no price effect',
-          staged:'Staged · not active',
-          approval_pending:'Pending approval',
-          disabled:'Disabled'
-        };
-        const names={
-          tour_type:'Tour Type',package_level:'Package Level',
-          tour_mode:'Tour Mode',price_source:'Price Source',
-          pricing_lab:'Pricing Lab',native_preset:'Native Preset',
-          component:'Component Cost',guide_cost:'Guide Cost',
-          transport_self:'Transport Self',group_tier:'Group Tier',
-          promotion:'Promotion',payment_fee:'Payment Fee',
-        };
-        for(const entry of registry.rows){
-          const tr=make('tr');
-          for(const value of [
-            names[entry.family]||entry.family,
-            entry.name,entry.effect,
-            states[entry.status]||entry.status,
-            entry.source
-          ])tr.append(make('td','',value));
-          tbody.append(tr);
-        }
-        table.append(tbody);tablebox.append(table);wrapper.append(tablebox);
-        details.append(wrapper);
+        // ONE full registry belongs to the Pricing Policies workspace.
+        // The overview gets only a count and a navigation action. Keeping
+        // two independent full tables caused real duplicated content and
+        // unnecessary rendering cost in every company settings view.
+        const jump=make('button','button button-link mad4b-pricing-rule-registry-jump',
+          'Review '+registry.rows.length+' policies in Pricing Policies');
+        jump.type='button';
+        jump.addEventListener('click',()=>{
+          root.querySelector('.mad4b-ws-nav-btn[data-section="policies"]')?.click();
+          // A direct "Review" action must reveal the existing, unique
+          // read-only registry rather than leaving its disclosure closed.
+          const inspector=policyPanel.querySelector('.mad4b-pricing-policy-registry-details');
+          if(inspector)inspector.open=true;
+        });
+        details.append(jump);
         if(registry.warnings?.length)
           details.append(make('p','mad4b-pricing-rule-explain',
             'Source warnings: '+registry.warnings.join(', ')));
       }
       policyPanel.replaceChildren();
       if(registry && Array.isArray(registry.rows)){
-        policyPanel.append(make('h3','','Unified policies · all source families'));
-        policyPanel.append(make('p','mad4b-pricing-rule-explain',
-          'Single read-only registry. Package Levels and Tour Type markups come from their native source, not Pricing Lab. Preview enabled does not mean a live selling rule.'));
+        // Native editable JetEngine policy repeaters must follow the section
+        // heading directly. A separate expanded policy table before them
+        // made this tab look like two repeated pages. Provide a compact
+        // source-status line; the ONE complete registry is available on
+        // demand from this native disclosure and the Overview Review link.
         const counts=registry.status_counts||{};
-        policyPanel.append(make('p','',
-          (counts.preview_eligible||0)+' preview-eligible price rules · '+
-          (counts.draft||0)+' Draft · '+
-          (counts.staged||0)+' Staged · '+
-          (counts.blocked_source_or_conflict||0)+' source conflicts · '+
-          registry.source_count+' sources'));
+        const brief=make('div','mad4b-pricing-policy-registry-brief');
+        brief.append(make('strong','',
+          registry.rows.length+' policies · '+registry.source_count+' source families'));
+        brief.append(make('span','',
+          (counts.preview_eligible||0)+' preview-only · '+
+          (counts.draft||0)+' draft · '+
+          (counts.staged||0)+' staged · '+
+          (counts.blocked_source_or_conflict||0)+' conflicts'));
+        const detail=make('details','mad4b-pricing-policy-registry-details');
+        detail.append(make('summary','',
+          'View original source policies ('+registry.rows.length+')'));
+        const inspector=make('div','mad4b-pricing-policy-registry-body');
+        inspector.append(make('p','mad4b-pricing-rule-explain',
+          'Read-only reference. Native JetEngine rules keep authority; Preview eligibility does not activate published Tour Rates or Checkout.'));
         const scroll=make('div','mad4b-pricing-rule-table-box');
         const table=make('table','widefat striped mad4b-pricing-rule-table');
         const head=make('thead'),headRow=make('tr');
@@ -204,9 +178,11 @@
             tr.append(make('td','',v));
           body.append(tr);
         }
-        table.append(body);scroll.append(table);policyPanel.append(scroll);
-        policyPanel.append(make('p','mad4b-pricing-rule-explain',
-          'To change a source policy, use its existing JetEngine editor and Save. This registry never saves a second copy or applies a new rate.'));
+        table.append(body);scroll.append(table);
+        inspector.append(scroll,make('p','mad4b-pricing-rule-explain',
+          'To update a source policy, use its original JetEngine editor and Save. This registry never saves a copy or applies a Rate.'));
+        detail.append(inspector);
+        policyPanel.append(brief,detail);
       }
       syncPolicyTab();
       if(s.policy_bindings.global_refs || s.policy_bindings.term_records || s.policy_bindings.post_records){
