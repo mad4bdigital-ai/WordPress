@@ -892,6 +892,51 @@ final class MAD4B_SCP_Site_Profile {
 		);
 	}
 
+    /**
+     * First-party Host-pinned Site UUID compatibility for newly provisioned
+     * companies. A caller-supplied UUID is not proof: immutable host constants
+     * must agree with exact origin, explicit WordPress environment and company
+     * code. Never replace an existing profile or issue mutation authority.
+     */
+    public static function host_pinned_uuid_preflight( array $input, $origin,
+        $environment, $wordpress_environment, $existing_valid ) {
+        if ( ! array_key_exists( 'host_pinned_site_uuid', $input ) ) return '';
+        if ( ! is_string( $input['host_pinned_site_uuid'] ) )
+            return new WP_Error( 'mad4b_host_pinned_site_uuid_invalid',
+                'The requested Host-pinned UUID must be a string.' );
+        $requested = strtolower( trim( $input['host_pinned_site_uuid'] ) );
+        if ( '' === $requested ) return '';
+        if ( ! self::valid_uuid( $requested )
+            || ! is_string( $origin ) || '' === $origin
+            || ! is_string( $environment ) || ! is_string( $wordpress_environment )
+            || ! in_array( $environment, array( 'staging', 'production' ), true )
+            || $existing_valid
+            || ( isset( $input['reserved_site_uuid'] )
+                && ( ! is_string( $input['reserved_site_uuid'] )
+                    || '' !== trim( $input['reserved_site_uuid'] ) ) ) )
+            return new WP_Error( 'mad4b_host_pinned_site_uuid_scope_invalid',
+                'Host-pinned UUID is for a new, unambiguous Staging/Production profile only.' );
+        if ( ! defined( 'MAD4B_TENANT_SITE_UUID' )
+            || ! defined( 'MAD4B_TENANT_ORIGIN' )
+            || ! defined( 'MAD4B_TENANT_COMPANY_CODE' ) )
+            return new WP_Error( 'mad4b_host_pinned_site_uuid_host_binding_missing',
+                'Independent Host tenant constants are required.' );
+        $host_uuid = constant( 'MAD4B_TENANT_SITE_UUID' );
+        $host_origin = constant( 'MAD4B_TENANT_ORIGIN' );
+        $host_company = constant( 'MAD4B_TENANT_COMPANY_CODE' );
+        if ( ! is_string( $host_uuid ) || ! self::valid_uuid( $host_uuid )
+            || ! is_string( $host_origin ) || '' === $host_origin
+            || ! is_string( $host_company )
+            || ! preg_match( '/^[a-z0-9][a-z0-9_-]{1,63}$/D', $host_company )
+            || ! hash_equals( strtolower( trim( $host_uuid ) ), $requested )
+            || ! hash_equals( $origin, rtrim( $host_origin, '/' ) )
+            || ! self::wordpress_environment_explicit()
+            || ! hash_equals( $environment, $wordpress_environment ) )
+            return new WP_Error( 'mad4b_host_pinned_site_uuid_host_binding_mismatch',
+                'The explicit Host tenant UUID, origin, company and environment are not exact.' );
+        return $requested;
+    }
+
 	public static function save_current_site( array $input ) {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_admin_required', 'Administrator capability is required to enroll this site.' );
 		self::bootstrap();
@@ -962,9 +1007,14 @@ final class MAD4B_SCP_Site_Profile {
 				'WordPress is using its implicit Production default. Confirm this exact origin is non-Production and type CONFIRM THIS ORIGIN IS NON-PRODUCTION.'
 			);
 		}
-		// A cloned tenant may carry the source Site UUID. An authorized host
-		// provisioning adapter must attest the RESERVED UUID; the caller's
-		// requested value alone must never become an identity authority.
+		// Restore the original Host-pinned first-enrollment path only when
+        // independent Host constants and explicit environment match exactly.
+        // This never inherits old Site Profile, OAuth grants or write authority.
+        $host_pinned_uuid = self::host_pinned_uuid_preflight(
+            $input, $origin, $environment, $wordpress_environment, $existing_valid );
+        if ( is_wp_error( $host_pinned_uuid ) ) return $host_pinned_uuid;
+		// An independently authorized provisioning adapter may instead attest
+		// the reserved UUID. The two explicit identities are mutually exclusive.
 		$reserved_uuid = isset( $input['reserved_site_uuid'] ) ? strtolower( trim( (string) $input['reserved_site_uuid'] ) ) : '';
 		$verified_reserved_uuid = '';
 		if ( '' !== $reserved_uuid ) {
@@ -977,10 +1027,11 @@ final class MAD4B_SCP_Site_Profile {
 				&& ! hash_equals( strtolower( (string) $existing_normalized['site_uuid'] ), $reserved_uuid ) )
 				return new WP_Error( 'mad4b_reserved_site_uuid_identity_conflict', 'Existing identity conflicts with the reserved UUID.' );
 		}
-		$site_uuid = '' !== $verified_reserved_uuid ? strtolower( $verified_reserved_uuid )
-			: ( $existing_identity_matches && ! empty( $existing_normalized['site_uuid'] )
-				? strtolower( (string) $existing_normalized['site_uuid'] )
-				: wp_generate_uuid4() );
+		$site_uuid = '' !== $host_pinned_uuid ? $host_pinned_uuid
+            : ( '' !== $verified_reserved_uuid ? strtolower( $verified_reserved_uuid )
+                : ( $existing_identity_matches && ! empty( $existing_normalized['site_uuid'] )
+                    ? strtolower( (string) $existing_normalized['site_uuid'] )
+                    : wp_generate_uuid4() ) );
 		$revision = $existing_identity_matches ? $current_revision + 1 : 1;
 		$app_id = isset( $input['chatgpt_app_id'] ) ? trim( sanitize_text_field( (string) $input['chatgpt_app_id'] ) ) : '';
 		if ( '' !== $app_id && ! preg_match( '/^(?:plugin_)?asdk_app_[A-Za-z0-9]+$/D', $app_id ) ) return new WP_Error( 'mad4b_site_profile_app_id_invalid', 'ChatGPT App ID is invalid.' );

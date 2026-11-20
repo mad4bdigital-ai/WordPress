@@ -594,6 +594,87 @@ def reviewed_rc129_company_staff_ceiling_successor(repo:Path,path:str,contents:b
         return None
 
 
+def reviewed_pr986_wayfa_host_pinned_uuid_source(repo:Path,path:str,contents:bytes):
+    """SHA-pinned Host UUID first-enrollment compatibility, CI-only."""
+    name='includes/class-mad4b-scp-site-profile.php'
+    if path!=name or not isinstance(contents,bytes):return None
+    manifest=repo/'governance/release-parity/qa31-pr986-wayfa-host-pinned-uuid-source-20261120.json'
+    parent='d143c734ab6ecd8bc8b29802110cb56dbd39ffee'
+    prior='governance/release-parity/qa31-pr985-wayfa-indexed-scan-readback-source-20261120.json'
+    prior_sha='44a3b1309bf6861ba570802188738b6f7595f689c86a28d34e36bcac121c9f21'
+    before_blob='511317c6d76a1b19e155aab05c0c6bb581b7fa14'
+    before_sha='889e9719141f59b5232bd1dd992190d4c7173d3cb65964437fa2b6890c9893ea'
+    after_blob='0bf69fc5cabf2b9ef061f0a2e322cec576f01ac3'
+    after_sha='8aeff027196d6b6bf281ebc7a281e3503462a5d4e382154fd04788e563764187'
+    regression='wp-content/plugins/mad4b-site-control-plane/tests/site-profile-host-pinned-uuid-hermetic.php'
+    negative='tests/qa31_wayfa_host_pinned_site_uuid_source_contract.py'
+    ids=['GOVERNANCE-02','SECURITY-01','PLATFORM-01','ADMIN-01']
+    try:
+        m=json.loads(manifest.read_text(encoding='utf-8'))
+        controls={x['id'] for x in json.loads((repo/'governance/production-readiness/controls.json').read_text()).get('controls',[]) if isinstance(x,dict)}
+        if (m.get('contract')!='mad4b.qa31-pr986-wayfa-host-pinned-uuid-source.v1'
+            or m.get('original_github_head_sha')!=parent
+            or m.get('prior_context_readback_review_path')!=prior
+            or m.get('prior_context_readback_review_sha256')!=prior_sha
+            or hashlib.sha256((repo/prior).read_bytes()).hexdigest()!=prior_sha
+            or m.get('source_path')!=name
+            or m.get('original_parent_blob_sha')!=before_blob
+            or m.get('original_parent_sha256')!=before_sha
+            or m.get('reviewed_blob_sha')!=after_blob
+            or m.get('reviewed_sha256')!=after_sha
+            or m.get('required_regression')!=regression
+            or m.get('negative_contract')!=negative
+            or m.get('control_ids')!=ids or not set(ids)<=controls
+            or m.get('source_only') is not True
+            or m.get('reviewed_for_ci_only') is not True
+            or m.get('authorizing') is not False
+            or m.get('production_authorized') is not False
+            or m.get('source_promotion_approved') is not False
+            or m.get('is_build_provenance') is not False
+            or m.get('live_evidence_required') is not True
+            or m.get('host_uuid_claim_alone_authorizes') is not False
+            or m.get('existing_profile_rebind_allowed') is not False
+            or m.get('reserved_uuid_filter_bypassed') is not False
+            or m.get('dual_uuid_claim_allowed') is not False
+            or m.get('site_profile_write_performed') is not False
+            or m.get('host_anchor_issued') is not False
+            or m.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or len(m.get('review_rationale',''))<450
+            or not (repo/regression).is_file() or (repo/regression).is_symlink()
+            or not (repo/negative).is_file() or (repo/negative).is_symlink()):
+            return None
+        original=subprocess.check_output(
+            ['git','show',parent+':wp-content/plugins/mad4b-site-control-plane/'+name],
+            cwd=repo,stderr=subprocess.DEVNULL,timeout=8)
+        if (hashlib.sha256(original).hexdigest()!=before_sha
+            or hashlib.sha1(b'blob '+str(len(original)).encode()+b'\0'+original).hexdigest()!=before_blob
+            or subprocess.run(['git','merge-base','--is-ancestor',parent,'HEAD'],cwd=repo,
+                stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=8).returncode!=0):
+            return None
+        if (hashlib.sha256(contents).hexdigest()!=after_sha
+            or hashlib.sha1(b'blob '+str(len(contents)).encode()+b'\0'+contents).hexdigest()!=after_blob):
+            return None
+        code=contents.decode('utf-8')
+        for marker in (
+            'function host_pinned_uuid_preflight( array $input, $origin,',
+            '$host_pinned_uuid = self::host_pinned_uuid_preflight(',
+            "'host_pinned_site_uuid'", "'MAD4B_TENANT_SITE_UUID'",
+            "'MAD4B_TENANT_ORIGIN'", "'MAD4B_TENANT_COMPANY_CODE'",
+            '|| $existing_valid', "self::wordpress_environment_explicit()",
+            "'reserved_site_uuid'", "'mad4b_scp_authorized_reserved_site_uuid'",
+            "$site_uuid = '' !== $host_pinned_uuid ? $host_pinned_uuid",
+            'public static function save_current_site( array $input )'):
+            if marker not in code:return None
+        section=code[code.index('public static function host_pinned_uuid_preflight('):
+                     code.index('public static function save_current_site(')]
+        if any(needle in section for needle in ('update_option(', 'wp_mail(', 'wp_schedule_event(', 'wp_insert_user(', 'apply_filters(')):
+            return None
+        return regression
+    except (OSError,ValueError,KeyError,TypeError,UnicodeError,
+            subprocess.CalledProcessError,subprocess.TimeoutExpired):
+        return None
+
+
 def reviewed_pr985_wayfa_indexed_scan_readback_source(repo:Path,path:str,contents:bytes):
     """Bounded historical source-index readback, never a live Drive verdict."""
     name='includes/class-mad4b-scp-context-admin-ui.php'
@@ -1248,6 +1329,8 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     requested=reviewed_rc129_dormant_ollama_bootstrap_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_rc129_wayfa_source_followup_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_pr986_wayfa_host_pinned_uuid_source(repo,path,contents)
     if requested is None:
         requested=reviewed_pr985_wayfa_indexed_scan_readback_source(repo,path,contents)
     if requested is None:

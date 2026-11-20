@@ -24560,6 +24560,26 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+      "source_blob_sha": "0bf69fc5cabf2b9ef061f0a2e322cec576f01ac3",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-profile-host-pinned-uuid-hermetic.php"
+      ],
+      "owner_role": "MAD4B Site Profile identity reviewer; signed Host and Site Owner approval remain separate",
+      "review_rationale": "Restore the original Wayfatours host-pinned first-enrollment UUID compatibility as a separate strictly scoped entry into the existing, nonauthorizing Site Profile save-current-site flow. No caller-supplied UUID is authority. A new, unambiguous tenant must match fixed, independently host-owned UUID, exact canonical origin, explicit WordPress environment, and nonempty host company code; an already present valid profile always fails rather than changing existing identity. An alternative reserved UUID continues to require the original delegated external attestation filter and cannot be combined with host-pinned input. Host-pinned preflight issues no grant, OAuth credentials, Site Profile mutation, publication or live execution; existing Site Profile CAS/pending-audit and feature gates stay unchanged. Fail-closed PHP 7.4/8.5 positive and negative hermetic tests plus original Site Profile 1825 assertion lifecycle matrix are required. Neither Host constants by themselves nor a Draft PR certify authority; actual provisioning, deployed Origin proof, signed Host and production rollback remain separate.",
+      "coverage_reuse_rationale": "Uses original Site Profile pending-audit/compare-and-swap, exact WP origin/environment, host-owned constants and managed-write policy, with no new handler or remote write ability. An independently provided reserved UUID must continue through its existing external filter.",
+      "execution_note": "Isolated PHP 7.4/8.5 positive/negative Host UUID preflight fixture. Existing runtime host environment reconciliation and 1825 assertion Site Profile lifecycle fixture passed with disposable container tmpfs. No live enrollment, approval, identity change or production deployment.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
