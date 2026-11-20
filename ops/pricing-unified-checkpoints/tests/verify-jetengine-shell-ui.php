@@ -21,7 +21,8 @@ foreach([
  '.mad4b-ws-content','>.mad4b-ws-original',
  '.cx-section__info','.mad4b-stay-panel__accordion','.mad4b-ts-accordion',
  '.mad4b-ws-dimension-group','.mad4b-ws-provider-panel',
- '.mad4b-ws-nav-group-label','@media(max-width:900px)'
+ '.mad4b-ws-nav-group-label','.mad4b-guide-cost-tab-active',
+ '#mad4b-guide-taxonomy-cost-panel','@media(max-width:900px)'
 ] as $selector)if(!str_contains($code,$selector))
  WP_CLI::error('Missing shared surface styling: '.$selector);
 $before= MAD4B_JetEngine_Native_Pricing_CAS_V1::source_revision();

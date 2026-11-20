@@ -84,3 +84,8 @@ A separately reversible MU presentation layer now joins the native form and work
 Accepted on Tours.dev and Wayfatours: PHP syntax, CSS brace check, standalone JS navigation/late-service DOM tests, pricing admin enqueue/authorization, Site Service Activation Options Page enqueue, unchanged native source revision, 3/3 live/source file SHA, public HTTP 200. Authenticated graphical browser comparison at mobile/tablet/desktop is still pending.
 
 Deployment caveat: original pricing composition JS and CSS already exist on both live sites but their script sources are not tracked on the current #987 branch; this new layer does not overwrite them. Reconcile their baseline source separately before any broader plugin re-release.
+
+
+### Guide Costs shell parity follow-up
+
+Guide Costs is a separate Global + Taxonomy Term approval panel rather than an external pane owned by the Accommodation/Transport composer. The shared shell now recognizes the guide-cost-tab-active state as a Product section, avoids company form joined-bottom-border styling while native controls are hidden, flattens the Guide panel legacy postbox frame, and groups its navigation under Products & Supplier Services even if it mounts first. Staging/Production parity and tests passed. No Guide policy was saved.

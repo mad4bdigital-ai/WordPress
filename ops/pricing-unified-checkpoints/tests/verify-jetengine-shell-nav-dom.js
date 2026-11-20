@@ -22,6 +22,8 @@ class Element{
    return this.children.find(x=>x.dataset.mad4bNavGroup==='product')||null;
   if(selector==='.mad4b-ws-nav-btn:not(.mad4b-ws-service-nav)')
    return this.children.find(x=>x.classes.has('mad4b-ws-nav-btn')&&!x.classes.has('mad4b-ws-service-nav'))||null;
+  if(selector==='.mad4b-ws-service-nav,.mad4b-guide-cost-nav')
+   return this.children.find(x=>x.classes.has('mad4b-ws-service-nav')||x.classes.has('mad4b-guide-cost-nav'))||null;
   if(selector==='.mad4b-ws-service-nav')
    return this.children.find(x=>x.classes.has('mad4b-ws-service-nav'))||null;
   return null;
@@ -50,13 +52,15 @@ assert.equal(nav.children[0].attrs.role,'heading');
 assert.equal(nav.children[0].attrs['aria-level'],'3');
 assert.equal(root.children[0],originalForm);
 assert.equal(originalForm.children[0],nativeSave);
+const guide=new Element('button','mad4b-ws-nav-btn mad4b-guide-cost-nav');
+nav.append(guide);observer.callback();
+assert.equal(nav.children[2].dataset.mad4bNavGroup,'product');
+assert.equal(nav.children[3],guide,'Guide should be in Product settings even when it mounts first');
+assert.equal(observer.stopped,true);
 const accommodation=new Element('button','mad4b-ws-nav-btn mad4b-ws-service-nav');
 accommodation.dataset.pricingExternal='accommodation';
-nav.append(accommodation);observer.callback();
-assert.equal(nav.children[2].dataset.mad4bNavGroup,'product');
-assert.equal(nav.children[3],accommodation);
-assert.equal(observer.stopped,true);
-assert.equal(nav.children.length,4);
+nav.append(accommodation);
+assert.equal(nav.children.length,5);
 assert.equal(root.classes.has('mad4b-ws-unified-shell'),true);
 console.log('PASS company settings and late-mounted product service settings are separated');
 console.log('PASS original JetEngine form, Save, fields and source panel nodes remain unchanged');

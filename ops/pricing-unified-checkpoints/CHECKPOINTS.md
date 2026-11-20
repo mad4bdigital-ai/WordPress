@@ -7,6 +7,8 @@
 - Sidebar adds accessible Company-wide settings / Products & supplier services groups. The latter is inserted only when the original service composer dynamically adds the first product navigation button; no native buttons are replaced.
 - Rollback is deleting the standalone MU PHP, JS and CSS files; live original functional modes, pricing-workspace-unified composer, vendor and service modules stay untouched.
 - Staging and Wayfatours: PHP syntax, script DOM nav test, authorized enqueue/guest denial, original source revision unchanged, identical 3-file SHA, public HTTP 200. service-activation is tested as a second JetEngine Options Page on both sites. Browser-authenticated visual/keyboard/mobile acceptance remains OPEN.
+- Guide Costs uses a separate native Global/Term approval panel and the guide-cost-tab-active class, not the Stay/Transport composer. The shell now treats it as a Product pane, preserving the original approval forms but flattening the extra WordPress postbox, restoring a complete outer border and grouping the Guide navigation even when mounted before Stay/Transport.
+- This Guide extension passed identical CSS/JS hash, private admin source checks and delayed service navigation DOM acceptance on both sites. No Guide policy was saved.
 - Reconciliation caveat: mad4b-pricing-registry/assets/pricing-workspace-unified.js is present identically on both live sites but not in this branch's tracked source. The MU shell deliberately does not overwrite or vendor-copy this unrelated live module. Its source enrollment requires separate reconciliation.
 
 # MAD4B Unified Pricing & JetEngine UX — Release Checkpoints

@@ -31,7 +31,7 @@
 }
 /* Company settings: Workspace section heading and original JetEngine form
    are TWO independent DOM elements yet ONE visual column, joined seamlessly. */
-.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell:not([data-mad4b-pricing-pane])
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell:not([data-mad4b-pricing-pane]):not(.mad4b-guide-cost-tab-active)
  .mad4b-ws-content{
  border:1px solid var(--mad4b-shell-border);
  border-bottom:0;
@@ -40,7 +40,7 @@
  padding-bottom:9px;
  box-shadow:none;
 }
-.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell:not([data-mad4b-pricing-pane])
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell:not([data-mad4b-pricing-pane]):not(.mad4b-guide-cost-tab-active)
  >.mad4b-ws-original{
  background:var(--mad4b-shell-paper)!important;
  border:1px solid var(--mad4b-shell-border)!important;
@@ -84,26 +84,26 @@
 }
 /* The product source panels are already mounted by the original pricing
    workspace composer. Do not put a white card INSIDE a white card. */
-.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell[data-mad4b-pricing-pane]
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell:is([data-mad4b-pricing-pane],.mad4b-guide-cost-tab-active)
  .mad4b-ws-content{
  background:var(--mad4b-shell-paper);
  border:1px solid var(--mad4b-shell-border);
  border-radius:13px!important;
  box-shadow:none!important;
 }
-.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell[data-mad4b-pricing-pane]
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell:is([data-mad4b-pricing-pane],.mad4b-guide-cost-tab-active)
  .mad4b-ws-external-section{
  background:transparent;
  border:0;
  box-shadow:none;
  padding:0;
 }
-.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell[data-mad4b-pricing-pane]
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell:is([data-mad4b-pricing-pane],.mad4b-guide-cost-tab-active)
  .mad4b-ws-external-section :is(.mad4b-stay-panel,.mad4b-ts-panel){
  margin:9px 0 0;
  background:transparent;
 }
-.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell[data-mad4b-pricing-pane]
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell:is([data-mad4b-pricing-pane],.mad4b-guide-cost-tab-active)
  .mad4b-ws-external-section :is(.mad4b-stay-panel__accordion,.mad4b-ts-accordion){
  background:transparent!important;
  border:0!important;
@@ -111,10 +111,42 @@
  box-shadow:none!important;
  overflow:visible!important;
 }
-.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell[data-mad4b-pricing-pane]
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell:is([data-mad4b-pricing-pane],.mad4b-guide-cost-tab-active)
  .mad4b-ws-external-section :is(.mad4b-stay-panel__body,.mad4b-ts-body){
  background:transparent;
  padding:12px 0 0!important;
+}
+/* Guide Costs uses an independent original company/term approval form.
+   It was previously moved by its own module as a WordPress postbox. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell.mad4b-guide-cost-tab-active
+ #mad4b-guide-taxonomy-cost-panel.postbox{
+ margin:0!important;
+ padding:0!important;
+ border:0!important;
+ border-radius:0!important;
+ background:transparent!important;
+ box-shadow:none!important;
+ max-width:100%!important;
+ min-width:0;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell.mad4b-guide-cost-tab-active
+ #mad4b-guide-taxonomy-cost-panel>section{
+ padding:14px 0;
+ margin:12px 0!important;
+ border-top:1px solid var(--mad4b-shell-border);
+ background:transparent;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell.mad4b-guide-cost-tab-active
+ #mad4b-guide-taxonomy-cost-panel>section>h3{
+ font-size:14px;
+ color:var(--mad4b-shell-ink);
+ font-weight:750;
+ margin:0 0 10px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell.mad4b-guide-cost-tab-active
+ #mad4b-guide-taxonomy-cost-panel .widefat{
+ box-shadow:none;
+ border-color:var(--mad4b-shell-border);
 }
 /* Normalize the interaction affordance of TOP-LEVEL accordions and the
    reusable pricing dimension controller. Nested controls keep their semantic
@@ -237,7 +269,7 @@
 /* Responsive layout: the native Save remains in document flow after the
    content. Never modify native input widths or field modes. */
 @media(max-width:900px){
- .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell:not([data-mad4b-pricing-pane])>.mad4b-ws-original{
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell:not([data-mad4b-pricing-pane]):not(.mad4b-guide-cost-tab-active)>.mad4b-ws-original{
   padding-inline:11px!important;
  }
 }

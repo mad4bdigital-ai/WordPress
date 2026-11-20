@@ -21,7 +21,7 @@
     if(first&&!nav.querySelector('[data-mad4b-nav-group="company"]')){
       nav.insertBefore(label(cfg.pricing?'Company-wide settings':'Site settings','company'),first);
     }
-    const firstService=nav.querySelector('.mad4b-ws-service-nav');
+    const firstService=nav.querySelector('.mad4b-ws-service-nav,.mad4b-guide-cost-nav');
     if(cfg.pricing&&firstService&&!nav.querySelector('[data-mad4b-nav-group="product"]')){
       nav.insertBefore(label('Products & supplier services','product'),firstService);
     }
