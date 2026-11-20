@@ -23431,7 +23431,8 @@
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-source-parity-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-fail-closed-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-agent-fail-closed-runtime.php",
+        "tests/artifacts-original-hermetic.php"
       ],
       "owner_role": "MAD4B unified-source Host integration security owner; exact source CI-only",
       "status": "reviewed_for_ci_only",

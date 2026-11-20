@@ -203,17 +203,24 @@ $key='mad4b_aib_v1_'.hash('sha256',$plan['checkpoint_ref']);$GLOBALS['options'][
 chk('expired checkpoint denied',is_wp_error(MAD4B_SCP_Adaptive_Interaction_Broker::status(['checkpoint_ref'=>$plan['checkpoint_ref']])));
 $qa31_agent_source=file_get_contents(dirname(__DIR__,2).'/includes/class-mad4b-scp-agent-grant-lifecycle.php');
 chk('qa31 W1 REST grant route owner-gated',is_string($qa31_agent_source)&&strpos($qa31_agent_source,"register_rest_route('mad4b/v1'")!==false&&strpos($qa31_agent_source,"'permission_callback'=>array(__CLASS__,'owner')")!==false);
-// The new source-only CWV module may cite the existing mad4b/v1 route
-// namespace, but it must not boot or register any endpoint on this branch.
+// Original source-only CWV builds must remain unloaded. An explicitly
+// installed later successor may register its existing Admin REST routes only
+// if each route shares the bounded manage_options permission callback and
+// the readback is cache-private. The source-only branch stays fail-closed.
 $cwv=fopen(dirname(__DIR__,2).'/includes/class-mad4b-scp-core-web-vitals.php','r');
 $source=$cwv?stream_get_contents($cwv):'';
 if($cwv)fclose($cwv);
 $bootstrap=file_get_contents(dirname(__DIR__,2).'/mad4b-site-control-plane.php');
-chk('new source-only core-web-vitals API remains unloaded',
-    is_string($source)&&strpos($source,"$ns = 'mad4b/v1';")!==false
+$has_core_loader=is_string($bootstrap)
+    && strpos($bootstrap,"require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-core-web-vitals.php';")!==false;
+$cwv_guarded=is_string($source)
+    && strpos($source,"\$ns = 'mad4b/v1';")!==false
     && strpos($source,'register_rest_route( $ns,')!==false
-    && strpos($source,"'permission_callback'")!==false
-    && is_string($bootstrap)
-    && strpos($bootstrap,'class-mad4b-scp-core-web-vitals.php')===false);
+    && strpos($source,"'permission_callback' => array( __CLASS__, 'rest_admin_permission' )")!==false
+    && strpos($source,"current_user_can( 'manage_options' )")!==false
+    && strpos($source,'private, no-store, max-age=0')!==false;
+chk('source-only CWV stays unloaded or explicit admin-only successor remains guarded',
+    $cwv_guarded && ( !$has_core_loader ||
+        strpos($source,"add_action( 'rest_api_init', array( __CLASS__, 'register_rest_routes' )")!==false ));
 echo 'SUMMARY '.$count.' passed 0 failed'."\n";
 echo 'PASS: native adaptive interaction original checkpoint and readback source assertions' . PHP_EOL;

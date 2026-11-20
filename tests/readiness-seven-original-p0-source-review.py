@@ -118,6 +118,14 @@ REVIEWED_SUCCESSORS = {
         "69e220a8c11a494da3216a1f98ce2cff770142ce",
         "4db830176dc8da77c29e954a0783b7e4a0bab2d2",
     ),
+    "includes/class-mad4b-scp-reconnect-hardening.php": (
+        "72b51cf7a2d6246026fa0e835fd699989457d930",
+        "388408d37737ee2bacb2b97614be3fa375b334b8",
+    ),
+    "includes/class-mad4b-scp-artifacts.php": (
+        "7dcbcff762053e27ab858bd2554c277fb6f39d44",
+        "60750fb4a0cf8180f012254acd3fc2ccc43bba78",
+    ),
 }
 review_ledger = json.loads((ROOT / "governance/production-readiness/capability-coverage.json").read_text(encoding="utf-8"))
 
