@@ -22,6 +22,8 @@ on:
       - 'scripts/mad4b-stay-relaxed-visual-coverage-v1-cli.php'
       - 'scripts/mad4b-stay-editorial-publication-v1-cli.php'
       - 'scripts/mad4b-stay-original-18-hotel-publication-audit.php'
+      - 'scripts/mad4b-stay-wayfatours-es18-editorial-cli.php'
+      - 'tests/stay-wayfa-es18-editorial-contract.py'
       - 'scripts/mad4b-stay-invalid-import-quarantine-36260-cli.php'
       - 'scripts/mad4b-stay-unresolved-official-room-photo-gaps-cli.php'
       - 'scripts/mad4b-stay-triumph-exact-room-source-admission.php'
@@ -57,6 +59,8 @@ on:
       - 'scripts/mad4b-stay-relaxed-visual-coverage-v1-cli.php'
       - 'scripts/mad4b-stay-editorial-publication-v1-cli.php'
       - 'scripts/mad4b-stay-original-18-hotel-publication-audit.php'
+      - 'scripts/mad4b-stay-wayfatours-es18-editorial-cli.php'
+      - 'tests/stay-wayfa-es18-editorial-contract.py'
       - 'scripts/mad4b-stay-invalid-import-quarantine-36260-cli.php'
       - 'scripts/mad4b-stay-unresolved-official-room-photo-gaps-cli.php'
       - 'scripts/mad4b-stay-triumph-exact-room-source-admission.php'
@@ -115,6 +119,7 @@ jobs:
           php -l scripts/mad4b-stay-relaxed-visual-coverage-v1-cli.php
           php -l scripts/mad4b-stay-editorial-publication-v1-cli.php
           php -l scripts/mad4b-stay-original-18-hotel-publication-audit.php
+          php -l scripts/mad4b-stay-wayfatours-es18-editorial-cli.php
           php -l scripts/mad4b-stay-invalid-import-quarantine-36260-cli.php
           php -l scripts/mad4b-stay-unresolved-official-room-photo-gaps-cli.php
           php -l scripts/mad4b-stay-triumph-exact-room-source-admission.php
@@ -128,5 +133,6 @@ jobs:
           python3 tests/stay-relaxed-visual-coverage-contract.py
           python3 tests/stay-editorial-publication-contract.py
           python3 tests/stay-original-18-hotel-publication-contract.py
+          python3 tests/stay-wayfa-es18-editorial-contract.py
           python3 tests/stay-commercial-readiness-ui-check.py
           node --check wp-content/mu-plugins/mad4b-stay-readiness/admin.js
