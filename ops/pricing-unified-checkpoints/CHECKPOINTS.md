@@ -14,7 +14,7 @@ Snapshot date: 20 November 2026. Primary source: Tours.dev staging; target: Wayf
 | CP0 | Capture both sites' settings, feature SHA, Git and #965 CI | PASS: identical source preview SHA 384f523d; 5/5 CI #965 |
 | CP1 | WPML Package IDs accepted across languages only when original WordPress Tour relation exists; invalid Package refused; native quotes unchanged | PASS: 228 Staging and 477 Wayfa identity checks, 87 translations, 193 foreign IDs rejected, 0 failures. 192/197 price previews unchanged |
 | CP2 | Reconcile core JetEngine functional-modes PHP/JS/CSS source vs Wayfa, native Save and dependency contracts; browser regression | SERVER PASS, BROWSER OPEN: 53 pricing/31 activation fields; optional Recipe Registry compatibility; browser Save/repeater/mobile not yet certified |
-| CP3 | Single cost evidence contract for property/unit, transport, guide, extras; no retail value is cost | BLOCKED: certified component inputs not yet complete |
+| CP3 | Single supplier-cost evidence schema and composer: no retail substitution, duplicate lines, missing or expired FX evidence | CONTRACT PASS, DATA BLOCKED: 10 denial cases, quantity and missing-component tests passed on both sites; real supplier receipts incomplete |
 | CP4 | Unified price evaluator with one-time rule application, effective FX receipt, passenger tax/fee, no duplicate inclusion | NOT STARTED: cost qualification required |
 | CP5 | Semantic JetEngine Modes, conditional 21-field editor, searchable entity/assignment fields with native input preservation | NOT STARTED |
 | CP6 | Unified native policy write/approval gateway with RBAC, revision, validation and original writer ownership | NOT STARTED |
@@ -26,6 +26,13 @@ Snapshot date: 20 November 2026. Primary source: Tours.dev staging; target: Wayf
 - package_for_tour resolves caller WPML term to the actual original Taxonomy relationship and checks canonical term identity, no target guessed from name.
 - Test: ops/pricing-unified-checkpoints/tests/verify-wpml-package-preview.php.
 - The five pre-existing preview failures remain: 1 disabled Platinum and 4 missing price-base selections on posts 57562/57563; no Tour Rates, prices or orders were mutated.
+
+## CP3 runtime findings
+- New MU mad4b-component-cost-contract-v1.php installed on Staging and Wayfatours with identical source SHA; no web route or customer price mutation.
+- Schema validates approved supplier-cost role, supplier identity, Tour/date scope, per-unit integer minor amounts, quantity, proof SHA, reviewer and expiry.
+- Composer refuses duplicate line IDs, mixed currency without verified FX, rejected or missing receipts, and selling/retail cost substitution.
+- Complete synthetic four-kind set returns internal cost only and keeps rate_generation_ready=false, checkout_ready=false, provider reverification required.
+- Acceptance: ops/pricing-unified-checkpoints/tests/verify-component-cost-contract.php, passed both sites. Contract ready is not real supplier input readiness.
 
 ## CP2 runtime findings
 - Original Wayfatours module.php does not include the optional Recipe Registry and its styling assets, unlike Tours.dev. The first attempted three-file upgrade **failed** during a WP-CLI asset test and was rolled back to exact original hashes, verified with HTTP 200.
