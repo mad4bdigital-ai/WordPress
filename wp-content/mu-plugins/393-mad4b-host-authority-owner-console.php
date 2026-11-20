@@ -5,6 +5,9 @@
  * Version: 1.0.0
  */
 defined('ABSPATH') || exit;
+// A separately authenticated signed Original313 receipt is display evidence;
+// it does not change the original owner approval or Anchor execution gates.
+require_once __DIR__.'/mad4b-host-authority-owner-ui/signed-final-certificate.php';
 
 /**
  * Display-only on GET; POSTs are made exclusively by the real owner's
@@ -65,7 +68,9 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
             'request_id','request_status','request_expires_epoch',
             'request_expired','broker_job_exists','broker_job_state',
             'broker_job_expires_epoch','signature_window_expired',
-            'issuer_ready','plan_sha256','plan_source'
+            'issuer_ready','plan_sha256','plan_source',
+            'certificate_verified','certificate_job_id',
+            'certificate_issued_epoch'
         ) as $field) {
             // grant_id is a nonsecret identifier already on the owner page;
             // do not expose transport principal, signed payloads or credentials.
@@ -201,6 +206,8 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
             'broker_job_exists'=>false,'broker_job_state'=>'',
             'broker_job_expires_epoch'=>0,'signature_window_expired'=>false,
             'issuer_ready'=>false,
+            'certificate_verified'=>false,
+            'certificate_job_id'=>'','certificate_issued_epoch'=>0,
             // From an exact previously submitted Original305 Root Plan
             // reference, not a new signed Original312/313 approval.
             'plan_sha256'=>'','plan_source'=>'',
@@ -310,6 +317,21 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
                 $out['plan_source']='previous_owner_request_reference';
             }
         }
+        // Root's original signed Final Receipt is read-only and verified
+        // against the live Original318 Anchor before UI can claim closure.
+        if ($out['anchor_state']==='ACTIVE'
+            &&$out['anchor_revision']===1
+            &&isset($anchor)&&is_array($anchor)) {
+            $certificate=MAD4B_Host_Authority_Signed_Certificate_V123::
+                verified_summary($anchor);
+            if(is_array($certificate)&&($certificate['verified']??false)===true) {
+                $out['certificate_verified']=true;
+                $out['certificate_job_id']=$certificate['job_id'];
+                $out['certificate_issued_epoch']=$certificate['issued_epoch'];
+                $out['phase']='ANCHOR_CERTIFIED';
+                return $out;
+            }
+        }
         if ($out['anchor_revision']!==0
             ||$out['anchor_state']!=='MISSING_OR_INVALID') {
             $out['phase']='ANCHOR_STATE_REVIEW';
@@ -343,7 +365,8 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
      */
     private static function render_owner_script(array $status):void {
         if (true!==$status['owner_verified']
-            ||$status['phase']==='ANCHOR_STATE_REVIEW') return;
+            ||in_array($status['phase'],
+                 array('ANCHOR_STATE_REVIEW','ANCHOR_CERTIFIED'),true)) return;
         $file=__DIR__.'/mad4b-host-authority-owner-ui/host-authority.js';
         if (!is_file($file) || !is_readable($file)) {
             echo '<p class="notice notice-error">Host Authority controls unavailable: owner script missing.</p>';
@@ -406,13 +429,16 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
         $signatureExpired=$owner &&
             $s['phase']==='INDEPENDENT_SIGNATURE_WINDOW_EXPIRED';
         $queued=$owner && $s['request_id']!=='' && !$expired;
+        $certified=$owner&&$s['phase']==='ANCHOR_CERTIFIED'
+            &&$s['certificate_verified']===true;
         $review=$s['phase']==='ANCHOR_STATE_REVIEW';
-        $headline=$review?'Independent Anchor review required':
+        $headline=$certified?'Host Anchor issued — signed certificate verified':
+            ($review?'Independent Anchor review required':
             ($renewalReady?'First Anchor issuer ready — renew Owner Request':
             ($signatureExpired?'Original306 Claim expired — Original312/313 not issued':
             ($expired?'Owner Request expired — renewal required':
             ($queued?'Owner request accepted':($grant?'Bootstrap Grant completed':
-            ($owner?'Owner approval required':'Owner verification required'))))));
+            ($owner?'Owner approval required':'Owner verification required')))))));
         $requestText=$s['request_status']==='ADMITTED_PENDING_INDEPENDENT_HOST_AUTHORITY'
             ? 'Accepted — awaiting independent Host verification'
             : (string)$s['request_status'];
@@ -457,7 +483,9 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
             .'<span class="ha-pill" id="mad4b-ha-overall-state">'.esc_html($headline).'</span></header>';
         echo '<section class="ha-panel" aria-labelledby="mad4b-ha-summary">';
         echo '<h2 id="mad4b-ha-summary">'.esc_html($headline).'</h2>';
-        echo '<p class="ha-muted">'.esc_html($renewalReady
+        echo '<p class="ha-muted">'.esc_html($certified
+            ? 'Original318 is ACTIVE at Revision 1. The original independent Original313 Final Receipt, Broker-signed Revision and independent Checkpoint signatures all verify and match the live Anchor.'
+            :($renewalReady
             ? 'The scoped Root issuer is commissioned and the old Original306 Claim expired. Its immutable Root Plan reference is preloaded. Submit ONE new explicit Owner Request; the old Job cannot be reused or extended.'
             :($signatureExpired
             ? 'Original306 accepted the Claim, but the signing window elapsed before Original312/313 issuance. The independent First Anchor issuer has not been commissioned; do not resubmit another owner request until the signed workflow is ready.'
@@ -469,7 +497,7 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
                 : 'Original305 accepted the request but Broker Dispatch is not confirmed. Dispatch the existing request before its window expires.')
             :($grant
                 ? 'The non-executing Bootstrap Grant is complete. The next step is to submit the verified Root Plan.'
-                :'Verify your owner session and active Original328 connection before proceeding.'))))).'</p>';
+                :'Verify your owner session and active Original328 connection before proceeding.')))))).'</p>';
         echo '<div class="ha-grid">';
         foreach(array(
             'Company'=>'All Royal Egypt','Environment'=>'Staging','Host'=>'hosting-2',
@@ -487,8 +515,8 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
         foreach(array(
             array('connection','Connection verified',$owner?'Complete':'Verification needed',$owner,!$owner),
             array('grant','Bootstrap Grant',$grant?'Complete':'Owner approval',$grant,$owner&&!$grant),
-            array('request','Owner Request',$expired?'Expired — renew':($queued?'Accepted':'Not submitted'),$queued,$grant&&!$queued),
-            array('verify','Independent verification','Original306 / 312 / 313',false,$queued)
+            array('request','Owner Request',$certified?'Completed':($expired?'Expired — renew':($queued?'Accepted':'Not submitted')),$certified||$queued,$grant&&!$queued&&!$certified),
+            array('verify','Independent verification',$certified?'Revision 1 / Final Receipt verified':'Original306 / 312 / 313',$certified,$queued&&!$certified)
         ) as $stage) {
             echo '<li id="mad4b-ha-step-'.esc_html($stage[0]).'" class="'
                 .($stage[3]?'is-done':($stage[4]?'is-current':'')).'">'
@@ -501,9 +529,37 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
             echo '<div class="notice notice-warning inline"><p>Use the original enrolled WordPress owner account '
                 .'or a separately verified Unified Administrator principal. The <code>master_admin</code> role alone '
                 .'cannot grant Original305 authority.</p></div>';
+        } elseif($certified) {
+            echo '<section class="ha-panel" id="mad4b-ha-final-certificate"'
+                .' aria-labelledby="mad4b-ha-final-certificate-title">';
+            echo '<h2 id="mad4b-ha-final-certificate-title">'
+                .'Original313 Final Receipt — Verified</h2>';
+            echo '<p>Host Anchor <strong>ACTIVE · Revision 1</strong>. '
+                .'The original signed ledger, independent checkpoint and final '
+                .'receipt match the current Original318 readback.</p>';
+            echo '<div class="ha-grid">';
+            foreach(array(
+                'Signed certificate'=>'Original313 Final Receipt',
+                'Verification'=>'3 original signatures verified',
+                'Job ID'=>$s['certificate_job_id'],
+                'Issued'=>wp_date('Y-m-d H:i:s T',
+                    $s['certificate_issued_epoch']),
+                'Scope'=>'All Royal Egypt / Staging',
+                'Host'=>'hosting-2',
+                'Anchor'=>'ACTIVE',
+                'Revision'=>'1'
+            ) as $label=>$value)
+                echo '<div><span class="ha-key">'.esc_html($label).'</span>'
+                    .'<span class="ha-value">'.esc_html($value).'</span></div>';
+            echo '</div><p class="ha-fine">This is a read-only certificate '
+                .'verification. It does not enable generic Host execution or '
+                .'modify the Anchor. The original signed audit records remain '
+                .'unchanged.</p></section>';
         } elseif($review) {
-            echo '<div class="notice notice-warning inline"><p>The signed Anchor is no longer pristine Revision 0. '
-                .'Independent readback is required before a new first-Anchor request.</p></div>';
+            echo '<div class="notice notice-warning inline"><p>An Anchor is present, '
+                .'but the independent Original313 Final Receipt has not been '
+                .'cryptographically verified against it. Do not submit a new '
+                .'first Anchor request.</p></div>';
         } else {
             echo '<section class="ha-panel" id="mad4b-ha-grant-panel"'
                 .($grant?' hidden':'').'>';
