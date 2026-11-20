@@ -1,0 +1,50 @@
+{
+  "contract": "mad4b.wayfa-reviewed-source-merge-preview-summary.v1",
+  "date": "2026-11-19",
+  "issuer_public_key_der_sha256": "b9f47bfa3a5a9ff7c7630e0ca914fd4d3230f4dba942cdc00ac8c445e3217e7a",
+  "new_public_trust_key_granted": false,
+  "note": "Conflict-free merge previews and read-only tests are not release approval. Review auth/OAuth-sensitive changes and 26 conflicts before source signing.",
+  "offline_php85_behavior_tests": {
+    "baseline_changed": 0,
+    "failed": 7,
+    "passed": 22,
+    "total": 29
+  },
+  "original_archive_sha256": "193e0c02b12db709c45db0ff8f32199a3fdf63994a09ec5a8e4bab3689dcecd2",
+  "original_manifest_files": 955,
+  "original_release_source_commit_not_in_local_git": true,
+  "overlay_static_risk_category_file_counts": {
+    "content_and_media": 3,
+    "identity_and_authority": 10,
+    "mutation_and_data": 2,
+    "oauth_and_credentials": 13
+  },
+  "production_files_changed": false,
+  "production_gate_changed": false,
+  "public_key_extension_renamed_without_key_rotation": true,
+  "real_owner_approval_obtained": false,
+  "release_authorized": false,
+  "remaining_manual_conflicts": 26,
+  "root_only_preview_all_php85_lint_passed": 1587,
+  "root_only_preview_json_overlay_valid": 1,
+  "root_only_preview_original_file_preimages_verified": 955,
+  "root_only_preview_overlay_categories": {
+    "both_modified_clean_diff3_preview": 18,
+    "live_only_newer": 14
+  },
+  "root_only_preview_overlay_count": 32,
+  "root_only_preview_php_overlay_lint_passed": 31,
+  "signed_release_built": false,
+  "source_head": "d4b78b7da3bad4940d921540b47649b8d4ce7b2e",
+  "source_public_key_runtime_fixture_passed": true,
+  "three_way_decisions": {
+    "already_equal": 741,
+    "both_modified_clean_diff3_preview": 18,
+    "both_modified_conflict_manual": 18,
+    "both_modified_multiple_conflicts_manual": 8,
+    "live_only_newer": 14,
+    "reviewed_public_trust_anchor_rename_der_identical": 1,
+    "source_only_newer": 155
+  },
+  "unmanifested_php_still_needs_review": 16
+}

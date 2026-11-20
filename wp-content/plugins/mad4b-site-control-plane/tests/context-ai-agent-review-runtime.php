@@ -286,7 +286,9 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ]
 	),
 );
 
-function mad4b_review_asset_payload( $file_id, $content, $title = 'Voice Reference Notes', $path = 'Brand Core/Voice Reference Notes.txt' ) {
+// A folder named Brand Core is not automatic authority: the fixture title
+// explicitly declares Tone of Voice to establish a required scope.
+function mad4b_review_asset_payload( $file_id, $content, $title = 'Tone of Voice Reference Notes', $path = 'Brand Core/Voice Reference Notes.txt' ) {
 	return array(
 		'file_id' => $file_id,
 		'parent_folder_id' => 'folder-brand-core',

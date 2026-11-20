@@ -1,0 +1,47 @@
+{
+  "contract": "mad4b.rc129-source-regression-triage.v1",
+  "date": "2026-11-19",
+  "do_not_auto_update_pinned_source_hashes": true,
+  "do_not_autoload_dormant_host_or_chatbotx_modules": true,
+  "production_release_admitted": false,
+  "sandbox": "PHP 8.5, network none, filesystem read-only, cap-drop=ALL, no new privileges, temp /tmp",
+  "semantic_fixes": [
+    "Reconnected legacy external Skill source add/remove only through original Administrator plus nonce handler.",
+    "Updated old Skills catalog fixture to enrolled read policy, not conflated editor feature flag.",
+    "Kept stricter SHA256 provider receipt check and UUID site identity check; added negative test cases."
+  ],
+  "source_only": true,
+  "tests_failing": 7,
+  "tests_passing": 22,
+  "tests_reviewed": 29,
+  "unresolved_regression_failures": [
+    {
+      "first_failure": "FAIL: Original sealed source changed: class-mad4b-scp-background-agent-admission.php",
+      "test": "tours-dev-agent-authority-source-only-runtime.php"
+    },
+    {
+      "first_failure": "FAIL: Frozen original source changed: includes/class-mad4b-scp-authority-auto-reconciliation.php",
+      "test": "tours-dev-authority-review-source-only-runtime.php"
+    },
+    {
+      "first_failure": "FAIL: Original or reviewed successor SHA drift: class-mad4b-scp-readiness-workflow-options.php",
+      "test": "tours-dev-content-quality-dependencies-source-only-runtime.php"
+    },
+    {
+      "first_failure": "FAIL: Original module SHA256 drift: class-mad4b-scp-hub-jetengine-consumer-governance.php",
+      "test": "tours-dev-hub-lifecycle-source-only-runtime.php"
+    },
+    {
+      "first_failure": "FAIL: Reviewed parent source digest",
+      "test": "tours-dev-readiness-preactivation-source-only-runtime.php"
+    },
+    {
+      "first_failure": "FAIL: Git candidate source differs from reviewed SHA: includes/class-mad4b-scp-brand-experience-quality.php",
+      "test": "tours-dev-scheduler-source-closure-runtime.php"
+    },
+    {
+      "first_failure": "FAIL: Main bootstrap must not auto-load new module: includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php",
+      "test": "tours-dev-unactivated-source-parity-runtime.php"
+    }
+  ]
+}

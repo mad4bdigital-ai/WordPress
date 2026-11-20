@@ -1,0 +1,25 @@
+{
+  "contract": "mad4b.qa31-rc129-company-staff-ceiling-source-review.v1",
+  "path": "includes/class-mad4b-scp-company-master-admin.php",
+  "historical_qa31_path": "governance/release-parity/qa31-commerce-staging-source-parity.json",
+  "historical_qa31_sha256": "24f82e7898d4523bea658f4805329ea62cde807c54e63ecd0b8fe98b43fe1819",
+  "previous_blob_sha": "546fd5e6a4f81ce7dfc5e67fcde294b338ddef40",
+  "previous_sha256": "0cfe68ea11598587a9cdaeed2313859cb95dff893b3972d2bb6a593fd2af4e4d",
+  "current_blob_sha": "f5f3dc802c4f1931b258257920b908a4f3b6bb59",
+  "current_sha256": "e5da7ea83d8c2f0290dfddfcf9c52bc585dd8a24db12bb844cde04bbb8766fff",
+  "source_commit": "4be344cd5ea6df9f73d64d130fe0d9fc30c7a7c7",
+  "required_regression": "tests/source-unification-review-contract.py",
+  "control_ids": [
+    "ADMIN-01",
+    "BROWSER-01",
+    "SECURITY-02"
+  ],
+  "review_rationale": "Current exact Git source retains original site-owned Master Admin permission gates and adds roleWithinCaller to both createStaff and the role selector; operator and high-risk WordPress roles are denied, and each role capability must fit the caller. No new WordPress Site Owner grants, authority lift, release approval or Production activation is provided.",
+  "authorizing": false,
+  "production_authorized": false,
+  "source_promotion_approved": false,
+  "is_build_provenance": false,
+  "live_evidence_required": true,
+  "reviewed_for_ci_only": true,
+  "release_gate": "BLOCKED_SOURCE_RECONCILIATION"
+}

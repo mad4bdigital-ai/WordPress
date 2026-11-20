@@ -1,0 +1,30 @@
+{
+  "contract": "mad4b.rc129-dormant-ollama-bootstrap-exact-successor.v1",
+  "authorizing": false,
+  "production_authorized": false,
+  "live_evidence_required": true,
+  "new_runtime_ability_enabled": false,
+  "host_grant_issued": false,
+  "historical_host_source_proof_immutable": true,
+  "historical_host_source_proof": "docs/release-coverage/pr814-rc129-host-agent-bootstrap-additive-20261118.json",
+  "historical_host_proof_sha256": "bd99f7d3ad973a1f269aedfb9ecef8933ff81c094ebeaadb713edd088f5c7884",
+  "main_path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+  "successor_introduced_at_source_commit": "cba6f6547ac0700dbf4eb16c75668bb2c4d86b02",
+  "predecessor": {
+    "bytes": 68676,
+    "sha256": "9e20c4a6eb57b884bf31c5959a4bc7895717b0d9497d94def27c0e41343f7977",
+    "git_blob_sha": "dcae0a0a32495bfcedd4300fd78a8ec765235697"
+  },
+  "successor": {
+    "bytes": 68672,
+    "sha256": "5ad46a5c6028fdc2a31e74e48e16f54423e3d38666bc2276131b84a6c1c50119",
+    "git_blob_sha": "2c497ec72c57f420d1abf1eef242748be40f7bb2"
+  },
+  "exact_predecessor_bootstrap_line": "require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-ollama-ability.php';",
+  "exact_successor_dormant_comment": "// Local Ollama remains source-only until an explicit local owner activation.",
+  "regressions": [
+    "tests/test_tour_highlights_source_delta.py",
+    "tests/qa31_rc129_host_bootstrap_overlay.py"
+  ],
+  "review_statement": "Existing source-only Local Ollama bootstrap comment replaces one prior require_once. This certificate only permits that exact one-line dormant substitution in memory to reconstruct the immutable predecessor; all other host and source identity checks remain unchanged. Does not admit source as a signed Production release."
+}

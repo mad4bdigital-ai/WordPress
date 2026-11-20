@@ -25,7 +25,7 @@ function rest_ensure_response($r){return $r;}
 function wp_json_encode($data,$flags=0){return json_encode($data,$flags);}
 function absint($v){return abs((int)$v);}
 function sanitize_key($v){return preg_replace('/[^a-z0-9_-]/','',strtolower((string)$v));}
-function post_type_exists($type){return $type==='tours-and-activities';}
+function post_type_exists($type){return in_array($type,['post','tours-and-activities'],true);}
 function get_post($id){
  return (int)$id===77?(object)['ID'=>77,'post_type'=>'tours-and-activities']:null;
 }
@@ -128,8 +128,14 @@ $GLOBALS['field_site_ready']=false;
 $unbound=$c::discover();
 ff_assert($unbound instanceof WP_Error && $unbound->get_error_code()==='mad4b_provider_fields_site_unverified',
  'Cross-site clone must not expose even provider field names');
+// Do not leak which CPTs exist on a foreign clone either. Input schema is
+// valid, but its object type is unregistered in the fake local WordPress.
+$foreign_type=$c::discover(['object'=>'post','subtype'=>'unregistered-cloned-cpt']);
+ff_assert($foreign_type instanceof WP_Error
+ && $foreign_type->get_error_code()==='mad4b_provider_fields_site_unverified',
+ 'Foreign site identity must be denied before enumerating registered post types');
 $GLOBALS['field_site_ready']=true;
-$r=$c::discover();
+$r=$c::discover(['object'=>'post','subtype'=>'tours-and-activities']);
 ff_assert(is_array($r)
  && $r['discovery_read_only']===true && $r['mutations_performed']===false
  && $r['translation_changes_authorized']===false
@@ -160,7 +166,7 @@ ff_assert(in_array('hero_image',$media,true)
  && !in_array('_thumbnail_id',$media,true)
  && !in_array('banner_image',$media,true),
  'Only JetEngine-registered media fields can participate in guarded galleries');
-$limited=$c::discover(['limit'=>2,'only_media'=>true]);
+$limited=$c::discover(['object'=>'post','subtype'=>'tours-and-activities','limit'=>2,'only_media'=>true]);
 ff_assert($limited['counts']['returned']===2
  && $limited['counts']['filtered']>=2
  && $limited['enumeration_complete']===false,

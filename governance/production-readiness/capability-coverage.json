@@ -24015,6 +24015,101 @@
       "needs_new_control": false,
       "review_rationale": "Exact Git blob review of mad4b-site-control-plane.php in PR942 against immutable PR920 source. Ten executable CI-only suites verify tenant isolation, content readiness, Core Web Vitals, admin permission, company release denial, scoped skill reads and local-only Ollama. No provider grant or Production authority is created.",
       "coverage_reuse_rationale": "Existing site-scoped Admin, Content, Security, WordPress lifecycle and source-binding controls already require authenticated evidence; no new policy control or runtime authorization is implied."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php",
+      "source_blob_sha": "e0eec63d312afe5abaf427736a12472f9e31f72b",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "tests/skills-external-source-admin-source-contract.py"
+      ],
+      "owner_role": "MAD4B CI-only source code reviewer; independent Production owner approval still required",
+      "review_rationale": "The exact candidate blob restores delegated External Skill Source add/remove UI under the existing affirmative Administrator manage_options page gate, delegated original nonce-validated handler, original nonadmin denial and admin-only source-list rendering. The same-PR Python regression executes the native no-network fake-WordPress PHP source fixture, confirming bounded remote discovery and no installation. There is no new WordPress Ability, role grant, OAuth, provider source trust, production runtime or external mutation. This is CI-only source review, not signed deployment proof.",
+      "coverage_reuse_rationale": "Existing Admin, Browser and Security controls remain applicable; this source review adds no privileged execution surface and cannot override live-site preflight or owner approval.",
+      "needs_new_control": false,
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-field-intelligence.php",
+      "source_blob_sha": "5c327e410ab39a16cd402ad118dfb38726d3338a",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/provider-field-intelligence-site-readonly-php74-hermetic.php"
+      ],
+      "owner_role": "MAD4B repository source/security reviewer; CI-only review, not WordPress Site Owner or Production release authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact HEAD Provider Field Intelligence source now rejects cloned, foreign, unbound or invalid Site Profile evidence before post-type, taxonomy and provider field-name discovery; only affirmative site UUID, origin match, environment match and deployment binding permits the original read-only, limited registered-content inventory. Hermetic PHP 7.4 and 8.5 regressions assert a foreign provider is denied before its field names are queried and that no writes occur. This source-only review confers no provider grant, cross-site access, WordPress Site Owner identity, signed release or Production activation.",
+      "execution_note": "Required test: tests/provider-field-intelligence-site-readonly-php74-hermetic.php. Preserve prior reviewed exact source rows and frozen historical QA31 evidence."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
+      "source_blob_sha": "8d5e50c17a780ce580a18be5e3d2912a2e06920c",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "MCP-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-classification-title-contract.php"
+      ],
+      "owner_role": "MAD4B repository source/security reviewer, CI-only; not enrolled Wayfatours Production Site Owner",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Exact source update retains rc129 Context Authority while restricting inferred Brand Core, Tone and Editorial authority to explicit document titles rather than path or body references. Previously indexed automatically classified assets must be reindexed under exact registry revision before any approval. A real seven-PHP-fixture Context source contract plus source-wide Context contract and PHP 7.4/8.5 title/old-classification regressions run locally. This is a non-authorizing source review; other live Context differences remain unresolved and no Production release, owner consent, grant or site mutation is conferred. Already approved automatic records whose title-only classification drifts are excluded from ready Brand Core coverage, even when historical content hash receipts match.",
+      "execution_note": "Only source-only title/reindex hardening; 21 original Wayfatours merge conflicts remain independent and no Production rollout is admitted. Prior independent Context review suites were re-run locally; this exact behavioral change maps only to the revised same-PR title-classification PHP fixture, per the immutable Readiness coverage requirement."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-email-routing.php",
+      "source_blob_sha": "a722124f023290f6fe2f167cf04c02fb413e647d",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/company-email-routing-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B source/security reviewer, CI-only; not authenticated Wayfatours Production Site Owner",
+      "review_rationale": "The prior rc129 company email router enforced exact boolean sending and site/recipient SHA binding, but lacked the live Wayfatours native owner-stamp suppression after routing was disabled and could interfere with unrelated Fluent Forms notifications. This source-only merge restores both behaviors without weakening strict boolean canSend, exact Site UUID, identity verification or feed hash readback. Hermetic PHP 7.4/8.5 now covers 21 positive/negative cases, with no real mail send. The separate 300+ line native scheduling and notification write lifecycle was explicitly withheld for independent owner-bound reconciliation.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "execution_note": "Only the existing opt-in email filter is made site/owner safe. Original Wayfatours cron and native Fluent Forms SettingsService writes are not included."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-company-email-routing.php",
+      "source_blob_sha": "c3c4392cf805a5c4b4b10f12d699721256629e07",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "tests/company-email-routing-original-hermetic.php"
+      ],
+      "owner_role": "MAD4B source/tenant security reviewer, CI-only; not enrolled Production Site Owner",
+      "review_rationale": "A real Wayfatours native Booking/Contact reconciliation engine schedules persistent Fluent Forms writes without independent principal attestation, and uses truthy canSend() results. Rather than transplant it, the current source adds a company-operations-permissioned GET-only native source preflight deriving booking/contact form IDs from each registered provider and checking current exact tenant verification, SMTP true, form published, managed owner, enabled email type, sender and recipients, unique notification and exact saved SHA binding. It returns only bounded aggregate status and performs no SettingsService, cron, mail or option writes. It removes legacy form ID 6 as universal identity. Forty-four PHP 7.4/8.5 no-network hermetic tests and a negative mutation verify this behavior. This evidence does not promote code to Production and is not a Host certificate. A saturated LIMIT 120 result cannot prove feed uniqueness and is rejected without a mutation. Provider and WordPress database read exceptions are bounded blockers rather than unhandled runtime errors.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "execution_note": "Forty-four positive/negative offline PHP checks and one failed mutation prove dynamic per-company Form provider, exact source binding, no writes. Never adopt old Wayfatours auto-mutating notification scheduler or assume a Production release."
     }
   ],
   "code_change_rules": {

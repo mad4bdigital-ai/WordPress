@@ -1,0 +1,30 @@
+{
+  "contract": "mad4b.qa31-rc129-company-email-recipient-safety.v1",
+  "source_path": "includes/class-mad4b-scp-company-email-routing.php",
+  "prior_review_path": "governance/release-parity/qa31-rc129-reviewed-successors-20261118.json",
+  "prior_review_sha256": "dce059a5058b66cc1cb5f6d4cd01aab24b1e6b75a8fba6a1655579de038ff821",
+  "previous_source_git_blob_sha": "65a3e14d0738e66bf86d9268fa6ba941523ce669",
+  "previous_source_sha256": "094517b0cdf5e117dc6d6f1a7ea78a49d6e2cbfb4cd6c5fed473fa99051114a6",
+  "current_source_git_blob_sha": "a722124f023290f6fe2f167cf04c02fb413e647d",
+  "current_source_sha256": "77379941659f3a87591d7fb545309cf18f7d0ea9dfc3a1ba7bde51ffbefafe83",
+  "required_regression": "tests/company-email-routing-original-hermetic.php",
+  "qa31_negative_regression": "tests/qa31_company_email_recipient_safety_successor_contract.py",
+  "control_ids": [
+    "GOVERNANCE-01",
+    "PLATFORM-01",
+    "SECURITY-01",
+    "EXECUTION-01"
+  ],
+  "source_scope": "Wayfatours live recipient fail-closed parity; native scheduling and feed reconciliation are not ported",
+  "live_policy_evidence": "read-only Wayfatours 2026-11-19 Control Plane live archive: managed reservation_company_v1/company_contact_v1; Form 6/explicit binding; disabled/native/unverified sender denial",
+  "review_rationale": "The prior rc129 company email router enforced exact boolean sending and site/recipient SHA binding, but lacked the live Wayfatours native owner-stamp suppression after routing was disabled and could interfere with unrelated Fluent Forms notifications. This source-only merge restores both behaviors without weakening strict boolean canSend, exact Site UUID, identity verification or feed hash readback. Hermetic PHP 7.4/8.5 now covers 21 positive/negative cases, with no real mail send. The separate 300+ line native scheduling and notification write lifecycle was explicitly withheld for independent owner-bound reconciliation.",
+  "owner_role": "MAD4B source/security reviewer, CI-only; not authenticated Wayfatours Production Site Owner",
+  "authorizing": false,
+  "production_authorized": false,
+  "source_promotion_approved": false,
+  "is_build_provenance": false,
+  "live_evidence_required": true,
+  "reviewed_for_ci_only": true,
+  "native_notification_writes_added": false,
+  "release_gate": "BLOCKED_SOURCE_RECONCILIATION"
+}

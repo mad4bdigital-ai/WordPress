@@ -399,6 +399,430 @@ def reviewed_rc129_chatbotx_cpt_successor(repo:Path,path:str,contents:bytes):
             subprocess.TimeoutExpired,json.JSONDecodeError):
         return None
 
+def reviewed_rc129_dormant_ollama_bootstrap_successor(repo:Path,path:str,contents:bytes):
+    """Exact one-line Original305 successor, reviewed for CI inventory only.
+
+    A new bootstrap blob is *not* a Production release receipt or permission
+    to alter a historical QA31 / Host Agent review. Reconstruct the exact
+    independently reviewed parent instead of trusting an arbitrary new SHA.
+    """
+    if path!='mad4b-site-control-plane.php' or not isinstance(contents,bytes):
+        return None
+    manifest_path=repo/'governance/release-parity/qa31-rc129-dormant-ollama-bootstrap-successor-20261119.json'
+    host_path=repo/'governance/release-parity/qa31-rc129-host-agent-integration-successors-20261118.json'
+    current_sha='5ad46a5c6028fdc2a31e74e48e16f54423e3d38666bc2276131b84a6c1c50119'
+    parent_sha='9e20c4a6eb57b884bf31c5959a4bc7895717b0d9497d94def27c0e41343f7977'
+    current_blob='2c497ec72c57f420d1abf1eef242748be40f7bb2'
+    parent_blob='dcae0a0a32495bfcedd4300fd78a8ec765235697'
+    old=b"require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-ollama-ability.php';"
+    replacement=b'// Local Ollama remains source-only until an explicit local owner activation.'
+    test='tests/qa31_dormant_ollama_bootstrap_successor_contract.py'
+    coverage_test='tests/source-unification-review-contract.py'
+    try:
+        m=json.loads(manifest_path.read_text(encoding='utf-8'))
+        host=json.loads(host_path.read_text(encoding='utf-8'))
+        previous=next((e for e in host['source_entries']
+                       if e.get('path')==path),None)
+        controls=json.loads((repo/'governance/production-readiness/controls.json').read_text())
+        known={x['id'] for x in controls.get('controls',[]) if isinstance(x,dict)}
+        ids=m.get('control_ids')
+        if (m.get('contract')!='mad4b.qa31-rc129-dormant-ollama-bootstrap-review.v1'
+            or m.get('source_commit')!='cba6f6547ac0700dbf4eb16c75668bb2c4d86b02'
+            or m.get('previous_review_path')!='governance/release-parity/qa31-rc129-host-agent-integration-successors-20261118.json'
+            or m.get('previous_review_sha256')!=digest(host_path)
+            or m.get('source_path')!=path
+            or m.get('previous_git_blob_sha')!=parent_blob
+            or m.get('previous_sha256')!=parent_sha
+            or m.get('current_git_blob_sha')!=current_blob
+            or m.get('current_sha256')!=current_sha
+            or m.get('exact_delta')!='one-only: old Ollama require becomes a dormant source-only comment'
+            or m.get('required_regression')!=test
+            or m.get('coverage_regression')!=coverage_test
+            or not isinstance(ids,list) or ids!=['AI-01','GOVERNANCE-01','SECURITY-01']
+            or not set(ids)<=known or not m.get('owner_role')
+            or len(str(m.get('review_rationale','')))<90
+            or m.get('reviewed_for_ci_only') is not True
+            or m.get('authorizing') is not False
+            or m.get('production_authorized') is not False
+            or m.get('source_promotion_approved') is not False
+            or m.get('live_evidence_required') is not True
+            or m.get('is_build_provenance') is not False
+            or m.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or previous is None or previous.get('current_blob_sha')!=parent_blob
+            or previous.get('current_sha256')!=parent_sha
+            or contents.count(replacement)!=1 or old in contents
+            or hashlib.sha256(contents).hexdigest()!=current_sha
+            or hashlib.sha1(b'blob '+str(len(contents)).encode()+b'\0'+contents).hexdigest()!=current_blob):
+            return None
+        restored=contents.replace(replacement,old)
+        if (hashlib.sha256(restored).hexdigest()!=parent_sha
+            or hashlib.sha1(b'blob '+str(len(restored)).encode()+b'\0'+restored).hexdigest()!=parent_blob
+            or not (repo/test).is_file() or (repo/test).is_symlink()):
+            return None
+        # The already-reviewed exact blob is registered under its immutable
+        # source-unification suite. QA31 separately runs the new strict review;
+        # do not duplicate or rewrite historical capability-coverage evidence.
+        return coverage_test
+    except (OSError,ValueError,KeyError,TypeError):
+        return None
+
+
+def reviewed_rc129_wayfa_source_followup_successor(repo:Path,path:str,contents:bytes):
+    """Finite post-rc129 CI-only source reviews; no promotion or runtime grants."""
+    pins={
+        'includes/class-mad4b-scp-content-readiness-alerts.php':(
+            '7df661262c7b6592a86557babfdffab6e44cf64e',
+            '75a905625b4ff78080c7018e28a4b1f05ea4fd60404526e0afbda5219e4356cf',
+            '4d6800c533ebfb769210ca71fcb121e1cc712f11',
+            '5fd112b0dcdf0d0e1ebfb8107be0fff4c03727823357353d7b3cce68388c78f4',
+            '746e7562f99a97f1a5e11168854441464f02eeca',
+            'wp-content/plugins/mad4b-site-control-plane/tests/content-readiness/isolated-contract.php',
+            ['AI-01','LOCALIZATION-01','PROVIDERS-02','SECURITY-01']),
+        'includes/class-mad4b-scp-skills-admin-ui.php':(
+            '6db5aced6e2e50179ac5415ae9e74735756e539d',
+            '4c562fd3c62a3f70d1726bab8e20db205b06e8a2ddef2547de5f1cb235f3762c',
+            'e0eec63d312afe5abaf427736a12472f9e31f72b',
+            '85d2b11eecaccd55b2086a635a7b3bfd4b3ef7837b851546c7b661bac7a19002',
+            'd4b78b7da3bad4940d921540b47649b8d4ce7b2e',
+            'tests/skills-external-source-admin-source-contract.py',
+            ['ADMIN-01','BROWSER-01','SECURITY-02']),
+    }
+    if not isinstance(contents,bytes) or path not in pins:return None
+    try:
+        reviewed=repo/'governance/release-parity/qa31-rc129-reviewed-successors-20261118.json'
+        source=repo/'governance/release-parity/qa31-rc129-wayfa-followup-source-successors-20261119.json'
+        m=json.loads(source.read_text(encoding='utf-8'))
+        previous=json.loads(reviewed.read_text(encoding='utf-8'))
+        entries=m.get('reviewed_entries')
+        controls=json.loads((repo/'governance/production-readiness/controls.json').read_text())
+        known={x['id'] for x in controls.get('controls',[]) if isinstance(x,dict)}
+        if (m.get('contract')!='mad4b.qa31-rc129-wayfa-source-followup-reviews.v1'
+            or m.get('prior_review_path')!='governance/release-parity/qa31-rc129-reviewed-successors-20261118.json'
+            or m.get('prior_review_sha256')!=digest(reviewed)
+            or m.get('scope')!='exactly two source revisions, not build provenance'
+            or m.get('exact_source_files')!=2
+            or m.get('authorizing') is not False
+            or m.get('production_authorized') is not False
+            or m.get('source_promotion_approved') is not False
+            or m.get('is_build_provenance') is not False
+            or m.get('live_evidence_required') is not True
+            or m.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or not isinstance(entries,list) or len(entries)!=2
+            or [e.get('path') for e in entries]!=sorted(pins)):
+            return None
+        prior={e.get('path'):e for e in previous['reviewed_entries']}
+        for row in entries:
+            name=row['path']
+            old_blob,old_sha,new_blob,new_sha,commit,test,ids=pins[name]
+            old=prior[name]
+            if (old['current_git_blob_sha']!=old_blob
+                or old['current_sha256']!=old_sha
+                or row.get('parent_git_blob_sha')!=old_blob
+                or row.get('parent_sha256')!=old_sha
+                or row.get('current_git_blob_sha')!=new_blob
+                or row.get('current_sha256')!=new_sha
+                or row.get('source_commit')!=commit
+                or row.get('required_regression')!=test
+                or row.get('control_ids')!=ids
+                or not set(ids)<=known
+                or len(str(row.get('review_rationale','')))<90
+                or not (repo/test).is_file() or (repo/test).is_symlink()):
+                return None
+        old_blob,old_sha,new_blob,new_sha,commit,test,ids=pins[path]
+        if (hashlib.sha256(contents).hexdigest()!=new_sha
+            or hashlib.sha1(b'blob '+str(len(contents)).encode()+b'\0'+contents).hexdigest()!=new_blob):
+            return None
+        return test
+    except (OSError,ValueError,KeyError,TypeError):
+        return None
+
+
+def reviewed_rc129_company_staff_ceiling_successor(repo:Path,path:str,contents:bytes):
+    """One exact staff-capability tightening successor, CI-only and non-authorizing."""
+    name='includes/class-mad4b-scp-company-master-admin.php'
+    if path!=name or not isinstance(contents,bytes):return None
+    manifest=repo/'governance/release-parity/qa31-rc129-company-staff-ceiling-source-successor-20261119.json'
+    historical=repo/'governance/release-parity/qa31-commerce-staging-source-parity.json'
+    parent_blob='546fd5e6a4f81ce7dfc5e67fcde294b338ddef40'
+    parent_sha='0cfe68ea11598587a9cdaeed2313859cb95dff893b3972d2bb6a593fd2af4e4d'
+    current_blob='f5f3dc802c4f1931b258257920b908a4f3b6bb59'
+    current_sha='e5da7ea83d8c2f0290dfddfcf9c52bc585dd8a24db12bb844cde04bbb8766fff'
+    test='tests/source-unification-review-contract.py'
+    try:
+        m=json.loads(manifest.read_text(encoding='utf-8'))
+        source=json.loads(historical.read_text(encoding='utf-8'))
+        row=next(x for x in source['source_decisions'] if x.get('path')==path)
+        controls=json.loads((repo/'governance/production-readiness/controls.json').read_text())
+        known={x['id'] for x in controls.get('controls',[]) if isinstance(x,dict)}
+        ids=['ADMIN-01','BROWSER-01','SECURITY-02']
+        if (m.get('contract')!='mad4b.qa31-rc129-company-staff-ceiling-source-review.v1'
+            or m.get('path')!=path
+            or m.get('historical_qa31_path')!='governance/release-parity/qa31-commerce-staging-source-parity.json'
+            or m.get('historical_qa31_sha256')!=digest(historical)
+            or row.get('state')!='STAGING_ONLY'
+            or row.get('staging_sha256')!=parent_sha
+            or row.get('github_sha256') is not None
+            or m.get('previous_blob_sha')!=parent_blob
+            or m.get('previous_sha256')!=parent_sha
+            or m.get('current_blob_sha')!=current_blob
+            or m.get('current_sha256')!=current_sha
+            or m.get('source_commit')!='4be344cd5ea6df9f73d64d130fe0d9fc30c7a7c7'
+            or m.get('required_regression')!=test
+            or m.get('control_ids')!=ids or not set(ids)<=known
+            or len(str(m.get('review_rationale','')))<90
+            or m.get('authorizing') is not False
+            or m.get('production_authorized') is not False
+            or m.get('source_promotion_approved') is not False
+            or m.get('is_build_provenance') is not False
+            or m.get('live_evidence_required') is not True
+            or m.get('reviewed_for_ci_only') is not True
+            or m.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or not (repo/test).is_file() or (repo/test).is_symlink()
+            or hashlib.sha256(contents).hexdigest()!=current_sha
+            or hashlib.sha1(b'blob '+str(len(contents)).encode()+b'\0'+contents).hexdigest()!=current_blob):
+            return None
+        # The reviewed source has no role-grant escape hatch: both creation
+        # and the visible role selector require the exact caller ceiling.
+        required=(b'public static function roleWithinCaller(string $role):bool',
+                  b"if($role==='operator')return false",
+                  b'!current_user_can($cap)',
+                  b'if(!self::roleWithinCaller($role))',
+                  b'if(self::roleWithinCaller($role))')
+        if not all(x in contents for x in required):return None
+        return test
+    except (OSError,ValueError,KeyError,TypeError,StopIteration):
+        return None
+
+
+def reviewed_rc129_company_email_native_preflight_successor(repo:Path,path:str,contents:bytes):
+    """One exact title-/feed-bound, read-only company notice successor."""
+    name='includes/class-mad4b-scp-company-email-routing.php'
+    if path!=name or not isinstance(contents,bytes):return None
+    previous=repo/'governance/release-parity/qa31-rc129-company-email-recipient-safety-successor-20261119.json'
+    manifest=repo/'governance/release-parity/qa31-rc129-company-email-native-preflight-successor-20261120.json'
+    old_blob='a722124f023290f6fe2f167cf04c02fb413e647d'
+    old_sha='77379941659f3a87591d7fb545309cf18f7d0ea9dfc3a1ba7bde51ffbefafe83'
+    new_blob='c3c4392cf805a5c4b4b10f12d699721256629e07'
+    new_sha='aff9b7b3bde6f1628a964d984f26b5af9924b47ad3b6f82dd39ca458d9b357f0'
+    frozen_parent_sha='b77fe30152dd2c4c977aae97402a6018c4be6ac2e2401d624b8ded9f22888845'
+    regression='tests/company-email-routing-original-hermetic.php'
+    negative='tests/qa31_company_email_native_preflight_successor_contract.py'
+    ids=['GOVERNANCE-01','PLATFORM-01','SECURITY-01','EXECUTION-01']
+    try:
+        m=json.loads(manifest.read_text(encoding='utf-8'))
+        parent=json.loads(previous.read_text(encoding='utf-8'))
+        controls=json.loads((repo/'governance/production-readiness/controls.json').read_text())
+        known={x['id'] for x in controls.get('controls',[]) if isinstance(x,dict)}
+        if (digest(previous)!=frozen_parent_sha
+            or parent.get('contract')!='mad4b.qa31-rc129-company-email-recipient-safety.v1'
+            or parent.get('prior_review_sha256')!='dce059a5058b66cc1cb5f6d4cd01aab24b1e6b75a8fba6a1655579de038ff821'
+            or parent.get('prior_review_path')!='governance/release-parity/qa31-rc129-reviewed-successors-20261118.json'
+            or parent.get('previous_source_git_blob_sha')!='65a3e14d0738e66bf86d9268fa6ba941523ce669'
+            or parent.get('previous_source_sha256')!='094517b0cdf5e117dc6d6f1a7ea78a49d6e2cbfb4cd6c5fed473fa99051114a6'
+            or parent.get('required_regression')!=regression
+            or parent.get('control_ids')!=ids
+            or parent.get('authorizing') is not False
+            or parent.get('production_authorized') is not False
+            or parent.get('source_promotion_approved') is not False
+            or parent.get('is_build_provenance') is not False
+            or parent.get('live_evidence_required') is not True
+            or parent.get('reviewed_for_ci_only') is not True
+            or parent.get('native_notification_writes_added') is not False
+            or parent.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or m.get('contract')!='mad4b.qa31-rc129-company-email-native-preflight.v1'
+            or m.get('source_path')!=name
+            or m.get('parent_review_path')!='governance/release-parity/qa31-rc129-company-email-recipient-safety-successor-20261119.json'
+            or m.get('parent_review_sha256')!=frozen_parent_sha
+            or parent.get('current_source_git_blob_sha')!=old_blob
+            or parent.get('current_source_sha256')!=old_sha
+            or m.get('previous_source_git_blob_sha')!=old_blob
+            or m.get('previous_source_sha256')!=old_sha
+            or m.get('current_source_git_blob_sha')!=new_blob
+            or m.get('current_source_sha256')!=new_sha
+            or m.get('required_regression')!=regression
+            or m.get('qa31_negative_regression')!=negative
+            or m.get('test_count')!=44
+            or m.get('control_ids')!=ids or not set(ids)<=known
+            or len(str(m.get('review_rationale','')))<150
+            or m.get('native_notification_writes_added') is not False
+            or m.get('scheduled_jobs_added') is not False
+            or m.get('authorizing') is not False
+            or m.get('production_authorized') is not False
+            or m.get('source_promotion_approved') is not False
+            or m.get('is_build_provenance') is not False
+            or m.get('live_evidence_required') is not True
+            or m.get('reviewed_for_ci_only') is not True
+            or m.get('source_release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or not (repo/regression).is_file() or (repo/regression).is_symlink()
+            or not (repo/negative).is_file() or (repo/negative).is_symlink()
+            or hashlib.sha256(contents).hexdigest()!=new_sha
+            or hashlib.sha1(b'blob '+str(len(contents)).encode('ascii')+b'\0'+contents).hexdigest()!=new_blob):
+            return None
+        code=contents.decode('utf-8')
+        a=code.index('public static function native_notice_preflight(')
+        b=code.index('public static function readiness_issues()',a)
+        preview=code[a:b]
+        expected=(
+            "if (!self::is_company_admin())",
+            "'status' => 'BLOCKED'",
+            "'read_only' => true",
+            "'mutation_performed' => false",
+            "'messages_sent' => 0",
+            "'authorizing' => false",
+            "count($managed) !== 1",
+            "managed_feed_exact_binding_missing_or_stale",
+            "company_email_identity_unverified",
+            "native_form_not_published",
+            "native_form_read_failed",
+            "native_contact_provider_error",
+            "ORDER BY id ASC LIMIT 120",
+            "if (!is_array($rows) || count($rows) >= 120)",
+            "true !== MAD4B_SCP_Company_Communication::canSend()",
+            "hash_equals((string)($entry['source_sha256'] ?? ''), $hash)",
+            "if ($formId !== self::native_booking_form_id() && !$boundForm && !$managed)",
+            "'methods' => 'GET'",
+        )
+        if any(x not in code for x in expected):return None
+        for dangerous in ('update_option(', 'wp_schedule_event(', 'SettingsService(', 'wp_mail('):
+            if dangerous in preview:return None
+        if 'return $managed ?' not in code or "if ($managed) return ''" not in code:
+            return None
+        return regression
+    except (OSError,ValueError,KeyError,TypeError,StopIteration,UnicodeError):
+        return None
+
+
+def reviewed_rc129_company_email_recipient_safety_successor(repo:Path,path:str,contents:bytes):
+    """Exact non-authorizing live recipient policy hardening; no mail writes."""
+    name='includes/class-mad4b-scp-company-email-routing.php'
+    if path!=name or not isinstance(contents,bytes):return None
+    previous=repo/'governance/release-parity/qa31-rc129-reviewed-successors-20261118.json'
+    manifest=repo/'governance/release-parity/qa31-rc129-company-email-recipient-safety-successor-20261119.json'
+    old_blob='65a3e14d0738e66bf86d9268fa6ba941523ce669'
+    old_sha='094517b0cdf5e117dc6d6f1a7ea78a49d6e2cbfb4cd6c5fed473fa99051114a6'
+    new_blob='a722124f023290f6fe2f167cf04c02fb413e647d'
+    new_sha='77379941659f3a87591d7fb545309cf18f7d0ea9dfc3a1ba7bde51ffbefafe83'
+    frozen_prior_sha='dce059a5058b66cc1cb5f6d4cd01aab24b1e6b75a8fba6a1655579de038ff821'
+    regression='tests/company-email-routing-original-hermetic.php'
+    negative='tests/qa31_company_email_recipient_safety_successor_contract.py'
+    ids=['GOVERNANCE-01','PLATFORM-01','SECURITY-01','EXECUTION-01']
+    try:
+        m=json.loads(manifest.read_text(encoding='utf-8'))
+        prior_text=previous.read_text(encoding='utf-8')
+        prior=json.loads(prior_text)
+        old=next(e for e in prior['reviewed_entries'] if e.get('path')==path)
+        controls=json.loads((repo/'governance/production-readiness/controls.json').read_text())
+        known={x['id'] for x in controls.get('controls',[]) if isinstance(x,dict)}
+        if (digest(previous)!=frozen_prior_sha
+            or m.get('contract')!='mad4b.qa31-rc129-company-email-recipient-safety.v1'
+            or m.get('source_path')!=name
+            or m.get('prior_review_path')!='governance/release-parity/qa31-rc129-reviewed-successors-20261118.json'
+            or m.get('prior_review_sha256')!=frozen_prior_sha
+            or old.get('current_git_blob_sha')!=old_blob
+            or old.get('current_sha256')!=old_sha
+            or m.get('previous_source_git_blob_sha')!=old_blob
+            or m.get('previous_source_sha256')!=old_sha
+            or m.get('current_source_git_blob_sha')!=new_blob
+            or m.get('current_source_sha256')!=new_sha
+            or m.get('required_regression')!=regression
+            or m.get('qa31_negative_regression')!=negative
+            or m.get('control_ids')!=ids or not set(ids)<=known
+            or len(str(m.get('review_rationale','')))<130
+            or m.get('native_notification_writes_added') is not False
+            or m.get('authorizing') is not False or m.get('production_authorized') is not False
+            or m.get('source_promotion_approved') is not False or m.get('is_build_provenance') is not False
+            or m.get('live_evidence_required') is not True or m.get('reviewed_for_ci_only') is not True
+            or m.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or not (repo/regression).is_file() or (repo/regression).is_symlink()
+            or not (repo/negative).is_file() or (repo/negative).is_symlink()
+            or hashlib.sha256(contents).hexdigest()!=new_sha
+            or hashlib.sha1(b'blob '+str(len(contents)).encode('ascii')+b'\0'+contents).hexdigest()!=new_blob):
+            return None
+        body=contents.decode('utf-8')
+        section=body[body.index('public static function fluent_form_recipient('):body.index('public static function readiness_issues(')]
+        needles=(
+            "['reservation_company_v1', 'company_contact_v1'], true",
+            "return $managed ? '' : $address;",
+            "if ($formId !== 6 && !$boundForm && !$managed) return $address;",
+            "if (true !== MAD4B_SCP_Company_Communication::canSend()) return '';",
+            "if (count($matched) !== 1) return '';",
+            "hash_equals((string)$binding['source_sha256']",
+        )
+        if not all(token in section for token in needles):return None
+        return regression
+    except (OSError,ValueError,KeyError,TypeError,StopIteration,UnicodeError):
+        return None
+
+
+def reviewed_rc129_context_title_authority_successor(repo:Path,path:str,contents:bytes):
+    """Exact source-only Context classification hardening, no release authority."""
+    name='includes/class-mad4b-scp-context-authority.php'
+    if path!=name or not isinstance(contents,bytes):return None
+    manifest=repo/'governance/release-parity/qa31-rc129-context-title-authority-successor-20261119.json'
+    host_path=repo/'governance/release-parity/qa31-rc129-host-agent-integration-successors-20261118.json'
+    parent_blob='037d6563a3a42561a69b30e8f5d450e40a2d4a40'
+    parent_sha='c7e06a51d85ae3dde944d7e38eff3a34f456f25dc2e2f0f3510c5912f8aa3398'
+    current_blob='8d5e50c17a780ce580a18be5e3d2912a2e06920c'
+    current_sha='ea788a5b7197991999ed2aff6a9b9e449fafc522eb4654f44d190010b795eff1'
+    frozen_host_sha='3184e983d42404f7792c1784dca621bba33570f8b199b1a22a78c1293f16493e'
+    test='wp-content/plugins/mad4b-site-control-plane/tests/context-classification-title-contract.php'
+    regression='tests/qa31_context_title_authority_successor_contract.py'
+    try:
+        m=json.loads(manifest.read_text(encoding='utf-8'))
+        frozen_host_text=host_path.read_text(encoding='utf-8')
+        host=json.loads(frozen_host_text)
+        preceding=next(x for x in host['source_entries'] if x.get('path')==path)
+        controls=json.loads((repo/'governance/production-readiness/controls.json').read_text())
+        known={x['id'] for x in controls.get('controls',[]) if isinstance(x,dict)}
+        ids=['GOVERNANCE-01','SECURITY-01','MCP-01','AI-01']
+        if (m.get('contract')!='mad4b.qa31-rc129-context-title-only-authority.v1'
+            or m.get('source_path')!=name
+            or m.get('previous_review_path')!='governance/release-parity/qa31-rc129-host-agent-integration-successors-20261118.json'
+            or m.get('previous_review_sha256')!=digest(host_path)
+            or m.get('previous_review_sha256')!=frozen_host_sha
+            or digest(host_path)!=frozen_host_sha
+            or hashlib.sha256(frozen_host_text.encode('utf-8')).hexdigest()!=frozen_host_sha
+            or m.get('previous_source_git_blob_sha')!=parent_blob
+            or m.get('previous_source_sha256')!=parent_sha
+            or preceding.get('current_blob_sha')!=parent_blob
+            or preceding.get('current_sha256')!=parent_sha
+            or m.get('current_source_git_blob_sha')!=current_blob
+            or m.get('current_source_sha256')!=current_sha
+            or m.get('required_regression')!=test
+            or m.get('qa31_negative_regression')!=regression
+            or m.get('additional_regression')!=[
+                'tests/context-authority-original-review-suite.py',
+                'wp-content/plugins/mad4b-site-control-plane/tests/context-authority-contract.py']
+            or m.get('control_ids')!=ids or not set(ids)<=known
+            or len(str(m.get('review_rationale','')))<90
+            or m.get('authorizing') is not False
+            or m.get('production_authorized') is not False
+            or m.get('source_promotion_approved') is not False
+            or m.get('is_build_provenance') is not False
+            or m.get('live_evidence_required') is not True
+            or m.get('reviewed_for_ci_only') is not True
+            or m.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or not (repo/test).is_file() or (repo/test).is_symlink()
+            or not (repo/regression).is_file() or (repo/regression).is_symlink()
+            or hashlib.sha256(contents).hexdigest()!=current_sha
+            or hashlib.sha1(b'blob '+str(len(contents)).encode('ascii')+b'\0'+contents).hexdigest()!=current_blob):
+            return None
+        source=contents.decode('utf-8')
+        classify=source[source.index('public static function classify_asset('):source.index('public static function score_asset(')]
+        expected=(
+            'Folder paths and body references are provenance/context',
+            "$haystack = function_exists( 'mb_strtolower' )",
+            '$title_path = $haystack;',
+            'automatic_classification_drift( array $asset )',
+            'automatic_classification_stale_requires_reindex',
+            'mad4b_context_auto_classification_stale_requires_reindex',
+        )
+        if any(x not in source for x in expected) or len(classify)<1000:return None
+        return test
+    except (OSError,ValueError,KeyError,TypeError,StopIteration,UnicodeError):
+        return None
+
+
 def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     """Accept exact, reviewed Git blobs for CI inventory only; never parity.
     Static legacy entries remain valid; rc129 successors are independently
@@ -411,7 +835,19 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     source=root/path
     if source.is_symlink() or not source.is_file() or source.read_bytes()!=contents:
         return False
-    requested=reviewed_rc129_chatbotx_cpt_successor(repo,path,contents)
+    requested=reviewed_rc129_dormant_ollama_bootstrap_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_rc129_wayfa_source_followup_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_rc129_company_email_native_preflight_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_rc129_company_email_recipient_safety_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_rc129_context_title_authority_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_rc129_company_staff_ceiling_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_rc129_chatbotx_cpt_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_rc129_chatgpt_cimd_successor(repo,path,contents)
     if requested is None:

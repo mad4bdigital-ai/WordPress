@@ -186,6 +186,21 @@ final class MAD4B_SCP_Company_Email_Routing {
                 static fn($x) => self::domain($x), $recipients))),
             'would_send' => (bool)$wouldSend, 'messages_sent' => 0, 'dry_run' => true];
     }
+    /** Discover the live booking form through its own source, never a site ID. */
+    private static function native_booking_form_id(): int {
+        $router = '\Commerce\Composition\SingleFluentPaymentRouter';
+        if (!class_exists($router, false) || !method_exists($router, 'config'))
+            return 0;
+        try {
+            $config = $router::config();
+        } catch (\Throwable $exception) {
+            // An unavailable booking plugin never becomes an assumed Form 6.
+            return 0;
+        }
+        return is_array($config) && ($config['enabled'] ?? '') === 'yes'
+            && (int)($config['form_id'] ?? 0) > 0
+            ? (int)$config['form_id'] : 0;
+    }
     /**
      * Opt-in form consumer. Bindings require exact current notification feed
      * identity and revision; unknown/foreign feed is blocked (never rerouted).
@@ -195,18 +210,43 @@ final class MAD4B_SCP_Company_Email_Routing {
     public static function fluent_form_recipient($address, $notification, $submitted, $form) {
         self::ensure_company_source();
         $config = MAD4B_SCP_Company_Communication::config();
-        if ($config['fluent_forms_routing_policy'] !== 'enabled') return $address;
-        if (!is_object($form) || !is_array($notification)) return '';
+        // A previously created MAD4B-owned feed must never fall back to a
+        // persisted third-party address when company routing is disabled.
+        // Unrelated forms remain governed by their own native notifications.
+        $managed = is_array($notification) && in_array(
+            (string)($notification['mad4b_native_owner'] ?? ''),
+            ['reservation_company_v1', 'company_contact_v1'], true
+        );
+        if (($config['fluent_forms_routing_policy'] ?? '') !== 'enabled')
+            return $managed ? '' : $address;
+        if (!is_object($form) || !is_array($notification))
+            return $managed ? '' : $address;
+        $formId = (int)($form->id ?? 0);
+        $entries = self::bindings();
+        $boundForm = false;
+        foreach ($entries as $entry) {
+            if (is_array($entry) && ($entry['consumer'] ?? '') === 'fluent_forms'
+                && (int)($entry['form_id'] ?? 0) === $formId) {
+                $boundForm = true;
+                break;
+            }
+        }
+        // Dynamically resolve the registered booking form on this company.
+        // An arbitrary form with the same legacy numeric ID is not governed.
+        if ($formId !== self::native_booking_form_id() && !$boundForm && !$managed)
+            return $address;
         if (true !== MAD4B_SCP_Company_Communication::canSend()) return '';
         $type = (string)($notification['sendTo']['type'] ?? '');
         if ($type !== 'email') {
-            return $config['notify_traveler'] === 'enabled' ? $address : '';
+            // Native company-owned notices must never change to a field route
+            // and escape their exact recipient binding.
+            if ($managed) return '';
+            return ($config['notify_traveler'] ?? '') === 'enabled' ? $address : '';
         }
         $name = (string)($notification['name'] ?? '');
         if ($name === '') return '';
-        $formId = (int)($form->id ?? 0);
         $matched = [];
-        foreach (self::bindings() as $entry) {
+        foreach ($entries as $entry) {
             if (!is_array($entry) || ($entry['consumer'] ?? '') !== 'fluent_forms') continue;
             if ((int)($entry['form_id'] ?? 0) !== $formId) continue;
             if (($entry['notification_name'] ?? '') !== $name) continue;
@@ -231,6 +271,127 @@ final class MAD4B_SCP_Company_Email_Routing {
         $plan = self::resolve('fluent_forms', $event, ['form_id' => $formId, 'feed_id' => $feedId]);
         return $plan['would_send'] ? implode(', ', $plan['recipients']) : '';
     }
+    /**
+     * Read-only preflight for a company-owned native Fluent Forms notification.
+     * No scheduler, SettingsService, wp_mail, update_option, or feed mutation.
+     * Deliberately derive live form IDs from their own registered providers.
+     */
+    public static function native_notice_preflight(string $kind): array {
+        $result = [
+            'contract' => 'mad4b.company-native-notice-preflight.v1',
+            'kind' => $kind, 'status' => 'BLOCKED', 'blockers' => [],
+            'form_id' => 0, 'matched_managed_feeds' => 0,
+            'bound_feed_verified' => false, 'recipient_count' => 0,
+            'read_only' => true, 'mutation_performed' => false,
+            'messages_sent' => 0, 'authorizing' => false,
+        ];
+        $block = static function (string $reason) use (&$result): array {
+            $result['blockers'][] = $reason;
+            return $result;
+        };
+        if (!in_array($kind, ['reservation', 'contact'], true))
+            return $block('native_kind_unknown');
+        if (!self::is_company_admin()) return $block('company_operations_permission_required');
+        self::ensure_company_source();
+        $identity = self::identity();
+        if (true !== $identity['verified']) return $block('company_email_identity_unverified');
+        $settings = MAD4B_SCP_Company_Communication::config();
+        if (($settings['fluent_forms_routing_policy'] ?? '') !== 'enabled'
+            || ($settings['outbound_email_policy'] ?? '') !== 'enabled')
+            return $block('company_email_routing_disabled');
+        if (true !== $identity['smtp_verified']
+            || true !== MAD4B_SCP_Company_Communication::canSend())
+            return $block('company_mail_transport_unverified');
+
+        $event = $kind === 'reservation' ? 'new_request' : 'traveler_support';
+        $owner = $kind === 'reservation' ? 'reservation_company_v1' : 'company_contact_v1';
+        if ($kind === 'reservation') {
+            $formId = self::native_booking_form_id();
+        } else {
+            if (!class_exists('MAD4B_Company_Contact_Delivery', false)
+                || !method_exists('MAD4B_Company_Contact_Delivery', 'configured_form'))
+                return $block('native_contact_provider_not_loaded');
+            if (get_option('mad4b_company_contact_form_public_enabled_v1', 'no') !== 'yes')
+                return $block('native_contact_public_form_disabled');
+            try {
+                $formId = (int)MAD4B_Company_Contact_Delivery::configured_form();
+            } catch (\Throwable $exception) {
+                return $block('native_contact_provider_error');
+            }
+        }
+        if ($formId < 1) return $block('native_form_not_configured');
+        $result['form_id'] = $formId;
+        $destinations = self::resolve('fluent_forms', $event, ['form_id' => $formId]);
+        if (true !== $destinations['would_send'])
+            return $block('company_recipient_or_authority_not_ready');
+
+        global $wpdb;
+        if (!is_object($wpdb) || !isset($wpdb->prefix)
+            || !method_exists($wpdb, 'prepare') || !method_exists($wpdb, 'get_row')
+            || !method_exists($wpdb, 'get_results'))
+            return $block('native_form_read_service_unavailable');
+        $forms = $wpdb->prefix . 'fluentform_forms';
+        $feedTable = $wpdb->prefix . 'fluentform_form_meta';
+        try {
+            $form = $wpdb->get_row($wpdb->prepare(
+                "SELECT id,status FROM {$forms} WHERE id=%d", $formId
+            ), ARRAY_A);
+            if (!is_array($form) || (int)($form['id'] ?? 0) !== $formId
+                || ($form['status'] ?? '') !== 'published')
+                return $block('native_form_not_published');
+            $rows = $wpdb->get_results($wpdb->prepare(
+                "SELECT id,value FROM {$feedTable} WHERE form_id=%d AND meta_key=%s ORDER BY id ASC LIMIT 120",
+                $formId, 'notifications'
+            ), ARRAY_A);
+        } catch (\Throwable $exception) {
+            return $block('native_form_read_failed');
+        }
+        // LIMIT 120 cannot prove uniqueness if all 120 rows are returned.
+        // Reject saturated inventories rather than guessing no 121st feed.
+        if (!is_array($rows) || count($rows) >= 120)
+            return $block('native_feed_inventory_invalid');
+        $managed = [];
+        foreach ($rows as $row) {
+            if (!is_array($row) || (int)($row['id'] ?? 0) < 1) continue;
+            $feed = json_decode((string)($row['value'] ?? ''), true);
+            if (is_array($feed) && ($feed['mad4b_native_owner'] ?? '') === $owner)
+                $managed[] = ['id' => (int)$row['id'], 'raw' => (string)$row['value'], 'data' => $feed];
+        }
+        $result['matched_managed_feeds'] = count($managed);
+        if (count($managed) !== 1)
+            return $block($managed ? 'multiple_company_owned_feeds' : 'company_owned_feed_missing');
+        $feed = $managed[0];
+        if (empty($feed['data']['enabled']) || ($feed['data']['sendTo']['type'] ?? '') !== 'email')
+            return $block('managed_feed_disabled_or_invalid_type');
+        $recipients = isset($destinations['recipients']) && is_array($destinations['recipients'])
+            ? $destinations['recipients'] : [];
+        if (!$recipients || count($recipients) > 12)
+            return $block('managed_recipient_inventory_invalid');
+        $expected = implode(', ', $recipients);
+        if (!hash_equals($expected, (string)($feed['data']['sendTo']['email'] ?? ''))
+            || !hash_equals((string)($settings['transactional_from_email'] ?? ''),
+                (string)($feed['data']['fromEmail'] ?? '')))
+            return $block('managed_feed_sender_or_recipient_drift');
+        $hash = hash('sha256', $feed['raw']);
+        $matching = [];
+        foreach (self::bindings() as $entry) {
+            if (is_array($entry)
+                && ($entry['consumer'] ?? '') === 'fluent_forms'
+                && ($entry['event'] ?? '') === $event
+                && (int)($entry['form_id'] ?? 0) === $formId
+                && (int)($entry['feed_id'] ?? 0) === $feed['id']
+                && ($entry['notification_name'] ?? '') === ($feed['data']['name'] ?? '')
+                && hash_equals((string)($entry['source_sha256'] ?? ''), $hash))
+                $matching[] = $entry;
+        }
+        if (count($matching) !== 1)
+            return $block('managed_feed_exact_binding_missing_or_stale');
+        $result['recipient_count'] = count($recipients);
+        $result['bound_feed_verified'] = true;
+        $result['status'] = 'READY_READ_ONLY';
+        return $result;
+    }
+
     public static function readiness_issues(): array {
         $issues = [];
         if (!self::identity()['verified']) $issues[] = 'company_email_identity_not_verified';
@@ -246,6 +407,12 @@ final class MAD4B_SCP_Company_Email_Routing {
         add_filter('fluentform/email_to', [__CLASS__, 'fluent_form_recipient'], 100, 4);
         add_action('rest_api_init', static function() {
             $cap = [__CLASS__,'rest_permission'];
+            register_rest_route(self::NS, '/admin/company-notification-routing/native-preflight', [
+                'methods' => 'GET', 'permission_callback' => $cap,
+                'callback' => static function($request) {
+                    $kind = sanitize_key((string)$request->get_param('kind'));
+                    return rest_ensure_response(self::native_notice_preflight($kind));
+                }]);
             register_rest_route(self::NS, '/admin/company-email-identity', [
                 'methods' => 'GET', 'permission_callback' => $cap,
                 'callback' => static function() {return rest_ensure_response(self::identity());}]);

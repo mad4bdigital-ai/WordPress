@@ -306,6 +306,13 @@ final class MAD4B_SCP_Skills_Admin_UI {
 			if ( 'save' === $action ) $message = self::handle_save();
 			if ( 'save_resource' === $action ) $message = self::handle_save_resource();
 			if ( 'reconcile_managed' === $action ) $message = self::handle_reconcile_managed();
+			// Retain the original source registration UX. Both native handlers
+			// validate a dedicated nonce and manage_options; the sources remain
+			// untrusted read-only inventory, never installed or executed here.
+			if ( 'source_add' === $action && class_exists( 'SCP_External_Skill_Sources', false ) )
+				$message = SCP_External_Skill_Sources::handle_admin( 'add', $_POST );
+			if ( 'source_remove' === $action && class_exists( 'SCP_External_Skill_Sources', false ) )
+				$message = SCP_External_Skill_Sources::handle_admin( 'remove', $_POST );
 		}
 
 		$status = MAD4B_SCP_Skill_Registry::status();
@@ -343,6 +350,8 @@ final class MAD4B_SCP_Skills_Admin_UI {
 		self::render_editor( $status, $selected );
 		self::render_resource_editor( $status, $selected );
 		self::render_export( $status );
+		if ( class_exists( 'SCP_External_Skill_Sources', false ) )
+			SCP_External_Skill_Sources::render_admin();
 		echo '</div>';
 	}
 
