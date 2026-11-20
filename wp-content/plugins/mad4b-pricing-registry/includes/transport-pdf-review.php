@@ -32,7 +32,7 @@ final class MAD4B_Transport_PDF_Review_V1 {
         if (($d['contract']??'')!=='mad4b.transfer-pdf-2026-localized.v1' ||
             count($d['rows']??[])!==51) return array();
         $sourceIds=array();
-        $ids=get_posts(array('post_type'=>'transportations','post_status'=>'draft',
+        $ids=get_posts(array('post_type'=>'transportations','post_status'=>array('draft','publish'),
             'posts_per_page'=>650,'fields'=>'ids','suppress_filters'=>true,
             'meta_key'=>'_mad4b_transfer_pdf_2026_sha256',
             'meta_value'=>$d['source_sha256']));
@@ -65,7 +65,16 @@ final class MAD4B_Transport_PDF_Review_V1 {
                 'service_note'=>$row['service_note'],
                 'supplier_prices'=>$views,
                 'draft_ids'=>$found,'draft_count'=>count($found),
-                'review_status'=>count($found)===1?'localized_draft_exists':'missing_or_duplicate_draft',
+                'source_post_ids'=>$found,'source_post_count'=>count($found),
+                'editorial_status'=>count($found)===1?get_post_status($found[0]):'missing_or_duplicate',
+                'review_status'=>count($found)===1
+                    ?(get_post_status($found[0])==='publish' &&
+                      get_post_meta($found[0],'_mad4b_pdf_editorial_publication_v1',true)==='mad4b.transport-pdf-editorial.v1'
+                        ?'localized_editorial_published'
+                        :(get_post_status($found[0])==='draft'
+                           ?'localized_draft_exists'
+                           :'published_without_publication_provenance'))
+                    :'missing_or_duplicate_source_posts',
                 'contractual_status'=>'source_currency_and_sale_role_unconfirmed',
                 'quality_flags'=>$row['quality_flags'],
                 'source_date'=>$row['effective_from'],
@@ -79,11 +88,16 @@ final class MAD4B_Transport_PDF_Review_V1 {
         if (!in_array($lang,$langs,true))$lang='en';
         $rows=self::rows($city,$lang);
         $missing=0;
-        foreach ($rows as $row) if ($row['draft_count']!==1)++$missing;
+        foreach ($rows as $row) if ($row['source_post_count']!==1 ||
+            !in_array($row['review_status'],array('localized_draft_exists',
+                'localized_editorial_published'),true))++$missing;
         return array('contract'=>self::CONTRACT,'site'=>home_url('/'),
             'active_languages'=>$langs,'selected_language'=>$lang,
             'city'=>$city,'count'=>count($rows),'review_issues'=>$missing,
-            'rows'=>$rows,'source_pricing_is_verified'=>false,
+            'rows'=>$rows,
+            'editorial_published_count'=>count(array_filter($rows,
+                static fn($r)=>($r['review_status']??'')==='localized_editorial_published')),
+            'source_pricing_is_verified'=>false,
             'price_role_confirmed'=>false,'published'=>false,
             'mutation_performed'=>false,'checkout_authorized'=>false);
     }
@@ -118,7 +132,7 @@ final class MAD4B_Transport_PDF_Review_V1 {
         if (!in_array($lang,self::active_languages(),true))$lang='en';
         $snap=self::snapshot($city,$lang);
         echo '<div class="wrap"><h1>2026 Transfer Source Review</h1>';
-        echo '<p><strong>51 supplier operations</strong> from the PDF. Draft records are language-linked; the source currency, cost/sale role, vehicle fleet, contract end date and booking availability are not verified. Prices below are RAW SOURCE VALUES ONLY, NOT SELLING PRICES.</p>';
+        echo '<p><strong>51 supplier operations</strong> from the PDF. Source records are language-linked, whether Draft or editorial-published; the source currency, cost/sale role, vehicle fleet, contract end date and booking availability are not verified. Prices below are RAW SOURCE VALUES ONLY, NOT SELLING PRICES.</p>';
         echo '<form method="get" style="display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin-bottom:18px">';
         echo '<input type="hidden" name="page" value="mad4b-transfer-pdf-2026-review">';
         echo '<label>Origin city <select name="transport_city">';
@@ -148,10 +162,10 @@ final class MAD4B_Transport_PDF_Review_V1 {
         }
         echo '</div><h2>Operations ('.esc_html((string)$snap['count']).')</h2>';
         if ($snap['review_issues'])echo '<p><strong>Attention:</strong> '.
-            esc_html((string)$snap['review_issues']).' source rows have missing/duplicate locale drafts.</p>';
+            esc_html((string)$snap['review_issues']).' source rows have missing/duplicate locale posts or unreviewed publication.</p>';
         echo '<div style="max-width:100%;overflow-x:auto"><table class="widefat striped"><thead><tr>';
         foreach (array('PDF row','Localized title','Original Arabic','Operation classification',
-                'Raw vehicle amounts — currency unknown','WPML Draft','Review') as $th)
+                'Raw vehicle amounts — currency unknown','WPML Service','Review') as $th)
             echo '<th scope="col">'.esc_html($th).'</th>';
         echo '</tr></thead><tbody>';
         foreach ($snap['rows'] as $row) {
@@ -166,8 +180,8 @@ final class MAD4B_Transport_PDF_Review_V1 {
             }
             echo '</td>';
             echo '<td>';
-            if ($row['draft_count']===1)
-                echo '<a href="'.esc_url(get_edit_post_link($row['draft_ids'][0])).'">Edit Draft</a>';
+            if ($row['source_post_count']===1)
+                echo '<a href="'.esc_url(get_edit_post_link($row['source_post_ids'][0])).'">Edit '.esc_html(ucfirst($row['editorial_status'])).'</a>';
             else echo esc_html($row['review_status']);
             echo '</td><td>'.esc_html(implode('; ',array_unique($row['quality_flags']))).'</td></tr>';
         }

@@ -99,7 +99,9 @@ foreach($selected as $row) {
         $detail=apply_filters('wpml_post_language_details',null,(int)$id);
         $lang=$detail['language_code']??null;
         if (!$lang || isset($byLang[$lang]) ||
-            get_post_status($id)!=='draft' ||
+            (!in_array(get_post_status($id),array('draft','publish'),true) ||
+             (get_post_status($id)==='publish' &&
+               get_post_meta($id,'_mad4b_pdf_editorial_publication_v1',true)!=='mad4b.transport-pdf-editorial.v1')) ||
             get_post_meta($id,'_mad4b_transfer_pdf_2026_sha256',true)!==$data['source_sha256'])
             WP_CLI::error('existing_content_conflict_'.$sourceKey.'_'.(string)$lang);
         $byLang[$lang]=(int)$id;
@@ -162,7 +164,9 @@ foreach($selected as $row) {
     $trids=array();
     foreach($byLang as $lang=>$id) {
         $trids[]=apply_filters('wpml_element_trid',null,$id,'post_transportations');
-        if (get_post_status($id)!=='draft' ||
+        if ((!in_array(get_post_status($id),array('draft','publish'),true) ||
+              (get_post_status($id)==='publish' &&
+                 get_post_meta($id,'_mad4b_pdf_editorial_publication_v1',true)!=='mad4b.transport-pdf-editorial.v1')) ||
             get_post_meta($id,'_mad4b_transfer_pdf_2026_not_sellable',true)!=1)
             WP_CLI::error('post_not_protected_'.$sourceKey.'_'.$lang);
     }

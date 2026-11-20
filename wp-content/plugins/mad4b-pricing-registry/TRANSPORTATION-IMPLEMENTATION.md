@@ -591,3 +591,77 @@ The new system is usable for draft Tour Rate stage composition. It is
 not a bulk regeneration of old Rates or commercial-price activation:
 verified pickup/dropoff points, vehicle capacities, monetary source
 currency and approved native Transport Rates remain separate requirements.
+
+## 20 November 2026 — Editorial publication of trusted PDF transport services
+
+Owner instructed publication of the Transportation CPT entries imported from
+Transportation 2026 - Sheet1 (2).pdf, without inventing unverified selling
+prices, fleet photos, capacity, pickup/dropoff addresses or booking authority.
+
+The exact-source, reversible publisher is:
+tools/publish-pdf-transport-editorial.php
+
+The tool verifies complete source groups and active WPML language coverage,
+trusted PDF SHA256, provider self, Road category, non-sale metadata and
+Use in Tour Rate Generation = Yes. Batches are source-key-scoped. It records
+a per-site before-image backup in the WordPress option
+mad4b_pdf_transport_editorial_publish_backup_20261120_v1.
+It does not update Transport Rate amounts, trans_start_price, trans_type,
+trans_available_status, WooCommerce checkout or company Service Activation.
+
+Localized content, translated description/excerpt and Rank Math noindex/follow
+were added to every source post. The editorial copy explains that precise
+pickup/dropoff, vehicle availability, itinerary and supplier quote still
+require confirmation, with no direct online booking. Company provider remains
+self. Generic Wikimedia vehicle-category photos are NOT published as featured
+supplier fleet photos: the media manifest explicitly does not authorize
+that use.
+
+### Verified status
+
+- Tours.dev: 306/306 source posts Published, 51 × EN/AR/FR/DE/ES/IT.
+- Wayfatours: 102/102 source posts Published, 51 × EN/ES.
+- Combined: 408 editorial-Published, 0 source Drafts, all opt-in Yes.
+- No original supplier price made a sellable rate. All 408 retain non-sale
+  metadata and remain not qualified for checkout.
+
+WPML syncs post_status across translations as soon as one language publishes;
+this can temporarily leave a sibling translation with the original Draft
+text despite Published status. The publishing tool matches that exact case
+against its backup, finalizes the localized editorial copy and checks every
+post's publication marker, status and non-sale conditions. Raw post_status
+alone is never used as the completion signal.
+
+### Site-wide visibility is separate from publication
+
+Both sites currently use transportations_channel_mode=tour_only.
+The presentation service-visibility hook intentionally returns HTTP 404
+on standalone Transportation archive/detail URLs under this policy.
+Changing the company mode to standalone_and_tour would expose other
+previously published non-PDF transportation records, so it was deliberately
+NOT changed. Published records exist in WordPress and may be composed
+internally for Tours subject to eligibility; they are NOT accessible
+as independent guest-facing Transportation pages yet.
+
+### Source reviewer and regressions
+
+The protected 2026 Transfer Source Review now recognizes both Draft and
+editorial-Published source posts, provides their current editorial status,
+and maintains 51 rows per active language. Its supplier price values
+remain internal to authorized pricing staff. The future importer recognizes
+existing marked Published source posts rather than trying to recreate them.
+All existing source/component/route/self-pricing tests now distinguish
+source publication from commercial authorization.
+
+A new read-only test at tests/transport-pdf-publication-runtime.php checks
+the exact source SHA, 51 WPML source/TRID groups, all localized records,
+editorial content and marker, noindex, supplier provenance, absence of
+selling price/availability/fleet attachments, and unchanged tour_only mode.
+
+Verified checks on the fully published live state:
+- Tours.dev: 133/133 publication, 381/381 PDF/WPML,
+  32/32 Tour Component, 47/47 route, 35/35 Self Pricing.
+- Wayfatours: 121/121 publication, 141/141 PDF/WPML,
+  32/32 Tour Component, 47/47 route, 35/35 Self Pricing.
+
+No commercial Rate generation or checkout activation occurred.

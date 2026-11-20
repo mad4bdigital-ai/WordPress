@@ -42,21 +42,25 @@ $expectedPdfYes=$site==='https://wayfatours.com'?102:306;
 $check('only_pdf_source_has_yes',$enabled===$expectedPdfYes);
 $check('no_tour_components_auto_qualified',$qualified===0);
 $sourceDrafts=get_posts([
- 'post_type'=>'transportations','post_status'=>'draft',
+ 'post_type'=>'transportations','post_status'=>['draft','publish'],
  'posts_per_page'=>600,'fields'=>'ids','suppress_filters'=>true,
  'meta_key'=>'_mad4b_transfer_pdf_2026_sha256',
  'meta_value'=>'c3bde2be4ac89f1b7b9671720b552d39646c93ea9fa5a786fe2a9bde8f1644cd'
 ]);
 $expectedSource=$site==='https://wayfatours.com'?102:306;
-$check('source_draft_count_unchanged',count($sourceDrafts)===$expectedSource);
-$pdfYes=0;$pdfDraftsStillDraft=true;$pdfEligible=0;
+$check('source_pdf_post_count_unchanged',count($sourceDrafts)===$expectedSource);
+$pdfYes=0;$pdfSourceStillProtected=true;$pdfEligible=0;
 foreach($sourceDrafts as $draft){
  if((string)get_post_meta($draft,$cls::FIELD,true)==='1')$pdfYes++;
- if(get_post_status($draft)!=='draft')$pdfDraftsStillDraft=false;
+ $status=get_post_status($draft);
+ if(!in_array($status,['draft','publish'],true) ||
+    ($status==='publish'&&get_post_meta($draft,
+      '_mad4b_pdf_editorial_publication_v1',true)!=='mad4b.transport-pdf-editorial.v1'))
+    $pdfSourceStillProtected=false;
  if($cls::eligible((int)$draft))$pdfEligible++;
 }
 $check('all_pdf_languages_opted_in',$pdfYes===$expectedSource);
-$check('pdf_rows_still_drafts',$pdfDraftsStillDraft);
+$check('pdf_rows_still_editorially_protected',$pdfSourceStillProtected);
 $check('no_unapproved_pdf_commercial_eligibility',$pdfEligible===0);
 $check('qa_only_not_auto_opted_in',
  (string)get_post_meta(67115,$cls::FIELD,true)==='0' &&
@@ -133,7 +137,7 @@ $check('unrelated_jetengine_query_not_filtered',count($unrelated)===2);
 remove_filter('get_post_metadata',$pretend,10);
 $check('test_did_not_mutate_status',
  (string)get_post_meta($sample,$cls::FIELD,true)==='0');
-$check('draft_pdf_records_not_eligible',!$cls::eligible(
+$check('editorial_pdf_records_not_sale_eligible',!$cls::eligible(
  $site==='https://wayfatours.com'?70992:70519));
 $panel=MAD4B_Transport_Self_Pricing_Controls_V1::catalog('Cairo','en');
 $check('admin_source_rows_13',count($panel['items']??[])===13);

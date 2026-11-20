@@ -35,7 +35,7 @@ $act=array_keys((array)apply_filters('wpml_active_languages',null,['skip_missing
 sort($act);
 $expected=$site==='https://wayfatours.com'?['en','es']:['ar','de','en','es','fr','it'];
 $check('lang_matrix_correct',$act===$expected);
-$all=get_posts(['post_type'=>'transportations','post_status'=>'draft',
+$all=get_posts(['post_type'=>'transportations','post_status'=>['draft','publish'],
  'posts_per_page'=>650,'fields'=>'ids','suppress_filters'=>true,
  'meta_key'=>'_mad4b_transfer_pdf_2026_sha256','meta_value'=>$c::PDF]);
 $check('source_matrix_complete',count($all)===51*count($act));
@@ -148,7 +148,7 @@ $failed=array_keys(array_filter($checks,static fn($ok)=>!$ok));
 echo wp_json_encode([
  'site'=>$site,'checks'=>count($checks),
  'passed'=>count($checks)-count($failed),'failed'=>$failed,
- 'pdf_drafts'=>count($all),'tour_rate_fields'=>count($fields),
+ 'source_locale_posts'=>count($all),'tour_rate_fields'=>count($fields),
  'candidate_city_matching'=>true,'yes_flag_enforced'=>true,
  'pickup_points_invented'=>false,'checkout_authorized'=>false
 ],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE).PHP_EOL;
