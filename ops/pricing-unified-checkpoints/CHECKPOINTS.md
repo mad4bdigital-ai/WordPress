@@ -15,8 +15,8 @@ Snapshot date: 20 November 2026. Primary source: Tours.dev staging; target: Wayf
 | CP1 | WPML Package IDs accepted across languages only when original WordPress Tour relation exists; invalid Package refused; native quotes unchanged | PASS: 228 Staging and 477 Wayfa identity checks, 87 translations, 193 foreign IDs rejected, 0 failures. 192/197 price previews unchanged |
 | CP2 | Reconcile core JetEngine functional-modes PHP/JS/CSS source vs Wayfa, native Save and dependency contracts; browser regression | SERVER PASS, BROWSER OPEN: 53 pricing/31 activation fields; optional Recipe Registry compatibility; browser Save/repeater/mobile not yet certified |
 | CP3 | Single supplier-cost evidence schema and composer: no retail substitution, duplicate lines, missing or expired FX evidence | CONTRACT PASS, DATA BLOCKED: 10 denial cases, quantity and missing-component tests passed on both sites; real supplier receipts incomplete |
-| CP4 | Unified price evaluator with one-time rule application, effective FX receipt, passenger tax/fee, no duplicate inclusion | NOT STARTED: cost qualification required |
-| CP5 | Semantic JetEngine Modes, conditional 21-field editor, searchable entity/assignment fields with native input preservation | NOT STARTED |
+| CP4 | Deterministic integer-minor-unit shadow evaluator with markup vs margin separation, fixed rule ordering, duplicate protection; full FX/passenger/provider integration separately gated | SHADOW PASS, COMMERCIAL OPEN: 7 unsafe cases rejected on both sites; actual cost, FX, occupancy/children receipts still missing |
+| CP5 | AJAX native entity selector and progressive disclosure of 16 financial fields in 21-field policy repeater; no extra Save or hidden disabled native values | SERVER+DOM PASS, BROWSER OPEN: original input and change events tested, logged-in UI Save/mobile/real repeater markup not yet certified |
 | CP6 | Unified native policy write/approval gateway with RBAC, revision, validation and original writer ownership | NOT STARTED |
 | CP7 | E2E matrix: Wayfa 84 Tours, 8 package templates, EN/ES, rate/occupancy/children/FX, mobile 320/390/768/1024/1440 and checkout gate | NOT STARTED |
 | CP8 | Local Git/GitHub/live fingerprint parity, all CI green, approval and merge/release evidence | NOT STARTED |
@@ -33,6 +33,11 @@ Snapshot date: 20 November 2026. Primary source: Tours.dev staging; target: Wayf
 - Composer refuses duplicate line IDs, mixed currency without verified FX, rejected or missing receipts, and selling/retail cost substitution.
 - Complete synthetic four-kind set returns internal cost only and keeps rate_generation_ready=false, checkout_ready=false, provider reverification required.
 - Acceptance: ops/pricing-unified-checkpoints/tests/verify-component-cost-contract.php, passed both sites. Contract ready is not real supplier input readiness.
+
+## CP4 and CP5 evidence (source-backed only)
+- CP4: mad4b-price-evaluator-shadow-v1.php, acceptance ops/pricing-unified-checkpoints/tests/verify-price-evaluator-shadow.php. Integer minor-unit cost basis, mutually exclusive markup or margin and single instance per financial stage. Fixed order; synthetic 8,000 EGP cost -> 14,158.80 EGP after configured test rules and 14% test tax. Seven unsafe cases blocked. Neither FX conversion nor child/occupancy/pricing source re-verification implemented or approved.
+- CP5: mad4b-pricing-entity-picker-v1.php plus JS lookup, accessible search and results without named form controls or additional save actions. Native number input receives the actual selected term/post ID and input+change events. Taxonomy WPML canonical ID displayed for inspection, but stored ID remains the selected native ID. Native 21-field policy form gets progressive disclosure of advanced fields in visual mode only; non-default overrides start expanded. Source and production hashes matched.
+- CP5 tests: verify-entity-picker.php, verify-entity-picker-dom.js, verify-conditional-jetengine-mode.js passed. This **does not certify** that controls appear in a real admin browser: selectors and logged-in native Save still need independent test.
 
 ## CP2 runtime findings
 - Original Wayfatours module.php does not include the optional Recipe Registry and its styling assets, unlike Tours.dev. The first attempted three-file upgrade **failed** during a WP-CLI asset test and was rolled back to exact original hashes, verified with HTTP 200.
