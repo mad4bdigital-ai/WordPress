@@ -429,6 +429,16 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # Exact non-authorizing first-party provider/owner fixtures, no live WordPress.
     "tests/company-cloudflare-admission-original-hermetic.php",
     "tests/company-email-routing-original-hermetic.php",
+    # PR #937: bounded read-only Host source admission catalogue fixture.
+    "tests/authority/test-optional-source-read-catalog.php",
+    # PR #951 + #937 source-only merger fixtures: original PHP scripts with
+    # first-party fake WordPress state, no network, no grants, no live mail,
+    # no signed Host writes or persistent DB mutations. Each was executed on
+    # PHP 7.4 and 8.5 in hermetic containers. Never allow a wildcard runner.
+    "wp-content/plugins/mad4b-site-control-plane/tests/authorization-replay-audit-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-remote-denial-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/qa27-candidate-upload-plan-rc118-runtime.php",
     "tests/ai-task-routing-original-hermetic.php",
     "tests/delegation-owner-original-hermetic.php",
     # Exact original MCP transport and provider discovery read-only assertions.
@@ -920,6 +930,15 @@ def self_test():
         pass
     else:
         raise AssertionError("Unreviewed operations PHP fixture admitted")
+    assert command_for("tests/authority/test-optional-source-read-catalog.php")[0] == "php"
+    for exact in (
+        "wp-content/plugins/mad4b-site-control-plane/tests/authorization-replay-audit-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-remote-denial-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa27-candidate-upload-plan-rc118-runtime.php",
+    ):
+        assert command_for(exact)[0] == "php"
+
     assert command_for("wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php")[0] == "php"
     assert command_for("tests/production_readiness_registry_contract.py")[0] == sys.executable
     assert command_for("tests/remote-execution/operator-grants-convergence-smoke.php")[0] == "php"

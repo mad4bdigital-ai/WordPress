@@ -24,6 +24,18 @@ function expect_denial( $condition, $reason ) {
 }
 $target = 'context/source-scan-apply';
 $other  = 'context/remote-owner-review-apply';
+$traits = ( new ReflectionClass( 'MAD4B_SCP_Authorization' ) )->getTraitNames();
+expect_denial( in_array( 'MAD4B_SCP_Authorization_Observation', $traits, true ), 'Observation trait extraction missing' );
+expect_denial( in_array( 'MAD4B_SCP_Authorization_Remote_Denial', $traits, true ), 'Remote denial trait extraction missing' );
+// The extracted observer remains request-local. An active provider callback
+// still blocks a cache reset until the original callback boundary is closed.
+MAD4B_SCP_Authorization::begin_execution_callback_observation( $target );
+MAD4B_SCP_Authorization::mark_execution_callback_started( $target );
+$active = MAD4B_SCP_Authorization::request_scope_state();
+expect_denial( 1 === $active['observation_count'] && in_array( $target, $active['active_execution_observations'], true ), 'Request-local active execution was lost' );
+expect_denial( is_wp_error( MAD4B_SCP_Authorization::reset_request_cache() ), 'Active execution must prevent reset' );
+MAD4B_SCP_Authorization::clear_execution_callback_observation( $target );
+
 // Neither a previous request nor a different ability may bleed into diagnostics.
 expect_denial( '' === MAD4B_SCP_Authorization::remote_permission_denial_code( $target ), 'leaked before observation' );
 MAD4B_SCP_Authorization::begin_execution_callback_observation( $target );

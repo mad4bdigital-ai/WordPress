@@ -1,0 +1,32 @@
+{
+  "contract": "mad4b.qa31-pr970-optional-host-catalog-recursion-successor.v1",
+  "source_path": "includes/class-mad4b-scp-server-core-catalog.php",
+  "frozen_parent_head_sha": "75bcfef854c1bcad6b646a95d957a6d41cce0d40",
+  "frozen_parent_source_blob_sha": "7f508bf4210fef1c80855475ac85eb0a81d67046",
+  "frozen_parent_source_sha256": "6e955ced5a49cfc3224c3391e01a6581d7fe834e40a5eba7931efdfd845397c9",
+  "frozen_original_source_review_path": "governance/release-parity/qa31-pr951-pr937-optional-host-catalog-merge-20261120.json",
+  "frozen_original_source_review_sha256": "4902789225512de72bd1630e777e4dd9991e8698210628fe055ea7e28864f8f3",
+  "reviewed_source_blob_sha": "a46d7b44a398edc9a7dfd41cb5532d9f51dfd67e",
+  "reviewed_source_sha256": "726c2aaa970f324936a5dedacd439668625fd6e614a1f6e1ec2c7d2683266a5e",
+  "required_regression": "tests/authority/test-optional-source-read-catalog.php",
+  "additional_regressions": [
+    "tests/servers-native-core-catalog-hermetic.php",
+    "tests/server-registration-descriptor-boundary-hermetic.php"
+  ],
+  "negative_regression": "tests/qa31_pr970_optional_host_catalog_recursion_contract.py",
+  "control_ids": [
+    "MCP-01",
+    "SECURITY-01",
+    "EXECUTION-01",
+    "PLATFORM-01"
+  ],
+  "review_rationale": "A real registered optional WordPress Ability may require canonical descriptor inspection. Descriptor provider classification asks for server core tools, recursively calling the same optional Host descriptor before the initial catalog is built. The prior clean plugin test used a non-recursive descriptor fake and missed this crash. The new test first proves that the original code fails under bounded catalog/descriptor reentry and that the reviewed successor defers ONLY optional Host descriptor re-inspection in nested server projection. A request-local try/finally guard resets the state after the original call. Registered WordPress Ability plus canonical structural descriptor binding remain mandatory before optional exposure; required core tools, OAuth, actual execution-time authority, Site Owner, signed Host admission, rollback, audit and all Production runtime gates remain intact. This source-only review explicitly does not certify any live WordPress runtime, Host signature or release permission.",
+  "status": "reviewed_for_ci_only",
+  "authorizing": false,
+  "production_authorized": false,
+  "source_promotion_approved": false,
+  "is_build_provenance": false,
+  "live_evidence_required": true,
+  "reviewed_for_ci_only": true,
+  "release_gate": "BLOCKED_SOURCE_RECONCILIATION"
+}

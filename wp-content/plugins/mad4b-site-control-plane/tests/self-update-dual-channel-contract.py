@@ -90,6 +90,7 @@ required_self_update = [
     "release_channel_bound",
     "target_not_current_governed_release",
     "MAD4B_SCP_Site_Profile::site_urls_match_enrollment()",
+    "MAD4B_Release_Source_Admission::require_for_release( $source_sha )",
     "caller_url_allowed",
     "caller_path_allowed",
     "installed_plugin_version_from_disk",

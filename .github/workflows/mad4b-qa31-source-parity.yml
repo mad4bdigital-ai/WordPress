@@ -32,6 +32,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          # The combined PR951+PR937 review verifies exact parent commit
+          # blobs and true merge ancestry. A depth-1 checkout hides them.
+          # Fetch only repository history; never credentials or release grants.
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Verify fail-closed source parity regression

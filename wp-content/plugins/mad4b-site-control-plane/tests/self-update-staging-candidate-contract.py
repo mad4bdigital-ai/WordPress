@@ -49,6 +49,7 @@ for marker in (
     # the enrolled Site Profile/Governance dynamic policy rather than the
     # retired blanket environment prohibition.
     "'production_allowed' => (bool) ( ! $staging_candidate && self::environment_allowed( true ) )",
+    "signed_source_reconciliation_preflight_required",
     "sort( $plan['blockers'], SORT_STRING );",
 ):
     expect(marker in plan, "planning missing " + marker)

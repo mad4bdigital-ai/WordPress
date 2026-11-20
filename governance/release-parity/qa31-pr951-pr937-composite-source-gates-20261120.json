@@ -1,0 +1,68 @@
+{
+  "contract": "mad4b.qa31-pr951-pr937-composite-source-gates.v1",
+  "pr951_exact_head_sha": "1d8a9b4a491368c2f648a0f6e424f7972e20dce0",
+  "pr937_exact_head_sha": "a044005e3b960c874ad492276a07814bf66e350d",
+  "source_entries": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+      "source_blob_sha": "6283b4a2168dfbbb267d98e7600f896fed8a4f64",
+      "source_sha256": "0682640be7b6946ddc6c7627576083466079f798a566889f9ce655aa29e58c40",
+      "pr951_parent_blob_sha": "4f6c83ce401008c3ae5335895d776511a4cc64fd",
+      "pr937_parent_blob_sha": "a2ea7dd18c8dbe2326ef5c9d2f7c97bfc170f994",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/authorization-replay-audit-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php"
+      ],
+      "review_rationale": "Exact Authorization facade includes the independent PR951 execution-recovery trait and PR937 Claim, Observation and Remote Denial traits. PHP 7.4/8.5 executed original 45 native-schema, peer, policy, grant, claim and replay denial assertions. Trait composition preserves internal method bodies and request-local claim lifecycle, and does not add grants, authority, new public API or bypass the governed staging profile.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+      "source_blob_sha": "f8985784fd510af6f4bf9682a0a5a3b8b3f72785",
+      "source_sha256": "12702ba5b93c474bc1776c8801de36dbc14a1a9a678ba2c29fb13f8e9ea67816",
+      "pr951_parent_blob_sha": "bfc842bf90cda2ec07937337e6488b70a31d091d",
+      "pr937_parent_blob_sha": "48bbd4ecbcb1905da1fa0269cd5575aa9c452d80",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/qa27-candidate-upload-plan-rc118-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-dual-channel-contract.py",
+        "tests/authority/test-release-source-admission-integration.py"
+      ],
+      "review_rationale": "Exact merged Self Update retains PR951 dynamic Site Profile Staging write admission plus PR937 signed independently executed Host Source Admission at the final shared apply_verified_archive boundary. Candidate upload plans remain ineligible without source signature and original source verification, owner OAuth, exact plan SHA and transient target readback. PHP 7.4/8.5 QA27 and independent signature check pass; full dual-channel, selected-head, lineage and rollback source contracts are tested without real WordPress mutations. This review is not a Host signature or Production release authorization.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    }
+  ],
+  "negative_review_contract": "tests/pr951_pr937_composite_source_gates_contract.py",
+  "reviewed_for_ci_only": true,
+  "authorizing": false,
+  "production_authorized": false,
+  "is_build_provenance": false,
+  "source_promotion_approved": false,
+  "live_evidence_required": true,
+  "owner_release_attestation_present": false,
+  "signed_host_source_mutation_performed": false,
+  "release_gate": "BLOCKED_SOURCE_RECONCILIATION",
+  "review_rationale": "Only two newly composed source implementations require a new exact Git blob behavioral review: Authorization combining existing request-local recovery and Claim/Observation/Denial traits, and Self Update combining dynamic Site Profile restrictions with separate signed Host Source Admission. Both parent commits remain preserved as merge ancestors. Explicit executed PHP tests reproduce the denial behavior on 7.4 and 8.5. No source-only review certificate grants any Site Owner capability, changes the live WordPress environment, or approves deployment. Source ancestry must contain an actual two-parent Git merge carrying the original PR951 and PR937 commits in their original parent order; a local preview commit SHA is not a portable release identity.",
+  "merge_parent_source_binding": [
+    "1d8a9b4a491368c2f648a0f6e424f7972e20dce0",
+    "a044005e3b960c874ad492276a07814bf66e350d"
+  ]
+}

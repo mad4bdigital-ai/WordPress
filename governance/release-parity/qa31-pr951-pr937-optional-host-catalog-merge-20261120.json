@@ -1,0 +1,35 @@
+{
+  "contract": "mad4b.qa31-pr951-pr937-optional-host-catalog-merge.v1",
+  "source_path": "includes/class-mad4b-scp-server-core-catalog.php",
+  "exact_original_pr937_head_sha": "a044005e3b960c874ad492276a07814bf66e350d",
+  "exact_existing_pr951_head_sha": "1d8a9b4a491368c2f648a0f6e424f7972e20dce0",
+  "original_pr937_source_blob_sha": "7f508bf4210fef1c80855475ac85eb0a81d67046",
+  "original_pr937_source_sha256": "6e955ced5a49cfc3224c3391e01a6581d7fe834e40a5eba7931efdfd845397c9",
+  "original_pr951_source_blob_sha": "015180f657097cb717d48b1639d3b47a51401d59",
+  "current_source_blob_sha": "7f508bf4210fef1c80855475ac85eb0a81d67046",
+  "current_source_sha256": "6e955ced5a49cfc3224c3391e01a6581d7fe834e40a5eba7931efdfd845397c9",
+  "required_regression": "tests/authority/test-optional-source-read-catalog.php",
+  "additional_regressions": [
+    "tests/servers-native-core-catalog-hermetic.php",
+    "tests/server-registration-descriptor-boundary-hermetic.php",
+    "tests/test_servers_single_owner_convergence.py"
+  ],
+  "qa31_negative_regression": "tests/qa31_pr937_optional_host_catalog_merge_contract.py",
+  "control_ids": [
+    "MCP-01",
+    "SECURITY-01",
+    "EXECUTION-01",
+    "PLATFORM-01"
+  ],
+  "review_rationale": "This exact 16,496-byte merged server core catalog is byte-identical to PR #937 head. The PR951 baseline incorrectly listed optional mad4b/control-plane-test-route on mad4b-read and mad4b-chatgpt before registration; the reviewed PR937 source removes both unconditional entries and adds the route only after exact WordPress wp_has_ability and native MCP descriptor binding. The separate release-source-preflight-status remains optional, read-only and scoped only to mad4b-read. PHP 7.4/8.5 source runtime suites confirm plugin-only installation never advertises absent Host abilities, descriptor-unbound variants are denied, read surface only mounts allowed optional sources and existing site-info remains. This review is source-only; no Site Owner, signed Host release certificate, grant or deployment authority is inferred.",
+  "provenance": "reviewed original PR937 exact Git object plus original PR951 repository source; this is not a new release package",
+  "status": "reviewed_for_ci_only",
+  "authorizing": false,
+  "production_authorized": false,
+  "source_promotion_approved": false,
+  "is_build_provenance": false,
+  "live_evidence_required": true,
+  "reviewed_for_ci_only": true,
+  "original_release_admission_required": true,
+  "release_gate": "BLOCKED_SOURCE_RECONCILIATION"
+}

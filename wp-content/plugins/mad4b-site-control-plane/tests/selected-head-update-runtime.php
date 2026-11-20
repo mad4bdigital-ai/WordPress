@@ -61,6 +61,19 @@ class MAD4B_SCP_Authorization {
         return array( 'allowed' => true, 'reason_code' => 'preflight_allowed' );
     }
 }
+// Hermetic verification boundary. Real RSA, site inventory and source
+// binding are separately exercised by tests/authority; this fixture proves
+// Selected Head preserves its negative and positive admission paths.
+class MAD4B_Release_Source_Admission {
+    public static $qualified = false;
+    public static function check( $sha ) {
+        return array( 'preflight_ready' => self::$qualified,
+            'blockers' => self::$qualified ? array() : array( 'signed_host_preflight_required' ) );
+    }
+    public static function require_for_release( $sha ) {
+        return self::$qualified ? true : new WP_Error( 'mad4b_release_source_preflight_required' );
+    }
+}
 class MAD4B_SCP_Execution_Fence {
     public static function has_active_frame() { return MAD4B_SCP_Authorization::$claimed; }
 }
@@ -160,6 +173,14 @@ expect( $GLOBALS['registered'][$cls::APPLY_ABILITY]['meta']['mcp']['public'] ===
 $select = array( 'candidate_source' => array(
     'repository' => 'mad4bdigital-ai/WordPress', 'type' => 'pull_request', 'reference' => '258'
 ), 'reason' => 'Test explicitly chosen source on staging' );
+if ( 'normal' === $GLOBALS['case'] ) {
+    $unsigned = $cls::plan( $select );
+    expect( is_array( $unsigned ) && empty( $unsigned['eligible'] )
+        && in_array( 'signed_source_reconciliation_preflight_required', $unsigned['blockers'], true )
+        && 0 === $GLOBALS['download_calls'] && 0 === $GLOBALS['apply_calls'],
+        'unsigned selected source bypassed Host reconciliation admission' );
+}
+MAD4B_Release_Source_Admission::$qualified = true;
 $plan = $cls::plan( $select );
 expect( is_array( $plan ) && $plan['automatic_update'] === false &&
     $plan['default_release_channel_unchanged'] === true, 'selected update became default' );

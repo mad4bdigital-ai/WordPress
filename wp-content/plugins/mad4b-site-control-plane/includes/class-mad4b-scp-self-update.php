@@ -879,6 +879,10 @@ final class MAD4B_SCP_Self_Update {
 
 		$current = self::installed_identity();
 		$blockers = array();
+        $source_preflight = class_exists( 'MAD4B_Release_Source_Admission' )
+            ? MAD4B_Release_Source_Admission::check( (string) $identity['source_commit_sha'] ) : array();
+        if ( empty( $source_preflight['preflight_ready'] ) )
+            $blockers[] = 'signed_source_reconciliation_preflight_required';
 		$release_manifest = array();
 		$candidate_source = array();
 
@@ -943,6 +947,7 @@ final class MAD4B_SCP_Self_Update {
 			'operation' => 'replace',
 			'channel' => $channel,
 			'current' => $current,
+            'source_reconciliation_preflight' => $source_preflight,
 			'target' => $identity,
 			'max_upload_bytes' => self::MAX_UPLOAD_BYTES,
 			'caller_url_allowed' => false,
@@ -973,6 +978,27 @@ final class MAD4B_SCP_Self_Update {
 		$plan['plan_sha256'] = self::digest( $plan );
 		$plan['write_binding'] = array( 'expected_plan_sha256' => $plan['plan_sha256'] );
 		return $plan;
+	}
+
+	/**
+	 * A candidate matching the fixed, root-verified master release may carry
+	 * that release's verified metadata into Post_Update_Continuation. Never
+	 * import caller-provided trust flags or declare an orphan Git SHA an ancestor.
+	 * Unpromoted Staging candidates retain their prior owner-only admission.
+	 */
+	private static function trusted_master_release_candidate( array $identity, array $manifest ) {
+		if ( true !== ( $manifest['release_verdict_success'] ?? false )
+			|| true !== ( $manifest['release_root_trust_verified'] ?? false )
+			|| true !== ( $manifest['published_from_master'] ?? false )
+			|| (int) ( $manifest['release_verdict_run_id'] ?? 0 ) < 1 ) return array();
+		foreach ( array( 'version', 'source_commit_sha', 'archive_sha256',
+			'build_fingerprint', 'package_manifest_digest' ) as $field ) {
+			if ( empty( $manifest[ $field ] ) || empty( $identity[ $field ] )
+				|| ! hash_equals( (string) $manifest[ $field ], (string) $identity[ $field ] ) ) return array();
+		}
+		if ( (int) ( $manifest['size_bytes'] ?? 0 ) < 1
+			|| (int) $manifest['size_bytes'] !== (int) ( $identity['size_bytes'] ?? 0 ) ) return array();
+		return self::public_manifest( $manifest );
 	}
 
 	public static function upload_apply( $input ) {
@@ -1260,6 +1286,10 @@ final class MAD4B_SCP_Self_Update {
             if ( '' !== $lineage_blocker ) $blockers[] = $lineage_blocker;
 		}
 
+        $source_preflight = class_exists( 'MAD4B_Release_Source_Admission' )
+            ? MAD4B_Release_Source_Admission::check( (string) ( $target['source_commit_sha'] ?? '' ) ) : array();
+        if ( empty( $source_preflight['preflight_ready'] ) )
+            $blockers[] = 'signed_source_reconciliation_preflight_required';
 		$continuation_projection = self::continuation_policy_projection();
 		$authority_handoff = isset( $continuation_projection['authority_handoff'] ) && is_array( $continuation_projection['authority_handoff'] )
 			? $continuation_projection['authority_handoff']
@@ -1272,6 +1302,7 @@ final class MAD4B_SCP_Self_Update {
 			'channel' => 'governed_native_release_pull',
 			'current' => $current,
 			'target' => $target,
+            'source_reconciliation_preflight' => $source_preflight,
             'release_source_relationship' => isset( $relationship ) ? $relationship : 'unknown',
 			'fixed_manifest_url' => self::MANIFEST_URL,
 			'fixed_pointer_url' => self::POINTER_URL,
@@ -1449,7 +1480,11 @@ final class MAD4B_SCP_Self_Update {
 	private static function native_update_ui_state( $manifest = null ) {
 		$blockers = array();
 		if ( ! current_user_can( 'update_plugins' ) ) $blockers[] = 'update_plugins_capability_required';
-		if ( ! self::environment_allowed( false ) ) $blockers[] = 'native_update_environment_policy_blocked';
+        if ( ! self::environment_allowed( false ) ) {
+            $blockers[] = 'native_update_site_policy_blocked';
+            // Keep the established dual-channel CI/diagnostic reason stable.
+            $blockers[] = 'native_update_environment_policy_blocked';
+        }
 		if ( null === $manifest ) $manifest = self::fetch_manifest();
 		if ( is_wp_error( $manifest ) ) {
 			$blockers[] = sanitize_key( $manifest->get_error_code() );
@@ -2149,6 +2184,13 @@ final class MAD4B_SCP_Self_Update {
 	}
 
 	private static function apply_verified_archive( $path, array $target, $channel, $plan_sha256, array $verified_archive, $bootstrap_candidate_drift = false ) {
+        // This is the shared last admission point across native, uploaded,
+        // bootstrap and Selected-HEAD update paths. No unsigned exception.
+        $source_sha = (string) ( $target['source_commit_sha'] ?? '' );
+        $host_admission = class_exists( 'MAD4B_Release_Source_Admission' )
+            ? MAD4B_Release_Source_Admission::require_for_release( $source_sha )
+            : new WP_Error( 'mad4b_release_preflight_verifier_missing', 'Signed Host source preflight is required.' );
+        if ( is_wp_error( $host_admission ) ) return $host_admission;
 		$runtime_php_files = isset( $verified_archive['runtime_php_files'] ) && is_array( $verified_archive['runtime_php_files'] )
 			? array_values( array_filter( array_map( 'strval', $verified_archive['runtime_php_files'] ) ) )
 			: array();
