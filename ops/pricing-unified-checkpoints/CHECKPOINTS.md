@@ -111,3 +111,19 @@ Commercial Rate generation requires per-component signed cost receipts, determin
 - Residual grey JetEngine section chrome is removed only in Grouped JetEngine mode. The original form, repeaters, field widths and Save stay canonical. Native mode is untouched.
 - Source and Wayfatours have matching on-disk shell JS/CSS hashes and rollback copies in /opt/mad4b-company-provisioning/backups/jetengine-shell-unified-v2-20261120/. Native form readback and shell enqueue tests passed on both sites. DOM tests verify three service modes, navigation, focus handoff and no duplicate fields.
 - Authenticated browser visual checks at 320/390/768/1024/1440, native Save and repeater expansion remain OPEN. Commercial pricing checkout remains blocked. CP8 remains OPEN.
+
+
+## CP2 final UI composition — true single Workspace (20 Nov 2026)
+
+Supersedes the former "two separate DOM elements with matched borders" styling-only compromise, which visibly appeared as a second JetEngine editor below the Grouped Workspace. The original JetEngine vendor section (the exact same form, nonce, fields, native Save and handlers) is now physically placed in the central Workspace content in Grouped mode; it returns to its original root position in Native mode, without cloning or recomputing input values.
+
+- One actual shared main layout contains the company/product navigation and central editor as sibling elements. No separate "page within page" border, negative margin workaround or duplicated JetEngine H1 in the visual mode.
+- Header metrics now live within the original Workspace header as a compact strip, not three detached cards.
+- The existing company/product separation and inherited Step 2 dimension controller remain unchanged.
+- Original JetEngine save stays in regular document flow after the real fields. Mobile section navigation collapses to one accessible "Sections" toggle, revealing the existing navigation buttons only when requested.
+- The runtime only moves a verified, unique native JetEngine form with settings_top and original submit; unrelated product-specific forms remain in place and keep their own Save owners.
+- DOM acceptance: tests/verify-jetengine-native-editor-composition-dom.js proves exact input/nonce/submit object identity across repeated visual/native toggles, including coexistence with independent supplier forms.
+- Chromium visual fixture acceptance: tests/verify-composed-workspace-playwright.py and fixtures/composed-workspace.html passed at 1440, 1024, 768, 390, 320. Assertions cover one native form in main content, no duplicate title, no page/content horizontal overflow, desktop common row, compact mobile menu open/close, in-flow Save, visual/native restoration. Fixture-based screenshots are **not** live logged-in WordPress screenshots.
+- WordPress source verification: tests/verify-jetengine-composed-workspace.php and original native form/UI tests passed on both Tours.dev and Wayfatours with 54 native fields; source revisions unchanged.
+- Live CSS/JS files were updated on staging and production, with per-site rollback backups under /opt/mad4b-company-provisioning/backups/jetengine-single-surface-final-20261120/.
+- Authentication-based browser Save, real plugin interoperability, EN/ES responsive and commercial pricing E2E are still OPEN. CP8 remains OPEN.

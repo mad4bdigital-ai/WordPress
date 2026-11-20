@@ -7,6 +7,47 @@
   const nav=root.querySelector('.mad4b-ws-nav');
   if(!nav)return;
   root.classList.add('mad4b-ws-unified-shell');
+  // One header instead of a separate title card plus three dashboard cards.
+  // Move only the existing metric strip, never vendor inputs or Save.
+  const banner=root.querySelector('.mad4b-ws-banner');
+  const metrics=root.querySelector('.mad4b-ws-summary');
+  if(cfg.pricing && banner && metrics && metrics.parentNode!==banner){
+    banner.append(metrics);
+    root.classList.add('mad4b-ws-integrated-header');
+  }
+  // True structural composition. The COMPLETE original JetEngine section,
+  // including its untouched form, nonce, original input names and Save button,
+  // becomes a child of the shared content surface in Grouped mode.
+  // Restore the *same* nodes to their original location in Native mode.
+  // Do not copy, serialize, or create another form.
+  const workspaceContent=root.querySelector('.mad4b-ws-content');
+  const original=[...root.children].find(el=>
+    typeof el.classList?.contains==='function' &&
+    el.classList.contains('mad4b-ws-original'));
+  const ownedForm=original?.querySelector('form');
+  const nativeEditors=(typeof root.querySelectorAll==='function'
+    ?[...root.querySelectorAll('form')]:[]).filter(form=>
+    form.querySelector('#settings_top') &&
+    form.querySelector('button[type="submit"]'));
+  const editorReady=Boolean(workspaceContent && original &&
+    ownedForm && nativeEditors.length===1 &&
+    nativeEditors[0]===ownedForm);
+  if(editorReady){
+    const anchor=document.createComment('mad4b-native-editor-original-position');
+    root.insertBefore(anchor,original);
+    const moveEditor=()=>{
+      const grouped=root.classList.contains('mad4b-ws-visual');
+      if(grouped && original.parentNode!==workspaceContent){
+        workspaceContent.append(original);
+      }else if(!grouped && original.parentNode!==root){
+        root.insertBefore(original,anchor.nextSibling);
+      }
+      root.classList.toggle('mad4b-ws-editor-composed',
+        grouped && original.parentNode===workspaceContent);
+    };
+    document.addEventListener('mad4b:jetengine:mode-changed',moveEditor);
+    moveEditor();
+  }
   const label=(text,kind)=>{
     const el=document.createElement('div');
     el.className='mad4b-ws-nav-group-label';
@@ -27,6 +68,46 @@
     }
   };
   reconcile();
+  // On mobile, keep section switching compact instead of forcing the full
+  // company/products menu above every field. This operates on the ORIGINAL
+  // navigation buttons; it never duplicates their actions or stored values.
+  const sidebar=nav.parentElement;
+  if(sidebar && typeof window.matchMedia==='function'){
+    const small=window.matchMedia('(max-width:900px)');
+    const sectionSwitch=document.createElement('button');
+    sectionSwitch.type='button';
+    sectionSwitch.className='mad4b-ws-mobile-section-toggle';
+    sectionSwitch.textContent='Sections';
+    if(!nav.id)nav.id='mad4b-ws-original-section-navigation';
+    sectionSwitch.setAttribute('aria-controls',nav.id);
+    sidebar.insertBefore(sectionSwitch,nav);
+    let expanded=false;
+    const refreshSections=()=>{
+      const narrow=small.matches;
+      sectionSwitch.hidden=!narrow;
+      nav.hidden=narrow&&!expanded;
+      const chosen=nav.querySelector('.mad4b-ws-nav-btn.is-active');
+      const label=String(
+        chosen?.querySelector(':scope > span')?.lastChild?.textContent ||
+        chosen?.textContent || 'Choose a section'
+      ).trim().replace(/\s+/g,' ');
+      sectionSwitch.textContent='Sections · '+label;
+      sectionSwitch.setAttribute('aria-expanded',String(!narrow||expanded));
+    };
+    sectionSwitch.addEventListener('click',()=>{
+      expanded=!expanded;
+      refreshSections();
+    });
+    nav.addEventListener('click',event=>{
+      if(!small.matches||!event.target.closest('.mad4b-ws-nav-btn'))return;
+      expanded=false;
+      setTimeout(refreshSections,0);
+      sectionSwitch.focus();
+    });
+    if(small.addEventListener)small.addEventListener('change',refreshSections);
+    else if(small.addListener)small.addListener(refreshSections);
+    refreshSections();
+  }
   // One shared dimension policy belongs to the company. Product panels
   // inherit it; their service-specific settings stay with their real
   // original Cost/Rate editors. This callout never creates form inputs.

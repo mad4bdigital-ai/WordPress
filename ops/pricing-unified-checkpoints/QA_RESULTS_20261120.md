@@ -105,3 +105,10 @@ Read-only verified tests:
 - verify-native-jetengine-form-markup.php PASS on both sites; real native form, Save and repeaters intact.
 
 The two shell JS/CSS files were deployed to staging and production with source SHA parity and rollback backups. No authenticated graphical browser/mobile/real Save certificate has been issued. Commercial pricing remains blocked by supplier evidence.
+
+
+### 20 Nov final UI correction: structural integration, not cosmetic camouflage
+
+Replaced the prior CSS-only seam joining with one actual shared visual editor. The existing native JetEngine form is moved intact into the central content when Grouped View is on and restored when Native View is selected. Its field object identities, input names, nonce and submit remain unchanged. New guard allows separate supplier-specific forms without confusing them with the unique JetEngine original. The header statistics are nested in the existing header, and mobile navigation collapses rather than consuming the whole screen. Native Save remains in normal flow after the inputs.
+
+Testing: original WordPress factory form readback (54 fields), component script/style verification on staging and Wayfatours, DOM identity tests, Chromium at 1440/1024/768/390/320 with zero horizontal overflow and mobile navigation click/close, intact source revision. No live authenticated browser certificate issued. All changes are scoped to the presentation shell; commerce and supplier cost approvals were not changed.
