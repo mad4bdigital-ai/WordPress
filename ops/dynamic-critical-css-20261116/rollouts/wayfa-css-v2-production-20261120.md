@@ -32,3 +32,14 @@ assume this is a public v2 CSS failure.
 
 This direct VPS hotfix was not a signed Broker grant, GitHub merge,
 release to Tours.dev, or certification of all site routes.
+
+## 20 Nov production continuation
+
+- First fully automatic native Wayfa Cron public ticket 99 selected Memphis Cairo Heritage Day Tour and ran complete CSS source capture, pre-QA issuance, post-release five-viewport QA, certified promotion, origin readback, route-only FastCGI cache renewal, and WordPress ACK.
+- Three qualified V2 routes: Dolphin House Hurghada, Marsa Alam to Luxor Temples, Memphis Cairo Heritage Day Tour. No universal CSS route transfer.
+- Wayfa Home 415 was reconciled from unknown local v0.3.23, SHA 60fc91116aff..., to exact first-party v0.3.29 SHA 75e305345f46af0ec4dbed36f40def63626108de85f938238853b27674c11794 from Git commit f7e4ddc40a768485358cafe5e9e2e7dd135c5cc4. Home EN/ES origin CSS ready 1, HTTP 200.
+- Nginx Home-only FastCGI namespace rotated 9754e76ad7dafeca to 5401acb2393d8718; unrelated tour/archive/market keys unchanged.
+- CSS audit corrected to verify existing per-site Cron source plus exact first-party WordPress 429 v1.1.0 SHA ee32f776be5c0c8db99cd0cb6a61bd8da446f5520ab34d46b4a667213c50437a. Do not recreate the retired global cron. Live full audit had zero fatal issues, two old V1 route warnings.
+- Site-owned read-only V2 source-family adapter checks exact certified source/assets/route/locale/market/runtime/post-release QA. Three current V2 routes have three different Elementor DOM document fingerprints. Their source variants must not share CSS.
+- A first-party live source snapshot and variant-index calculation showed 23 subfamilies, 3 individually qualified singleton variants, 18 pending canaries and 2 mapping-pending groups. The canonical WordPress family refresh remains deferred by its resource/WPCLI guard and has not yet published those latest counts; its WordPress ticket remains queued.
+- Direct VPS operations and preimages recorded under /var/lib/mad4b/company-code-release/receipts/wayfa-home415-source-20261120, /var/lib/mad4b/company-code-release/receipts/wayfa-css-site-owned-audit-20261120 and /var/lib/mad4b/company-code-release/receipts/wayfa-css-v2-family-source-20261120. Not signed Broker grants, Git merge, or Tours.dev rollout.

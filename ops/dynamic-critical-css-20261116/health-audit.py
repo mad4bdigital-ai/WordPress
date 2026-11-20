@@ -21,7 +21,7 @@ REPO=Path('/opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261
 CHROMIUM_REPORT_ROOT=Path('/opt/mad4b-company-provisioning/reports/dynamic-critical-css-20261116')
 HOME_SHA={
  'source':'75e305345f46af0ec4dbed36f40def63626108de85f938238853b27674c11794',
- 'wayfa':'cdb55bd9ab6a86df26483450e33cf0bbc91296940db51102dde082fdb839db5b'
+ 'wayfa':'75e305345f46af0ec4dbed36f40def63626108de85f938238853b27674c11794'
 }
 REPORT=Path('/opt/mad4b-company-provisioning/reports/critical-css-health-v1')
 UA='Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 Chrome/157.0.0.0 Mobile Safari/537.36'
@@ -77,16 +77,51 @@ def unit_health(site):
     independent; an unavailable audit cannot deactivate frontend CSS.
     """
     if site not in SITES:raise ValueError('unknown-first-party-css-site')
-    cronfile=Path('/etc/cron.d/mad4b-css-wpcron')
-    expected_cron=D/'wpcron/mad4b-css-wpcron.cron'
-    expected_plugin=D/'wpcron/429-mad4b-css-wpcron-dispatch-v1.php'
+    # Source-owned scheduler v1.1.0 uses one tightly enrolled host wake
+    # entry per company. The retired global cron is NOT a required file:
+    # reinstalling it creates a second executor and a real concurrency bug.
+    workers={
+      'source':('/opt/hostinger-migrations/hosting-3/etg-commerce-staging/operations/css-cron-v1/worker.py',
+                '*/5','Tours.dev Staging. Exact WordPress CSS job tickets only.'),
+      'wayfa':('/opt/wayfa-rebuild-20261102/operations/css-cron-v1/worker.py',
+               '2-59/5','Wayfatours Production. Independent site queue, shared safety lock.')}
+    worker,interval,comment=workers[site]
+    cronfile=Path('/etc/cron.d/mad4b-css-site-'+site)
     plugin=SITES[site]['root']/'mu-plugins/429-mad4b-css-wpcron-dispatch-v1.php'
-    for current,expected in ((cronfile,expected_cron),(plugin,expected_plugin)):
-        if (current.is_symlink() or expected.is_symlink()
-            or not current.is_file() or not expected.is_file()
-            or current.stat().st_uid!=0 or current.stat().st_mode&0o022
-            or sha(current)!=sha(expected)):
-            raise ValueError('wpcron_scheduler_source_or_permission_drift:'+str(current))
+    # Exact known Git source SHA for the first-party profile-based WP 429.
+    # Never silently trust a locally modified PHP dispatcher.
+    approved_wp429='ee32f776be5c0c8db99cd0cb6a61bd8da446f5520ab34d46b4a667213c50437a'
+    expected=(
+        '# MAD4B site-owned CSS Cron: '+comment+'\n'
+        'SHELL=/bin/sh\n'
+        'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\n'
+        +interval+' * * * * root '
+        '/usr/bin/flock -n /run/lock/mad4b-css-site-'+site+'.lock '
+        '/usr/bin/flock -n /run/lock/mad4b-css-wpcron-worker.lock '
+        '/usr/bin/timeout -k 10s 1500s '
+        '/usr/bin/nice -n 18 /usr/bin/ionice -c 3 '
+        '/usr/bin/python3 '+worker
+        +' >> /var/log/mad4b-css-site-'+site+'.log 2>&1\n')
+    retired_global=Path('/etc/cron.d/mad4b-css-wpcron')
+    if retired_global.exists() or retired_global.is_symlink():
+        raise ValueError('duplicate-retired-global-css-wpcron')
+    for current in (cronfile,Path(worker)):
+        if (current.is_symlink() or not current.is_file()
+            or current.stat().st_uid!=0 or current.stat().st_mode&0o022):
+            raise ValueError('site-owned-css-executor-source-or-permission-drift:'+str(current))
+    # The live MU plugin is legitimately owned by the company PHP UID
+    # on Wayfatours; the exact Git SHA, not root ownership, is its
+    # executable source admission. It must remain non-symlink, readable
+    # and NOT group/world writable.
+    if (plugin.is_symlink() or not plugin.is_file()
+        or plugin.stat().st_uid not in (0,33)
+        or plugin.stat().st_mode&0o022
+        or not plugin.stat().st_mode&0o004):
+        raise ValueError('site-owned-WP429-mode-or-identity-drift:'+site)
+    if cronfile.read_text()!=expected:
+        raise ValueError('site-owned-cron-entrypoint-not-source-matched:'+site)
+    if sha(plugin)!=approved_wp429:
+        raise ValueError('site-owned-WP429-is-not-source-admitted:'+site)
     if command(['systemctl','is-active','cron'],8)!='active':
         raise ValueError('wpcron_host_wakeup_daemon_not_active')
     # Duplicate ownership would run two independent workers. Verify the

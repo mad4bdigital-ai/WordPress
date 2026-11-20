@@ -16,6 +16,11 @@ ROOTS={
 }
 CONTRACT='mad4b.public-css.source-family-registry.v1'
 CERT='mad4b.public-critical-css.route-certificate.v1'
+v2spec=importlib.util.spec_from_file_location(
+    'mad4b_source_family_certified_v2_adapter',
+    BASE/'public-v2-family-canary.py')
+v2=importlib.util.module_from_spec(v2spec)
+v2spec.loader.exec_module(v2)
 MARKET_RE=re.compile(r'^(?:[A-Z]{2}|base|static)\|(?:[A-Z]{3}|NONE)$')
 PROFILE_RE=re.compile(r'^(?:shared-template|elementor-document|taxonomy|archive):[A-Za-z0-9:/_-]{1,140}$')
 
@@ -53,6 +58,13 @@ def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 
 def valid_canary(root,host,route,state,catalog,ledger_record,cert):
     if not isinstance(cert,dict) or not isinstance(ledger_record,dict):return False
+    if cert.get('contract')==v2.CONTRACT:
+        try:
+            return v2.validate(root,host,route,state,catalog,ledger_record,cert,
+                queue.source_key(catalog,route,state,
+                    bool(ledger_record.get('depends_on_listings'))))
+        except (ValueError,OSError,KeyError,TypeError,UnicodeError):
+            return False
     if ledger_record.get('status')!='certified':return False
     if ledger_record.get('source_key')!=queue.source_key(catalog,route,state,bool(ledger_record.get('depends_on_listings'))):return False
     for name,value in (
@@ -92,7 +104,7 @@ def valid_canary(root,host,route,state,catalog,ledger_record,cert):
 def load_certs(root):
     rows={};base=root/'mad4b-public-critical-css-v1/certs'
     if base.is_symlink():raise ValueError('unsafe-source-certificate-directory')
-    if not base.exists():return rows
+    if not base.exists():return v2.load_into(root,rows)
     for p in base.glob('*.json'):
         if p.is_symlink() or p.stat().st_size>8192 or not re.fullmatch(r'[a-f0-9]{64}\.json',p.name):continue
         try:
@@ -100,7 +112,7 @@ def load_certs(root):
             if route in rows:raise ValueError('multiple-current-market-certificates')
             rows[route]=cert
         except (OSError,ValueError,KeyError,TypeError,json.JSONDecodeError):continue
-    return rows
+    return v2.load_into(root,rows)
 
 def split_observed_variants(site,catalog,state,ledger,published,rows,variant_index):
     """Split only actual first-party Elementor DOM variants.
@@ -201,7 +213,8 @@ def build(site,catalog,state,ledger,root=None,variant_index=None):
             for market,currency,cert in by_route.get((r['language'],r['path']),[]):
                 if not valid_canary(root,catalog['host'],r,state,catalog,record,cert):continue
                 candidates.append({'path':r['path'],'route_key':r['route_key'],'market':market,
-                    'currency':currency,'css_sha':cert['css_sha'],'doc_sha':cert['elementor_doc_fingerprint']})
+                    'currency':currency,'css_sha':cert.get('css_sha') or cert.get('source_manifest_sha256'),
+                    'doc_sha':cert['elementor_doc_fingerprint']})
                 seen.add(r['route_key'])
         # Two distinct real browser QA canaries, same shared template DOM
         # and market, establish *source behavior*, not route CSS equivalence.
