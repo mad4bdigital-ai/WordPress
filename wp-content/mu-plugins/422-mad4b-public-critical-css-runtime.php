@@ -312,7 +312,19 @@ final class MAD4B_Public_Critical_CSS_Runtime_V1 {
             // only some of the source links. Never serve a half-optimized
             // page: restore the original full, synchronous CSS HTML.
             if (!$valid) return is_string($original)?$original:$html;
-            if (!headers_sent())header('X-MAD4B-Public-CCSS-Ready: 1',true);
+            if (!headers_sent()) {
+                if (MAD4B_Public_Critical_CSS_Consumer_V2::provisional()) {
+                    // The certificate exists before performance QA, so do NOT
+                    // cache this unqualified HTML across visitors/contexts.
+                    header('X-MAD4B-Public-CCSS-Phase: pending-qa',true);
+                    header('X-MAD4B-Public-CCSS-Ready: 0',true);
+                    header('Cache-Control: private, no-store, max-age=0',true);
+                    header('X-Accel-Expires: 0',true);
+                } else {
+                    header('X-MAD4B-Public-CCSS-Ready: 1',true);
+                    header('X-MAD4B-Public-CCSS-Phase: qualified',true);
+                }
+            }
             return $html;
         }
         if (!self::$verified_request || !is_string($html)) return $html;

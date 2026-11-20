@@ -18,6 +18,8 @@ final class MAD4B_Public_Critical_CSS_Consumer_V2 {
     private const MAX_FILES=256;
     private static int $expected_links=0;
     private static int $expected_styles=0;
+    private static bool $provisional=false;
+    public static function provisional(): bool {return self::$provisional;}
 
     private static function digest($data): string {
         if (is_array($data)) {
@@ -76,9 +78,16 @@ final class MAD4B_Public_Critical_CSS_Consumer_V2 {
         $path=WP_CONTENT_DIR.self::ROOT.'/certs-v2/'.$routeKey.'.json';
         if (is_link($path)||!is_file($path)||filesize($path)>180000)return null;
         $cert=json_decode((string)@file_get_contents($path),true);
+        $status=$cert['status']??null;
+        $provisional=$status==='released_pending_qa';
         if (!is_array($cert)
             || ($cert['contract']??null)!==self::CONTRACT
-            || ($cert['status']??null)!=='certified'
+            || !in_array($status,['certified','released_pending_qa'],true)
+            || ($provisional && (!is_int($cert['released_at']??null)
+                 || !is_int($cert['post_release_deadline']??null)
+                 || $cert['post_release_deadline']!=$cert['released_at']+21600
+                 || $cert['released_at']>time()+300
+                 || time()>$cert['post_release_deadline']))
             || ($cert['runtime_sha']??null)!==hash_file('sha256',__DIR__.'/422-mad4b-public-critical-css-runtime.php')
             || ($cert['consumer_sha']??null)!==hash_file('sha256',__FILE__)
             || !self::verify_deps($cert,$ctx))return null;
@@ -87,7 +96,17 @@ final class MAD4B_Public_Critical_CSS_Consumer_V2 {
         if (($cert['critical_cap_px']??null)!==767
             || ($cert['native_mobile_breakpoint']??null)!==767)return null;
         $e=$cert['evidence']??null;
-        if (!is_array($e)||($e['decision']??null)!=='passed_evidence'
+        if (!is_array($e))return null;
+        if ($provisional) {
+            // Publisher validated all original CSS/asset/route/context SHAs.
+            // Browser performance happens AFTER release. No shared cache
+            // while provisional, and the 6h lease expires to Native CSS.
+            if (($e['decision']??null)!=='pending_post_release'
+                || ($e['tested']??null)!==0
+                || ($e['viewports']??null)!==[]
+                || ($e['performance_source']??null)!=='post-release-real-original-css-urls'
+                || ($e['verified_at']??null)!==0)return null;
+        } elseif (($e['decision']??null)!=='passed_evidence'
             || ($e['viewports']??null)!==[320,390,414,767,768]
             || ($e['tested']??null)!==5
             || ($e['performance_source']??null)!=='real-original-css-urls'
@@ -144,7 +163,7 @@ final class MAD4B_Public_Critical_CSS_Consumer_V2 {
         return $index===$n?$positions:null;
     }
     public static function transform(string $html,array $ctx): ?string {
-        self::$expected_links=0;self::$expected_styles=0;
+        self::$expected_links=0;self::$expected_styles=0;self::$provisional=false;
         $cert=self::certificate($ctx);
         if (!$cert||str_contains($html,'data-mad4b-ccss-v2-rest='))return null;
         $body=stripos($html,'<body');
@@ -240,6 +259,7 @@ final class MAD4B_Public_Critical_CSS_Consumer_V2 {
         if ($end===false)return null;
         $result=substr_replace($result,$recovery,$end,0);
         self::$expected_links=$count;
+        self::$provisional=($cert['status']==='released_pending_qa');
         return $result;
     }
     public static function readback(string $html): bool {

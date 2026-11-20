@@ -528,10 +528,42 @@ def run_core(site):
             # Existing CPU/Chrome guard and one original route job own this
             # bounded, sequential QA. Explicit opt-in admits evidence
             # generation, NEVER public promotion or FastCGI invalidation.
-            if os.environ.get('MAD4B_MULTI_CSS_SOURCE_QA','0')=='1':
+            release_first=os.environ.get('MAD4B_MULTI_CSS_V2_RELEASE_FIRST')=='1'
+            if release_first or os.environ.get('MAD4B_MULTI_CSS_SOURCE_QA','0')=='1':
+                issued_before_qa=False
+                release_args=None
                 try:
                     browser(route,wp,host,env,'capture-ordered-critical.js',
                       jobdir/'ordered-critical-capture.log',{},limit=390)
+                    if release_first:
+                        # Release the source-bound candidate BEFORE full
+                        # layout/FCP/LCP/CLS/interaction QA. Missing browser QA
+                        # is not a certificate issuance veto. This provisional
+                        # certificate stays no-store and expires in 6 hours.
+                        if (os.environ.get('MAD4B_MULTI_CSS_V2_PUBLISH')!='1'
+                            or os.environ.get('MAD4B_MULTI_CSS_V2_RELEASE_APPROVED')!='1'):
+                            raise ValueError('release-first-publisher-opt-in-missing')
+                        fresh=obs(php,host,env)
+                        fresh['runtime_sha']=approved_native_runtime_sha(site,wp)
+                        companion=approved_v2_consumer_sha(site,wp,fresh['runtime_sha'])
+                        if companion:fresh['consumer_v2_sha']=companion
+                        fresh['qa_policy_sha']=qa_policy_sha()
+                        current=next((x for x in catalog(php,host)['routes']
+                            if x['route_key']==route['route_key']),None)
+                        if fresh!=state or current!=route or not fresh.get('consumer_v2_sha'):
+                            raise ValueError('MULTICSS_SOURCE_CHANGED_BEFORE_RELEASE')
+                        market=observed['market_country'];currency=observed['currency']
+                        measured={**state,'market_country':market,'currency':currency}
+                        jsonsave(jobdir/'measured-site-v2.json',measured)
+                        release_args=['python3',str(TOOLS/'public-ordered-critical-certificate-v2.py'),
+                            str(catfile),str(jobdir/'route.json'),str(jobdir/'measured-site-v2.json'),
+                            str(jobdir),str(wp),
+                            str(wp/'mu-plugins/422-mad4b-public-critical-css-runtime.php'),
+                            str(wp/'mu-plugins/422-mad4b-public-critical-css-v2-consumer.php')]
+                        print(run(release_args+['release'],timeout=35))
+                        issued_before_qa=True
+                        print('MULTICSS_V2_RELEASED_PENDING_POST_QA',site,route['path'],flush=True)
+                    # Post-release QA begins only after publish above.
                     browser(route,wp,host,env,'verify-ordered-css.js',
                       jobdir/'ordered-full-cascade-qa.log',
                       {'MAD4B_WIDTHS':'320,390,414,767,768'},limit=260)
@@ -545,7 +577,17 @@ def run_core(site):
                         if line.startswith('ORDERED_CRITICAL_ADMISSION ')]
                     if len(receipts)!=1:raise ValueError('MULTICSS_ADMISSION_RECEIPT_MISSING')
                     admitted=json.loads(receipts[0])
-                    if (admitted.get('decision')=='qualified_for_delivery_review'
+                    if issued_before_qa:
+                        if (admitted.get('decision')!='qualified_for_delivery_review'
+                            or admitted.get('source_manifest_sha256')!=observed['manifest_sha256']):
+                            print(run(release_args+['revert'],timeout=30))
+                            issued_before_qa=False
+                            raise ValueError('MULTICSS_POST_RELEASE_QA_FAILED_AND_REVERTED')
+                        # Exact source and runtime are independently checked
+                        # again by the finalizer, not trusted from this print.
+                        print(run(release_args+['verify'],timeout=40))
+                        print('MULTICSS_V2_POST_RELEASE_QUALIFIED',site,route['path'],flush=True)
+                    elif (admitted.get('decision')=='qualified_for_delivery_review'
                         and state.get('consumer_v2_sha')):
                         # QA may run several minutes: reverify native WPML,
                         # market-agnostic source revision and explicit release
@@ -579,6 +621,14 @@ def run_core(site):
                             print(run(args+['publish'],timeout=35))
                 except (subprocess.CalledProcessError,subprocess.TimeoutExpired,
                         ValueError,OSError) as exc:
+                    if issued_before_qa and release_args:
+                        # A failed post-release browser run must never leave an
+                        # unqualified certificate in shared public delivery.
+                        try:print(run(release_args+['revert'],timeout=30))
+                        except (subprocess.CalledProcessError,subprocess.TimeoutExpired,
+                                ValueError,OSError) as rollback_exc:
+                            print('MULTICSS_POST_RELEASE_REVERT_DEFERRED',site,
+                                  str(rollback_exc)[:160],flush=True)
                     print('HOLD_MULTI_CSS_QUALITY_PROOF',site,lang,jobpath,
                           str(exc)[:220],flush=True)
             record('hold','multi_css_route_qa_pending')
