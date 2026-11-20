@@ -31,6 +31,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+          fetch-depth: 0 # historical PR813/Original305 SHA checks use git show
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
@@ -56,6 +57,13 @@ jobs:
           assert source.index("require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cwv-site-admission.php';") < source.index(gate)
           print('PASS: no unconditional CWV bootstrap, exactly one opt-in admission gate')
           PY
+      - name: Preserve immutable historical PR813 and Original305 exact-source checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=tests python3 tests/test_cwv_site_admission_exact_overlay.py
+          PYTHONPATH=tests python3 tests/test_tour_highlights_source_delta.py
+          PYTHONPATH=tests python3 tests/test_pr813_destination_additive_reconcile.py
       - name: Preserve broker and CWV REST authority invariants
         shell: bash
         run: |

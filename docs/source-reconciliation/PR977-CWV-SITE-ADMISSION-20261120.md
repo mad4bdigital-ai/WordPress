@@ -30,3 +30,9 @@ Current integration source unconditionally `require_once`s the CWV implementatio
 This code needs staging WordPress acceptance on an exact candidate SHA (including actual bootstrap hooks, daily Cron behavior, REST permissions and load/performance). The historical `tours-dev-scheduler-source-closure-runtime.php` and source-pinned release policies must be reviewed independently before any promotion. Do **not** override the 57 original PR #942 semantic signoff holds, owner exact-head attestation or rollback requirements.
 
 No WordPress Site Profile option, Cron, database record, company feature flag, OAuth session, SMTP configuration, plugin state or Production deployment was changed by this review.
+
+## Historical PR813/Original305 source proof (additional)
+
+The original frozen certificate and its negative tamper checks remain unchanged. The existing `qa31_original305_source_overlay` pipeline now calls `cwv_site_admission_exact_overlay.strip_exact_site_admission` **before** the old signed Host and Original305 source layers. It accepts only the exact CWV-added Bootstrap Git blob `97887a449a3abf473a043d2da0737a3c2f2ab7ae`, checks the isolated helper Git blob `366b5b085976f87a633aa4a7737596eea14dcd6b`, verifies the two reviewed CI-only Governance source rows and rejects any promotion flags. An inverse of **only** the one reviewed include block must produce the exact historical candidate blob `2c497ec72c57f420d1abf1eef242748be40f7bb2`. Unknown bytes, changed helper, missing provenance and unauthorized flags fail closed.
+
+Locally executed: historical Tour Highlights **9/9**, PR813 destination preview **6/6**, exact overlay negative checks **4/4**, and 17 isolated CWV tenant/identity cases. The dedicated CI workflow also checks the three historical suites with full Git history in PHP 8.3/8.5. Passing these is still not live Staging/Production release admission.
