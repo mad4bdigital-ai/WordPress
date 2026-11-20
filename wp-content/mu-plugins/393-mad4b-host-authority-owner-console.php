@@ -20,8 +20,8 @@ final class MAD4B_Host_Authority_Owner_Console_V106 {
     const PARENT = 'mad4b-control-plane';
     const COMPANY_PAGE = 'mad4b-company-host-authority';
     const ROOT_V121_READINESS = 'mad4b_host_authority_v121_scoped_readiness_v1';
-    const ROOT_V121_RUNNER_SHA = 'b5aa997abf39bdfe5027bf06da5a7e137ee1f3801dc91035c2e1f4907f0b3ba5';
-    const ROOT_V121_WORKER_SHA = 'c3cd37bde507c34c472a3aecc75208841b4355290b284fc9526f6c8e19794ca9';
+    const ROOT_V121_RUNNER_SHA = 'a4e7dad6638be30a492bf27202d99bb27d2b74a2cfc116fbe17269da4fc2a6b3';
+    const ROOT_V121_WORKER_SHA = 'fff6357ccff200b405fd60e403f2bac0dc6b868de0df79df00b37126a47f1787';
     const ROOT_V121_FIELDS = array(
         'contract','company','environment','host','runner_sha256',
         'worker_sha256','issuer','mode','issued_epoch','expires_epoch','nonce'

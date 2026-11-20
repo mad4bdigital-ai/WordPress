@@ -10,10 +10,17 @@ P=ROOT/'ops/host-anchor-v120/patch_firstparty_worker.py'
 spec=importlib.util.spec_from_file_location('_v120_root_candidate',P)
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 LIVE=Path('/opt/mad4b-company-transport/native-313-independent/claimed-job-worker.py')
+BASE=Path('/opt/mad4b-company-provisioning/reports/host-v121-staging-root-install-20261119/rollback/0-claimed-job-worker.py')
+def original_source():
+    candidate=LIVE if LIVE.is_file() and hashlib.sha256(LIVE.read_bytes()).hexdigest()==m.ORIGINAL_SHA else BASE
+    if not candidate.is_file() or hashlib.sha256(candidate.read_bytes()).hexdigest()!=m.ORIGINAL_SHA:
+        raise unittest.SkipTest("Original306 exact pre-v121 source unavailable")
+    return candidate.read_text()
+
 
 class BrokerWorkerCandidateTests(unittest.TestCase):
     def test_exact_current_root_source_accepted_only_as_candidate(self):
-        src=LIVE.read_text()
+        src=original_source()
         self.assertEqual(hashlib.sha256(src.encode()).hexdigest(),m.ORIGINAL_SHA)
         result=m.prepare_candidate(src)
         self.assertIn('firstparty_host_v118_capture_original_queued(job)',result)
@@ -30,12 +37,12 @@ class BrokerWorkerCandidateTests(unittest.TestCase):
             (ROOT/'ops/host-anchor-v120/broker_row_witness.py').read_bytes()).hexdigest(),
             m.V120_SHA)
     def test_reapplying_candidate_cannot_patch_twice(self):
-        result=m.prepare_candidate(LIVE.read_text())
+        result=m.prepare_candidate(original_source())
         with self.assertRaisesRegex(ValueError,'ALREADY_PRESENT'):
             m.prepare_candidate(result)
     def test_other_original306_source_head_rejected(self):
         with self.assertRaisesRegex(ValueError,'HEAD_DRIFT'):
-            m.prepare_candidate(LIVE.read_text()+' #sideloaded')
+            m.prepare_candidate(original_source()+' #sideloaded')
     def test_no_install_side_effects(self):
         self.assertEqual(m.main(),2)
         p=P.read_text()

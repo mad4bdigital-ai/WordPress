@@ -10,10 +10,22 @@ P=ROOT/'ops/host-anchor-v121/patch_original306_first_anchor_runner.py'
 SPEC=importlib.util.spec_from_file_location('_v121_worker_source_patch',P)
 M=importlib.util.module_from_spec(SPEC);SPEC.loader.exec_module(M)
 LIVE=Path('/opt/mad4b-company-transport/native-313-independent/claimed-job-worker.py')
+BASE=Path('/opt/mad4b-company-provisioning/reports/host-v121-staging-root-install-20261119/rollback/0-claimed-job-worker.py')
+CANDIDATE=ROOT/'ops/host-anchor-v121/claimed-job-worker.v121.py'
+
+def source_before_overlay():
+    # Live Worker is now v121. Use the immutable root-only rollback source
+    # to assert that the candidate never changes original306 Claim behavior.
+    if LIVE.is_file() and hashlib.sha256(LIVE.read_bytes()).hexdigest()==M.CURRENT_SHA:
+        return LIVE.read_text()
+    if BASE.is_file() and hashlib.sha256(BASE.read_bytes()).hexdigest()==M.CURRENT_SHA:
+        return BASE.read_text()
+    raise unittest.SkipTest('Original306 SHA-pinned pre-overlay source unavailable in this environment')
+
 
 class OneShotWorkerSource(unittest.TestCase):
     def test_original306_worker_sha_pinned_and_unchanged_in_source(self):
-        original=LIVE.read_text()
+        original=source_before_overlay()
         self.assertEqual(hashlib.sha256(original.encode()).hexdigest(),M.CURRENT_SHA)
         rewritten=M.prepare_candidate(original)
         self.assertIn('firstparty_host_v121_preclaim_commissioned()',rewritten)
@@ -30,7 +42,7 @@ class OneShotWorkerSource(unittest.TestCase):
         guard=rewritten.index('firstparty_host_v121_preclaim_commissioned()')
         self.assertLess(guard,a);self.assertLess(a,b);self.assertLess(b,c);self.assertLess(c,d)
     def test_integrated_source_does_not_touch_registry_or_grants(self):
-        rewritten=M.prepare_candidate(LIVE.read_text())
+        rewritten=M.prepare_candidate(source_before_overlay())
         self.assertIn('mod.root_gate()',rewritten)
         self.assertNotIn('original313.private_key',rewritten)
         self.assertNotIn('update_option(',M.HELPER)
@@ -38,12 +50,17 @@ class OneShotWorkerSource(unittest.TestCase):
         self.assertEqual(rewritten.count(M.MARKER),2)
         self.assertEqual(M.main(),2)
     def test_source_replay_and_unknown_worker_head_rejected(self):
-        current=LIVE.read_text()
+        current=source_before_overlay()
         new=M.prepare_candidate(current)
         with self.assertRaisesRegex(ValueError,'ALREADY_INSTALLED'):
             M.prepare_candidate(new)
         with self.assertRaisesRegex(ValueError,'UNEXPECTED_BASE_WORKER'):
             M.prepare_candidate(current+'\n# unreviewed edit')
+    def test_published_worker_candidate_matches_exact_generated_source(self):
+        self.assertEqual(
+          hashlib.sha256(CANDIDATE.read_bytes()).hexdigest(),
+          hashlib.sha256(M.prepare_candidate(source_before_overlay()).encode()).hexdigest())
+
     def test_exact_v121_sha_matches_candidate_reference(self):
         p=ROOT/'ops/host-anchor-v121/first_anchor_coordinator.py'
         self.assertEqual(hashlib.sha256(p.read_bytes()).hexdigest(),M.V121_MODULE_SHA)
