@@ -38,3 +38,36 @@ Chromium locks. The old mode remains compatible for other sites.
 Deploy 422+companion before enabling this mode. The exact market-bound canary
 should be measured after release; mismatched HTML/CSS/locale/currency always
 fails closed to Native CSS. Never claim optimized delivery solely from HIT.
+
+## Live Wayfatours Cron reconciliation (20 November 2026)
+
+The company-owned Wayfatours renderer uses exact native 421/422 v2 SHA
+admission and first-party source-bound CSS. Explicit release-first flags
+are enrolled ONLY for Wayfa public tasks. Tours.dev is not enabled.
+
+The immutable runner MUST include the matching original
+tools/assemble.js, which exports assemble safely and executes the legacy
+CLI only when run as its main script. Copying capture-ordered-critical.js
+without that companion causes ENOENT /out/capture-index.json before a
+provisional certificate can be issued. A Node module import test now
+checks this dependency without running browser performance tests.
+
+Source-bound v2 certificates publish with a bounded pending lease.
+After publication, the five-viewport post-release QA and fresh native
+WordPress readback promote or revert. If public HTML proof fails AFTER
+promotion, the separate revoke action atomically disables the
+certificate, then Native CSS fallback applies.
+
+Public job timeout is 1250 seconds, inside the existing 1380s host wake
+budget. Chrome 1.9GB/1CPU/256MB SHM is scoped ONLY to Wayfa ordered-CSS
+scripts; source company and legacy scripts retain the original limits.
+
+Direct production operation receipts and preimage backups:
+ /var/lib/mad4b/company-code-release/receipts/wayfa-css-v2-cron-autopublish-20261120/
+Company-owned renderer identity was read back as
+ e3cd64e0ea1a1b55f608ec2e14bcf25c77ec34869e4abcaf07e81ad1b3a0088d.
+
+Independent outstanding issue: original Home CSS MU plugin 415 has
+unexpected production SHA 60fc91116aff versus historical audit expected
+cdb55bd9. Do not whitelist it or overwrite it without first-party
+source parity and a separately tested home release.

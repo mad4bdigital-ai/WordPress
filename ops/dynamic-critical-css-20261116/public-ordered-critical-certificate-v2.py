@@ -357,6 +357,36 @@ def finalize_post_release(cert,job,wp_content,*,failed=False):
     if data(path)!=updated:raise ValueError('post-release-verify-readback-failed')
     return outcome,str(path)
 
+def revoke_delivered_release(cert,wp_content):
+    """Failsafe rollback AFTER QA promotion, if live public readback fails.
+
+    No performance test is involved in issuance; rollback is scoped by the
+    exact published SHA and route/locale/market/currency identity.
+    """
+    if cert.get('contract')!=CONTRACT or cert.get('status') not in (
+        'certified','released_pending_qa'):
+        raise ValueError('unrevocable-v2-state')
+    wp=Path(wp_content)
+    if str(wp) not in LIVE_ROOTS or wp.is_symlink():
+        raise ValueError('non-enrolled-v2-revoke-site')
+    routekey=sha((cert['host']+'|'+cert['language']+'|'+cert['path']+'|'
+                  +cert['market_country']+'|'+cert['currency']).encode())
+    path=wp/'mad4b-public-critical-css-v1/certs-v2'/(routekey+'.json')
+    if path.is_symlink() or not path.is_file() or data(path)!=cert:
+        raise ValueError('v2-rollback-source-or-CAS-conflict')
+    updated=dict(cert)
+    updated['status']='reverted_post_release_qa'
+    updated['post_release_deadline']=0
+    updated['evidence']={'decision':'failed_public_post_release_readback',
+                          'tested':0,'viewports':[],
+                          'verified_at':int(time.time())}
+    # Do not falsify the historical QA record or any original source hash.
+    updated['certified_at']=0
+    if data(path)!=cert:raise ValueError('v2-rollback-race')
+    _atomic(path,(json.dumps(updated,indent=2,sort_keys=True,ensure_ascii=True)+'\n').encode())
+    if data(path)!=updated:raise ValueError('v2-rollback-readback-failed')
+    return 'reverted',str(path)
+
 def _atomic(dest,data_bytes):
     fd,temp=tempfile.mkstemp(prefix='.mad4b-multi-v2-',dir=dest.parent)
     try:
@@ -371,9 +401,9 @@ def main():
     if len(sys.argv)!=9:
         raise ValueError('USAGE: catalog route state private-job wp-content 422.php companion.php dryrun|publish')
     cat,route,state,job,wp,runtime,consumer,mode=sys.argv[1:]
-    if mode not in ('dryrun','publish','release','verify','revert'):
+    if mode not in ('dryrun','publish','release','verify','revert','revoke'):
         raise ValueError('invalid-issuance-mode')
-    if mode in ('verify','revert'):
+    if mode in ('verify','revert','revoke'):
         route_entry=data(route);site_state=data(state)
         host=site_state.get('site_host')
         if host not in ('wayfatours.com','tours.dev.mad4b.com'):
@@ -387,7 +417,10 @@ def main():
                  +observer['market_country']+'|'+observer['currency']).encode())
         cert_path=Path(wp)/'mad4b-public-critical-css-v1/certs-v2'/(key+'.json')
         previous=data(cert_path)
-        outcome,target=finalize_post_release(previous,job,wp,failed=(mode=='revert'))
+        if mode=='revoke':
+            outcome,target=revoke_delivered_release(previous,wp)
+        else:
+            outcome,target=finalize_post_release(previous,job,wp,failed=(mode=='revert'))
         print('MULTI_CSS_V2_POST_RELEASE',json.dumps({'outcome':outcome,
             'certificate_path':target,'mode':mode},sort_keys=True))
         return

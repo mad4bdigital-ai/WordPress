@@ -178,6 +178,14 @@ with tempfile.TemporaryDirectory(prefix='mad4b-v2-issuer-') as tmp:
   ok('post-release upgrade preserves exact source manifest SHA',final['source_manifest_sha256']==issue_sha)
   hold('a stale pending writer cannot overwrite approved certificate',
        lambda:issuer.finalize_post_release(pending,job,wp,failed=True))
+  outcome,_=issuer.revoke_delivered_release(final,wp)
+  ok('failed public delivery can revoke already QA-certified release',
+     outcome=='reverted' and issuer.data(target)['status']=='reverted_post_release_qa')
+  ok('revocation keeps original source SHA but disables frontend qualification',
+     issuer.data(target)['source_manifest_sha256']==issue_sha
+     and issuer.data(target)['evidence']['decision']=='failed_public_post_release_readback')
+  hold('repeated or stale revocation never overwrites another state',
+       lambda:issuer.revoke_delivered_release(final,wp))
  finally:
   if previous is None:os.environ.pop('MAD4B_MULTI_CSS_V2_RELEASE_APPROVED',None)
   else:os.environ['MAD4B_MULTI_CSS_V2_RELEASE_APPROVED']=previous
