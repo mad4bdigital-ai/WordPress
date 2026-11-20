@@ -38,6 +38,8 @@ on:
       - 'tests/stay-cruise-web-sun-nile-goddess-contract.py'
       - 'scripts/mad4b-cruise-operator-pattern-reference-cli.php'
       - 'tests/stay-cruise-operator-pattern-reference-contract.py'
+      - 'scripts/mad4b-package8-booking-v2-failclosed-cli.php'
+      - 'tests/stay-package8-booking-v2-failclosed-contract.py'
       - 'tests/stay-cruise-web-batch2-amenities-contract.py'
       - 'tests/stay-cruise-web-amenities-editorial-contract.py'
       - 'tests/stay-package-cruise-day-sequence-audit-contract.py'
@@ -103,6 +105,8 @@ on:
       - 'tests/stay-cruise-web-sun-nile-goddess-contract.py'
       - 'scripts/mad4b-cruise-operator-pattern-reference-cli.php'
       - 'tests/stay-cruise-operator-pattern-reference-contract.py'
+      - 'scripts/mad4b-package8-booking-v2-failclosed-cli.php'
+      - 'tests/stay-package8-booking-v2-failclosed-contract.py'
       - 'tests/stay-cruise-web-batch2-amenities-contract.py'
       - 'tests/stay-cruise-web-amenities-editorial-contract.py'
       - 'tests/stay-package-cruise-day-sequence-audit-contract.py'
@@ -189,6 +193,7 @@ jobs:
           php -l scripts/mad4b-cruise-web-operator-amenities-batch2-cli.php
           php -l scripts/mad4b-cruise-web-sun-nile-goddess-cli.php
           php -l scripts/mad4b-cruise-operator-pattern-reference-cli.php
+          php -l scripts/mad4b-package8-booking-v2-failclosed-cli.php
           php -l scripts/mad4b-package-60441-bilingual-exact-dedup-cli.php
           php -l scripts/mad4b-stay-invalid-import-quarantine-36260-cli.php
           php -l scripts/mad4b-stay-unresolved-official-room-photo-gaps-cli.php
@@ -217,5 +222,6 @@ jobs:
           python3 tests/stay-cruise-web-batch2-amenities-contract.py
           python3 tests/stay-cruise-web-sun-nile-goddess-contract.py
           python3 tests/stay-cruise-operator-pattern-reference-contract.py
+          python3 tests/stay-package8-booking-v2-failclosed-contract.py
           python3 tests/stay-commercial-readiness-ui-check.py
           node --check wp-content/mu-plugins/mad4b-stay-readiness/admin.js
