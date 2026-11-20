@@ -92,3 +92,6 @@ require_once __DIR__ . '/includes/transport-tour-rate-routing-admin.php';
 require_once __DIR__ . '/includes/transport-form6-dropoff.php';
 require_once __DIR__ . '/includes/transport-source-operations-readiness.php';
 require_once __DIR__ . '/includes/pricing-workspace-unified.php';
+require_once __DIR__ . '/includes/transport-vehicle-term-profiles.php';
+require_once __DIR__ . '/includes/transport-distance-time-pricing.php';
+require_once __DIR__ . '/includes/transport-native-cost-inheritance.php';
