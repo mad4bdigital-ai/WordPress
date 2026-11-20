@@ -594,6 +594,86 @@ def reviewed_rc129_company_staff_ceiling_successor(repo:Path,path:str,contents:b
         return None
 
 
+def reviewed_pr985_wayfa_indexed_scan_readback_source(repo:Path,path:str,contents:bytes):
+    """Bounded historical source-index readback, never a live Drive verdict."""
+    name='includes/class-mad4b-scp-context-admin-ui.php'
+    if path!=name or not isinstance(contents,bytes):return None
+    manifest=repo/'governance/release-parity/qa31-pr985-wayfa-indexed-scan-readback-source-20261120.json'
+    parent='bd82ac3747f27d33b91633fab01bc4c1b52d7f9a'
+    previous='governance/release-parity/qa31-pr983-wayfa-classification-reconcile-source-20261120.json'
+    previous_sha='bfcbe564d739c3dc7ab0a3f369ab49068adb8f7673a6d8efe7943ead3ce36879'
+    before_blob='2c7e9655dc3e41c1f28ba291ab6f4a8d48c1dd2b'
+    after_blob='a1086650dbb739ff131829b30490eeb0ab371b0a'
+    after_sha='6175b141bd483ddf656b69bcf5568b838c9d08ed6be1b620bfb03d19f14816b6'
+    regression='wp-content/plugins/mad4b-site-control-plane/tests/context-indexed-scan-readback-hermetic.php'
+    negative='tests/qa31_wayfa_indexed_scan_readback_source_contract.py'
+    ids=['GOVERNANCE-02','SECURITY-01','ADMIN-01','AI-01']
+    try:
+        m=json.loads(manifest.read_text(encoding='utf-8'))
+        controls={x['id'] for x in json.loads((repo/'governance/production-readiness/controls.json').read_text()).get('controls',[]) if isinstance(x,dict)}
+        if (m.get('contract')!='mad4b.qa31-pr985-wayfa-indexed-scan-readback-source.v1'
+            or m.get('original_github_head_sha')!=parent
+            or m.get('previous_context_classification_review_path')!=previous
+            or m.get('previous_context_classification_review_sha256')!=previous_sha
+            or hashlib.sha256((repo/previous).read_bytes()).hexdigest()!=previous_sha
+            or m.get('source_path')!=name
+            or m.get('original_parent_blob_sha')!=before_blob
+            or m.get('reviewed_blob_sha')!=after_blob
+            or m.get('reviewed_sha256')!=after_sha
+            or m.get('required_regression')!=regression
+            or m.get('negative_contract')!=negative
+            or m.get('control_ids')!=ids or not set(ids)<=controls
+            or m.get('source_only') is not True or m.get('reviewed_for_ci_only') is not True
+            or m.get('authorizing') is not False or m.get('production_authorized') is not False
+            or m.get('source_promotion_approved') is not False
+            or m.get('is_build_provenance') is not False
+            or m.get('live_evidence_required') is not True
+            or m.get('oauth_refresh_on_get_allowed') is not False
+            or m.get('scan_on_get_allowed') is not False
+            or m.get('automatic_context_approval_authorized') is not False
+            or m.get('historical_readback_grants_drive_freshness') is not False
+            or m.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or len(m.get('review_rationale',''))<380
+            or not (repo/regression).is_file() or (repo/regression).is_symlink()
+            or not (repo/negative).is_file() or (repo/negative).is_symlink()):
+            return None
+        previous_source=subprocess.check_output(
+            ['git','show',parent+':wp-content/plugins/mad4b-site-control-plane/'+name],
+            cwd=repo,stderr=subprocess.DEVNULL,timeout=8)
+        if (hashlib.sha256(previous_source).hexdigest()!=m['original_parent_sha256']
+            or hashlib.sha1(b'blob '+str(len(previous_source)).encode()+b'\0'+previous_source).hexdigest()!=before_blob
+            or subprocess.run(['git','merge-base','--is-ancestor',parent,'HEAD'],cwd=repo,
+                stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=8).returncode!=0):
+            return None
+        if (hashlib.sha256(contents).hexdigest()!=after_sha
+            or hashlib.sha1(b'blob '+str(len(contents)).encode()+b'\0'+contents).hexdigest()!=after_blob):
+            return None
+        code=contents.decode('utf-8')
+        for marker in (
+            'function indexed_scan_evidence( array $source, array $progress,',
+            'function indexed_scan_readback( array $source, array $progress )',
+            'mad4b.scan-ui-progress.v1',
+            'Previously indexed subset verified',
+            'Historical Audit only; current Google Drive changes not checked.',
+            'current_google_files_verified',
+            "'source_rescanned' => false, 'review_modified' => false",
+            "'authorizing' => false, 'registry_mutation_performed' => false",
+            'ORDER BY id DESC LIMIT 100',
+            'self::indexed_scan_readback( $source, $progress )'):
+            if marker not in code:return None
+        # A readback cannot trigger the current scan planner or approval.
+        new_block=code[code.index('public static function indexed_scan_evidence('):
+                       code.index('private static function render_sources()')]
+        if ('source_scan_plan(' in new_block or 'source_scan_apply(' in new_block
+            or 'update_option(' in new_block or 'wp_mail(' in new_block
+            or 'refresh_token(' in new_block):
+            return None
+        return regression
+    except (OSError,ValueError,KeyError,TypeError,UnicodeError,
+            subprocess.CalledProcessError,subprocess.TimeoutExpired):
+        return None
+
+
 def reviewed_pr983_wayfa_classification_reconcile_source(repo:Path,path:str,contents:bytes):
     """Single exact local-only Context classification repair. Never release authority."""
     name='includes/class-mad4b-scp-context-authority.php'
@@ -1168,6 +1248,8 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     requested=reviewed_rc129_dormant_ollama_bootstrap_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_rc129_wayfa_source_followup_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_pr985_wayfa_indexed_scan_readback_source(repo,path,contents)
     if requested is None:
         requested=reviewed_pr983_wayfa_classification_reconcile_source(repo,path,contents)
     if requested is None:

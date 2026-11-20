@@ -1,0 +1,32 @@
+{
+  "contract": "mad4b.qa31-pr985-wayfa-indexed-scan-readback-source.v1",
+  "original_github_head_sha": "bd82ac3747f27d33b91633fab01bc4c1b52d7f9a",
+  "previous_context_classification_review_path": "governance/release-parity/qa31-pr983-wayfa-classification-reconcile-source-20261120.json",
+  "previous_context_classification_review_sha256": "bfcbe564d739c3dc7ab0a3f369ab49068adb8f7673a6d8efe7943ead3ce36879",
+  "source_path": "includes/class-mad4b-scp-context-admin-ui.php",
+  "original_parent_blob_sha": "2c7e9655dc3e41c1f28ba291ab6f4a8d48c1dd2b",
+  "original_parent_sha256": "f0823b83afc8b2af4981344991b42830b35a9456521da7c557eeee6fd9c41517",
+  "reviewed_blob_sha": "a1086650dbb739ff131829b30490eeb0ab371b0a",
+  "reviewed_sha256": "6175b141bd483ddf656b69bcf5568b838c9d08ed6be1b620bfb03d19f14816b6",
+  "required_regression": "wp-content/plugins/mad4b-site-control-plane/tests/context-indexed-scan-readback-hermetic.php",
+  "negative_contract": "tests/qa31_wayfa_indexed_scan_readback_source_contract.py",
+  "control_ids": [
+    "GOVERNANCE-02",
+    "SECURITY-01",
+    "ADMIN-01",
+    "AI-01"
+  ],
+  "source_only": true,
+  "reviewed_for_ci_only": true,
+  "authorizing": false,
+  "production_authorized": false,
+  "source_promotion_approved": false,
+  "is_build_provenance": false,
+  "live_evidence_required": true,
+  "oauth_refresh_on_get_allowed": false,
+  "scan_on_get_allowed": false,
+  "automatic_context_approval_authorized": false,
+  "historical_readback_grants_drive_freshness": false,
+  "release_gate": "BLOCKED_SOURCE_RECONCILIATION",
+  "review_rationale": "Add only bounded historical partial Google Drive indexed-scan readback to the existing Source Folders interface. The original Wayfatours older scan page is not copied; the current scan/apply controller remains authoritative. The pure proof checks enrolled site and brand, source and generation, unexpired sealed UI diagnostic checkpoint, latest matching append-only partial-scan Audit receipt, exact indexed counts, normalized content SHA and current registry assets. It rejects newer invalid receipts, foreign scope, stale or incomplete inventory, invalid hashes and absent evidence; the only UI statement explicitly says historical proof is not current Google Drive freshness. Rendering performs a bounded read-only Audit SELECT and does not call the provider, refresh OAuth, start a scan, change Context review, add an Ability, or grant publication. This is source-only CI review; the original 21 Wayfatours conflicts, actual browser behavior, production admission and rollback remain independently blocked."
+}
