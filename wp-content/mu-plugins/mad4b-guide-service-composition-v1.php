@@ -186,6 +186,17 @@ final class MAD4B_Guide_Service_Composition_V1 {
         $record=self::saved($source);
         if (is_wp_error($record)) return $record;
         $statuses=$record['statuses'];
+        // A newer inline JetEngine reviewer draft cannot silently
+        // overwrite an owner-approved day receipt. Also refuse to keep
+        // using the old cost if the draft explicitly contradicts it.
+        if (class_exists('MAD4B_Guide_JetEngine_Inner_V1',false)) {
+            $drafts=MAD4B_Guide_JetEngine_Inner_V1::draftForSource($source);
+            foreach($drafts as $key=>$draft) {
+                if($draft!=='unknown' && $draft!==($statuses[$key]??'unknown')) {
+                    return new WP_Error('guide_jetengine_draft_conflicts_with_approved_review');
+                }
+            }
+        }
         $unknown=array_keys(array_filter($statuses,static fn($s)=>$s==='unknown'));
         if ($unknown) return new WP_Error('guide_days_unreviewed',implode(',',array_slice($unknown,0,15)));
         $full=count(array_filter($statuses,static fn($s)=>$s==='full_day'));

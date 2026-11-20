@@ -197,13 +197,19 @@ final class MAD4B_Guide_Bulk_Classification_V1 {
                 'description'=>mb_substr(implode(' | ',$stageText),0,14000)
             ]];
         }
+        $drafts=class_exists('MAD4B_Guide_JetEngine_Inner_V1',false)
+            ?MAD4B_Guide_JetEngine_Inner_V1::draftForSource($source):[];
         $rows=[];$high=0;$unresolved=0;
         foreach ($source['days'] as $key=>$day) {
             $proposal=self::classify($day,(array)($raw[$key]??[]));
             $proposal=self::includedGuideDay($source,$proposal);
             if ($proposal['bulk_eligible'] && ($states[$key]??'unknown')==='unknown') $high++;
             if (($states[$key]??'unknown')==='unknown') $unresolved++;
-            $rows[]=$day+$proposal+['saved_status'=>$states[$key]??'unknown'];
+            $rows[]=$day+$proposal+[
+                'saved_status'=>$states[$key]??'unknown',
+                'jetengine_draft_status'=>$drafts[$key]??'unknown',
+                'jetengine_draft_is_cost_approved'=>false,
+            ];
         }
         return [
             'contract'=>'mad4b.guide-bulk-detail.v1',

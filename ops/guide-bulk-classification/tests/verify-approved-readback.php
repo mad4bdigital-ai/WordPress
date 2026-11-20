@@ -25,8 +25,25 @@ foreach($ids as $id){
  if(!$valid)WP_CLI::error('Readback invalid for Tour '.$id.' '.wp_json_encode(end($results)));
 }
 echo 'APPROVED '.wp_json_encode($results,JSON_UNESCAPED_UNICODE)."\n";
+$noGuideSource=$core::source(55260);
+$noGuideRecord=$core::saved($noGuideSource);
+$noGuideCost=$core::guide(55260,'');
+$noGuideAudits=get_post_meta(55260,'_mad4b_guide_day_review_audit_v1',false);
+if(is_wp_error($noGuideRecord)||is_wp_error($noGuideCost)||
+   ($noGuideRecord['statuses']['day-1']??'')!=='none' ||
+   ($noGuideRecord['approval_channel']??'')!=='delegated_wp_cli_operator' ||
+   ($noGuideCost['cost']??null)!=0 ||
+   ($noGuideCost['checkout_ready']??true)!==false ||
+   count($noGuideAudits)!==1)
+ WP_CLI::error('Owner-approved no-guide Tour 55260 invalid');
+echo 'OWNER_NOGUIDE '.wp_json_encode([
+ 'tour'=>55260,'service'=>'none','cost_egp'=>0,
+ 'audit_count'=>count($noGuideAudits),
+ 'checkout_ready'=>false,
+])."
+";
 $blocked=[];
-foreach([55113,55260,60443] as $id) {
+foreach([55113,60443] as $id) {
  $d=$bulk::detail($id);
  if(is_wp_error($d)||$d['unresolved_days']!=$d['day_count']) WP_CLI::error('Unresolved source incorrectly marked reviewed '.$id);
  $blocked[]=['tour'=>$id,'unknown_days'=>$d['unresolved_days']];

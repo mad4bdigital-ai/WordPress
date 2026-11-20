@@ -143,7 +143,10 @@
     const option=node('option',label);option.value=value;select.append(option);
    }
    select.value=day.saved_status!=='unknown'?day.saved_status:
-      (day.confidence==='high'?day.suggested_status:'unknown');
+      (day.jetengine_draft_status&&day.jetengine_draft_status!=='unknown' &&
+        states.some(s=>s[0]===day.jetengine_draft_status)
+        ?day.jetengine_draft_status:
+          (day.confidence==='high'?day.suggested_status:'unknown'));
    cell.append(select);tr.append(cell);body.append(tr);
    controls.push({key:day.key,select,day});
   });

@@ -59,3 +59,14 @@ Regression:
 - apply-evidenced-one-day-guides.php: scoped ID whitelist, dry-run by default, fresh hash checks, backups and no Rate changes.
 
 Commercially unresolved: guided evening show needs half-day cost factor and Guide Language assignments; yacht guide service is not proven; Best of Egypt's eight-day guide assignment/durations still require service-level review. Unknown is NEVER interpreted as no guide.
+
+## Native JetEngine Inner Repeater draft control
+
+The site-neutral MU plugin mad4b-guide-jetengine-inner-v1.php injects a native nested JetEngine select named mad4b_guide_service_draft into two original registered repeaters: Tours CPT itinerary_item and Programs taxonomy program_itinerary.
+
+JetEngine registration happens through the runtime raw-fields filter, without overwriting original CPT/taxonomy registry options or migrating stored itinerary arrays. These are DRAFT review proposals only; the approved cost source stays in the separately audited, hash-bound Guide coverage record. A draft status in the repeater does not activate costs or checkout by itself.
+
+If an activity has multiple hourly stages but one actual day, drafts aggregate to one day. Contradictory stage drafts or drafts contradicting a previously certified Guide coverage record fail closed until reviewer reconciliation via Bulk Review. Manual non-HIGH recommendations still require evidence notes.
+
+60443: see audit-60443-guide-days.md (eight unreviewed days, including Abu-Simbel contradiction).
+55260: explicit owner no-Guide approval on both sites; EGP zero Guide cost and unchanged Tour Rate counts, with recorded pre-approval backups.
