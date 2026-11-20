@@ -1,0 +1,18 @@
+.mad4b-tr-route-advisor{padding:8px 3px;color:#29374a}
+.mad4b-tr-route-advisor>p{max-width:1100px}
+.mad4b-tr-toolbar{display:flex;gap:14px;background:#f5f8fb;padding:12px;border-radius:6px;margin:8px 0 14px}
+.mad4b-tr-route-advisor label{display:grid;gap:5px;font-size:12px;font-weight:600;color:#40536a}
+.mad4b-tr-route-advisor select,.mad4b-tr-route-advisor input:not([type=checkbox]){width:100%;min-height:34px}
+.mad4b-tr-field-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.mad4b-tr-stage{border:1px solid #d8e1ea;padding:14px;background:#fff;border-radius:8px;margin:12px 0}
+.mad4b-tr-stage>h4{margin:0 0 12px;font-size:14px}
+.mad4b-tr-route-advisor [data-tr=actions]{display:flex;gap:10px;flex-wrap:wrap;margin:13px 0}
+.mad4b-tr-results{border:1px solid #d6e0ea;background:#f9fbfd;padding:14px;border-radius:8px}
+.mad4b-tr-stage-result{background:#fff;padding:12px;border:1px solid #e2e8ef;border-radius:7px;margin:12px 0}
+.mad4b-tr-result-group{margin:8px 0}
+.mad4b-tr-candidate{display:grid;gap:4px;border-top:1px solid #e4eaf0;padding:10px 0}
+.mad4b-tr-candidate span,.mad4b-tr-candidate small{color:#5e7084}
+.mad4b-tr-warning{color:#744a1a;background:#fff7e7;padding:8px 10px}
+.mad4b-tr-route-advisor label:has(input[type=checkbox]){display:flex;flex-direction:row;align-items:center}
+@media(max-width:1000px){.mad4b-tr-field-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.mad4b-tr-field-grid{grid-template-columns:1fr}}

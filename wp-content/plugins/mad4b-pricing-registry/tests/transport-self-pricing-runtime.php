@@ -60,17 +60,17 @@ $t('validated_defaults',is_array($valid));
 $currencyBad=$valid;
 $currencyBad['currency']='XYZ';
 $t('unknown_currency_rejected',is_wp_error($c::validate($currencyBad)));
-$drafts=get_posts(['post_type'=>'transportations','post_status'=>'draft',
+$drafts=get_posts(['post_type'=>'transportations','post_status'=>['draft','publish'],
  'posts_per_page'=>600,'fields'=>'ids','suppress_filters'=>true,
  'meta_key'=>'_mad4b_transfer_pdf_2026_provider_id','meta_value'=>'self']);
 $expected=$site==='https://wayfatours.com'?102:306;
-$t('all_localized_drafts_self_provider',count($drafts)===$expected);
+$t('all_localized_posts_self_provider',count($drafts)===$expected);
 foreach($drafts as $id)if(get_post_meta($id,
  '_mad4b_transfer_pdf_2026_source_trust',true)!=='trusted_original_pdf'){
-    $tests['all_localized_drafts_trusted']=false;break;
+    $tests['all_localized_posts_trusted']=false;break;
 }
-if(!array_key_exists('all_localized_drafts_trusted',$tests))
-    $t('all_localized_drafts_trusted',true);
+if(!array_key_exists('all_localized_posts_trusted',$tests))
+    $t('all_localized_posts_trusted',true);
 $t('old_transport_rate_1_safe',get_post_status(66570)==='draft');
 $t('old_transport_rate_2_safe',get_post_status(66571)==='draft');
 $t('site_currency_usd_not_inferred',$policy['currency']!==get_option('woocommerce_currency'));
@@ -78,6 +78,6 @@ $fail=array_keys(array_filter($tests,static fn($pass)=>!$pass));
 echo wp_json_encode(['site'=>$site,'total'=>count($tests),
  'passed'=>count($tests)-count($fail),'failed'=>$fail,
  'provider'=>'self','source_trusted'=>true,'currency_guessed'=>false,
- 'localized_self_drafts'=>count($drafts),'checkout_authorized'=>false],
+ 'localized_self_posts'=>count($drafts),'checkout_authorized'=>false],
  JSON_UNESCAPED_SLASHES)."\n";
 if($fail)exit(1);
