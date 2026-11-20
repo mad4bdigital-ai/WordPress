@@ -773,6 +773,67 @@ def reviewed_pr942_ollama_bootstrap_successor(repo:Path,path:str,contents:bytes)
         return None
 
 
+
+def reviewed_cwv_site_admission_bootstrap_successor(repo:Path,path:str,contents:bytes):
+    """Exact CI-only site-bound CWV source successor, with frozen QA31 ancestor.
+
+    This never changes a prior QA31 certificate, grants a new feature, or
+    treats a source-reviewed artifact as a certified runnable package.
+    """
+    if path!='mad4b-site-control-plane.php' or not isinstance(contents,bytes):
+        return None
+    before=b"require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-core-web-vitals.php';"
+    after=(b"// Per-company admission: do not activate CWV hooks or Cron on another site\n"
+        b"// just because its shared Control Plane source has the provider class.\n"
+        b"require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cwv-site-admission.php';\n"
+        b"if ( MAD4B_SCP_CWV_Site_Admission::admitted() ) {\n"
+        b"    require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-core-web-vitals.php';\n"
+        b"}")
+    def blob(data):
+        return hashlib.sha1(b'blob '+str(len(data)).encode('ascii')+b'\0'+data).hexdigest()
+    new='97887a449a3abf473a043d2da0737a3c2f2ab7ae'
+    old='2c497ec72c57f420d1abf1eef242748be40f7bb2'
+    helper_sha='366b5b085976f87a633aa4a7737596eea14dcd6b'
+    helper='includes/class-mad4b-scp-cwv-site-admission.php'
+    test='wp-content/plugins/mad4b-site-control-plane/tests/cwv-site-admission-hermetic.php'
+    try:
+        guard=repo/'wp-content/plugins/mad4b-site-control-plane'/helper
+        proof=repo/'docs/source-reconciliation/PR977-CWV-SITE-ADMISSION-20261120.md'
+        ledger=repo/'governance/production-readiness/capability-coverage.json'
+        if (blob(contents)!=new or contents.count(after)!=1
+            or not guard.is_file() or guard.is_symlink()
+            or not proof.is_file() or proof.is_symlink()
+            or not ledger.is_file() or ledger.is_symlink()
+            or not (repo/test).is_file() or (repo/test).is_symlink()
+            or blob(guard.read_bytes())!=helper_sha):return None
+        previous=contents.replace(after,before,1)
+        if blob(previous)!=old or not reviewed_pr942_ollama_bootstrap_successor(
+            repo,path,previous):return None
+        review=json.loads(ledger.read_text(encoding='utf-8'))
+        if (review.get('contract')!='mad4b.readiness-capability-coverage.v1'
+            or review.get('authorizing') is not False
+            or review.get('production_promotion_from_ci') is not False):return None
+        ability='service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cwv-site-admission.php'
+        reviewed=[r for r in review.get('reviewed_capabilities',[])
+            if r.get('id')==ability and r.get('status')=='reviewed_for_ci_only'
+            and r.get('production_authorized') is False
+            and r.get('live_evidence_required') is True
+            and test in r.get('regression_tests',[])]
+        if len(reviewed)!=1:return None
+        for rel,sha in ((path,new),(helper,helper_sha)):
+            candidates=[r for r in review.get('reviewed_changes',[])
+                if r.get('path')=='wp-content/plugins/mad4b-site-control-plane/'+rel
+                and r.get('source_blob_sha')==sha
+                and r.get('status')=='reviewed_for_ci_only'
+                and r.get('production_authorized') is False
+                and r.get('live_evidence_required') is True
+                and test in r.get('regression_tests',[])]
+            if len(candidates)!=1:return None
+        return test
+    except (OSError,ValueError,TypeError,KeyError,json.JSONDecodeError):
+        return None
+
+
 def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     """Accept exact, reviewed Git blobs for CI inventory only; never parity.
     Static legacy entries remain valid; rc129 successors are independently
@@ -788,6 +849,8 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     requested=reviewed_followup_company_email_readonly_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_followup_context_readonly_plan_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_cwv_site_admission_bootstrap_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_pr942_ollama_bootstrap_successor(repo,path,contents)
     if requested is None:

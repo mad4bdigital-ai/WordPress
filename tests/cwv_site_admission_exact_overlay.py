@@ -35,6 +35,16 @@ def strip_exact_site_admission(content):
     ledger = json.loads((ROOT / "governance/production-readiness/capability-coverage.json").read_text())
     if ledger.get('authorizing') is not False or ledger.get('production_promotion_from_ci') is not False:
         raise AssertionError("CWV source review unexpectedly authorizing")
+    capability='service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cwv-site-admission.php'
+    reviewed=[entry for entry in ledger.get('reviewed_capabilities',[])
+        if entry.get('id') == capability
+        and entry.get('status') == 'reviewed_for_ci_only'
+        and entry.get('production_authorized') is False
+        and entry.get('live_evidence_required') is True
+        and 'wp-content/plugins/mad4b-site-control-plane/tests/cwv-site-admission-hermetic.php'
+            in entry.get('regression_tests',[])]
+    if len(reviewed)!=1:
+        raise AssertionError('CWV Service capability is not separately reviewed')
     for path, expected in ((MAIN, NEW), (helper.relative_to(ROOT).as_posix(), ADMISSION)):
         matches = [r for r in ledger['reviewed_changes']
             if r.get('path') == path and r.get('source_blob_sha') == expected

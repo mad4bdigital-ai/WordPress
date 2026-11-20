@@ -28,6 +28,18 @@ class ExactOverlay(unittest.TestCase):
         with patch.object(cwv.Path,'read_text',autospec=True,side_effect=lambda obj,*a,**k: json.dumps(manifest) if str(obj)==str(file) else Path.read_text(obj,*a,**k)):
             with self.assertRaises(AssertionError):cwv.strip_exact_site_admission(self.actual)
 
+    def test_missing_capability_review_is_rejected(self):
+        file=cwv.ROOT/'governance/production-readiness/capability-coverage.json'
+        registry=json.loads(file.read_text())
+        registry['reviewed_capabilities']=[r for r in registry['reviewed_capabilities']
+            if r.get('id')!='service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cwv-site-admission.php']
+        original_read=Path.read_text
+        def forged_read(obj,*args,**kwargs):
+            return json.dumps(registry) if obj==file else original_read(obj,*args,**kwargs)
+        with patch.object(cwv.Path,'read_text',forged_read):
+            with self.assertRaises(AssertionError):
+                cwv.strip_exact_site_admission(self.actual)
+
     def test_copied_provider_guard_is_rejected(self):
         # Synthetic checked source; the real repository is never mutated.
         original_read=cwv.Path.read_bytes

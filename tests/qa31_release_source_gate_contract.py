@@ -250,7 +250,8 @@ chk(set(known).issuperset({
     'host_overlay_covers_all_qa31_historical_source_changes')
 
 from qa31_rc129_host_bootstrap_overlay import strip_rc129_signed_host_overlay
-signed_root=(plugin/'mad4b-site-control-plane.php').read_bytes()
+from cwv_site_admission_exact_overlay import strip_exact_site_admission
+signed_root=strip_exact_site_admission((plugin/'mad4b-site-control-plane.php').read_bytes())
 restored=strip_rc129_signed_host_overlay(signed_root)
 host_proof=json.loads((repo/'docs/release-coverage/pr814-rc129-host-agent-bootstrap-additive-20261118.json').read_text())
 chk((len(restored),hashlib.sha256(restored).hexdigest())==(

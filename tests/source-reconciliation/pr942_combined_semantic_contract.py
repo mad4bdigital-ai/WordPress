@@ -40,7 +40,7 @@ def current_blob(path):
 # Governance manifest successor can be admitted only by its fixed Git blob and
 # explicit non-authorizing security metadata. Unknown future bytes stay denied.
 GOVERNANCE_REVIEWED_SUCCESSOR = '0f4930fe976ff604f30c600c044812fdb7de3fa7'
-GOVERNANCE_CWV_REVIEWED_SUCCESSOR = 'd86568007d4cc19a608064c756356a041b714805'
+GOVERNANCE_CWV_REVIEWED_SUCCESSOR = '18df447206263ee9bd79772068376dc24ebf9400'
 CWV_REVIEWED_BOOTSTRAP = '97887a449a3abf473a043d2da0737a3c2f2ab7ae'
 CWV_REVIEWED_HELPER = '366b5b085976f87a633aa4a7737596eea14dcd6b'
 
@@ -48,6 +48,14 @@ GOVERNANCE_PATH = 'governance/production-readiness/capability-coverage.json'
 
 
 def require_cwv_review(coverage):
+    identifier='service:'+P+'includes/class-mad4b-scp-cwv-site-admission.php'
+    capabilities=[r for r in coverage.get('reviewed_capabilities',[])
+        if r.get('id')==identifier and r.get('status')=='reviewed_for_ci_only'
+        and r.get('production_authorized') is False
+        and r.get('live_evidence_required') is True
+        and 'wp-content/plugins/mad4b-site-control-plane/tests/cwv-site-admission-hermetic.php'
+            in r.get('regression_tests',[])]
+    check(len(capabilities)==1,'CWV Service capability source review absent or authorizing')
     for path, source in (
         (P+'mad4b-site-control-plane.php', CWV_REVIEWED_BOOTSTRAP),
         (P+'includes/class-mad4b-scp-cwv-site-admission.php', CWV_REVIEWED_HELPER),
