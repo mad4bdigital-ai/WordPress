@@ -20,6 +20,9 @@ if(is_wp_error($view)||$view['strategy_count']!==2||
   count($view['by_dimension']['taxonomy:tour-types']??[])!==1||
   count($view['by_dimension']['taxonomy:package_levels']??[])!==1)
  WP_CLI::error('Snapshot did not resolve staged and draft strategies by dimension');
+if(($view['unified_registry']['strategy_summaries']??null)!==$view['strategies'] ||
+   ($view['unified_registry']['native_assignment_summary']??null)!==$view['native_assignments'])
+ WP_CLI::error('Pricing Lab or Native preset readback is not sourced from the one registry snapshot');
 if($view['by_dimension']['taxonomy:tour-types'][0]['status']!=='draft'||
    $view['by_dimension']['taxonomy:package_levels'][0]['status']!=='staged_for_native_review'||
    $view['by_dimension']['taxonomy:package_levels'][0]['authorizes_checkout']!==false)

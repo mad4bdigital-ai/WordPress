@@ -12,7 +12,7 @@ Deployed at Tours.dev Staging and Wayfatours Production:
 - Inspector extension: wp-content/mu-plugins/mad4b-pricing-rules-visibility-v1.php
 - Single Pricing Controls UI: wp-content/mu-plugins/assets/mad4b-pricing-rules-visibility-v1.js
 
-Pricing Controls -> Pricing policies now shows Unified policies across all source families, and General & availability -> Configure dimensions shows the same readback plus each dimension's native rules and its Pricing Lab drafts separately. One AJAX readback, company-scoped and nonce protected; no separate saved option or policy synchronization writes.
+Pricing Controls -> Pricing policies now shows Unified policies across all source families, and General & availability -> Configure dimensions shows the same readback plus each dimension's native rules and its Pricing Lab drafts separately. One AJAX readback, company-scoped and nonce protected; no separate saved option or policy synchronization writes. The legacy inspector's Pricing Lab Draft summaries and Native Preset counters now derive from the unified Registry snapshot, not independent WP option reads, so they cannot contradict the registry within one request.
 
 ## Twelve source families
 

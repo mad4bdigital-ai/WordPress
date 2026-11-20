@@ -221,6 +221,7 @@ final class MAD4B_Unified_Pricing_Policy_Registry_V1 {
         }
 
         // Pricing Lab is a Draft workspace; never equate it with an active policy.
+        $strategySummaries=[];
         $lab=get_option('mad4b_jetengine_pricing_lab_presets_v1',[]);
         $sources['pricing_lab']=['option'=>'mad4b_jetengine_pricing_lab_presets_v1',
             'source_kind'=>'draft_workspace','configured'=>is_array($lab)&&count($lab)>0];
@@ -233,16 +234,36 @@ final class MAD4B_Unified_Pricing_Policy_Registry_V1 {
                     preg_match('/^(taxonomy|meta|metabox):[a-z0-9_-]{2,80}$/D',$rule['id']))
                     $ids[]=$rule['id'];
             $sourceId=sanitize_text_field((string)($item['id']??('row-'.$idx)));
-            foreach(array_unique($ids) as $dimension)
+            $title=self::safeName((string)($item['title']??'Untitled Strategy'));
+            $strategy=sanitize_key((string)($item['strategy']??'unchanged'));
+            $sourceStatus=$status==='staged'?'staged_for_native_review':'draft';
+            $amount=is_numeric($item['value']??null)?(float)$item['value']:null;
+            $dimensions=array_values(array_unique($ids));
+            $strategySummaries[]=[
+                'id'=>$sourceId,'title'=>$title,'status'=>$sourceStatus,
+                'revision'=>max(0,(int)($item['revision']??0)),
+                'strategy'=>$strategy,'value'=>$amount,
+                'currency'=>substr(sanitize_text_field((string)($item['currency']??'')),0,3),
+                'dimensions'=>$dimensions,
+                'staged_rows'=>count((array)($item['staged_rows']??[])),
+                'authorizes_checkout'=>false,
+            ];
+            foreach(($dimensions?:['draft:unscoped']) as $dimension)
                 $add(self::record('pricing_lab',$sourceId.'-'.substr(md5($dimension),0,7),
-                    (string)($item['title']??'Untitled Strategy'),
-                    'mad4b_jetengine_pricing_lab_presets_v1',$dimension,$status,
-                    sanitize_key((string)($item['strategy']??'unchanged')),
-                    ['draft_id'=>$sourceId,'authorizes_checkout'=>false]));
+                    $title,'mad4b_jetengine_pricing_lab_presets_v1',
+                    $dimension,$status,$strategy,
+                    ['draft_id'=>$sourceId,'authorizes_checkout'=>false,
+                     'revision'=>max(0,(int)($item['revision']??0)),
+                     'value'=>$amount]));
         }
 
         // Native assignment rows are another family, not a second source of Lab truth.
         $assignments=get_option('booking_experience_pricing_preset_rows_v1',[]);
+        $nativeSummary=['rows'=>0,'disabled'=>0,'enabled_unapproved'=>0,
+            'enabled_approved'=>0,'native_layer_enabled'=>false];
+        $layer=function_exists('BookingExperience\pricing_preset_settings')
+            ?(array)call_user_func('BookingExperience\\pricing_preset_settings'):[];
+        $nativeSummary['native_layer_enabled']=($layer['enabled']??false)===true;
         $sources['native_presets']=['option'=>'booking_experience_pricing_preset_rows_v1',
             'source_kind'=>'native_preset_assignments',
             'configured'=>is_array($assignments)&&count($assignments)>0];
@@ -250,6 +271,10 @@ final class MAD4B_Unified_Pricing_Policy_Registry_V1 {
             if(!is_array($item))continue;
             $active=self::selected($item['enabled']??false);
             $approved=self::selected($item['approved']??false);
+            $nativeSummary['rows']++;
+            if(!$active)$nativeSummary['disabled']++;
+            elseif(!$approved)$nativeSummary['enabled_unapproved']++;
+            else $nativeSummary['enabled_approved']++;
             $add(self::record('native_preset',(string)$idx,
                 (string)($item['title']??('Native assignment '.($idx+1))),
                 'booking_experience_pricing_preset_rows_v1','native:assignment',
@@ -335,6 +360,8 @@ final class MAD4B_Unified_Pricing_Policy_Registry_V1 {
             'stores_unmodified'=>true,'checkout_activation_unproven'=>true,
             'source_count'=>count($sources),'source_fingerprint'=>$fingerprint,
             'rows'=>$rows,'financial_rule_count'=>count($financial),
+            'strategy_summaries'=>$strategySummaries,
+            'native_assignment_summary'=>$nativeSummary,
             'status_counts'=>$counts,'by_dimension'=>$byDimension,
             'warnings'=>array_values(array_unique($warnings)),
             'execution_order'=>[

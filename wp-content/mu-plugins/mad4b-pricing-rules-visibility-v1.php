@@ -32,46 +32,22 @@ final class MAD4B_Pricing_Rules_Visibility_V1 {
         $chosen=array_values(array_filter((array)($settings['enabled_ids']??[]),
             'is_string'));
         if($mode==='all')$chosen=[]; // all is dynamic, not a stored list
-        $presets=get_option('mad4b_jetengine_pricing_lab_presets_v1',[]);
-        $strategies=[];$byDimension=[];
-        foreach(array_slice((array)(is_array($presets)?$presets:[]),0,35) as $item){
-            if(!is_array($item))continue;
-            $id=sanitize_text_field((string)($item['id']??''));
-            $title=sanitize_text_field((string)($item['title']??'Unnamed policy'));
-            $status=(string)($item['status']??'draft');
-            if(!in_array($status,['draft','staged_for_native_review'],true))
-                $status='unclassified_non_live';
-            $dimensions=[];
-            foreach(array_slice((array)($item['rules']??[]),0,16) as $rule) {
-                $dimension=(string)($rule['id']??'');
-                if(preg_match('/^(taxonomy|meta|metabox):[a-z0-9_-]{2,80}$/D',$dimension))
-                    $dimensions[$dimension]=true;
-            }
-            $record=[
-                'id'=>$id,'title'=>$title,'status'=>$status,
-                'revision'=>max(0,(int)($item['revision']??0)),
-                'strategy'=>sanitize_key((string)($item['strategy']??'unchanged')),
-                'value'=>is_numeric($item['value']??null)?(float)$item['value']:null,
-                'currency'=>substr(sanitize_text_field((string)($item['currency']??'')),0,3),
-                'dimensions'=>array_keys($dimensions),
-                'staged_rows'=>count((array)($item['staged_rows']??[])),
-                'authorizes_checkout'=>false,
-            ];
-            $strategies[]=$record;
-            foreach(array_keys($dimensions) as $dimension)$byDimension[$dimension][]=$record;
-        }
-        $native=get_option('booking_experience_pricing_preset_rows_v1',[]);
-        $native=is_array($native)?$native:[];
-        $candidate=0;$disabled=0;$unapproved=0;
-        foreach($native as $row) {
-            if(!is_array($row))continue;
-            if(empty($row['enabled']))++$disabled;
-            elseif(empty($row['approved']))++$unapproved;
-            else ++$candidate;
-        }
-        $layer=function_exists('BookingExperience\pricing_preset_settings')
-            ?(array)call_user_func('BookingExperience\\pricing_preset_settings'):[];
-        $layerEnabled=($layer['enabled']??false)===true;
+        // All Lab strategies and native assignments are derived from ONE
+        // canonical registry snapshot. Do not independently re-read their
+        // WP options, which could produce inconsistent counters.
+        $registry=class_exists('MAD4B_Unified_Pricing_Policy_Registry_V1',false)
+            ?MAD4B_Unified_Pricing_Policy_Registry_V1::snapshot()
+            :new WP_Error('unified_policy_registry_unavailable');
+        if(is_wp_error($registry))return $registry;
+        $strategies=$registry['strategy_summaries']??[];
+        $byDimension=[];
+        foreach($strategies as $record)
+            foreach((array)($record['dimensions']??[]) as $dimension)
+                $byDimension[$dimension][]=$record;
+        $native=$registry['native_assignment_summary']??[
+            'rows'=>0,'disabled'=>0,'enabled_unapproved'=>0,
+            'enabled_approved'=>0,'native_layer_enabled'=>false,
+        ];
         $publish=(int)$wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type='tour-rates' AND post_status='publish'");
         $global=get_option('mad4b_pricing_global_policy_ids_v1',[]);
         $globalRefs=is_array($global)?count($global):0;
@@ -81,10 +57,6 @@ final class MAD4B_Pricing_Rules_Visibility_V1 {
         $linkedPosts=(int)$wpdb->get_var($wpdb->prepare(
             "SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key=%s",
             'mad4b_pricing_policy_override_ids'));
-        $registry=class_exists('MAD4B_Unified_Pricing_Policy_Registry_V1',false)
-            ?MAD4B_Unified_Pricing_Policy_Registry_V1::snapshot()
-            :new WP_Error('unified_policy_registry_unavailable');
-        if(is_wp_error($registry))return $registry;
         return [
             'schema'=>2,
             'scope'=>'mad4b_pricing_lab_policy_bindings_native_preset_readback',
@@ -95,10 +67,7 @@ final class MAD4B_Pricing_Rules_Visibility_V1 {
             'selected_dimensions'=>$chosen,
             'strategy_count'=>count($strategies),'strategies'=>$strategies,
             'by_dimension'=>$byDimension,
-            'native_assignments'=>[
-                'rows'=>count($native),'disabled'=>$disabled,'enabled_unapproved'=>$unapproved,
-                'enabled_approved'=>$candidate,'native_layer_enabled'=>$layerEnabled,
-            ],
+            'native_assignments'=>$native,
             'policy_bindings'=>[
                 'global_refs'=>$globalRefs,'term_records'=>$linkedTerms,
                 'post_records'=>$linkedPosts,
