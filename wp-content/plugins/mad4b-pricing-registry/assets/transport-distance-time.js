@@ -15,12 +15,13 @@ const vehicles=['limousine','luxury_7_seats','h1','hiace','coaster','bus'];
 const services=['transfer','half_day','full_day','sightseeing','overnight'];
 const roads=['city','highway','desert'];
 const profileFields=[
- ['fixed','Dispatch cost EGP'],['per_km','EGP / operating km'],
+ ['fixed','Vehicle Call-out BASE EGP (included, not additive)'],['per_km','EGP / operating km'],
  ['per_drive_min','EGP / driving minute'],['per_wait_min','EGP / waiting minute'],
  ['overnight','EGP / overnight'],['min_fare','Minimum fare EGP'],
  ['deadhead_pct','Empty return distance %']
 ];
 let policy=null,saved=null,calibration=null,revision=0,terms=[];
+let nativeSources=[],nativeRates=[];
 const display=s=>String(s).replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
 const num=v=>Number(v).toLocaleString('en-US',{maximumFractionDigits:2});
 const clone=o=>JSON.parse(JSON.stringify(o));
@@ -104,6 +105,7 @@ function showFactors(){
      kind+'-'+key,obj[key]);
    el.addEventListener('input',()=>{obj[key]=Number(el.value);dirty();});
   }
+ q('dispatch-enabled').checked=policy.dispatch_policy.enabled;
  const host=q('factor-fields');host.replaceChildren();
  for(const [key,label] of [
   ['global_markup_pct','Global markup %'],
@@ -158,7 +160,11 @@ function drawQuote(result){
   ['Operating km',num(result.distance_km)+' km'],
   ['Driving time',num(result.drive_minutes)+' min'],
   ['Deadhead',num(result.deadhead_km)+' km'],
-  ['Fixed dispatch',num(result.line_items.fixed)+' EGP'],
+  ['Vehicle BASE enabled',result.dispatch_base.enabled?'Yes':'No'],
+  ['BASE minimum (included)',num(result.dispatch_base.vehicle_base_egp)+' EGP'],
+  ['BASE covered by movement',num(result.dispatch_base.covered_by_movement_egp)+' EGP'],
+  ['BASE minimum floor difference',num(result.dispatch_base.floor_difference_egp)+' EGP'],
+  ['Extra BASE surcharge',num(result.dispatch_base.billed_additional_surcharge_egp)+' EGP'],
   ['Distance',num(result.line_items.distance)+' EGP'],
   ['Driving',num(result.line_items.driving_time)+' EGP'],
   ['Waiting',num(result.line_items.waiting)+' EGP'],
@@ -168,6 +174,12 @@ function drawQuote(result){
   ['Tolls + parking + other',num(
     result.line_items.tolls+result.line_items.parking+result.line_items.extras)+' EGP'],
   ['Modeled operating cost',num(result.estimated_operating_cost_egp)+' EGP'],
+  ...(result.native_inheritance?[
+   ['PDF actual source cost',num(result.native_inheritance.source_actual_cost_egp)+' EGP'],
+   ['Native source',result.native_inheritance.source_pdf_key+' · #'+result.native_inheritance.transportation_id],
+   ['Cost profile inheritance',Object.entries(result.native_inheritance.cost_field_sources).
+     map(([k,v])=>k+': '+v).join(' / ')]
+  ]:[]),
   ['Markup',result.markup.effective_pct+'% · '+result.markup.base_rule],
   ['Minimum fare',num(result.minimum_fare_egp)+' EGP'],
   ['Discount',result.discount_pct+'%'],
@@ -182,10 +194,40 @@ function drawQuote(result){
  }
  host.append(table);
 }
+function updateNativeSelection(){
+ const rateId=Number(q('native-rate').value||0);
+ const rate=nativeRates.find(x=>x.id===rateId);
+ if(rate){
+  q('native-source').value=String(rate.source_id);
+  q('native-source').disabled=true;
+  q('quote-vehicle').value=rate.vehicle;
+  q('quote-vehicle').disabled=true;
+  q('native-context-info').textContent=
+    'Transport Rate '+rateId+' binds to Transportation #'+rate.source_id+
+    ' and its native vehicle '+display(rate.vehicle)+
+    '. Cost model overrides are read from JetEngine; customer extra-km/hour prices remain independent.';
+ }else{
+  q('native-source').disabled=false;
+  q('quote-vehicle').disabled=false;
+  const sourceId=Number(q('native-source').value||0);
+  const source=nativeSources.find(x=>x.id===sourceId);
+  q('native-context-info').textContent=source?
+   'Source '+source.source_key+' · original PDF company cost EGP by selected vehicle.'+
+   ' Choose a vehicle; overrides are inherited only where explicitly set.':
+   'No native service selected: quote uses only the company vehicle profile.'+
+   ' Customer extra km / hourly rates remain separate.';
+ }
+}
 function hydrate(d){
  revision=Number(d.policy.revision);
  saved=clone(d.policy);policy=clone(d.policy);
  calibration=d.calibration;terms=d.terms||[];
+ nativeSources=d.native_context?.sources||[];
+ nativeRates=d.native_context?.native_rates||[];
+ select(q('native-source'),nativeSources.map(x=>[x.id,x.source_key+' · '+x.title]),'Company model only');
+ select(q('native-rate'),nativeRates.map(x=>[x.id,x.title+' · '+display(x.vehicle)]),'No native Transport Rate');
+ q('native-tour-rate').value='';
+ q('native-rate').disabled=nativeRates.length===0;
  select(q('profile-vehicle'),vehicles.map(k=>[k,display(k)]));
  select(q('quote-vehicle'),vehicles.map(k=>[k,display(k)]));
  select(q('quote-service'),services.map(k=>[k,display(k)]));
@@ -200,7 +242,7 @@ function hydrate(d){
  q('quote-service').value='transfer';
  q('quote-road').value='highway';
  q('service-key').value='transfer';
- showProfile();showFactors();drawCalibration();dirty();
+ showProfile();showFactors();drawCalibration();updateNativeSelection();dirty();
 }
 function bind(){
  mount.querySelectorAll('[data-tab]').forEach(button=>{
@@ -212,6 +254,16 @@ function bind(){
   });
  });
  q('profile-vehicle').addEventListener('change',showProfile);
+ q('native-source').addEventListener('change',()=>{
+  if(q('native-rate').value)q('native-rate').value='';
+  updateNativeSelection();
+ });
+ q('native-rate').addEventListener('change',updateNativeSelection);
+ q('dispatch-enabled').addEventListener('change',()=>{
+  if(!policy)return;
+  policy.dispatch_policy.enabled=q('dispatch-enabled').checked;
+  dirty();
+ });
  q('service-key').addEventListener('change',showService);
  for(const [kind,id,property] of [
   ['vehicle','vehicle-mode','mode'],['vehicle','vehicle-pct','pct'],
@@ -258,7 +310,7 @@ function bind(){
   try{
    const payload={};
    for(const key of [
-    'profiles','global_markup_pct','vehicle_markups','service_markups',
+    'profiles','dispatch_policy','global_markup_pct','vehicle_markups','service_markups',
     'route_markups','road','night_factor','peak_factor','discount_pct','time_share'])
     payload[key]=policy[key];
    const result=await api('save',{policy:JSON.stringify(payload),revision});
@@ -283,9 +335,15 @@ function bind(){
    const hasTermRoute=Boolean(from&&to&&from!==to);
    const hasCoordinates=count===4;
    const hasCustomManual=Boolean(customFrom&&customTo&&q('km').value&&q('drive').value);
-   if(!hasTermRoute&&!hasCoordinates&&!hasCustomManual)
-    throw Error('Choose two destinations, provide coordinate pairs, or enter custom labels and km/minutes.');
+   if(!hasTermRoute&&!hasCoordinates&&!hasCustomManual&&!q('native-source').value&&!q('native-rate').value)
+    throw Error('Choose a Transportation source, two destinations, coordinate pairs, or custom labels with km/minutes.');
+   const sourceId=Number(q('native-source').value||0);
+   const rateId=Number(q('native-rate').value||0);
+   const tourRateId=Number(q('native-tour-rate').value||0);
+   if(tourRateId&&!sourceId&&!rateId)
+    throw Error('Choose a Transportation source before linking a Tour Rate.');
    const payload={
+    transportation_id:sourceId,transport_rate_id:rateId,tour_rate_id:tourRateId,
     vehicle:q('quote-vehicle').value,service:q('quote-service').value,
     road:q('quote-road').value,from_term_id:Number(from),to_term_id:Number(to),
     from_label:customFrom,to_label:customTo,

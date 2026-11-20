@@ -32,7 +32,13 @@ final class MAD4B_Transport_Distance_Time_V1 {
   return ['revision'=>0,'mode'=>'simulation_only','currency'=>'EGP',
    'currency_evidence'=>'owner_confirmed_not_printed_in_pdf',
    'source_sha256'=>self::SHA,'role'=>'self_cost',
-   'profiles'=>$profiles,'global_markup_pct'=>0.0,
+   // Call-out BASE is an embedded minimum, NEVER a surcharge over km/min.
+   // Activation defaults off until a company policy explicitly enables it.
+   'profiles'=>$profiles,'dispatch_policy'=>[
+     'enabled'=>false,
+     'application'=>'included_minimum_not_additive',
+     'cancellation'=>'non_refundable_after_confirmed_assignment'
+   ],'global_markup_pct'=>0.0,
    'vehicle_markups'=>$marks,'service_markups'=>$services,
    'route_markups'=>[],
    'road'=>['city'=>['circuity'=>1.35,'speed'=>28,'factor'=>1],
@@ -63,7 +69,7 @@ final class MAD4B_Transport_Distance_Time_V1 {
   return is_wp_error($pct)?$pct:['mode'=>$r['mode'],'pct'=>$pct];
  }
  public static function validate(array $raw) {
-  $needed=['profiles','global_markup_pct','vehicle_markups',
+  $needed=['profiles','dispatch_policy','global_markup_pct','vehicle_markups',
    'service_markups','route_markups','road','night_factor',
    'peak_factor','discount_pct','time_share'];
   if(array_keys($raw)!==$needed)return new WP_Error('transport_model_schema_invalid');
@@ -94,6 +100,14 @@ final class MAD4B_Transport_Distance_Time_V1 {
    $clean['source']=$p['source'];$clean['samples']=$count;
    $out['profiles'][$vehicle]=$clean;
   }
+  $dispatch=$raw['dispatch_policy'];
+  if(!is_array($dispatch)||
+     array_keys($dispatch)!==['enabled','application','cancellation']||
+     !is_bool($dispatch['enabled'])||
+     $dispatch['application']!=='included_minimum_not_additive'||
+     $dispatch['cancellation']!=='non_refundable_after_confirmed_assignment')
+   return new WP_Error('transport_model_dispatch_policy_invalid');
+  $out['dispatch_policy']=$dispatch;
   foreach(['global_markup_pct'=>[0,200],'night_factor'=>[0.5,3],
     'peak_factor'=>[0.5,3],'discount_pct'=>[0,80],
     'time_share'=>[0.05,0.45]] as $key=>[$lo,$hi]){
@@ -142,6 +156,7 @@ final class MAD4B_Transport_Distance_Time_V1 {
   }
   // Canonical deterministic order expected by the admin UI and test.
   return ['profiles'=>$out['profiles'],
+   'dispatch_policy'=>$out['dispatch_policy'],
    'global_markup_pct'=>$out['global_markup_pct'],
    'vehicle_markups'=>$out['vehicle_markups'],
    'service_markups'=>$out['service_markups'],
@@ -247,7 +262,7 @@ final class MAD4B_Transport_Distance_Time_V1 {
    'assumptions'=>$assumption,'coordinate_sources'=>$basis];
  }
  private static function effective_markup(array $policy,string $vehicle,
-   string $service,string $routeKey,int $tourRate):array {
+   string $service,string $routeKey,int $tourRate,int $transportRate=0):array {
   $base=$policy['global_markup_pct'];$source='global';$adjust=[];
   $rules=['vehicle'=>$policy['vehicle_markups'][$vehicle],
    'service'=>$policy['service_markups'][$service]];
@@ -258,6 +273,14 @@ final class MAD4B_Transport_Distance_Time_V1 {
     $base=$rule['pct'];$source=$name;
    }elseif($rule['mode']==='adjustment')
     $adjust[$name]=$rule['pct'];
+  }
+  // Native Transport Rate overrides its inherited base before Tour Rate.
+  if($transportRate>0&&get_post_type($transportRate)==='transport-rates'){
+   $candidate=get_post_meta($transportRate,'trans_cost_markup_override_pct',true);
+   if($candidate!==''&&is_scalar($candidate)&&is_numeric($candidate)&&
+      (float)$candidate>=0&&(float)$candidate<=200){
+    $base=(float)$candidate;$source='transport_rate';
+   }
   }
   // Tour Rate is authoritative only when editing the exact Rate. No
   // browser-submitted override can become authoritative.
@@ -274,6 +297,17 @@ final class MAD4B_Transport_Distance_Time_V1 {
  }
  public static function calculate(array $input) {
   $policy=self::current();
+  $context=null;
+  if(class_exists('MAD4B_Transport_Native_Cost_Inheritance_V1')){
+   $context=MAD4B_Transport_Native_Cost_Inheritance_V1::resolve($input,$policy);
+   if(is_wp_error($context))return $context;
+   if(is_array($context)){
+    $input['vehicle']=$context['vehicle']; // authoritative native Rate category
+    foreach(['from_term_id','to_term_id'] as $key)
+     if(empty($input[$key])&&!empty($context['geometry_terms'][$key]))
+      $input[$key]=$context['geometry_terms'][$key];
+   }
+  }
   $vehicle=sanitize_key((string)($input['vehicle']??''));
   $service=sanitize_key((string)($input['service']??'transfer'));
   $road=sanitize_key((string)($input['road']??'highway'));
@@ -307,12 +341,16 @@ final class MAD4B_Transport_Distance_Time_V1 {
   if(!is_bool($input['night']??false)||
     !is_bool($input['peak']??false))
    return new WP_Error('transport_quote_boolean_invalid');
-  $profile=$policy['profiles'][$vehicle];
+  $profile=is_array($context)?$context['profile']:$policy['profiles'][$vehicle];
+  $dispatchEnabled=$policy['dispatch_policy']['enabled'];
+  if(is_array($context)&&array_key_exists('dispatch_enabled',$context))
+   $dispatchEnabled=$context['dispatch_enabled'];
   if($profile['per_km']<=0||$profile['per_drive_min']<=0)
    return new WP_Error('transport_quote_profile_not_calibrated');
   $deadheadKm=$km*$profile['deadhead_pct']/100;
   $parts=[
-   'fixed'=>$profile['fixed'],
+   // Vehicle BASE stored in existing 'fixed' cost profile, not duplicated.
+   'fixed'=>0.0,
    'distance'=>round(($km+$deadheadKm)*$profile['per_km'],2),
    'driving_time'=>round($mins*$profile['per_drive_min'],2),
    'waiting'=>round($values['wait_min']*$profile['per_wait_min'],2),
@@ -322,13 +360,21 @@ final class MAD4B_Transport_Distance_Time_V1 {
   ];
   $movement=($parts['distance']+$parts['driving_time'])*
    $policy['road'][$road]['factor'];
+  $dispatchBase=$dispatchEnabled?(float)$profile['fixed']:0.0;
+  // The BASE is covered by the existing movement cost. Only the
+  // difference, if movement is smaller, lifts it to the minimum.
+  $dispatchFloor=max(0.0,$dispatchBase-$movement);
+  $dispatchCovered=min($dispatchBase,$movement);
   $nightFactor=$input['night']?$policy['night_factor']:1.0;
   $peakFactor=$input['peak']?$policy['peak_factor']:1.0;
-  $operating=($parts['fixed']+$movement+$parts['waiting']+
+  $operating=($movement+$dispatchFloor+$parts['waiting']+
     $parts['overnight'])*$nightFactor*$peakFactor;
   $cost=round($operating+$parts['tolls']+$parts['parking']+
     $parts['extras'],2);
-  $routeKey=(string)($input['route_key']??'');
+  // Route markup is derived from the selected, resolved native path when
+  // such a path exists. Prevent unrelated browser-provided route keys from
+  // hijacking the applicable route's company pricing policy.
+  $routeKey=is_array($context)?'':(string)($input['route_key']??'');
   if($routeKey===''){
    $from=get_term(absint($input['from_term_id']??0),'destinations');
    $to=get_term(absint($input['to_term_id']??0),'destinations');
@@ -341,7 +387,8 @@ final class MAD4B_Transport_Distance_Time_V1 {
   if(mb_strlen($originLabel)>100||mb_strlen($destLabel)>100)
    return new WP_Error('transport_quote_label_too_long');
   $markup=self::effective_markup($policy,$vehicle,$service,
-    $routeKey,absint($input['tour_rate_id']??0));
+    $routeKey,is_array($context)?$context['tour_rate_id']:0,
+    is_array($context)?$context['transport_rate_id']:0);
   $beforeMin=$cost*(1+$markup['effective_pct']/100);
   $afterMin=max($profile['min_fare'],$beforeMin);
   $scenario=round(max($profile['min_fare'],
@@ -357,6 +404,16 @@ final class MAD4B_Transport_Distance_Time_V1 {
    'distance_provenance'=>$manual?'operator_manual_unverified':
      'native_city_centroid_estimation_unverified',
    'geometry'=>$geometry,'line_items'=>$parts,
+   'dispatch_base'=>[
+     'enabled'=>$dispatchEnabled,'vehicle_base_egp'=>$dispatchBase,
+     'covered_by_movement_egp'=>round($dispatchCovered,2),
+     'floor_difference_egp'=>round($dispatchFloor,2),
+     'billed_additional_surcharge_egp'=>0.0,
+     'application'=>'included_minimum_not_additive',
+     'cancellation_policy'=>'non_refundable_after_confirmed_assignment',
+     'cancellation_retention_auto_applied'=>false,
+     'requires_booking_terms_and_supplier_assignment'=>true
+   ],
    'road_cost_factor'=>$policy['road'][$road]['factor'],
    'night_factor'=>$nightFactor,'peak_factor'=>$peakFactor,
    'estimated_operating_cost_egp'=>$cost,
@@ -364,6 +421,9 @@ final class MAD4B_Transport_Distance_Time_V1 {
    'minimum_fare_egp'=>$profile['min_fare'],
    'indicative_selling_scenario_egp'=>$scenario,
    'profile_basis'=>$profile['source'],
+   'native_inheritance'=>$context,
+   'inheritance_verified'=>is_array($context),
+   'cost_profile_updated_post_meta'=>false,
    'tax_included'=>false,'source_price_role'=>'self_cost',
    'owner_confirmed_pdf_cost_basis'=>true,
    'marginal_km_min_not_independently_measured'=>true,
@@ -479,6 +539,8 @@ final class MAD4B_Transport_Distance_Time_V1 {
   }
   return ['policy'=>self::current(),
    'calibration'=>self::calibrate(),'terms'=>$terms,
+   'native_context'=>class_exists('MAD4B_Transport_Native_Cost_Inheritance_V1')?
+    MAD4B_Transport_Native_Cost_Inheritance_V1::catalog_options():[],
    'mode'=>'simulation_only','no_checkout'=>true];
  }
  public static function ajax():void {

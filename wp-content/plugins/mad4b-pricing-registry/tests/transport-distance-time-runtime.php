@@ -9,7 +9,7 @@ $add('default_currency_EGP',$default['currency']==='EGP');
 $add('confirmed_cost_role',$default['role']==='self_cost');
 $add('commercial_gate_closed',$default['mode']==='simulation_only');
 $raw=[];
-foreach(['profiles','global_markup_pct','vehicle_markups','service_markups',
+foreach(['profiles','dispatch_policy','global_markup_pct','vehicle_markups','service_markups',
  'route_markups','road','night_factor','peak_factor',
  'discount_pct','time_share'] as $key)$raw[$key]=$default[$key];
 $v=$c::validate($raw);
@@ -51,9 +51,39 @@ $quote=$c::calculate([
 ]);
 $add('manual_route_calculated',is_array($quote));
 $add('operating_cost_not_double_counted',is_array($quote)&&
- abs($quote['estimated_operating_cost_egp']-1470)<0.001);
+ abs($quote['estimated_operating_cost_egp']-1370)<0.001);
 $add('selling_markup_once',is_array($quote)&&
- abs($quote['indicative_selling_scenario_egp']-1675.8)<0.001);
+ abs($quote['indicative_selling_scenario_egp']-1561.8)<0.001);
+$add('callout_default_disabled_no_surcharge',is_array($quote)&&
+ $quote['dispatch_base']['enabled']===false&&
+ $quote['dispatch_base']['billed_additional_surcharge_egp']===0.0);
+$sampleActive=$sample;
+$sampleActive['dispatch_policy']['enabled']=true;
+$activeOverride=function()use($sampleActive){return $sampleActive;};
+remove_filter('pre_option_'.$c::OPTION,$override,10);
+add_filter('pre_option_'.$c::OPTION,$activeOverride,10,0);
+$longTrip=$c::calculate(['vehicle'=>'limousine','service'=>'transfer',
+ 'km'=>100,'drive_min'=>120,'wait_min'=>30,
+ 'night'=>false,'peak'=>false]);
+$add('long_route_callout_fully_covered_not_added',
+ is_array($longTrip)&&
+ abs($longTrip['estimated_operating_cost_egp']-1370)<0.001&&
+ abs($longTrip['dispatch_base']['covered_by_movement_egp']-100)<0.001&&
+ $longTrip['dispatch_base']['floor_difference_egp']===0.0);
+$shortTrip=$c::calculate(['vehicle'=>'limousine','service'=>'transfer',
+ 'km'=>1,'drive_min'=>1,'wait_min'=>0,
+ 'night'=>false,'peak'=>false]);
+$add('short_route_uses_base_as_minimum',
+ is_array($shortTrip)&&
+ abs($shortTrip['estimated_operating_cost_egp']-100)<0.001&&
+ $shortTrip['dispatch_base']['floor_difference_egp']>0&&
+ $shortTrip['dispatch_base']['billed_additional_surcharge_egp']===0.0);
+$add('refund_policy_never_autoducted',
+ is_array($shortTrip)&&
+ $shortTrip['dispatch_base']['cancellation_retention_auto_applied']===false&&
+ $shortTrip['dispatch_base']['requires_booking_terms_and_supplier_assignment']===true);
+remove_filter('pre_option_'.$c::OPTION,$activeOverride,10);
+add_filter('pre_option_'.$c::OPTION,$override,10,0);
 $add('always_noncommercial',is_array($quote)&&
  $quote['checkout_authorized']===false&&
  $quote['native_transport_rate_approved']===false);

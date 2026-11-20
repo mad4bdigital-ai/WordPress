@@ -48,3 +48,14 @@
  .mad4b-kinetic-grid{grid-template-columns:minmax(0,1fr)}
  .mad4b-kinetic-body{padding:10px}
 }
+
+.mad4b-kinetic-native-context{margin:14px 0 18px;padding:12px;
+ border:1px solid #d1e0df;border-radius:9px;min-width:0;background:#f7fbfa}
+.mad4b-kinetic-native-context legend{font-weight:700;color:#235a52;padding:0 6px}
+.mad4b-kinetic-native-context p{margin:6px 0 0}
+
+.mad4b-kinetic-base-policy{padding:12px;border:1px solid #d6e5e1;
+ border-radius:9px;background:#f7faf8;margin:16px 0}
+.mad4b-kinetic-base-policy>label{display:flex;align-items:center;gap:10px;
+ color:#28554b;font-weight:650}
+.mad4b-kinetic-base-policy input[type=checkbox]{width:18px;height:18px;flex:none}

@@ -926,3 +926,69 @@ Test coverage (both sites, post source correction):
 Deployment is live for internal admin preview on the two companies; source
 and UI code are maintained under Git review and cannot be called an approved
 production release until its new PR and exact-head governance checks pass.
+
+## 20 November 2026 — Non-additive vehicle call-out BASE
+
+The owner confirmed vehicle call-out BASE must be INCLUDED within the route
+kilometer-and-driving-minute charge, not added above it. The existing
+per-vehicle profile fixed amount stores this EGP BASE; no duplicate
+company profile price field was added.
+
+Dispatch activation is a separate company dispatch_policy (disabled by
+default) with application included_minimum_not_additive. Calculations:
+
+    movement = (operating km cost + driving time cost) * road factor
+    effective movement = max(movement, vehicle call-out BASE)
+    cost = (effective movement + waiting + overnight)
+           * night_factor * peak_factor + tolls + parking + other extras
+
+A 300 EGP BASE with 800 EGP movement costs 800 EGP, not 1100 EGP.
+When movement is 200 EGP, the effective movement is 300 EGP.
+These are arithmetic examples, not actual vehicle price assignments.
+Markup, discounts, tax and other charge types are calculated separately.
+
+### Native JetEngine inheritance and activation
+
+- Transportation CPT (ID 173): new optional native repeater
+  trans_vehicle_cost_overrides_v1. Each row defines one vehicle_key,
+  mode (inherit/override), dispatch_mode (inherit/enabled/disabled),
+  and optional EGP cost overrides for fixed BASE, km, driving minute,
+  waiting minute, overnight, minimum fare and deadhead percentage.
+- Transport Rate CPT (ID 358): new native trans_cost_model_mode,
+  trans_dispatch_mode, seven optional operating-cost overrides and
+  trans_cost_markup_override_pct. Original source_post_id and
+  trans_vehicle_category_key link and validate company price inheritance.
+- Tour Rate CPT (ID 328): existing transport_markup_override_pct,
+  transport selections and OR/AND stages. No new top-level Tour Rate
+  field required.
+- Cost inheritance is company vehicle profile -> Transportation per-
+  vehicle row -> native Transport Rate override. Dispatch activation
+  follows company global toggle -> Transportation vehicle activation
+  -> Transport Rate activation.
+- Blank cost fields inherit and zero is an explicit zero override.
+- Customer extra kilometer and overtime selling prices remain separate
+  native fields (trans_extra_km_price_base and
+  trans_overtime_price_per_hour_base), not operating cost rates.
+- New meta is WPML Copy across translations where relevant.
+
+Tours.dev and Wayfatours schema counts: 71 Transportation fields
+(previously 70), 47 native Transport Rate fields (previously 37),
+53 Tour Rate fields (unchanged). Existing post values and bookings are
+unchanged. A per-company before-image schema backup exists under
+mad4b_jetengine_transport_cost_inheritance_backup_20261120_v1.
+The guarded migration supports exact-hash checked rollback.
+
+### Cancellation / non-refundable BASE
+
+The model carries a non_refundable_after_confirmed_assignment policy
+intention, NOT an automatic refund deduction. Retention of any part
+of a paid booking must satisfy the customer's accepted conditions,
+actual supplier vehicle assignment, the applicable cancellation
+schedule and local law. The cost simulator NEVER creates a payable
+BASE surcharge, real order, auto invoice or refund adjustment.
+
+The company-wide dispatch activation defaults OFF and all saved BASE
+amounts remain zero until a manager inputs actual approved values.
+Unit tests exercise non-additive BASE and inheritance resolution
+at company, Transportation and Transport Rate level. Commercial
+checkout authorization remains false, Transportation stays tour_only.
