@@ -24540,6 +24540,26 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php",
+      "source_blob_sha": "a1086650dbb739ff131829b30490eeb0ab371b0a",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "ADMIN-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-indexed-scan-readback-hermetic.php"
+      ],
+      "owner_role": "MAD4B Context source integrity reviewer; Site Owner and signed Host approval independently required",
+      "review_rationale": "Add only bounded historical partial Google Drive indexed-scan readback to the existing Source Folders interface. The original Wayfatours older scan page is not copied; the current scan/apply controller remains authoritative. The pure proof checks enrolled site and brand, source and generation, unexpired sealed UI diagnostic checkpoint, latest matching append-only partial-scan Audit receipt, exact indexed counts, normalized content SHA and current registry assets. It rejects newer invalid receipts, foreign scope, stale or incomplete inventory, invalid hashes and absent evidence; the only UI statement explicitly says historical proof is not current Google Drive freshness. Rendering performs a bounded read-only Audit SELECT and does not call the provider, refresh OAuth, start a scan, change Context review, add an Ability, or grant publication. This is source-only CI review; the original 21 Wayfatours conflicts, actual browser behavior, production admission and rollback remain independently blocked.",
+      "coverage_reuse_rationale": "Reuses exact Site Profile, Context Source Registry, append-only Audit receipt, sealed diagnostic checkpoint, stored asset hash, WordPress admin permission and escaped UI. No new ability, scheduler, OAuth scope, mutation or publication rights.",
+      "execution_note": "Same-PR first-party real class hermetic positive/negative PHP 7.4/8.5 fixture. Existing Context Admin recovery fixture independently rerun. Production WordPress readback and original Host admission not asserted.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {

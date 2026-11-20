@@ -1920,6 +1920,134 @@ final class MAD4B_SCP_Context_Admin_UI {
             . esc_html__( 'Discovery is not migration approval. These counts apply only to this Site Profile, not the complete company portfolio.', 'mad4b-site-control-plane' ) . '</p></div>';
     }
 
+    /**
+     * Pure historical readback of one already applied partial Drive index.
+     *
+     * A diagnostic progress checkpoint is NOT a current Google Drive scan.
+     * Exact source-site-Brand, current stored asset hashes and the latest
+     * matching append-only scan receipt are all mandatory. No authorization,
+     * provider refresh, scan planning, Registry write, or AI review is done.
+     */
+    public static function indexed_scan_evidence( array $source, array $progress,
+        array $site, array $audit_rows, array $assets, $registry_revision, $now ) {
+        $source_id = (string) ( $source['source_id'] ?? '' );
+        $site_uuid = (string) ( $site['site_uuid'] ?? '' );
+        $brand_id = (string) ( $source['brand_id'] ?? '' );
+        $expected = (int) ( $progress['verified_files'] ?? 0 );
+        if ( empty( $site['configured'] ) || empty( $site['origin_match'] )
+            || empty( $site['environment_match'] )
+            || ! preg_match( '/^[a-f0-9]{64}$/D', $source_id )
+            || ! preg_match( '/^[a-f0-9-]{36}$/D', $site_uuid )
+            || ! preg_match( '/^[a-f0-9]{32}$/D', $brand_id )
+            || ! hash_equals( $site_uuid, (string) ( $source['site_uuid'] ?? '' ) )
+            || ( $source['provider'] ?? '' ) !== 'google_drive'
+            || ( $source['mode'] ?? '' ) !== 'governed'
+            || ( $source['status'] ?? '' ) !== 'partial_scan'
+            || ! empty( $source['last_scan_complete'] )
+            || ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $source['last_scan_generation'] ?? '' ) )
+            || ! in_array( 'file_normalization_deferred', (array) ( $source['last_scan_truncation_reasons'] ?? array() ), true )
+            || ( $progress['contract'] ?? '' ) !== 'mad4b.scan-ui-progress.v1'
+            || ! hash_equals( $source_id, (string) ( $progress['source_id'] ?? '' ) )
+            || ! hash_equals( $site_uuid, (string) ( $progress['site_uuid'] ?? '' ) )
+            || empty( $progress['readonly_evidence'] )
+            || ! empty( $progress['registry_mutation_performed'] )
+            || empty( $progress['inventory_complete'] )
+            || (int) ( $progress['queued_folders'] ?? -1 ) !== 0
+            || (int) ( $progress['pending_files'] ?? -1 ) !== 0
+            || (int) ( $progress['deferred_files'] ?? 0 ) < 1
+            || (int) ( $progress['checkpoint_revision'] ?? 0 ) < 1
+            || (int) ( $progress['expires_at'] ?? 0 ) <= (int) $now
+            || $expected < 1 || $expected > 500
+            || $expected !== (int) ( $source['asset_count'] ?? -1 )
+            || count( $assets ) > 1000 || count( $audit_rows ) > 100
+            || (int) $registry_revision < 1 ) return false;
+
+        // Never select an earlier passing receipt after a newer failed,
+        // altered or unrelated-generation receipt for the same source.
+        $valid_receipt = false;
+        $found = false;
+        foreach ( $audit_rows as $row ) {
+            if ( ! is_array( $row ) ) return false;
+            $summary = json_decode( (string) ( $row['summary_json'] ?? '' ), true );
+            // An unreadable receipt in the bounded newest-first Audit window
+            // makes historical equivalence unprovable; do not fall through.
+            if ( ! is_array( $summary ) ) return false;
+            if ( (string) ( $summary['source_id'] ?? '' ) !== $source_id ) continue;
+            $found = true;
+            $valid_receipt = (string) ( $row['status'] ?? '' ) === 'partial'
+                && (string) ( $summary['scan_generation'] ?? '' )
+                    === (string) $source['last_scan_generation']
+                && (string) ( $summary['provider'] ?? '' ) === 'google_drive'
+                && (string) ( $summary['mode'] ?? '' ) === 'governed'
+                && (int) ( $summary['observed_asset_count'] ?? -1 ) === $expected
+                && (int) ( $summary['represented_asset_count'] ?? -1 ) === $expected
+                && ! empty( $summary['scan_complete'] ) === false
+                && in_array( 'file_normalization_deferred',
+                    (array) ( $summary['truncation_reasons'] ?? array() ), true );
+            break;
+        }
+        if ( ! $found || ! $valid_receipt ) return false;
+        $indexed = 0;
+        $stale = 0;
+        foreach ( $assets as $key => $asset ) {
+            if ( ! is_array( $asset ) ) return false;
+            if ( (string) ( $asset['source_id'] ?? '' ) !== $source_id ) continue;
+            if ( ! hash_equals( $site_uuid, (string) ( $asset['site_uuid'] ?? '' ) )
+                || ! hash_equals( $brand_id, (string) ( $asset['brand_id'] ?? '' ) )
+                || empty( $asset['content_complete'] )
+                || ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $asset['content_hash'] ?? '' ) ) )
+                return false;
+            ++$indexed;
+            if ( (string) ( $asset['classification_source'] ?? '' ) === 'automatic_heuristic' ) {
+                $fresh = MAD4B_SCP_Context_Authority::classify_asset(
+                    (string) ( $asset['title'] ?? '' ), (string) ( $asset['path'] ?? '' ) );
+                if ( (string) ( $asset['category'] ?? '' ) !== (string) $fresh['category']
+                    || (string) ( $asset['authority_class'] ?? '' ) !== (string) $fresh['authority_class']
+                    || ! empty( $asset['required'] ) !== ! empty( $fresh['required'] ) )
+                    ++$stale;
+            }
+        }
+        if ( $indexed !== $expected ) return false;
+        return array(
+            'indexed' => $indexed,
+            'deferred' => (int) $progress['deferred_files'],
+            'stale_classification' => $stale,
+            'checkpoint_revision' => (int) $progress['checkpoint_revision'],
+            'registry_revision' => (int) $registry_revision,
+            'historical_only' => true, 'current_google_files_verified' => false,
+            'source_rescanned' => false, 'review_modified' => false,
+            'authorizing' => false, 'registry_mutation_performed' => false,
+        );
+    }
+
+    /** Single bounded SELECT, reused for multiple Source rows on one admin GET. */
+    private static function indexed_scan_readback( array $source, array $progress ) {
+        if ( ! class_exists( 'MAD4B_SCP_Site_Profile', false )
+            || ! class_exists( 'MAD4B_SCP_Schema', false )
+            || ! class_exists( 'MAD4B_SCP_Context_Authority', false ) ) return false;
+        $site = MAD4B_SCP_Site_Profile::status();
+        if ( ! is_array( $site ) || empty( $site['configured'] )
+            || empty( $site['origin_match'] ) || empty( $site['environment_match'] ) )
+            return false;
+        $tables = MAD4B_SCP_Schema::tables();
+        $table = (string) ( $tables['audit_events'] ?? '' );
+        if ( ! preg_match( '/^[a-zA-Z0-9_]+$/D', $table ) ) return false;
+        global $wpdb;
+        if ( ! is_object( $wpdb ) || ! method_exists( $wpdb, 'get_results' )
+            || ! method_exists( $wpdb, 'prepare' ) ) return false;
+        static $receipt_rows = null;
+        if ( null === $receipt_rows ) {
+            $receipt_rows = $wpdb->get_results( $wpdb->prepare(
+                "SELECT status,summary_json FROM `$table` WHERE ability=%s ORDER BY id DESC LIMIT 100",
+                'mad4b/context-source-scan'
+            ), ARRAY_A );
+        }
+        if ( ! is_array( $receipt_rows ) ) return false;
+        return self::indexed_scan_evidence( $source, $progress, $site, $receipt_rows,
+            MAD4B_SCP_Context_Authority::assets(),
+            MAD4B_SCP_Context_Authority::registry_revision(), time() );
+    }
+
 	private static function render_sources() {
 		$sources = MAD4B_SCP_Context_Authority::sources();
 		$connection = MAD4B_SCP_Google_Drive_Context::connection_status();
@@ -2017,6 +2145,22 @@ final class MAD4B_SCP_Context_Admin_UI {
                 .' · Step '.(int)$progress['checkpoint_revision']
                 .' · Verified '.(int)$progress['verified_files']
                 .' · Deferred '.(int)$progress['deferred_files'].'</p>';
+            // Optional historical evidence; never claim Drive freshness or run Scan on GET.
+            $indexed = $active_progress && (string) ( $source['status'] ?? '' ) === 'partial_scan'
+                ? self::indexed_scan_readback( $source, $progress ) : false;
+            if ( is_array( $indexed ) ) {
+                echo '<p class="description"><strong>'
+                    . esc_html__( 'Previously indexed subset verified', 'mad4b-site-control-plane' )
+                    . '</strong>: ' . (int) $indexed['indexed']
+                    . ' · ' . esc_html__( 'Deferred', 'mad4b-site-control-plane' )
+                    . ': ' . (int) $indexed['deferred'] . ' · '
+                    . esc_html__( 'Historical Audit only; current Google Drive changes not checked.', 'mad4b-site-control-plane' )
+                    . '</p>';
+                if ( $indexed['stale_classification'] > 0 )
+                    echo '<p class="description">'
+                        . esc_html( sprintf( '%d automatic classifications require separate review.',
+                            (int) $indexed['stale_classification'] ) ) . '</p>';
+            }
             echo '</td><td>' . esc_html( (string) $source['asset_count'] )
                 . '</td><td>' . esc_html( $source['last_synced_at'] ? $source['last_synced_at'] : 'Never' )
                 .($active_progress?' <span class="description">(scan checkpoint available)</span>':'').'</td>';
