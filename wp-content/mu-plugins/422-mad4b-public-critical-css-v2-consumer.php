@@ -228,6 +228,17 @@ final class MAD4B_Public_Critical_CSS_Consumer_V2 {
         $result=$html;
         foreach (array_reverse($changes) as [$at,$length,$replacement])
             $result=substr_replace($result,$replacement,$at,$length);
+        // A slow stylesheet, interrupted request, or browser extension
+        // must not leave the full CSS stuck at the desktop-only media.
+        // This is the same bounded recovery behavior used by the existing
+        // v1 runtime, preserving each original CSS media after fallback.
+        $recovery='<script id="mad4b-public-ccss-v2-recovery" data-no-optimize="1">'
+            .'(function(){function f(){document.querySelectorAll("link[data-mad4b-ccss-v2-rest]").forEach(function(e){'
+            .'if(e.media==="(min-width:768px)")e.media=e.getAttribute("data-mad4b-original-media")||"all";'
+            .'});}window.addEventListener("load",f,{once:true});setTimeout(f,6500)})()</script>';
+        $end=stripos($result,'</head>');
+        if ($end===false)return null;
+        $result=substr_replace($result,$recovery,$end,0);
         self::$expected_links=$count;
         return $result;
     }
@@ -239,6 +250,7 @@ final class MAD4B_Public_Critical_CSS_Consumer_V2 {
             && substr_count($html,'data-mad4b-ccss-v2-critical="1"')===self::$expected_styles
             && $linkCount===self::$expected_links
             && $styleCount===self::$expected_styles
+            && substr_count($html,'id="mad4b-public-ccss-v2-recovery"')===1
             && substr_count($html,'media="(min-width:768px)"')>=self::$expected_links
             && substr_count($html,'media="(max-width:767px)"')>=self::$expected_styles);
         self::$expected_links=0;self::$expected_styles=0;

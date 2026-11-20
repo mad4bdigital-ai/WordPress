@@ -24,7 +24,8 @@ is established. No parallel public WordPress hook was introduced.
   certified V1 route, or otherwise unmodified native HTML/CSS.
 - The original head CSS link positions and inline styles remain ordered.
   Each full stylesheet retains its original media after loading. Noscript
-  full-CSS fallbacks are preserved.
+  full-CSS fallbacks are preserved. A bounded window-load/6.5s timeout
+  recovery restores the original media if onload does not fire.
 - The 422 post-transform readback labels READY only after verifying the
   expected V2 style and link tags. Late HTML corruption restores the
   original full synchronous CSS HTML.

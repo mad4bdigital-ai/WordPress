@@ -235,7 +235,7 @@ def approved_native_runtime_sha(site,wp):
     # Explicitly approved source-sha pair. A locally edited or partially
     # installed v2 file cannot impersonate this pair.
     released_v2_422='e6a4bba04a1839be5ef400f76cf3b58762ebb7724508c5d168b397af21811993'
-    released_v2_consumer='49ebb5116bf9ddf9c6f52e7634ae2050ab7d566d66fcb0a8d64123169a63c212'
+    released_v2_consumer='1ffefcb36102f39feb0cf6263b9b79b75a776721cd92c7a682ff845f5322edfb'
     original=ROOT/'worktrees/pr814-converged-local-20261115/wp-content/mu-plugins'
     runtime=None
     for name in ['421-mad4b-public-critical-css-coverage.php',
@@ -268,7 +268,7 @@ def approved_v2_consumer_sha(site,wp,runtime_sha):
     if runtime_sha!='e6a4bba04a1839be5ef400f76cf3b58762ebb7724508c5d168b397af21811993':
         return None
     companion=wp/'mu-plugins/422-mad4b-public-critical-css-v2-consumer.php'
-    approved='49ebb5116bf9ddf9c6f52e7634ae2050ab7d566d66fcb0a8d64123169a63c212'
+    approved='1ffefcb36102f39feb0cf6263b9b79b75a776721cd92c7a682ff845f5322edfb'
     if (companion.is_symlink() or not companion.is_file()
         or hashlib.sha256(companion.read_bytes()).hexdigest()!=approved):
         raise ValueError('MULTI_CSS_V2_COMPANION_RELEASE_SHA_UNAPPROVED')

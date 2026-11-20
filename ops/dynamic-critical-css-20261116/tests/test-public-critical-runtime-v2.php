@@ -109,6 +109,9 @@ $result=MAD4B_Public_Critical_CSS_Runtime_V1::transform($html);
 check('exact certificate transforms both source CSS links',$result!==$html);
 check('per-slot critical styles appear at inline boundaries',substr_count($result,'data-mad4b-ccss-v2-critical="1"')===2);
 check('both original source styles retained with deferred media',substr_count($result,'data-mad4b-ccss-v2-rest="1"')===2);
+check('full CSS restored on load or by a timeout without losing original media',
+    substr_count($result,'id="mad4b-public-ccss-v2-recovery"')===1
+    && str_contains($result,'setTimeout(f,6500)'));
 check('original inline style retained in exact order',strpos($result,'rest-v2-0')<strpos($result,'h1{color:green}')&&strpos($result,'h1{color:green}')<strpos($result,'rest-v2-1'));
 check('non-script original CSS fallbacks preserved',substr_count($result,'<noscript><link')===2);
 check('readback verifies all replaced links',MAD4B_Public_Critical_CSS_Consumer_V2::readback($result)===true);
