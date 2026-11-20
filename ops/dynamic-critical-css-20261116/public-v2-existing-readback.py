@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Read-only, site-scoped V2 reuse: fresh uncached WordPress proof, not FastCGI HIT.
+"""Read-only, site-scoped V2 delivery proof, not FastCGI HIT.
 
-A certified candidate can be reused after irrelevant listing updates ONLY if
-the live 422 consumer itself admits the new context (FastCGI BYPASS) and the
-current original CSS and Elementor graph still match. No issuance / QA bypass.
+Every candidate is the exact original WordPress catalog route. All supported
+types require a real certified certificate, current CSS manifest, live 422,
+uncached origin READY, exact DOM source and market. Only ordinary tours can
+use the original PHP consumer's bounded unrelated-Property dependency proof.
+No other route inherits CSS assets and no original post-release QA is bypassed.
 """
 import hashlib,importlib.util,json,re,sys,urllib.request
 from pathlib import Path
@@ -22,15 +24,26 @@ def verify(site,wp,catalog,route,state):
  require(site in ROOTS and ROOTS[site][1]==wp,'wrong-site-boundary')
  host=ROOTS[site][0]
  require(route in queue.safe_catalog(catalog,site),'untrusted-public-catalog-route')
- require(route['type']=='tours-and-activities' and route['language'] in ('en','es'),
-         'reuse-type-unenrolled')
+ # The original 422 runtime admits both singular posts and public
+ # taxonomies/archives. V2 *delivery proof* must support the same enrolled
+ # WordPress public contexts, not silently reject destinations after five
+ # passed post-release viewports. This is NOT a cross-route CSS grant.
+ commerce_types={'tours-and-activities','properties','destinations',
+                 'tour-types','property-types','tour-categories','category',
+                 'archive:tours-and-activities','archive:properties'}
+ supported=commerce_types|{'page','post'}
+ require(route['type'] in supported and route['language'] in ('en','es'),
+         'readback-type-or-language-unenrolled')
  require(state.get('site_host')==host
          and state.get('critical_css')=='on'
          and state.get('all_public_css')=='on'
          and state.get('wcml_multi_currency') is False
          and state.get('enabled_currencies')==[state.get('base_currency')],
          'unsupported-reuse-market-partition')
- currency=state['base_currency'];market='base'
+ currency=state['base_currency']
+ # Plain posts/pages are static unless WordPress proves another context.
+ # Never infer an arbitrary country from a request or a visitor cookie.
+ market='base' if route['type'] in commerce_types else 'static'
  key=sha((host+'|'+route['language']+'|'+route['path']+'|'+market+'|'+currency).encode())
  file=wp/'mad4b-public-critical-css-v1/certs-v2'/(key+'.json')
  require(file.is_file() and not file.is_symlink() and 100<file.stat().st_size<180000,
@@ -53,8 +66,16 @@ def verify(site,wp,catalog,route,state):
  require(deps.get('global_generation')==state.get('global_generation')
          and deps.get('route_generation')==route.get('revision'),
          'source-route-or-global-generation-drift')
- # A listing-generation mismatch is allowed only when WordPress's own
- # bounded, graph-aware consumer has already proved it irrelevant.
+ # A taxonomy, archive or Property page depends on current listing/term
+ # generation. The PHP consumer's bounded unrelated-Property exception
+ # applies only to ordinary day TOURS and must not waive destination drift.
+ if route['type']!='tours-and-activities':
+  require(deps.get('listing_generation')==state.get('listing_generation')
+          if (route['type'] in commerce_types
+              or deps.get('contains_dynamic_listing')) else True,
+          'listing-or-taxonomy-generation-drift')
+ # Only a qualifying TOUR may let the PHP consumer prove that unrelated
+ # property updates do not change its HTML. All other routes remain exact.
  manifest=cert['source_manifest']
  built=css.compile_manifest(manifest,wp)
  require(built['manifest_sha256']==cert['source_manifest_sha256'],

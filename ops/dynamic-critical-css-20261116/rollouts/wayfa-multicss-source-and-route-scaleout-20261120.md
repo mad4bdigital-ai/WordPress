@@ -114,3 +114,38 @@ Root-owned preimage and rollback receipts:
 This was site-only direct VPS execution at the user's request, not a
 signed Broker release, GitHub merge, or a production release to
 Tours.dev. It does NOT assert that all 239 pages are certified.
+
+## 21 November: exact post-release readback rejects non-tour types
+
+The 422 WordPress runtime and its V2 consumer already admit public
+destination taxonomy, categories and Properties. The isolated Python
+post-release origin readback was incorrectly restricted to
+tours-and-activities only. Four actual destination V2 candidates
+were released, browser measured and reverted: three proved-good
+candidates were refused during origin delivery proof solely because
+the Python verifier disallowed destination types; one Hurghada page
+also had an actual 767px LCP performance regression and MUST remain
+reverted until its real performance issue is resolved.
+
+The Python V2 origin proof now accepts the original WordPress public
+catalog's enrolled commerce taxonomy, archive and singular route types,
+and still requires the exact matching certified per-route certificate,
+current global/route generations, first-party PHP 422/companion hashes,
+live original CSS source manifest, uncacheable FastCGI BYPASS,
+server-resolved market/currency, READY=1 and qualified headers,
+complete page-specific critical+rest markup, recovery script and
+matching Elementor document fingerprint. For non-tour dynamic pages
+the listing generation must match exactly; only ordinary tours retain
+the consumer's unrelated-Property bounded exemption.
+
+Production site-only renderer SHA after this origin proof patch:
+ad8bba1ab579aa4b215be6f2dde4c0f540fd5cbca781e298713040f9fc74ec7d.
+Reversible exact preimage and receipt:
+ /var/lib/mad4b/company-code-release/receipts/wayfa-v2-destination-exact-readback-20261121/
+
+Tested against 11/11 synthetic source-bound type and fail-closed
+conditions, plus actual 200 uncached qualified original HTTP from
+an already certified tour. No destination certificate is yet
+recertified until its native public queue runs and verifies the
+new source-bounded delivery; the historical rejected certificates
+remain reverted_post_release_qa.
