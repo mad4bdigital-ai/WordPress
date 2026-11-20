@@ -24459,6 +24459,27 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "execution_note": "Exact merged content privately reviewed; no Production site write and no Release certificate."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php",
+      "source_blob_sha": "a46d7b44a398edc9a7dfd41cb5532d9f51dfd67e",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "tests/authority/test-optional-source-read-catalog.php"
+      ],
+      "owner_role": "MAD4B MCP source CI reviewer, independent Site Owner and Host original authority required",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The same original exact WordPress Ability, canonical descriptor, MCP consumer and execution authority controls govern registered optional Host declarations. Reentrant catalog calls cannot create new grants and the source reviewer is CI-only.",
+      "review_rationale": "A real registered optional WordPress Ability may require canonical descriptor inspection. Descriptor provider classification asks for server core tools, recursively calling the same optional Host descriptor before the initial catalog is built. The prior clean plugin test used a non-recursive descriptor fake and missed this crash. The new test first proves that the original code fails under bounded catalog/descriptor reentry and that the reviewed successor defers ONLY optional Host descriptor re-inspection in nested server projection. A request-local try/finally guard resets the state after the original call. Registered WordPress Ability plus canonical structural descriptor binding remain mandatory before optional exposure; required core tools, OAuth, actual execution-time authority, Site Owner, signed Host admission, rollback, audit and all Production runtime gates remain intact. This source-only review explicitly does not certify any live WordPress runtime, Host signature or release permission.",
+      "execution_note": "Source-level recursion proof only. No live WordPress mutation, production release, owner grant, or signed Host approval."
     }
   ],
   "code_change_rules": {

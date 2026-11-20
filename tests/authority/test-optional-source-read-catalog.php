@@ -7,7 +7,26 @@ class WP_Error {}
 function is_wp_error($value){return $value instanceof WP_Error;}
 class MAD4B_SCP_Capability_Descriptor_Registry {
     public static $ready=false;
+    public static $simulate_nested_provider_lookup=false;
+    public static $lookup_depth=0;
+    public static $maximum_lookup_depth=0;
     public static function binding($ability,$scope){
+        // Reproduce real canonical descriptor -> provider resolution ->
+        // Server Core Catalog re-entry. A missing catalog guard exceeds the
+        // bounded recursion limit and fails this hermetic regression.
+        if(self::$simulate_nested_provider_lookup
+            && $ability==='mad4b/control-plane-test-route'){
+            ++self::$lookup_depth;
+            self::$maximum_lookup_depth=max(self::$maximum_lookup_depth,self::$lookup_depth);
+            if(self::$lookup_depth>3)throw new RuntimeException('recursive_optional_catalog_lookup_unbounded');
+            try {
+                $nested=MAD4B_Optional_Source_Catalog_Test::names('mad4b-read');
+                if(in_array('mad4b/control-plane-test-route',$nested,true))
+                    throw new RuntimeException('unverified_optional_ability_leaked_during_nested_lookup');
+            } finally {
+                --self::$lookup_depth;
+            }
+        }
         return self::$ready && $scope==='servers' && ($ability==='mad4b/release-source-preflight-status' || in_array($ability, $GLOBALS['optional_host_register'] ?? [], true))
             ? ['contract'=>'ci.exact-descriptor.v1'] : new WP_Error();
     }
@@ -57,4 +76,18 @@ foreach(array('mad4b/execution-unified-plan','mad4b/scoped-build-verification') 
 foreach(array('mad4b-read','mad4b-chatgpt') as $surface){
  if(!in_array('mad4b/site-info',MAD4B_Optional_Source_Catalog_Test::names($surface),true)){fwrite(STDERR,"FAIL: required site info absent\n");exit(1);}
 }
+// A real descriptor inspector asks the server which Provider owns an
+// ability. That nested query must not recursively bind the same optional
+// ability or present it before the first descriptor validation finishes.
+MAD4B_SCP_Capability_Descriptor_Registry::$simulate_nested_provider_lookup=true;
+MAD4B_SCP_Capability_Descriptor_Registry::$lookup_depth=0;
+MAD4B_SCP_Capability_Descriptor_Registry::$maximum_lookup_depth=0;
+$nestedSafe=MAD4B_Optional_Source_Catalog_Test::names('mad4b-read');
+if(count(array_keys($nestedSafe,'mad4b/control-plane-test-route',true))!==1
+   ||MAD4B_SCP_Capability_Descriptor_Registry::$maximum_lookup_depth!==1
+   ||MAD4B_SCP_Capability_Descriptor_Registry::$lookup_depth!==0){
+    fwrite(STDERR,"FAIL: descriptor/provider/catalog circular lookup was not bounded\n");
+    exit(1);
+}
+MAD4B_SCP_Capability_Descriptor_Registry::$simulate_nested_provider_lookup=false;
 echo "PASS: signed source and optional Host read abilities mount only when registered and descriptor-bound; exact surfaces retained\n";

@@ -3,13 +3,19 @@
 from pathlib import Path
 from unittest import mock
 import json
+import subprocess
 import qa31_release_source_gate as qa
 repo=Path(__file__).resolve().parents[1]
 name='includes/class-mad4b-scp-server-core-catalog.php'
 source=repo/'wp-content/plugins/mad4b-site-control-plane'/name
 review=repo/'governance/release-parity/qa31-pr951-pr937-optional-host-catalog-merge-20261120.json'
 m=json.loads(review.read_text())
-data=source.read_bytes()
+# Review the frozen PR937 code from the immutable Git parent rather than
+# substituting a later PR970 successor for the original signed source proof.
+data=subprocess.check_output(['git','show',
+    'a044005e3b960c874ad492276a07814bf66e350d:wp-content/plugins/mad4b-site-control-plane/'+name],
+    cwd=repo)
+assert data!=source.read_bytes()
 test=qa.reviewed_pr937_optional_host_catalog_merge_successor
 assert test(repo,name,data)==m['required_regression']
 assert test(repo,name,data+b'/* unreviewed */') is None

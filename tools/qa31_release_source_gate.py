@@ -594,6 +594,81 @@ def reviewed_rc129_company_staff_ceiling_successor(repo:Path,path:str,contents:b
         return None
 
 
+def reviewed_pr970_optional_host_catalog_recursion_successor(repo:Path,path:str,contents:bytes):
+    """One exact CI-only source fix to prevent recursive optional Host lookup."""
+    name='includes/class-mad4b-scp-server-core-catalog.php'
+    if path!=name or not isinstance(contents,bytes):return None
+    parent='75bcfef854c1bcad6b646a95d957a6d41cce0d40'
+    old_blob='7f508bf4210fef1c80855475ac85eb0a81d67046'
+    old_sha='6e955ced5a49cfc3224c3391e01a6581d7fe834e40a5eba7931efdfd845397c9'
+    new_blob='a46d7b44a398edc9a7dfd41cb5532d9f51dfd67e'
+    new_sha='726c2aaa970f324936a5dedacd439668625fd6e614a1f6e1ec2c7d2683266a5e'
+    old_review='governance/release-parity/qa31-pr951-pr937-optional-host-catalog-merge-20261120.json'
+    old_review_digest='4902789225512de72bd1630e777e4dd9991e8698210628fe055ea7e28864f8f3'
+    regression='tests/authority/test-optional-source-read-catalog.php'
+    extra=['tests/servers-native-core-catalog-hermetic.php',
+           'tests/server-registration-descriptor-boundary-hermetic.php']
+    negative='tests/qa31_pr970_optional_host_catalog_recursion_contract.py'
+    controls=['MCP-01','SECURITY-01','EXECUTION-01','PLATFORM-01']
+    manifest=repo/'governance/release-parity/qa31-pr970-optional-host-catalog-recursion-successor-20261120.json'
+    try:
+        m=json.loads(manifest.read_text(encoding='utf-8'))
+        known={x['id'] for x in json.loads(
+            (repo/'governance/production-readiness/controls.json').read_text()
+        ).get('controls',[]) if isinstance(x,dict)}
+        if (m.get('contract')!='mad4b.qa31-pr970-optional-host-catalog-recursion-successor.v1'
+            or m.get('source_path')!=name
+            or m.get('frozen_parent_head_sha')!=parent
+            or m.get('frozen_parent_source_blob_sha')!=old_blob
+            or m.get('frozen_parent_source_sha256')!=old_sha
+            or m.get('frozen_original_source_review_path')!=old_review
+            or m.get('frozen_original_source_review_sha256')!=old_review_digest
+            or m.get('reviewed_source_blob_sha')!=new_blob
+            or m.get('reviewed_source_sha256')!=new_sha
+            or m.get('required_regression')!=regression
+            or m.get('additional_regressions')!=extra
+            or m.get('negative_regression')!=negative
+            or m.get('control_ids')!=controls or not set(controls)<=known
+            or len(str(m.get('review_rationale','')))<500
+            or m.get('status')!='reviewed_for_ci_only'
+            or m.get('authorizing') is not False
+            or m.get('production_authorized') is not False
+            or m.get('source_promotion_approved') is not False
+            or m.get('is_build_provenance') is not False
+            or m.get('live_evidence_required') is not True
+            or m.get('reviewed_for_ci_only') is not True
+            or m.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or hashlib.sha256((repo/old_review).read_bytes()).hexdigest()!=old_review_digest
+            or hashlib.sha1(b'blob '+str(len(contents)).encode()+bytes([0])+contents).hexdigest()!=new_blob
+            or hashlib.sha256(contents).hexdigest()!=new_sha
+            or any(not (repo/t).is_file() or (repo/t).is_symlink()
+                   for t in [regression,negative]+extra)):
+            return None
+        old=subprocess.check_output(
+            ['git','show',parent+':wp-content/plugins/mad4b-site-control-plane/'+name],
+            cwd=repo,stderr=subprocess.DEVNULL,timeout=8)
+        if (hashlib.sha256(old).hexdigest()!=old_sha
+            or hashlib.sha1(b'blob '+str(len(old)).encode()+bytes([0])+old).hexdigest()!=old_blob
+            or subprocess.run(['git','merge-base','--is-ancestor',parent,'HEAD'],
+                              cwd=repo,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,
+                              timeout=8).returncode!=0):
+            return None
+        code=contents.decode('utf-8')
+        for marker in (
+            'private static $optional_host_binding_in_progress = false;',
+            'if ( ! self::$optional_host_binding_in_progress )',
+            'self::$optional_host_binding_in_progress = true;',
+            'self::$optional_host_binding_in_progress = false;',
+            "MAD4B_SCP_Capability_Descriptor_Registry::binding( $ability_name, 'servers' )",
+        ):
+            if code.count(marker)!=1:return None
+        if code.count('} finally {')<1:return None
+        return regression
+    except (OSError,ValueError,TypeError,KeyError,UnicodeError,
+            subprocess.CalledProcessError,subprocess.TimeoutExpired):
+        return None
+
+
 def reviewed_pr937_optional_host_catalog_merge_successor(repo:Path,path:str,contents:bytes):
     """Allow exactly the PR937 SHA-reviewed optional Host catalog, CI-only."""
     name='includes/class-mad4b-scp-server-core-catalog.php'
@@ -913,6 +988,8 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     requested=reviewed_rc129_dormant_ollama_bootstrap_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_rc129_wayfa_source_followup_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_pr970_optional_host_catalog_recursion_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_pr937_optional_host_catalog_merge_successor(repo,path,contents)
     if requested is None:

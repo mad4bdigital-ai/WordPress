@@ -2,6 +2,11 @@
 /** Core server catalog declarations, extracted without changing the dispatch contract. */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 trait MAD4B_SCP_Server_Core_Catalog {
+    // Canonical descriptor inspection may ask the server who provides an
+    // Ability. Never recursively inspect optional descriptors from inside
+    // that nested catalog projection. Request-local, non-authorizing guard.
+    private static $optional_host_binding_in_progress = false;
+
 	private static function declared_core_tools( $server_id ) {
         $cso_read = in_array( $server_id, array( 'mad4b-read', 'mad4b-chatgpt' ), true )
             && class_exists( 'MAD4B_SCP_CSO01_Read_Foundation', false )
@@ -105,6 +110,9 @@ trait MAD4B_SCP_Server_Core_Catalog {
 			'mad4b-developer-breakglass' => class_exists( 'MAD4B_SCP_Developer_Runtime' ) ? MAD4B_SCP_Developer_Runtime::tool_names( true ) : array(),
 			'mad4b-breakglass' => array( 'mad4b/database-raw-query' ),
 		);
+        if ( ! self::$optional_host_binding_in_progress ) {
+            self::$optional_host_binding_in_progress = true;
+            try {
         // These features belong to optional live-host or site-specific
         // modules, not the portable Control Plane plugin. Mount each only
         // where its WordPress Ability AND canonical MCP descriptor exist;
@@ -137,6 +145,10 @@ trait MAD4B_SCP_Server_Core_Catalog {
                 MAD4B_Release_Source_Admission::ABILITY, 'servers' );
             if ( ! is_wp_error( $binding ) )
                 $map['mad4b-read'][] = MAD4B_Release_Source_Admission::ABILITY;
+        }
+            } finally {
+                self::$optional_host_binding_in_progress = false;
+            }
         }
 		if ( 'mad4b-write' === $server_id ) return self::write_tools();
 		$tools = isset( $map[ $server_id ] ) ? $map[ $server_id ] : array();
