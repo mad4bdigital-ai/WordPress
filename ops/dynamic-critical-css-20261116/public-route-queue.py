@@ -17,7 +17,8 @@ HOLD_REASONS={'market_context_unavailable','capture_error',
               'source_html_drift','country_or_currency_context_drift',
               'unstable_css_source','unstable_elementor_graph',
               'unstable_market_currency','candidate_incomplete',
-              'source_css_bundle_unavailable'}
+              'source_css_bundle_unavailable',
+              'multi_css_route_qa_pending'}
 EXCLUDED=['checkout','cart','my-account','order-pay','order-received','carrito',
           'carrello','panier','warenkorb','kasse','paiement','pagamento',
           'mein-konto','mio-account','account','password','login','checkout']

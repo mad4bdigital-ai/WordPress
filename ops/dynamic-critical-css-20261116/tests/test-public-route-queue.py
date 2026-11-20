@@ -91,6 +91,13 @@ with tempfile.TemporaryDirectory() as t:
         classified=q.read_ledger(lfile,'source')['routes'][a['route_key']]
         ok('zero-viewport HTML drift is a bounded fail-closed reason',
            classified['status']=='hold' and classified['hold_reason']=='source_html_drift')
+        sys.argv[-1]='multi_css_route_qa_pending'
+        q.main()
+        multi=q.read_ledger(lfile,'source')['routes'][a['route_key']]
+        ok('multi-CSS source is held without granting public route READY',
+           multi['status']=='hold'
+           and multi['hold_reason']=='multi_css_route_qa_pending'
+           and multi['retry_after']>multi['attempted_at'])
     finally:
         sys.argv=original
 # Source-based canary selection is deliberate, never arbitrary route promotion.

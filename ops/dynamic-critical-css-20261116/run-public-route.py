@@ -467,6 +467,45 @@ def run_core(site):
                 OSError,ValueError,KeyError,TypeError,json.JSONDecodeError) as exc:
             print('PUBLIC_CCSS_OLD_CERTIFICATE_NEEDS_FRESH_QA',
                   site,lang,jobpath,str(exc)[:180])
+    # Source-only ordered CSS admission is bounded to the current native
+    # WP-CLI route, host and company filesystem. It is a nonblocking private
+    # compiler receipt; it NEVER makes a public route READY, invalidates an
+    # installed certificate, runs a second Chromium job, or purges FastCGI.
+    # The existing route/currency/browser gates remain authoritative until
+    # the multi-asset delivery contract is independently released.
+    try:
+        source_only=run(['python3',str(TOOLS/'public-css-manifest-observer.py'),
+             str(catfile),str(jobdir/'route.json'),str(wp),str(jobdir)],
+             timeout=28,env={**os.environ,'MAD4B_EXPECTED_SITE_HOST':host})
+        print(source_only)
+        receipts=[line.removeprefix('MULTICSS_SOURCE_ONLY ')
+                  for line in source_only.splitlines()
+                  if line.startswith('MULTICSS_SOURCE_ONLY ')]
+        if len(receipts)!=1:
+            raise ValueError('multi-css-source-report-missing')
+        observed=json.loads(receipts[0])
+        if (observed.get('contract')!='mad4b.public-css.manifest-observer.v1'
+            or observed.get('host')!=host
+            or observed.get('path')!=route['path']
+            or observed.get('route_key')!=route['route_key']
+            or observed.get('decision')!='awaiting_multi_css_route_qa'):
+            raise ValueError('multi-css-source-receipt-identity-drift')
+        if observed.get('css_files',0)>1:
+            # The legacy Capture/QA only measures a single LiteSpeed
+            # stylesheet. It cannot prove other synchronously loaded CSS.
+            # Never let that partial proof publish READY for this route.
+            print('MULTICSS_ROUTE_QUALITY_AWAITING',site,lang,jobpath,
+                  'files',observed['css_files'],
+                  'slots',observed['cascade_slots'],flush=True)
+            record('hold','multi_css_route_qa_pending')
+            return
+    except (subprocess.CalledProcessError,subprocess.TimeoutExpired,OSError,ValueError) as exc:
+        print('HOLD_MULTI_CSS_SOURCE_PROOF',site,lang,
+              route['route_key'][:12],str(exc)[:130],flush=True)
+        # Unknown CSS composition is not evidence for the legacy single-
+        # bundle publisher. Preserve native CSS; retry after normal cooldown.
+        record('hold','capture_error')
+        return
     envcapture={'MAD4B_OUTPUT':'/out','MAD4B_CSS_ROOT':'/source-css',
                 'MAD4B_LANGS':lang,'MAD4B_WIDTHS':'320,390,414,768'}
     qaenv={'MAD4B_OUTPUT':'/out','MAD4B_QA_LANGS':lang,
