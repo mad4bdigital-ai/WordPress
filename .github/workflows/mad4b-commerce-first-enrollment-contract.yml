@@ -1,0 +1,25 @@
+name: MAD4B company first enrollment contract
+on:
+  pull_request:
+    paths:
+      - 'wp-content/mu-plugins/mad4b-commerce-company-first-enrollment-v1.php'
+      - 'wp-content/plugins/commerce-composition/includes/CompanyCommercePolicy.php'
+      - 'tests/commerce-company-first-enrollment-contract.php'
+      - '.github/workflows/mad4b-commerce-first-enrollment-contract.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  first-enrollment-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check PHP runtime and syntax
+        run: |
+          php -v
+          php -r 'exit(PHP_VERSION_ID >= 80100 ? 0 : 1);'
+          php -l wp-content/mu-plugins/mad4b-commerce-company-first-enrollment-v1.php
+          php -l tests/commerce-company-first-enrollment-contract.php
+      - name: Verify owner, site binding, first-write and policy draft fail-closed behavior
+        run: php tests/commerce-company-first-enrollment-contract.php
