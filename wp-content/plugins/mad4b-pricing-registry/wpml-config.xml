@@ -5,6 +5,9 @@
   <custom-types>
     <custom-type translate="1" display-as-translated="1">transport-rates</custom-type>
   </custom-types>
+  <taxonomies>
+    <taxonomy translate="0">transport-vehicle-types</taxonomy>
+  </taxonomies>
   <custom-fields>
     <custom-field action="copy">trans_vehicle_category_key</custom-field>
     <custom-field action="copy">trans_service_kind</custom-field>

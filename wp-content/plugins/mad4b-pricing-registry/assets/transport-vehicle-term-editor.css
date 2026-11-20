@@ -1,0 +1,41 @@
+/* Scope entirely to the internal JetEngine vehicle taxonomy editor. */
+body.taxonomy-transport-vehicle-types .jet-engine-term-meta-wrap{
+ --mad4b-term-border:#d6e2e0;--mad4b-term-bg:#f8faf9;
+ max-width:1020px;min-width:0;
+}
+body.taxonomy-transport-vehicle-types .mad4b-vehicle-term-help{
+ padding:16px 18px;margin:10px 0 20px;border-radius:10px;
+ border:1px solid var(--mad4b-term-border);background:var(--mad4b-term-bg);
+ color:#274740;line-height:1.6;
+}
+body.taxonomy-transport-vehicle-types .mad4b-vehicle-term-help strong{
+ font-size:15px;font-weight:700;
+}
+body.taxonomy-transport-vehicle-types .mad4b-vehicle-term-help p{margin:7px 0 0}
+body.taxonomy-transport-vehicle-types .mad4b-vehicle-term-warning{
+ color:#735521;font-size:12px;
+}
+body.taxonomy-transport-vehicle-types .mad4b-term-field-card{
+ border:1px solid var(--mad4b-term-border);border-radius:8px;
+ padding:10px 12px;margin:7px 0;background:#fff;min-width:0;
+}
+body.taxonomy-transport-vehicle-types .mad4b-term-base-floor{
+ border-left:4px solid #206c57;
+}
+body.taxonomy-transport-vehicle-types .mad4b-term-field-card input[type="number"],
+body.taxonomy-transport-vehicle-types .mad4b-term-field-card select{
+ max-width:100%;min-width:0;min-height:38px;
+ border-radius:6px;
+}
+body.taxonomy-transport-vehicle-types .mad4b-term-field-card :is(input,select):focus-visible{
+ outline:2px solid #256f5c;outline-offset:2px;
+}
+body.taxonomy-transport-vehicle-types .mad4b-term-edit-status{
+ margin:12px 0;padding:9px 12px;color:#435d54;border-radius:7px;
+ background:#eff5f2;font-size:12px;
+}
+@media(max-width:782px){
+ body.taxonomy-transport-vehicle-types .mad4b-term-field-card{
+ padding:9px;margin:7px 0;
+ }
+}

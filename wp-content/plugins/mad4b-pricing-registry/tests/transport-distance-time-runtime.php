@@ -41,6 +41,25 @@ $sample['profiles']['limousine']=[
  'per_wait_min'=>1.0,'overnight'=>500.0,'min_fare'=>1000.0,
  'deadhead_pct'=>10.0,'source'=>'manual_draft','samples'=>0];
 $sample['global_markup_pct']=20.0;$sample['discount_pct']=5.0;
+$usesTerms=class_exists('MAD4B_Transport_Vehicle_Term_Profiles_V1') &&
+ MAD4B_Transport_Vehicle_Term_Profiles_V1::active();
+$mockTermProfile=$sample['profiles']['limousine'];
+$termInterceptor=null;
+if($usesTerms){
+ $t=MAD4B_Transport_Vehicle_Term_Profiles_V1::profile('limousine');
+ $termId=$t['term_id'];
+ $fieldLookup=array_flip(MAD4B_Transport_Vehicle_Term_Profiles_V1::META);
+ $termInterceptor=function($value,$id,$key,$single)
+   use($termId,$fieldLookup,&$mockTermProfile){
+  if((int)$id!==$termId)return $value;
+  if(isset($fieldLookup[$key]))return [$mockTermProfile[$fieldLookup[$key]]];
+  if($key==='mad4b_vehicle_cost_basis')return [$mockTermProfile['source']];
+  if($key==='mad4b_vehicle_cost_samples')return [$mockTermProfile['samples']];
+  return $value;
+ };
+ add_filter('get_term_metadata',$termInterceptor,10,4);
+}
+
 $override=function()use($sample){return $sample;};
 add_filter('pre_option_'. $c::OPTION,$override,10,0);
 $quote=$c::calculate([
@@ -119,6 +138,7 @@ $add('missing_duration_rejected',is_wp_error($c::calculate([
 $add('missing_profile_rejected',is_wp_error($c::calculate([
  'vehicle'=>'h1','service'=>'transfer','km'=>100,'drive_min'=>120])));
 $sample['profiles']['limousine']['min_fare']=2000.0;
+$mockTermProfile=$sample['profiles']['limousine'];
 $overrideMin=function()use($sample){return $sample;};
 remove_filter('pre_option_'.$c::OPTION,$override,10);
 add_filter('pre_option_'.$c::OPTION,$overrideMin,10,0);
@@ -128,7 +148,11 @@ $floor=$c::calculate(['vehicle'=>'limousine','service'=>'transfer',
 $add('minimum_fare_survives_discount',
  is_array($floor)&&$floor['indicative_selling_scenario_egp']===2000.0);
 remove_filter('pre_option_'.$c::OPTION,$overrideMin,10);
+if($termInterceptor)remove_filter('get_term_metadata',$termInterceptor,10);
 $actual=$c::current();
+$add('vehicle_source_term_or_legacy',
+ in_array($actual['vehicle_profile_owner']??'legacy_company_option',
+ ['jetengine_taxonomy_term_meta','legacy_company_option'],true));
 $add('original_policy_unmodified',
  $actual['source_sha256']===$c::SHA&&$actual['mode']==='simulation_only');
 $add('Tour_Rate_publication_untouched',!service_channel_allowed('transportations','standalone'));

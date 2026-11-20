@@ -67,10 +67,22 @@ function showProfile(){
  if(!key)return;
  const p=policy.profiles[key];
  persistFields(q('profile-fields'),p,profileFields);
+ const managed=policy.vehicle_profile_owner==='jetengine_taxonomy_term_meta';
+ for(const input of q('profile-fields').querySelectorAll('input'))input.disabled=managed;
  q('vehicle-mode').value=policy.vehicle_markups[key].mode;
  q('vehicle-pct').value=policy.vehicle_markups[key].pct;
  q('profile-meta').textContent='Profile basis: '+p.source+
   ' · calibration examples: '+p.samples+' · commercial approval: no';
+ if(managed){
+  const term=policy.vehicle_term_profiles?.[key];
+  q('profile-meta').append(document.createTextNode(' · Canonical JetEngine Term Meta. '));
+  if(term?.edit_url){
+   const a=document.createElement('a');
+   a.href=term.edit_url;a.textContent='Edit '+display(key)+' cost profile';
+   a.target='_blank';a.rel='noopener noreferrer';
+   q('profile-meta').append(a);
+  }
+ }
 }
 function showService(){
  const key=q('service-key').value;
@@ -294,6 +306,10 @@ function bind(){
  });
  q('apply-proposal').addEventListener('click',()=>{
   if(!policy)return;
+  if(policy.vehicle_profile_owner==='jetengine_taxonomy_term_meta'){
+   q('status').textContent='Term Meta owns vehicle cost. Review proposal and edit the native vehicle type term.';
+   return;
+  }
   const vehicle=q('profile-vehicle').value;
   const proposal=calibration?.profiles?.[vehicle]?.proposal;
   if(!proposal){

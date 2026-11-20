@@ -168,9 +168,20 @@ final class MAD4B_Transport_Native_Cost_Inheritance_V1 {
   }
   $profile=$policy['profiles'][$vehicle]??null;
   if(!is_array($profile))return new WP_Error('transportation_cost_profile_not_found');
-  $provenance=array_fill_keys(self::METRICS,'company_vehicle_profile');
+  $profileOrigin=($policy['vehicle_profile_owner']??'')==='jetengine_taxonomy_term_meta'?
+   'vehicle_taxonomy_term_meta':'company_vehicle_profile';
+  $provenance=array_fill_keys(self::METRICS,$profileOrigin);
   $dispatchEnabled=(bool)($policy['dispatch_policy']['enabled']??false);
   $dispatchPolicySource='company_global_policy';
+  if(($policy['vehicle_profile_owner']??'')==='jetengine_taxonomy_term_meta'){
+   $mode=(string)($policy['vehicle_term_profiles'][$vehicle]['dispatch_mode']??'inherit');
+   if(!in_array($mode,['inherit','enabled','disabled'],true))
+    return new WP_Error('vehicle_type_dispatch_policy_invalid');
+   if($mode!=='inherit'){
+    $dispatchEnabled=$mode==='enabled';
+    $dispatchPolicySource='vehicle_taxonomy_term_meta';
+   }
+  }
   $resolved=self::source_rows($source,$profile,$provenance,$vehicle,
    $dispatchEnabled,$dispatchPolicySource);
   if(is_wp_error($resolved))return $resolved;

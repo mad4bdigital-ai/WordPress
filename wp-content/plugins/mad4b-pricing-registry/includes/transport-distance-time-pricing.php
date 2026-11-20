@@ -53,6 +53,23 @@ final class MAD4B_Transport_Distance_Time_V1 {
   if(is_array($prior)&&($prior['source_sha256']??null)===self::SHA)
    foreach($out as $key=>$v)
     if(array_key_exists($key,$prior))$out[$key]=$prior[$key];
+  $out['vehicle_profile_owner']='legacy_company_option';
+  if(class_exists('MAD4B_Transport_Vehicle_Term_Profiles_V1')){
+   $terms=MAD4B_Transport_Vehicle_Term_Profiles_V1::profiles();
+   if(is_wp_error($terms)){
+    $out['vehicle_profile_owner']='invalid_term_meta_no_fallback';
+    $out['vehicle_profile_error']=$terms->get_error_code();
+   }elseif(is_array($terms)){
+    foreach($terms as $key=>$item){
+     $out['profiles'][$key]=$item['profile'];
+     $out['vehicle_term_profiles'][$key]=[
+      'term_id'=>$item['term_id'],'edit_url'=>$item['edit_url'],
+      'dispatch_mode'=>$item['dispatch_mode']
+     ];
+    }
+    $out['vehicle_profile_owner']='jetengine_taxonomy_term_meta';
+   }
+  }
   return $out;
  }
  private static function num($v,float $lo,float $hi) {
@@ -168,6 +185,14 @@ final class MAD4B_Transport_Distance_Time_V1 {
   if(!self::permitted())return new WP_Error('transport_model_forbidden');
   $v=self::validate($raw);
   if(is_wp_error($v))return $v;
+  // After migration, native Term Meta is sole owner of vehicle unit costs.
+  // Do not silently write changed vehicle costs to the obsolete option.
+  $actual=self::current();
+  if(($actual['vehicle_profile_owner']??'')==='invalid_term_meta_no_fallback')
+   return new WP_Error('vehicle_term_profile_invalid');
+  if(($actual['vehicle_profile_owner']??'')==='jetengine_taxonomy_term_meta'&&
+     $v['profiles']!==$actual['profiles'])
+   return new WP_Error('vehicle_profiles_are_taxonomy_owned');
   $lock=self::OPTION.'_lock';
   if(!add_option($lock,time(),'',false)){
    $at=get_option($lock,0);
@@ -183,6 +208,9 @@ final class MAD4B_Transport_Distance_Time_V1 {
     ['revision'=>$expected+1,'mode'=>'simulation_only',
      'role'=>'self_cost','currency'=>'EGP',
      'updated_by'=>get_current_user_id(),'updated_at'=>gmdate('c')]);
+   // The option retains a rollback shadow, never authoritative Term IDs/URLs.
+   unset($updated['vehicle_profile_owner'],$updated['vehicle_profile_error'],
+     $updated['vehicle_term_profiles']);
    update_option(self::OPTION,$updated,false);
    $read=self::current();
    if($read['revision']!==$expected+1||
@@ -297,6 +325,8 @@ final class MAD4B_Transport_Distance_Time_V1 {
  }
  public static function calculate(array $input) {
   $policy=self::current();
+  if(($policy['vehicle_profile_owner']??'')==='invalid_term_meta_no_fallback')
+   return new WP_Error('vehicle_term_profile_invalid');
   $context=null;
   if(class_exists('MAD4B_Transport_Native_Cost_Inheritance_V1')){
    $context=MAD4B_Transport_Native_Cost_Inheritance_V1::resolve($input,$policy);
@@ -443,6 +473,10 @@ final class MAD4B_Transport_Distance_Time_V1 {
   * coefficients; the model fixes a disclosed time-share assumption.
   */
  public static function calibrate():array {
+  $activeProfile=self::current();
+  if(($activeProfile['vehicle_profile_owner']??'')==='invalid_term_meta_no_fallback')
+   return ['error'=>'vehicle_term_profile_invalid','saved_to_pricing'=>false,
+    'checkout_authorized'=>false];
   $source=MAD4B_Transport_Self_Pricing_Controls_V1::source();
   $routes=require dirname(__DIR__).'/data/transport-pdf-2026-route-evidence.php';
   $policy=self::current();

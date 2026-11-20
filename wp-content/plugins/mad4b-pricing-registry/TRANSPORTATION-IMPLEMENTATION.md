@@ -992,3 +992,66 @@ amounts remain zero until a manager inputs actual approved values.
 Unit tests exercise non-additive BASE and inheritance resolution
 at company, Transportation and Transport Rate level. Commercial
 checkout authorization remains false, Transportation stays tour_only.
+
+## 20 Nov 2026 — canonical JetEngine vehicle Term Meta
+
+Vehicle operating costs in EGP are now owned by native JetEngine taxonomy
+transport-vehicle-types, attached to transportations and transport-rates.
+Private admin-only taxonomy: no public queries, routes or REST endpoint.
+Exactly six technical WPML-untranslated terms per company: Limousine,
+Luxury 7 Seats, H1, Hiace, Coaster and Bus. Existing vehicle_classes
+(Economy / Premium / Luxury) and mixed transportation-types remain intact.
+
+Term Meta stores base included minimum EGP, operating EGP/km,
+driving EGP/min, waiting EGP/min, overnight EGP, minimum fare EGP,
+deadhead percentage, calibration basis, sample count and dispatch mode.
+The per-vehicle numeric profiles no longer inherit from wp_options when
+the canonical activation flag is on. Company option retains the previous
+values as an unmodified rollback shadow and continues to own shared
+global/route/service factors and markup policies. Transportation and
+Transport Rate local overrides still have higher priority. Customer
+extra-km and overtime selling prices remain separate from operating
+cost coefficients.
+
+Tours.dev native taxonomy registry ID 37, term IDs 3156-3161.
+Wayfatours registry ID 36, term IDs 3026-3031. Original values
+matched each company profile exactly before activating the new owner.
+The activation flag reader supports WordPress native true and the
+non-autoloaded persisted string 1. Targeted cache invalidation handles
+stale notoptions entries; no broad cache purge is required for approval.
+
+Each original PDF transportation is tagged only with the vehicle terms
+for positive actual-cost PDF prices: 306/306 records on Tours.dev
+(300 priced, six empty); 102/102 Wayfatours (100 priced, two empty).
+Existing Draft Transport Rates with no explicit vehicle category are
+not guessed or activated. Taxonomy technical terms are single-language,
+not per-locale price duplicates.
+
+Guarded site-local backups: mad4b_vehicle_term_migration_backup_20261120_v1,
+mad4b_transport_vehicle_relations_backup_20261120_v1,
+mad4b_vehicle_term_editor_schema_backup_20261120_v1.
+The relation migration may be rerun safely, checking the original and
+expected after-image for every record. Authority-only rollback via
+tools/rollback-vehicle-term-authority.php retains all Term Meta and
+post relationships and restores the saved legacy company profile.
+
+Native term editing keeps JetEngine fields/saving. The cost workspace
+shows the term-owned profile as read-only with a native edit link.
+A scoped progressive presentation adapter groups unit fields as cards,
+shows BASE as an included movement minimum and never modifies form input
+names, values, or save actions. It neither creates new prices nor
+makes the non-refundable label an automatic refund deduction.
+
+Source QA passed 29/29 native Term checks per site; 37/37 cost engine,
+21/21 local inheritance, 35/35 source pricing, and 52/52 tour relation
+tests per site. PDF/WPML tests passed 381/381 Tours.dev and 141/141 Wayfa.
+The confirmed original PDF cost figures remain EGP self_cost. The
+coefficient decomposition from whole trip cost to EGP/km and EGP/min is
+still an estimate. Example stage-only term edit Hiace EGP/km +1 changed
+a 10-km quote by precisely 10 EGP, and was then restored successfully.
+
+The native taxonomy is private; Transportation remains tour_only.
+No published native Transport Rates, inventory claims, Woo orders,
+checkout prices or cancellation refunds were changed by this migration.
+Authenticated Chrome visual QA and broader CPT Functional UI Mode parity
+must still be verified separately before claiming full UX certification.
