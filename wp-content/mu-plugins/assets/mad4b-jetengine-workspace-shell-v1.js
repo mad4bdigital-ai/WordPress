@@ -155,7 +155,7 @@
       if(!overview)return;
       overview.click();
       const configure=root.querySelector('.mad4b-ws-dimension-open');
-      if(configure){
+      if(configure && action.textContent==='Configure dimensions'){
         if(configure.getAttribute('aria-expanded')!=='true')configure.click();
         configure.focus();
       }else overview.focus();
@@ -192,10 +192,16 @@
       context.hidden=!key;
       if(!key)return;
       heading.textContent='Company-wide dimensions apply here';
-      desc.textContent=services[key].name+': '+services[key].note;
+      const dirty=!!root.querySelector('.mad4b-ws-status.is-dirty');
+      desc.textContent=services[key].name+': '+services[key].note+
+        (dirty?' · Unsaved company edits: return to Company settings and use the original JetEngine Save.':'');
+      context.classList.toggle('has-unsaved-company-settings',dirty);
+      action.textContent=dirty?'Review company changes':'Configure dimensions';
       action.hidden=!root.querySelector('.mad4b-ws-dimension-open');
     };
     nav.addEventListener('click',updateContext);
+    root.addEventListener('input',updateContext);
+    root.addEventListener('change',updateContext);
     document.addEventListener('mad4b:jetengine:mode-changed',updateContext);
     // Guide/other modules may mount asynchronously and set their native
     // pane flag after our script. Restrict the observer to the root class

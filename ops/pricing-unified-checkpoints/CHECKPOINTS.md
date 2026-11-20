@@ -192,3 +192,38 @@ Evidence:
 - verify-pricing-layout-ux-source.php, verify-jetengine-shell-ui.php, verify-pricing-interface-v2.php, verify-jetengine-composed-workspace.php and verify-native-jetengine-form-markup.php passed after deployment on Tours.dev and Wayfatours. Both retain 54 original fields and unmodified settings source revision.
 - VPS backups: /opt/mad4b-company-provisioning/backups/pricing-cp27-align-and-deduplicate-20261120 and /opt/mad4b-company-provisioning/backups/pricing-cp27-registry-compact-20261120.
 - OPEN: real authenticated browser visual, full native Repeater Save/Company setting persistence, independent product Save/Approval interactions, and commercial E2E. Fixture QA is not a live browser certificate.
+
+## CP2.8 — One owner per field, no cross-tab duplicates, live source reconciliation
+
+Confirmed root cause: real Wayfatours JetEngine fields had the correct
+mad4b-ws-filtered flag, but higher-specificity display:flex/grid!important
+selectors forced those fields visible on unrelated tabs. The error affected
+normal fields and nested repeaters, not merely a duplicated label.
+
+Corrected the native Field Modes CSS and Pricing Canvas CSS filtered state.
+Replaced heuristic pricing-field grouping with a unique explicit 45-field
+owner table and Advanced fallback for future fields. All native inputs remain
+under the same original Save form. Legacy empty JSON pricing controls, old
+booking-hours control and optional currency override are assigned only to
+Advanced; current booking lead days live in Dates & Booking, while the
+canonical WooCommerce/WCML catalog stays at Currencies & Markets.
+
+Original native labels are associated with the existing inputs by ARIA.
+Repeater switcher labels are generated from the native row/title and updated
+on newly inserted or reordered rows; no input is cloned or disabled.
+Product scope panels warn about unsaved JetEngine company edits and route
+users back to the original native form instead of adding another Save.
+Engine ON is labeled configuration-only, not a commercial Rate approval.
+
+Read-only tests: six sections across widths 1440/1280/1024/768/390/320
+show exactly their own fields, zero filtered visible elsewhere, 45 unique
+control ownerships, nine native Repeaters, one form and unchanged test
+values after navigation. Original Wayfatours HTML changed from 116/177
+directly named inputs to 177/177 in isolated Chromium replay. This is
+not a live accessibility or authenticated Save certificate.
+
+Phase-one fixes were found on both live sites with identical source SHA
+and passed native WP tests. Follow-up changes need separate source/live
+verification and post-release browser QA. Additional missing pricing
+plugin source files were copied into the Git working tree, not deployed.
+Commercial supplier inputs and the original checkout remain unchanged.

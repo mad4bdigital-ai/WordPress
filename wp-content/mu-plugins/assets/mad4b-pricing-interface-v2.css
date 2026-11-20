@@ -781,3 +781,38 @@
   margin-inline-start:0;
  }
 }
+
+/* CP2.8: the shared flat-canvas layout MUST NOT resurrect fields hidden by
+   their owner tab. The previous full-width repeater display:grid!important
+   was more specific than the functional-mode filter, producing identical
+   native fields on all six tabs and making the UI appear duplicated. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-content>.mad4b-ws-original #settings_top
+ .cx-control.mad4b-ws-control.mad4b-ws-filtered,
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-content>.mad4b-ws-original #settings_top
+ .cx-control.mad4b-ws-control.cx-control-repeater.mad4b-ws-filtered{
+ display:none!important;
+}
+
+/* CP2.8 owner cues are one line, not a second global-settings form. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-source-owner-note{
+ padding:9px 0;
+ margin:2px 0 8px!important;
+ border-block-end:1px solid var(--mad4b-ui-line);
+ font-size:11px;
+ line-height:1.5;
+ color:var(--mad4b-ui-muted);
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-source-owner-note a{
+ color:var(--mad4b-ui-accent);
+ text-decoration:underline;
+ text-underline-offset:2px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-product-context.has-unsaved-company-settings{
+ border-inline-start:3px solid #b36b16!important;
+ padding-inline-start:11px!important;
+}

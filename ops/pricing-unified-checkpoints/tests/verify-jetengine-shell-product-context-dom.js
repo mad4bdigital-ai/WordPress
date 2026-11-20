@@ -9,7 +9,11 @@ class Element {
   this.children=[];this.parentNode=null;this.listeners={};this.attrs={};this.dataset={};
   this.hidden=false;this.textContent='';this.type='';this.focused=false;this.clicked=0;
   this.classList={add:x=>this.classes.add(x),remove:x=>this.classes.delete(x),
-   contains:x=>this.classes.has(x)};
+   contains:x=>this.classes.has(x),toggle:(x,force)=>{
+    const on=force===undefined?!this.classes.has(x):Boolean(force);
+    if(on)this.classes.add(x);else this.classes.delete(x);
+    return on;
+   }};
  }
  append(...nodes){for(const n of nodes){n.parentNode=this;this.children.push(n);}}
  insertBefore(node,ref){

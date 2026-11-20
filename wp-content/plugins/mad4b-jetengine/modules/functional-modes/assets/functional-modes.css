@@ -2294,3 +2294,17 @@
     z-index:auto;
   }
 }
+
+/* CP2.8 - canonical section ownership, visibility invariant.
+   A field may belong to ONE grouped section only. Some legacy field-card
+   and repeater selectors have display:flex/grid!important; those must NEVER
+   override the grouped navigation's filtered state. This is presentation
+   only: inputs remain in the original native JetEngine form for Save.
+   More specific than the historical [data-control-name] repeater overrides.
+*/
+.jet-engine-options-page-wrap.mad4b-ws-visual
+ #settings_top .cx-control.mad4b-ws-control.mad4b-ws-filtered,
+.jet-engine-options-page-wrap.mad4b-ws-visual
+ #settings_top .cx-control.mad4b-ws-control.mad4b-ws-filtered[data-control-name]{
+ display:none!important;
+}

@@ -133,3 +133,21 @@ Root causes were fixed at source and view composition rather than with decorativ
 The same company search node was moved into the editor; source handlers and values are unchanged. Company and supplier views now begin their main column at identical x coordinates at 1440, 1280, 1024, 768, 390 and 320px. Native repeater rows and their content render at the same full width. A compact read-only policy summary precedes the original editable policy repeaters; the sole full read-only registry is under a closed on-demand disclosure and linked from General. Dimension groups precede long optional WPML and source authority explanations; ARIA descriptions remain valid. Product panes no longer repeat global Step 2.
 
 Chrome fixture QA passed all six viewport widths. Staging and Production native WordPress source/readback tests passed after guarded deployment with backups; 54 original JetEngine fields, single source form and same options revision. The logged-in browser and real mutating Save or supplier approval E2E remain OPEN. No published price or Checkout authority was changed.
+
+### CP2.8 — Native ownership and duplicate-field correction
+
+A real rendered Wayfatours native form reproduced fields in multiple
+grouped tabs because the filtered state lost the CSS cascade to inline
+repeater and field-card display rules. Applied a shared visibility
+invariant at the original native owner and the Pricing Canvas owner.
+The exact 45-field/9-repeater mapping now has one owner section for each
+field, with six tabs and six browser fixture breakpoints passing.
+
+Legacy JSON policies and booking-hours setting are empty or unused
+in the current source and moved to Advanced presentation only.
+The actual stored options and consumers are untouched.
+Currency/market catalog remains WooCommerce/WCML-owned.
+Native input ARIA labeling improved 116/177 to 177/177 in read-only
+real-HTML Chromium; this is not a full WCAG audit.
+The original native form, source CAS, prices, rates and checkout were
+not changed. The logged-in browser Save and commercial E2E remain OPEN.

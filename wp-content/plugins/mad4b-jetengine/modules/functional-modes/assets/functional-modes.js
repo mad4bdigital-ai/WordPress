@@ -38,6 +38,53 @@
     {id:'operations',label:'Operations & policies',icon:'▦',hint:'Activation, availability and operational rules'},
     {id:'advanced',label:'Other settings',icon:'⌘',hint:'Other native JetEngine fields'}
   ];
+  // Canonical COMPANY field-owner registry. A real JetEngine field gets
+  // exactly one category; Product/Supplier panels link to company policy
+  // rather than mirroring its original inputs. Keep future fields in
+  // Advanced (visible, not silently dropped) until explicitly classified.
+  const PRICING_FIELD_GROUPS={
+    overview:[
+      'pricing_engine_enabled','booking_enabled',
+      'require_availability','allow_manual_overrides','stop_sale_global',
+      'booking_fulfillment_mode'
+    ],
+    sources:[
+      'shared_price_source_direct_weight','shared_price_source_rate_weight',
+      'shared_price_source_tie_break','shared_price_source_fallback',
+      'shared_price_source_visibility','shared_price_source_mode_rows',
+      'mad4b_provider_catalog_rows','mad4b_provider_source_policy_rows'
+    ],
+    policies:[
+      'tax_percent','service_fee_percent','shared_mode_policy_rows',
+      'shared_group_tier_pricing_rows',
+      'shared_package_pricing_rows'
+    ],
+    payments:['shared_gateway_availability_rows','shared_promotion_rows',
+      'shared_payment_fee_rows'],
+    dates:[
+      'mad4b_booking_date_min_lead_days',
+      'mad4b_booking_date_min_flex_gap_days','mad4b_booking_date_max_flex_days',
+      'mad4b_booking_date_max_advance_days','mad4b_booking_lead_mode_tour',
+      'mad4b_booking_lead_mode_cruise_tour','mad4b_booking_lead_mode_activity',
+      'mad4b_booking_lead_mode_extra_trip','mad4b_booking_lead_mode_day_tour',
+      'mad4b_booking_lead_mode_half_day','mad4b_booking_lead_mode_other',
+      'quote_ttl_minutes','shared_price_card_date_mode',
+      'mad4b_booking_operating_checkout_mode_v1'
+    ],
+    advanced:[
+      'price_formula_version','tour_formula','property_formula',
+      'transport_formula','shared_mode_policies_json',
+      'shared_financial_rules_json','minimum_booking_lead_hours',
+      'default_currency','shared_visa_policy_notes'
+    ]
+  };
+  const PRICING_FIELD_OWNER=new Map();
+  if(isPricing)for(const [section,keys] of Object.entries(PRICING_FIELD_GROUPS))
+    for(const key of keys){
+      if(PRICING_FIELD_OWNER.has(key))
+        throw Error('MAD4B pricing field assigned to two sections: '+key);
+      PRICING_FIELD_OWNER.set(key,section);
+    }
   const classify = f => {
     const n=String(f.name||'').toLowerCase();
     const label=String(f.label||'').toLowerCase();
@@ -50,13 +97,7 @@
       if(f.mode==='rules'||f.type==='repeater')return 'advanced';
       return 'general';
     }
-    if (/^(pricing_engine_enabled|booking_enabled|booking_fulfillment_mode|stop_sale_global|require_availability|allow_manual_overrides|default_currency)$/.test(n)) return 'overview';
-    if (/date|season|booking_lead|quote_ttl|time_window/.test(n)) return 'dates';
-    if (/gateway|payment|promotion/.test(n)) return 'payments';
-    if (/price_source|provider_catalog|provider_source|direct_weight|rate_weight|equal_weight|fallback|visibility/.test(n)) return 'sources';
-    if (/mode_policy|group_tier|package_pricing|financial_rule|tax_percent|service_fee/.test(n)) return 'policies';
-    if (f.mode === 'rules') return 'policies';
-    return 'advanced';
+    return PRICING_FIELD_OWNER.get(n)||'advanced';
   };
   const aliases = new Map(cfg.fields.map(f => [String(f.name), f]));
   // Native JetEngine owns field width, inline/stacked layout and input styling.
@@ -109,6 +150,84 @@
     controls.push({el,key:f.name,mode:f.mode,type:f.type,label:f.label,group});
   }
 
+  // JetEngine's visually rendered native titles are not always associated
+  // with the actual input/select/textarea, especially steppers and switchers.
+  // Link the EXISTING input to its original title in place; do not add a
+  // duplicate field/label, alter saved input names, or override real labels.
+  const labelOriginalNativeFields=()=>{
+    const taken=new Set();
+    for(const c of controls){
+      if(c.type==='repeater')continue;
+      const info=c.el.querySelector(':scope > .cx-control__info');
+      const title=info?.querySelector('.cx-control__title');
+      const body=c.el.querySelector(':scope > .cx-control__content');
+      if(!title||!body)continue;
+      const targets=[...body.querySelectorAll('input:not([type=hidden]),select,textarea')]
+        .filter(el=>{
+          const owner=el.closest('.cx-control[data-control-name]');
+          return owner===c.el;
+        });
+      if(!targets.length)continue;
+      const safe=c.key.replace(/[^a-z0-9_-]/gi,'-');
+      const prefix='mad4b-native-label-'+safe;
+      let labelId=title.id||prefix;
+      let suffix=1;
+      while(!title.id &&
+        (taken.has(labelId)||(document.getElementById(labelId)&&
+           document.getElementById(labelId)!==title)))
+        labelId=prefix+'-'+(suffix++);
+      if(!title.id)title.id=labelId;
+      taken.add(labelId);
+      for(const target of targets){
+        if(target.hasAttribute('aria-label')||
+          target.hasAttribute('aria-labelledby')||
+          target.closest('label')||
+          (target.id && document.querySelector('label[for="'+
+            CSS.escape(target.id)+'"]')))continue;
+        if(target.matches('.cx-input-switcher-true,.cx-input-switcher-false')){
+          // Switchers have two original radios, not two different settings.
+          target.setAttribute('aria-label',String(c.label)+' — '+
+            (target.classList.contains('cx-input-switcher-true')?'On':'Off'));
+        }else target.setAttribute('aria-labelledby',labelId);
+      }
+    }
+  };
+  labelOriginalNativeFields();
+  // Repeaters insert their rows after the initial JetEngine render. Only
+  // annotate anonymous original On/Off radios, including later new rows.
+  // No Vue input, option value, native field or checkbox is cloned/disabled.
+  const labelRepeaterSwitchers=()=>{
+    for(const field of top.querySelectorAll(
+      '.cx-control-repeater .cx-input-switcher-true, '+
+      '.cx-control-repeater .cx-input-switcher-false')){
+      if((field.hasAttribute('aria-label') &&
+            field.dataset.mad4bGeneratedLabel!=='1')||
+         field.hasAttribute('aria-labelledby')||field.closest('label'))continue;
+      const repeater=field.closest('.cx-control-repeater[data-control-name]');
+      const row=field.closest('.cx-ui-repeater-item');
+      const nested=field.name?.match(/\[([^\]]+)\]$/);
+      const fieldName=(nested?.[1]||'Setting')
+        .replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
+      const title=repeater?.querySelector(
+        ':scope > .cx-control__info .cx-control__title')?.textContent?.trim()
+        ||'Pricing policy';
+      const index=row && row.parentElement
+        ?Array.from(row.parentElement.children).filter(el=>
+          el.classList?.contains('cx-ui-repeater-item')).indexOf(row)+1:0;
+      field.setAttribute('aria-label',
+        title+' · '+(index>0?'Row '+index+' · ':'')+fieldName+' — '+
+        (field.classList.contains('cx-input-switcher-true')?'On':'Off'));
+      field.dataset.mad4bGeneratedLabel='1';
+    }
+  };
+  labelRepeaterSwitchers();
+  const switcherObserver=new MutationObserver(changes=>{
+    if(changes.some(change=>[...change.addedNodes].some(node=>
+      node.nodeType===1&&(node.matches?.('.cx-ui-repeater-item,.cx-input-switcher-true,.cx-input-switcher-false')||
+        node.querySelector?.('.cx-ui-repeater-item,.cx-input-switcher-true,.cx-input-switcher-false')))))
+      labelRepeaterSwitchers();
+  });
+  switcherObserver.observe(top,{childList:true,subtree:true});
   const workspace=make('section','mad4b-workspace');
   workspace.setAttribute('aria-label','MAD4B JetEngine functional editor');
   const banner=make('div','mad4b-ws-banner');
@@ -201,6 +320,20 @@
   content.append(companyGuidance);
   const listing=make('p','mad4b-ws-listing','');
   content.append(listing);
+  // Source ownership instead of another editable currency selector. The
+  // optional JetEngine currency override remains in Advanced; Woo/WCML
+  // retains the original store, FX and market currency settings.
+  const currencyOwner=make('p','mad4b-ws-source-owner-note');
+  if(isPricing){
+    currencyOwner.append(document.createTextNode(
+      'Currency & market catalog is owned by '));
+    const link=make('a','',
+      'Currencies & Markets');
+    link.href='admin.php?page=mad4b-pricing-currencies';
+    currencyOwner.append(link,document.createTextNode(
+      '. Optional pricing-policy overrides remain in Advanced settings.'));
+    content.insertBefore(currencyOwner,listing);
+  }
 
   // Company pricing dimension preferences. The original JetEngine form owns
   // the ONLY Save action; these controls become signed native form fields.
@@ -1115,8 +1248,9 @@
     const saved=!!dimCfg.saved_engine_on;
     const local=nativeEngineInput?!!nativeEngineInput.checked:saved;
     engineBadge.textContent=local===saved
-      ?('Saved: '+(saved?'ON':'OFF'))
-      :('Saved: '+(saved?'ON':'OFF')+' · Form: '+(local?'ON':'OFF')+' (not saved)');
+      ?('Engine configuration: '+(saved?'ON':'OFF')+' · Not a live Rate approval')
+      :('Engine configuration saved: '+(saved?'ON':'OFF')+
+        ' · Unsaved: '+(local?'ON':'OFF'));
     engineBadge.classList.toggle('is-pending',local!==saved);
   };
   if(dimCfg&&nativeEngineControl){
@@ -1215,6 +1349,7 @@
     if(term){sectionLabel.textContent='Search results';sectionHint.textContent='Matching existing JetEngine controls';}
     else {const def=SECTION.find(s=>s.id===current);sectionLabel.textContent=def.label;sectionHint.textContent=def.hint;}
     listing.textContent=visible+' editable '+(visible===1?'field':'fields');
+    currencyOwner.hidden=!isPricing || !!term || current!=='overview';
     dimLauncher.hidden=!(dimCfg && !term && current==='overview');
     dimPanel.hidden=dimLauncher.hidden || !dimensionOpen;
     providerPanel.hidden=!isPricing||!(current==='sources'&&!term);
