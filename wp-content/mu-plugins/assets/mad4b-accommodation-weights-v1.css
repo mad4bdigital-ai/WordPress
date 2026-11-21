@@ -58,3 +58,7 @@
 .mad4b-aw-form .mad4b-aw-target>.mad4b-aw-field:last-child{grid-column:1/-1}
 .mad4b-aw-preview{margin-bottom:4px}
 .mad4b-aw-editor-details[open]>summary{border-bottom:1px solid #dcdcde}
+
+.mad4b-aw-inherit-records{margin:11px 0 0;background:#f6f7f7;border:1px solid #dcdcde;border-radius:4px}
+.mad4b-aw-inherit-records>summary{cursor:pointer;padding:10px 12px;color:#50575e;font-size:12px}
+.mad4b-aw-inherit-list{padding:0 10px 5px}
