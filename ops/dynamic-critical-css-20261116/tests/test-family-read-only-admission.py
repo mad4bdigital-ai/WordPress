@@ -45,9 +45,13 @@ with tempfile.TemporaryDirectory() as tmp:
  path.unlink()
  link=pathlib.Path(tmp)/'symlink';link.symlink_to('/etc/passwd')
  check('symbolic sensor refused',not m.examine(link)[0])
-worker_path=(D.parent/'site-owned-css-cron-v1/worker.py')
-if not worker_path.exists():
-    worker_path=D.parent/'worker.py'
+worker_paths=(
+    D.parent/'site-owned-css-cron-v1/worker.py',
+    D.parent/'worker.py.stage-light-family-budget-20261121',
+    D.parent/'worker.py',
+)
+worker_path=next((candidate for candidate in worker_paths if candidate.is_file()),None)
+assert worker_path is not None,'cannot find original site-owned worker'
 worker=worker_path.read_text()
 refresh=(D/'refresh-source-families.py').read_text()
 check('family reader admission is called only for family ticket',
