@@ -6,7 +6,7 @@ it calls only the already enrolled first-party CSS workers. One task per site
 per invocation. Cross-company locks, source QA and CSS integrity remain owned
 by their original consumers.
 """
-import hashlib,json,os,re,runpy,stat,subprocess,sys,time
+import hashlib,json,os,re,runpy,stat,subprocess,sys,time,datetime
 from pathlib import Path
 
 ROOT=Path('/opt/mad4b-company-provisioning')
@@ -201,6 +201,63 @@ def available_candidates(site,data,history,now):
         rows.append((priority,issued_at,ordering[job],job,jid,key))
     rows.sort()
     return rows
+def source_recovery_public_turn(site,candidates,strict_cpu_admitted,now,report_path=None):
+    """One original public WP ticket gets the next safe browser opportunity.
+
+    Any still-valid original WordPress audit gets precedence, and a stale
+    report must be refreshed first. This is just ticket ordering, never
+    cert issuance, resource admission, or selection of a foreign route.
+    """
+    if (site not in ('source','wayfa') or not strict_cpu_admitted
+        or not isinstance(candidates,list) or not candidates
+        or candidates[0][3]!='families'):
+        return candidates[0] if candidates else None
+    requested=next((x for x in candidates if len(x)>=6 and x[3]=='public'),None)
+    if requested is None:return candidates[0]
+    folder=ROOT/'reports/public-critical-css-v1'/site
+    path=Path(report_path) if report_path is not None else folder/'source-families-latest.json'
+    if path.parent.is_symlink():return candidates[0]
+    try:
+        fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+    except OSError:return candidates[0]
+    try:
+        st=os.fstat(fd)
+        if (not stat.S_ISREG(st.st_mode) or st.st_uid!=0
+            or st.st_mode&0o022 or not 80<=st.st_size<=3000000
+            or st.st_nlink!=1 or not -2<=now-st.st_mtime<=600):
+            return candidates[0]
+        raw=os.read(fd,3000001)
+        if len(raw)!=st.st_size:return candidates[0]
+        doc=json.loads(raw)
+        host={'source':'tours.dev.mad4b.com','wayfa':'wayfatours.com'}[site]
+        if (not isinstance(doc,dict)
+            or doc.get('contract')!='mad4b.public-css.source-family-registry.v1'
+            or doc.get('site')!=site or doc.get('host')!=host):
+            return candidates[0]
+        count=doc.get('recoverable_listing_generation_count')
+        keys=doc.get('recoverable_listing_generation_route_keys')
+        if (type(count) is not int or not 1<=count<=64
+            or not isinstance(keys,list) or len(keys)!=count
+            or len(set(keys))!=count or any(not isinstance(x,str)
+               or not re.fullmatch('[a-f0-9]{64}',x) for x in keys)):
+            return candidates[0]
+        stamped=doc.get('refreshed_at_utc')
+        if (not isinstance(stamped,str)
+            or not re.fullmatch(r'20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z',stamped)):
+            return candidates[0]
+        epoch=datetime.datetime.strptime(stamped,'%Y-%m-%dT%H:%M:%SZ').replace(
+            tzinfo=datetime.timezone.utc).timestamp()
+        if not 0<=now-epoch<=600 or abs(st.st_mtime-epoch)>90:
+            return candidates[0]
+        # Original public browser runner independently re-reads WP catalog
+        # and only then applies its original per-route/market/Chrome gates.
+        return requested
+    except (ValueError,TypeError,KeyError,OSError,json.JSONDecodeError,OverflowError):
+        return candidates[0]
+    finally:
+        os.close(fd)
+
+
 def invoke(site,job,jid,key,history,timeout=None):
     stamp=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime())
     prior=history.get(key,{})
@@ -623,7 +680,11 @@ def main():
         print('WPCSS_QUEUE',site,'pending',len(state.get('pending',{})),
               'eligible',len(pending),flush=True)
         if pending:
-            _,_,_,job,jid,key=pending[0]
+            chosen=source_recovery_public_turn(site,pending,headroom,now)
+            if chosen is not None and chosen!=pending[0]:
+                print('WPCSS_RECOVERY_PUBLIC_SLOT_BEFORE_REPEAT_FAMILY',site,
+                      chosen[4],flush=True)
+            _,_,_,job,jid,key=chosen
             if '--inspect' in sys.argv:
                 print('WPCSS_INSPECT_NEXT',site,job,jid,flush=True)
             else:
