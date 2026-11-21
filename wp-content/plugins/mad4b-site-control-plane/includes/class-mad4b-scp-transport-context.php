@@ -18,8 +18,13 @@ final class MAD4B_SCP_Transport_Context {
 
 	/** Fail closed before Ability callbacks, including policy and binding exceptions. */
 	public static function permission( $server_id, $request, $policy_callback ) {
-		try { return self::permission_impl( $server_id, $request, $policy_callback ); }
-		catch ( Throwable $error ) {
+		try {
+			$result = self::permission_impl( $server_id, $request, $policy_callback );
+			// A rejected or uncertain permission must never leave a request-local
+			// transport identity available to later callbacks in the PHP request.
+			if ( true !== $result ) self::clear();
+			return $result;
+		} catch ( Throwable $error ) {
 			self::clear();
 			$correlation = substr( hash( 'sha256', uniqid( '', true ) ), 0, 32 );
 			try {
@@ -40,14 +45,24 @@ final class MAD4B_SCP_Transport_Context {
 		$bound = self::bind( $server_id, $request ); if ( is_wp_error( $bound ) ) return $bound;
 		if ( class_exists( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh' ) && method_exists( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh', 'runtime_transaction_gate' ) ) {
 			$transaction_gate = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::runtime_transaction_gate();
-			if ( empty( $transaction_gate['ready'] ) ) return new WP_Error(
-				isset( $transaction_gate['blocker'] ) ? (string) $transaction_gate['blocker'] : 'mu_bootstrap_transaction_pending',
-				'MCP runtime is quarantined until the managed MU filesystem transaction is reconciled.',
-				array( 'status' => 503, 'stage' => 'runtime_transaction', 'transaction_state' => isset( $transaction_gate['state'] ) ? $transaction_gate['state'] : 'unknown' )
-			);
+			if ( ! is_array( $transaction_gate ) || ( $transaction_gate['ready'] ?? null ) !== true ) {
+				$blocker = is_array( $transaction_gate ) && is_string( $transaction_gate['blocker'] ?? null )
+					? $transaction_gate['blocker'] : 'mu_bootstrap_transaction_pending';
+				$state = is_array( $transaction_gate ) && is_string( $transaction_gate['state'] ?? null )
+					? $transaction_gate['state'] : 'unknown';
+				return new WP_Error(
+					$blocker,
+					'MCP runtime is quarantined until the managed MU filesystem transaction is reconciled.',
+					array( 'status' => 503, 'stage' => 'runtime_transaction', 'transaction_state' => $state )
+				);
+			}
 		}
 		if ( ! is_callable( $policy_callback ) ) return new WP_Error( 'mad4b_transport_policy_unavailable', 'MAD4B transport permission policy is unavailable.' );
 		$allowed = call_user_func( $policy_callback );
+		if ( true !== $allowed && ! is_wp_error( $allowed ) && false !== $allowed )
+			return new WP_Error( 'mad4b_transport_policy_unverified',
+				'MCP transport policy did not return an exact permission decision.',
+				array( 'status' => 403, 'stage' => 'transport_permission' ) );
 		if ( false === $allowed && in_array( $server_id, array( 'mad4b-read', 'mad4b-chatgpt' ), true ) ) {
 			return new WP_Error( 'mad4b_transport_read_permission_denied', 'The WordPress subject does not satisfy the configured read capability.', array( 'status' => 403, 'stage' => 'read_permission', 'blocker' => 'read_capability_not_satisfied' ) );
 		}
@@ -56,18 +71,22 @@ final class MAD4B_SCP_Transport_Context {
 
 	public static function bind( $server_id, $request ) {
 		self::clear();
-		$server_id = sanitize_key( (string) $server_id );
+		if ( ! is_string( $server_id ) || ! preg_match( '/^[a-z][a-z0-9-]{1,63}$/D', $server_id ) )
+			return new WP_Error( 'mad4b_transport_server_unknown', 'The MCP server identifier is invalid.' );
 		$expected = class_exists( 'MAD4B_SCP_Servers' )
 			? MAD4B_SCP_Servers::expected_server_ids()
 			: array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-developer', 'mad4b-developer-breakglass', 'mad4b-breakglass' );
-		if ( ! in_array( $server_id, $expected, true ) ) {
+		if ( ! is_array( $expected ) || ! in_array( $server_id, $expected, true ) ) {
 			return new WP_Error( 'mad4b_transport_server_unknown', 'The MCP transport server is not a governed MAD4B server.' );
 		}
 		if ( ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) {
 			return new WP_Error( 'mad4b_transport_request_unavailable', 'The MCP transport request route is unavailable.' );
 		}
 
-		$route = '/' . ltrim( rtrim( (string) $request->get_route(), '/' ), '/' );
+		$raw_route = $request->get_route();
+		if ( ! is_string( $raw_route ) )
+			return new WP_Error( 'mad4b_transport_route_unverified', 'MCP request route is not an exact route string.' );
+		$route = '/' . ltrim( rtrim( $raw_route, '/' ), '/' );
 		$expected_route = '/mcp/' . $server_id;
 		if ( ! hash_equals( $expected_route, $route ) ) {
 			return new WP_Error(
@@ -99,7 +118,7 @@ final class MAD4B_SCP_Transport_Context {
 				return new WP_Error( 'mad4b_developer_dispatch_target_denied', 'The nested Developer target is outside the normal Developer tool inventory.' );
 			}
 			if ( 0 === strpos( $ability_name, 'mad4b/developer-breakglass-' ) ) return new WP_Error( 'mad4b_developer_dispatch_breakglass_denied', 'Developer Breakglass is never available through the ChatGPT dispatcher.' );
-			if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-developer', $ability_name ) ) return new WP_Error( 'mad4b_developer_dispatch_mount_missing', 'The nested Developer target is not mounted on mad4b-developer.' );
+			if ( true !== MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-developer', $ability_name ) ) return new WP_Error( 'mad4b_developer_dispatch_mount_missing', 'The nested Developer target is not mounted on mad4b-developer.' );
 			return 'mad4b-developer';
 		}
 
@@ -109,37 +128,50 @@ final class MAD4B_SCP_Transport_Context {
 		if ( 'mad4b-chatgpt' === $current && class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent' )
 			&& MAD4B_SCP_Staging_Write_Owner_Intent::ATTEST_ABILITY === $ability_name ) {
 			if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
-				|| ! MAD4B_SCP_Site_Profile::configured()
+				|| true !== MAD4B_SCP_Site_Profile::configured()
 				|| 'staging' !== MAD4B_SCP_Site_Profile::current_environment()
-				|| ! MAD4B_SCP_Site_Profile::origin_enrolled()
-				|| ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
-				|| ! MAD4B_SCP_Servers::is_chatgpt_direct_step_up_tool( $ability_name )
-				|| ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-enrollment', $ability_name ) )
+				|| true !== MAD4B_SCP_Site_Profile::origin_enrolled()
+				|| true !== MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
+				|| true !== MAD4B_SCP_Servers::is_chatgpt_direct_step_up_tool( $ability_name )
+				|| true !== MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-enrollment', $ability_name ) )
 				return new WP_Error( 'mad4b_owner_attest_bootstrap_denied', 'Exact Staging owner-attestation transport is unavailable.' );
 			return 'mad4b-enrollment';
 		}
+
+		$external_write_candidate = false;
+		if ( 'mad4b-chatgpt' === $current ) {
+			$external_write_candidate = MAD4B_SCP_Servers::is_external_write_candidate( $ability_name );
+			if ( ! is_bool( $external_write_candidate ) )
+				return new WP_Error( 'mad4b_transport_write_catalog_unverified',
+					'Original write catalog eligibility is not a verified boolean.' );
+		}
+
+		if ( 'mad4b-chatgpt' === $current && $external_write_candidate === false
+			&& 'mad4b-write' === $declared_server_id )
+			return new WP_Error( 'mad4b_write_candidate_not_cataloged',
+				'A declared Write-lane Ability cannot fall back to the ChatGPT read transport.' );
 
 		// The exact enrolled Staging ChatGPT transport may expose the complete stable
 		// governed mutation catalog for discovery. Visibility is not authority. Every
 		// normal mutation is forced through mad4b-write and fails closed until the
 		// Staging write authority, runtime eligibility and dedicated mount are ready.
-		if ( 'mad4b-chatgpt' === $current && MAD4B_SCP_Servers::is_external_write_candidate( $ability_name ) ) {
+		if ( 'mad4b-chatgpt' === $current && true === $external_write_candidate ) {
 			$nested_dispatch = self::write_dispatch_target_matches( $ability_name );
-			if ( ! $nested_dispatch && ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability_name ) ) {
+			if ( ! $nested_dispatch && true !== MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability_name ) ) {
 				return new WP_Error( 'mad4b_transport_ability_not_mounted', 'The requested write ability is not mounted on the active ChatGPT transport.' );
 			}
 			$authority_class = class_exists( 'MAD4B_SCP_Staging_Write_Authority' );
-			$authority_effective = $authority_class && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'effective' ) && MAD4B_SCP_Staging_Write_Authority::effective();
+			$authority_effective = $authority_class && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'effective' ) && true === MAD4B_SCP_Staging_Write_Authority::effective();
 			$bootstrap_supported = $authority_class && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_bootstrap_allowed' );
-			$bootstrap_allowed = $bootstrap_supported && MAD4B_SCP_Staging_Write_Authority::candidate_bootstrap_allowed( $ability_name, $input );
+			$bootstrap_allowed = $bootstrap_supported && true === MAD4B_SCP_Staging_Write_Authority::candidate_bootstrap_allowed( $ability_name, $input );
 			if ( ! $authority_effective && ! $bootstrap_allowed ) {
 				$data = $bootstrap_supported && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_bootstrap_status' ) ? MAD4B_SCP_Staging_Write_Authority::candidate_bootstrap_status( $ability_name, $input ) : array();
 				return new WP_Error( 'mad4b_write_authority_not_ready', 'The requested write ability is discoverable, but governed Staging write authority is not ready.', array( 'candidate_bootstrap' => $data ) );
 			}
-			if ( ! MAD4B_SCP_Staging_Write_Authority::is_write_ability( $ability_name ) ) {
+			if ( true !== MAD4B_SCP_Staging_Write_Authority::is_write_ability( $ability_name ) ) {
 				return new WP_Error( 'mad4b_write_capability_not_eligible', 'The requested provider write is discoverable but is not currently certified for governed execution.' );
 			}
-			if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name ) ) {
+			if ( true !== MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name ) ) {
 				return new WP_Error( 'mad4b_write_authority_mount_missing', 'The requested write ability is not mounted on the governed mad4b-write authority server.' );
 			}
 			return 'mad4b-write';
@@ -147,14 +179,33 @@ final class MAD4B_SCP_Transport_Context {
 
 		// Dynamic projection cannot change a mutation's original authorization lane.
 		// Normal external writes have already passed the dedicated write admission above.
-		if ( 'mad4b-chatgpt' === $current && class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) && MAD4B_SCP_ChatGPT_Tool_Projection::is_projected( $ability_name ) ) {
+		$projected = 'mad4b-chatgpt' === $current
+			&& class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
+			? MAD4B_SCP_ChatGPT_Tool_Projection::is_projected( $ability_name ) : false;
+		if ( ! is_bool( $projected ) )
+			return new WP_Error( 'mad4b_projection_origin_unverified',
+				'Original projected Ability classification is unavailable.' );
+		if ( true === $projected ) {
 			$original = MAD4B_SCP_ChatGPT_Tool_Projection::execution_server( $ability_name );
 			if ( is_wp_error( $original ) ) return $original;
 			if ( $declared_server_id !== $original ) return new WP_Error( 'mad4b_projection_execution_lane_mismatch', 'Projection cannot change the declared execution authority.' );
 			return $original;
 		}
 
-		if ( ! MAD4B_SCP_Servers::ability_is_mounted( $current, $ability_name ) ) {
+		// Explicit local Operator dispatch shares the existing exact mad4b-write
+		// Agent Grant for this SINGLE bounded queue Ability. The host actor and
+		// local transport are independently checked; no grant/approval minted.
+		if ( 'mad4b-vps-local' === $current
+			&& 'mad4b/hub-universal-vps-enqueue' === $ability_name ) {
+			$verified = MAD4B_SCP_Servers::can_vps_local_transport();
+			if ( true !== $verified || 'mad4b-write' !== $declared_server_id
+				|| true !== MAD4B_SCP_Servers::ability_is_mounted( $current, $ability_name )
+				|| true !== MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name ) )
+				return new WP_Error( 'mad4b_vps_local_write_binding_denied',
+					'Exact local host Operator, declared Write lane and mounted Ability required.' );
+			return 'mad4b-write';
+		}
+		if ( true !== MAD4B_SCP_Servers::ability_is_mounted( $current, $ability_name ) ) {
 			return new WP_Error( 'mad4b_transport_ability_not_mounted', 'The requested ability is not mounted on the active MCP transport server.' );
 		}
 		return $current;
@@ -175,8 +226,8 @@ final class MAD4B_SCP_Transport_Context {
 		if ( '' !== self::$write_dispatch_target ) return new WP_Error( 'mad4b_write_dispatch_nested_recursion_denied', 'Nested governed write dispatch recursion is not allowed.' );
 		if ( '' === $ability_name || in_array( $ability_name, array( 'mad4b/write-execute', 'mad4b/enrollment-execute', 'mad4b/database-raw-query' ), true ) ) return new WP_Error( 'mad4b_write_dispatch_target_denied', 'The requested nested write target is not eligible for dispatcher delegation.' );
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected_schema_sha256 ) ) return new WP_Error( 'mad4b_write_dispatch_schema_invalid', 'Nested governed write dispatch requires an exact input schema digest.' );
-		if ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::is_external_write_candidate( $ability_name ) || ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name ) ) return new WP_Error( 'mad4b_write_dispatch_target_not_runtime_eligible', 'Nested governed write target is not mounted on the dedicated write authority.' );
-		if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) return new WP_Error( 'mad4b_write_dispatch_target_unavailable', 'Nested governed write target is not registered in the current runtime.' );
+		if ( ! class_exists( 'MAD4B_SCP_Servers' ) || true !== MAD4B_SCP_Servers::is_external_write_candidate( $ability_name ) || true !== MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name ) ) return new WP_Error( 'mad4b_write_dispatch_target_not_runtime_eligible', 'Nested governed write target is not mounted on the dedicated write authority.' );
+		if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || true !== wp_has_ability( $ability_name ) ) return new WP_Error( 'mad4b_write_dispatch_target_unavailable', 'Nested governed write target is not registered in the current runtime.' );
 		$ability = wp_get_ability( $ability_name );
 		if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_input_schema' ) ) return new WP_Error( 'mad4b_write_dispatch_contract_unavailable', 'Nested governed write target does not expose the required input schema contract.' );
 		$encoded_schema = wp_json_encode( $ability->get_input_schema(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
@@ -210,8 +261,8 @@ final class MAD4B_SCP_Transport_Context {
 		if ( '' === $ability_name || 'mad4b/developer-execute' === $ability_name || 0 === strpos( $ability_name, 'mad4b/developer-breakglass-' ) ) return new WP_Error( 'mad4b_developer_dispatch_target_denied', 'The requested Developer target is not eligible for compact dispatcher delegation.' );
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected_schema_sha256 ) ) return new WP_Error( 'mad4b_developer_dispatch_schema_invalid', 'Nested Developer dispatch requires an exact input schema digest.' );
 		if ( ! class_exists( 'MAD4B_SCP_Developer_Runtime' ) || ! in_array( $ability_name, MAD4B_SCP_Developer_Runtime::tool_names( false ), true ) ) return new WP_Error( 'mad4b_developer_dispatch_target_not_cataloged', 'The requested target is not in the normal Developer inventory.' );
-		if ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-developer', $ability_name ) ) return new WP_Error( 'mad4b_developer_dispatch_target_not_runtime_eligible', 'The requested Developer target is not mounted on the dedicated Developer authority.' );
-		if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) return new WP_Error( 'mad4b_developer_dispatch_target_unavailable', 'The requested Developer target is not registered in the current runtime.' );
+		if ( ! class_exists( 'MAD4B_SCP_Servers' ) || true !== MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-developer', $ability_name ) ) return new WP_Error( 'mad4b_developer_dispatch_target_not_runtime_eligible', 'The requested Developer target is not mounted on the dedicated Developer authority.' );
+		if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || true !== wp_has_ability( $ability_name ) ) return new WP_Error( 'mad4b_developer_dispatch_target_unavailable', 'The requested Developer target is not registered in the current runtime.' );
 		$ability = wp_get_ability( $ability_name );
 		if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_input_schema' ) ) return new WP_Error( 'mad4b_developer_dispatch_contract_unavailable', 'The requested Developer target does not expose an input schema contract.' );
 		$encoded_schema = wp_json_encode( $ability->get_input_schema(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
@@ -272,7 +323,8 @@ final class MAD4B_SCP_Transport_Context {
 			'bound' => '' !== self::$server_id,
 			'server_id' => self::current_server_id(),
 			'route' => sanitize_text_field( (string) self::$route ),
-			'chatgpt_write_delegation_enabled' => class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective(),
+			'chatgpt_write_delegation_enabled' => class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+				&& true === MAD4B_SCP_Staging_Write_Authority::effective(),
 			'chatgpt_write_discovery_model' => 'stable_unified_catalog_fail_closed_execution',
 			'chatgpt_write_authority_server' => 'mad4b-write',
 			'write_dispatch_target_bound' => '' !== self::$write_dispatch_target,

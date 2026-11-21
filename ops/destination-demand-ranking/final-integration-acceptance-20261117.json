@@ -1,0 +1,55 @@
+{
+  "contract": "mad4b.destination-demand-final-integration-acceptance.v1",
+  "observed_date": "2026-11-17",
+  "scope": "existing Tours.dev and Wayfatours public destination presentations",
+  "canonical_engine_version": "1.2.1",
+  "source_code_owner": "wp-content/mu-plugins/mad4b-destination-demand-rank-v1.php",
+  "source_plugin_bridge": "wp-content/plugins/mad4b-platform/modules/presentation/mad4b-destination-demand-rank-v1.php",
+  "portability": {
+    "source": "MAD4B Platform registered thin module bridge plus common MU engine",
+    "wayfatours": "common MU engine without MAD4B Platform dependency",
+    "company_release_component": "mad4b-destination-demand-order",
+    "future_companies": "requires independent target enrollment, approved signed company release and post-release acceptance"
+  },
+  "checks": {
+    "platform_ordered_mu_map_entries_source": 379,
+    "map_contract_valid_source": true,
+    "source_bridge_loaded_in_runtime": true,
+    "company_release_component_registered_and_schema_valid": true,
+    "all_active_wpml_languages_checked": [
+      "en",
+      "es",
+      "fr",
+      "de",
+      "it",
+      "ar"
+    ],
+    "wayfatours_active_languages_checked": [
+      "en",
+      "es"
+    ],
+    "query_classification_assertions_per_site": 11,
+    "canonical_wpml_fallback_count_matches_frontend": true,
+    "frontend_native_header_browser_checks": "8/8",
+    "header_source_initial_navigation_cards": 0,
+    "responsive_home_top_city_active_card": "highest visible tour count",
+    "term_memberships_changed": false,
+    "tour_content_or_rates_changed": false,
+    "publication_transition_html_invalidation": "native safe public HTML broker only",
+    "source_and_wayfatours_core_code_shas_match": true,
+    "header_js_immutable_url": "navigation.ea09566dff9a.js",
+    "obsolete_nav_min_asset_retired": true
+  },
+  "excluded_surfaces": [
+    "country and continent hierarchy remains unchanged",
+    "attraction and neighborhood ordering remains unchanged",
+    "editorial custom sort remains unchanged",
+    "Commerce and WooCommerce pricing/rates untouched"
+  ],
+  "known_nonblocking_release_note": "Obsolete optimized navigation manifest binding and file removed from current source; historical evidence snapshot retained. Active frontend uses immutable SHA-addressed JS URL with verified bytes; future source changes require a rebuilt pinned immutable release artifact.",
+  "limits": [
+    "Individual visual checks were made on homepage carousel and native header, not every Elementor template permutation",
+    "Release catalog registration is not a grant to deploy to un-enrolled companies",
+    "Future company rollout is a separate original native signed release with runtime proof"
+  ]
+}

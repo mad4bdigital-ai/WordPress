@@ -78,12 +78,13 @@ final class MAD4B_SCP_Artifacts {
 
 	private static function schema_ready() {
 		return class_exists( 'MAD4B_SCP_Schema' )
-			&& MAD4B_SCP_Schema::critical_ready()
+			&& true === MAD4B_SCP_Schema::critical_ready()
 			&& MAD4B_SCP_Schema::VERSION >= 10;
 	}
 
 	private static function site_uuid() {
-		$uuid = class_exists( 'MAD4B_SCP_Site_Profile' ) ? strtolower( trim( (string) MAD4B_SCP_Site_Profile::site_uuid() ) ) : '';
+		$source = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::site_uuid() : null;
+		$uuid = is_string( $source ) ? strtolower( trim( $source ) ) : '';
 		return preg_match( '/^[a-f0-9-]{36}$/', $uuid ) ? $uuid : '';
 	}
 
@@ -92,6 +93,12 @@ final class MAD4B_SCP_Artifacts {
 	}
 
 	private static function actor_ref() {
+        if ( class_exists( 'MAD4B_SCP_Host_Agent_Bridge', false )
+            && MAD4B_SCP_Host_Agent_Bridge::active_for( 'mad4b/artifact-append' ) ) {
+            $agent = MAD4B_SCP_Host_Agent_Bridge::agent();
+            if ( is_array( $agent ) && ! empty( $agent['public_id'] ) )
+                return 'host-agent:' . (string) $agent['public_id'];
+        }
 		if ( class_exists( 'MAD4B_SCP_Identity_Context' ) ) {
 			$identity = MAD4B_SCP_Identity_Context::current();
 			if ( is_array( $identity ) ) {
@@ -205,6 +212,10 @@ final class MAD4B_SCP_Artifacts {
 			if ( 'artifact_job_missing' === $code ) return new WP_Error( 'mad4b_artifact_job_missing', 'ContentJob was not found for this site.' );
 			return new WP_Error( 'mad4b_artifact_append_failed', 'Unable to append Content Artifact.', array( 'cause' => $code ) );
 		}
+        // Emit after durable commit; no false signal if the insert was rolled back.
+        do_action( 'mad4b_scp_content_artifact_created', array(
+            'artifact_id' => $artifact_id, 'job_id' => $job_id,
+            'artifact_type' => $type, 'version' => $version ) );
 		return self::get_artifact( array( 'artifact_id' => $artifact_id ) );
 	}
 

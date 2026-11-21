@@ -90,12 +90,19 @@ function apply_filters( $hook, $value ) {
     return $value;
 }
 function wp_json_encode( $v, $opts = 0 ) { return json_encode( $v, $opts ); }
+$GLOBALS['import_site_ready']=true;
 class MAD4B_SCP_Site_Profile {
     static function configured() { return true; }
     static function origin_enrolled() { return true; }
     static function site_urls_match_enrollment() { return true; }
     static function site_uuid() { return '10000000-2000-4000-8000-000000000000'; }
     static function environment_allowed( $environments, $feature = '' ) { return in_array( 'staging', $environments, true ); }
+    static function status() {
+        return array('authority_ready'=>(!empty($GLOBALS['import_site_ready'])),
+            'origin_match'=>true,'deployment_binding_match'=>true,
+            'site_uuid'=>self::site_uuid(),
+            'environment'=>'staging');
+    }
 }
 class MAD4B_SCP_Content_Experience_Profiles {
     static function profile( $slug ) {
@@ -247,6 +254,14 @@ $packet = array( 'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
 $raw = json_encode( $packet );
 $sig = hash_hmac( 'sha256', $raw, MAD4B_ACTIVITY_IMPORT_SOURCE_KEYS['rates_appscript']['secret'] );
 $request = new IMP01_Test_Request( $raw, $sig );
+$before_profile_denial = $GLOBALS['imp01_options'];
+$GLOBALS['import_site_ready']=false;
+$denied_site_intake = MAD4B_SCP_Activity_Import_Review::receive_signed( $request );
+ck(is_wp_error($denied_site_intake)
+    && $denied_site_intake->get_error_code()==='mad4b_import_intake_site_unenrolled'
+    && $before_profile_denial===$GLOBALS['imp01_options'],
+   'Unready Site Profile cannot enqueue signed intake or persist a snapshot.');
+$GLOBALS['import_site_ready']=true;
 $GLOBALS['imp07_anonymous_sender'] = true;
 $permission = MAD4B_SCP_Activity_Import_Review::authorize_signed( $request );
 ck( true === $permission, 'Signed review intake signature unexpectedly refused' );
@@ -304,6 +319,13 @@ delete_option( $storeKey ); // fixture simulates an explicitly archived older pr
 $cleanPreview = MAD4B_SCP_Activity_Import_Review::plan( $clean );
 ck( !is_wp_error( $cleanPreview ) &&
     $cleanPreview['block_issue_count'] === 0, 'Clean approved source still blocked' );
+$GLOBALS['import_site_ready']=false;
+$denied_source_snapshot = MAD4B_SCP_Activity_Import_Snapshot::stage(
+    'pricing', $clean, $cleanPreview, 'admin_csv_upload', 'test-admin' );
+ck(is_wp_error($denied_source_snapshot)
+    && $denied_source_snapshot->get_error_code()==='mad4b_import_source_operation_denied',
+  'Unready Site Profile cannot create a clear or encrypted import snapshot.');
+$GLOBALS['import_site_ready']=true;
 $cleanStaged = MAD4B_SCP_Activity_Import_Snapshot::stage(
     'pricing', $clean, $cleanPreview, 'admin_csv_upload', 'test-admin' );
 ck( !is_wp_error( $cleanStaged ), 'Clean source could not enter review-only inbox' );

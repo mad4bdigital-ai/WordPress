@@ -1,0 +1,51 @@
+{
+  "contract": "mad4b.wayfa-selective-price-filter-repair-evidence.v1",
+  "source_origin": "https://tours.dev.mad4b.com",
+  "target_origin": "https://wayfatours.com",
+  "source_first": true,
+  "filters": [
+    {
+      "filter_id": 23352,
+      "key": "_query_builder_query",
+      "source_before": "",
+      "target_before": "",
+      "source_after": "181",
+      "target_after": "181"
+    },
+    {
+      "filter_id": 57372,
+      "key": "_source_taxonomy",
+      "source_before": "category",
+      "target_before": "category",
+      "source_after": "package_levels",
+      "target_after": "package_levels"
+    },
+    {
+      "filter_id": 57376,
+      "key": "_source_taxonomy",
+      "source_before": "category",
+      "target_before": "category",
+      "source_after": "package_levels",
+      "target_after": "package_levels"
+    }
+  ],
+  "lab_filter_66104_changed": false,
+  "pricing_currency_rate_or_order_changed": false,
+  "source_target_engine_price_module_sha256": "4e4ef66c60846d8a58365e4b7abbcd08d7314bd1af084df357be17e2ddce78a7",
+  "source_mode_policy_changed": false,
+  "target_mode_policy_changed": false,
+  "mode_order_only_difference_ignored": true,
+  "mode_strategy_bounds_enforced": true,
+  "docker_binding_scope": "exact container names only; mount/source/site UUID verified",
+  "source_php_container": "php-wkgtkzta35wkkgouwt6ruljc",
+  "target_php_container": "php-guxhp9y6vgh7oouuw8plxrlr",
+  "original313_release_certificate_claimed": false,
+  "unpublished_target_tour_ids": [
+    60619,
+    60621,
+    60663,
+    60665
+  ],
+  "published_rate_records_changed": 0,
+  "target_guest_404_verified_for_draft_tours": true
+}

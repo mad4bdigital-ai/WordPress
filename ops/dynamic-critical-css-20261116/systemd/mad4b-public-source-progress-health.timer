@@ -1,0 +1,12 @@
+[Unit]
+Description=Check source CSS qualification progress, freshness and safe deferrals hourly
+
+[Timer]
+OnCalendar=*-*-* *:14:00 UTC
+RandomizedDelaySec=45
+AccuracySec=60s
+Persistent=true
+Unit=mad4b-public-source-progress-health.service
+
+[Install]
+WantedBy=timers.target

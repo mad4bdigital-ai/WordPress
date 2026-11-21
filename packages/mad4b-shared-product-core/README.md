@@ -1,6 +1,6 @@
 # MAD4B Shared Product Core — canonical source candidate
 
-**Version:** `0.1.0-dev.20261028` · **Lifecycle:** source-only / Draft PR · **Origin:** ETG WooCommerce Local Lab on VPS. This is the first version-controlled home for the 134 previously local-only active files. The `*.before-*` recovery files and any WordPress database, customers, orders, media, vendor plugins, runtime secrets, `.env`, and vault contents are **not** included.
+**Version:** `0.1.1-dev.20261113` · **Lifecycle:** source-only / Draft PR · **Origin:** ETG WooCommerce Local Lab on VPS. This is the first version-controlled home for 135 tracked candidate source files (the original 134-file snapshot remains archived under docs/snapshots/0.1.0-dev.20261028). The `*.before-*` recovery files and any WordPress database, customers, orders, media, vendor plugins, runtime secrets, `.env`, and vault contents are **not** included.
 
 ## Layout
 
@@ -51,3 +51,5 @@ The original `adapters/tour-program-source-contract-v1.php` was recovered verbat
 ## Post-import booking cart bugfix
 
 The first live WordPress test exposed a normalized-cart-to-raw-quote mismatch: `shared_product_booking_v2_cart_draft()` succeeded but `shared_product_booking_v2_cart_quote_preview()` returned `booking_v2_unexpected_keys` for a valid configuration. The cart preview now passes the original already-validated request to the server-side quote validator while retaining normalized identity in the draft. `tests/booking-cart-regression.php` proves the separation. This is a reviewed patch to the imported original and is recorded with its new SHA-256 in `release-manifest.json`. No Woo Cart, Order, Payment, or inventory writes are enabled by this source change.
+
+**2026-11-13 source-only refresh:** Adds the shared Company Term Eligibility adapter and the latest native consumer/filter policies. The previous 134-file source manifest is preserved byte-for-byte; neither source snapshot authorizes runtime deployment, grant issuance or production mutation.

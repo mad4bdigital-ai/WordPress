@@ -1,0 +1,156 @@
+/* MAD4B JetEngine Page Recipes · General & availability
+   Explicit canary, isolated from original JetEngine rendering and storage.
+   Single category navigation above original JetEngine controls; no repeated accordion. */
+.jet-engine-options-page-wrap .mad4b-recipe[hidden]{display:none!important}
+.jet-engine-options-page-wrap .mad4b-recipe-toggle{
+  border:1px solid #b4d0c0;
+  background:#f8fcfa;
+  color:#17664f;
+  border-radius:7px;
+  font-weight:650;
+  min-height:36px;
+  padding:7px 12px;
+  cursor:pointer;
+}
+.jet-engine-options-page-wrap .mad4b-recipe-toggle:hover{
+  background:#eaf4ed;
+  border-color:#80af96
+}
+.jet-engine-options-page-wrap .mad4b-recipe-toggle:focus-visible,
+.jet-engine-options-page-wrap .mad4b-recipe button:focus-visible{
+  outline:3px solid #7bbca2;
+  outline-offset:2px
+}
+.jet-engine-options-page-wrap.mad4b-recipe-active .mad4b-ws-content{
+  padding:0;
+  overflow:hidden;
+  border:1px solid #c9e0d3;
+  background:#f8fbf9;
+  border-radius:10px
+}
+.jet-engine-options-page-wrap.mad4b-recipe-active .mad4b-ws-section-heading{
+  padding:16px 18px 12px;
+  background:#fff;
+  border-bottom:1px solid #e3ede6;
+}
+.jet-engine-options-page-wrap.mad4b-recipe-active .mad4b-ws-section-heading h3{
+  font-size:17px;
+  font-weight:750;
+  color:#1e5745
+}
+.jet-engine-options-page-wrap.mad4b-recipe-active .mad4b-ws-section-heading p{
+  color:#60796b;
+  font-size:12px;
+  line-height:1.5
+}
+.jet-engine-options-page-wrap .mad4b-recipe{
+  --recipe-accent:#166b53;
+  background:#f8fbf9;
+  color:#285443;
+  padding:12px 16px 14px;
+  display:grid;
+  gap:10px;
+}
+.jet-engine-options-page-wrap .mad4b-recipe-subhead{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;
+  margin-top:2px
+}
+.jet-engine-options-page-wrap .mad4b-recipe-subhead strong{
+  color:#235a46;
+  font-size:13px;
+  font-weight:750
+}
+.jet-engine-options-page-wrap .mad4b-recipe-subhead small{
+  font-size:11px;
+  color:#628074
+}
+.jet-engine-options-page-wrap .mad4b-recipe-choices{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:9px;
+}
+.jet-engine-options-page-wrap .mad4b-recipe-choice{
+  min-width:0;
+  min-height:92px;
+  text-align:start;
+  border:1px solid #cadfd1;
+  background:#fff;
+  border-radius:8px;
+  padding:12px 14px;
+  color:#284f42;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  cursor:pointer;
+  transition:background-color .15s,border-color .15s
+}
+.jet-engine-options-page-wrap .mad4b-recipe-choice strong{
+  display:block;
+  font-size:13px;
+  font-weight:750;
+  line-height:1.35;
+  color:#23614a
+}
+.jet-engine-options-page-wrap .mad4b-recipe-choice small{
+  display:block;
+  color:#687c71;
+  font-size:11px;
+  line-height:1.4;
+  flex:1
+}
+.jet-engine-options-page-wrap .mad4b-recipe-choice-affordance{
+  display:inline-flex;align-self:flex-start;
+  color:#196747;background:#edf8f1;border:1px solid #c8e4d3;
+  border-radius:20px;padding:3px 9px;
+  font-size:10px;font-weight:700;
+}
+.jet-engine-options-page-wrap .mad4b-recipe-choice:hover,
+.jet-engine-options-page-wrap .mad4b-recipe-choice.is-active{
+  border-color:#6fa78d;
+  background:#edf8f1
+}
+.jet-engine-options-page-wrap .mad4b-recipe-show-all{
+  background:#fff;
+  border:1px solid #9bcab0;
+  color:#17664e;
+  border-radius:6px;
+  min-height:33px;
+  padding:7px 12px;
+  font-weight:700;
+  font-size:11px;
+  cursor:pointer;
+}
+.jet-engine-options-page-wrap.mad4b-recipe-active .mad4b-ws-dimension-launcher{
+  margin:8px 16px 12px;
+}
+.jet-engine-options-page-wrap.mad4b-recipe-active .mad4b-ws-dimension-panel{
+  margin:0 16px 14px;
+}
+.jet-engine-options-page-wrap.mad4b-recipe-active .mad4b-ws-listing{
+  margin:5px 16px 14px;
+}
+.jet-engine-options-page-wrap.mad4b-recipe-active #settings_top .mad4b-ws-control:not(.mad4b-ws-filtered){
+  border:1px solid #dce9e1;
+  border-radius:8px;
+  margin-block:5px;
+  background:#fff;
+  padding:12px 14px;
+  box-sizing:border-box;
+}
+.jet-engine-options-page-wrap.mad4b-recipe-active #settings_top .mad4b-recipe-sidelined{
+  display:none!important
+}
+@media(max-width:1100px){
+  .jet-engine-options-page-wrap .mad4b-recipe-choice{min-height:102px}
+}
+@media(max-width:650px){
+  .jet-engine-options-page-wrap .mad4b-recipe{padding:10px;gap:10px}
+  .jet-engine-options-page-wrap .mad4b-recipe-choices{grid-template-columns:1fr}
+  .jet-engine-options-page-wrap .mad4b-recipe-choice{min-height:0}
+  .jet-engine-options-page-wrap.mad4b-recipe-active .mad4b-ws-section-heading{padding:13px}
+}
+

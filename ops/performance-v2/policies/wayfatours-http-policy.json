@@ -1,0 +1,69 @@
+{
+  "company": "wayfatours",
+  "contract": "mad4b.performance-http-policy.v2",
+  "critical_css_integrity_v1": {
+    "consumer_sha256": "cdb55bd9ab6a86df26483450e33cf0bbc91296940db51102dde082fdb839db5b",
+    "enabled": true,
+    "format": "native-v1",
+    "locales": {
+      "en": {
+        "critical_file": "2cc20174abc170d21f44a0baa755386ade1d09396cc500c25147347ef9571f45.css",
+        "critical_sha256": "2cc20174abc170d21f44a0baa755386ade1d09396cc500c25147347ef9571f45",
+        "css_file": "7e9f278686dcbdb8ef024bcc4a04b2e9.css",
+        "css_sha256": "70056be6fb5f939eba9caa5a7ba6031728facbef467637679d6732fe4a92ba62",
+        "route": "/"
+      },
+      "es": {
+        "critical_file": "c7c6bb5d4a34606dd190293bb3b689229e5688e95ee92b13ef888b8746fe9967.css",
+        "critical_sha256": "c7c6bb5d4a34606dd190293bb3b689229e5688e95ee92b13ef888b8746fe9967",
+        "css_file": "d493805ef5789cfcc7e56bc71ce5ab59.css",
+        "css_sha256": "6a769379dfee0353a63b08c28deab5569d9501960c286a99c638ada26406066c",
+        "route": "/es/"
+      }
+    }
+  },
+  "enabled": true,
+  "fragment_integrity_v1": {
+    "enabled": true,
+    "environment": "production",
+    "require_tour_only": true,
+    "sha256": {
+      "css": "153aadd378959308469bb2c58baf2513aec03f65cc39e6fda96b41c88d168252",
+      "fragment_class": "e507f4867835753c9cef5c254c8388466806f0e1402c3daf59887aeeeac92a6f",
+      "governor": "bf45dd67bcd6b207afe54c601cca36458f44d85a02475e02495dcb08e9796937",
+      "manifest": "1a3559fa542b8d911fee69aa80f6486e30a0912f1554e06fc48e402610625b31"
+    }
+  },
+  "hero_marker": "home-mix-mad4b-1600.webp",
+  "local_runtime": {
+    "nginx_config": "/opt/wayfa-rebuild-20261102/stack/nginx.conf",
+    "php_container": "php-guxhp9y6vgh7oouuw8plxrlr",
+    "site_root": "/opt/wayfa-rebuild-20261102/site-copy"
+  },
+  "origin": "https://wayfatours.com",
+  "routes": [
+    {
+      "expect_cache": "shared_public",
+      "locale": "en",
+      "path": "/"
+    },
+    {
+      "expect_cache": "shared_public",
+      "locale": "es",
+      "path": "/es/"
+    }
+  ],
+  "score_not_inferred_from_cache": true,
+  "wpml_jetengine_prefetch_integrity_v1": {
+    "enabled": true,
+    "local_git_source": {
+      "commit": "edb83fcac1da73a353d285debc0be8f0d953b2d9",
+      "ref": "refs/mad4b/release-candidates/wpml-jetengine-native-prefetch-v1",
+      "repo": "/opt/mad4b-company-transport/worktrees/company-code-release-20261108"
+    },
+    "sha256": {
+      "owner": "b87ee6eb43ea9a61e305d41c247558a2e32e7785251f9df825454333e6d22296",
+      "vendor": "e242bcba4053d418ae4de26bd42d4922280829fc11f3a278db09ed630927d6fe"
+    }
+  }
+}

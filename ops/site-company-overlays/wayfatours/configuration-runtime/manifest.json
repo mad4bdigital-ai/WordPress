@@ -1,0 +1,31 @@
+{
+  "contract": "mad4b.wayfatours.configuration-notice-provider-proof.v1",
+  "site": "https://wayfatours.com",
+  "scope": "company_owned",
+  "no_implicit_shared_source_activation": true,
+  "scan_hook": "mad4b_configuration_jobs_scan",
+  "scan_action_priority": 90,
+  "notice_lifecycle": "exact_provider_evidence_only",
+  "never_modify_stripe_settings": true,
+  "never_modify_rights_registry": true,
+  "manual_deployment_without_original313_signature": true,
+  "original305_hold_preserved": true,
+  "source_file": {
+    "relative_path": "wp-content/mu-plugins/mad4b-configuration-notice-revalidation.php",
+    "sha256": "184d0415fe8141ae7d669a5b3f1f85be5766183a743c82e577054653355193ef",
+    "bytes": 7915
+  },
+  "regression": "tests/wayfa-provider-verified-notice-regression.php",
+  "regression_passes": 23,
+  "additional_existing_provider_patches": [
+    {
+      "relative_path": "wp-content/mu-plugins/mad4b-configuration-jobs/providers.php",
+      "sha256": "e3da8572c525540d0561285af4a3866d77548c39f5721ebf74d0d86a307ea46a",
+      "bytes": 11614,
+      "existing_original_plugin_component": true,
+      "requires_exact_live_preimage": true
+    }
+  ],
+  "smtp_recovery_contract": "mad4b.fluent-smtp-transport-recovery.v1",
+  "recovery_does_not_assert_inbox_delivery": true
+}

@@ -99,4 +99,13 @@ ck('Drive sync always needs separate certified workflow',denied($owner::sync($dr
 $bad=$drivePlan;$bad['absence_mutation_allowed']=true;
 ck('Drive absence mutation explicitly denied',denied($owner::sync($bad),'mad4b_pipeline_absence_mutation_denied'));
 ck('exact approved complete scan was only fixture write',$GLOBALS['writes']===1);
+$docx_default=$owner::scan_complete('media');
+ck('Original source default supports real DOCX scan',
+  is_array($docx_default)
+  && in_array('application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      $GLOBALS['last_scan']['meta']['scope']['mime_types'],true)
+  && $GLOBALS['writes']===2);
+ck('DOCX source still passes original manual quality/permission gate',
+  $docx_default['scan_complete']===true
+  && $GLOBALS['last_scan']['source']==='media');
 echo 'PASS: '.$n.' source pipeline admission and review-only checks'.PHP_EOL;

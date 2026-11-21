@@ -977,6 +977,10 @@ mad4b_review_assert( MAD4B_SCP_Context_Authority::ai_review_catalog_eligible(),
     'Site-scope alone permits catalog only when the Agent is configured but does not grant execution.' );
 mad4b_review_assert( !MAD4B_SCP_Context_Authority::ai_review_policy_status()['ready'],
     'Production with Staging-only exact grant must remain blocked.' );
+$production_mismatched_grant = MAD4B_SCP_Context_Authority::ai_review_policy_status();
+mad4b_review_assert( empty( $production_mismatched_grant['exact_grant_ready'] ),
+    'An allow grant for Staging MUST NOT be reported as exact_grant_ready in Production.',
+    $production_mismatched_grant );
 MAD4B_SCP_Agent_Registry::$grant_environment = 'all';
 mad4b_review_assert( MAD4B_SCP_Context_Authority::ai_review_catalog_eligible(), 'Production allows only explicit site-scoped Agent review catalog.' );
 mad4b_review_assert( MAD4B_SCP_Context_Authority::ai_review_policy_status()['ready'] === true,

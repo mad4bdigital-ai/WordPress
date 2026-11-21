@@ -7,9 +7,11 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  *
  * The OAuth resource bridge remains the cryptographic authority: this class runs
  * only after its rest_pre_dispatch verifier has accepted the bearer. It never
- * validates an untrusted JWT by itself and never creates grants. Its only role is
- * to stop a multi-user connection from collapsing every verified subject onto a
- * single compatibility/default WordPress administrator.
+ * validates an untrusted JWT by itself and never creates grants. Its main role is
+ * to stop a multi-user connection from collapsing verified subjects onto a
+ * compatibility administrator. The optional, strictly staged ChatGPT user
+ * onboarding below creates only an exact user-owned draft audit principal;
+ * it does not approve or execute a mutation.
  */
 final class MAD4B_SCP_OAuth_Subject_User_Bridge {
 	const CONTRACT = 'mad4b.oauth-subject-user-bridge.v1';
@@ -36,9 +38,16 @@ final class MAD4B_SCP_OAuth_Subject_User_Bridge {
         // fall back to a compatibility administrator or carry another user.
         if ( ! in_array( $route, array( '/mcp/mad4b-chatgpt', '/mcp/mad4b-enrollment',
             '/mcp/mad4b-developer', '/mcp/mad4b-developer-breakglass' ), true ) ) return $result;
-		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return $result;
-		$profile_ready = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::oauth_enabled();
-		$portable_ready = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) && MAD4B_SCP_Portable_Readonly_Connection::effective();
+		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) return $result;
+		$verified = MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active();
+		if ( is_wp_error( $verified ) )
+			return self::deny( 'mad4b_oauth_bearer_verification_unknown', 'Original bearer verification is not available.' );
+		if ( true !== $verified ) return $result;
+		$profile_ready = class_exists( 'MAD4B_SCP_Site_Profile' )
+			&& true === MAD4B_SCP_Site_Profile::origin_enrolled()
+			&& true === MAD4B_SCP_Site_Profile::oauth_enabled();
+		$portable_ready = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' )
+			&& true === MAD4B_SCP_Portable_Readonly_Connection::effective();
 		if ( ! $profile_ready && ! $portable_ready ) {
 			return self::deny( 'mad4b_oauth_site_identity_not_ready', 'Verified OAuth identity is not bound to an enrolled Site Profile or portable read-only connection.' );
 		}
@@ -52,7 +61,8 @@ final class MAD4B_SCP_OAuth_Subject_User_Bridge {
 		if ( '' === $issuer || '' === $subject || ! preg_match( '/^user:([1-9][0-9]*)$/', $subject, $matches ) ) {
 			return self::deny( 'mad4b_oauth_subject_user_mapping_required', 'Verified OAuth subject must be an enrolled user:<id> subject for this Site Profile.' );
 		}
-		if ( ! MAD4B_SCP_OAuth_Resource_Bridge::is_trusted_issuer( $issuer ) || ! MAD4B_SCP_OAuth_Resource_Bridge::subject_allowed( $issuer, $subject ) ) {
+		if ( true !== MAD4B_SCP_OAuth_Resource_Bridge::is_trusted_issuer( $issuer )
+			|| true !== MAD4B_SCP_OAuth_Resource_Bridge::subject_allowed( $issuer, $subject ) ) {
 			return self::deny( 'mad4b_oauth_subject_not_approved', 'Verified OAuth subject is outside the configured issuer/subject policy.' );
 		}
 
@@ -77,13 +87,16 @@ final class MAD4B_SCP_OAuth_Subject_User_Bridge {
 		$user_id = absint( $matches[1] );
 		$user_enrolled = $profile_ready
 			? MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id )
-			: ( $portable_ready && MAD4B_SCP_Portable_Readonly_Connection::user_is_enrolled( $user_id ) );
-		if ( $user_id < 1 || ! $user_enrolled ) {
+			: ( $portable_ready ? MAD4B_SCP_Portable_Readonly_Connection::user_is_enrolled( $user_id ) : false );
+		if ( $user_id < 1 || true !== $user_enrolled ) {
 			return self::deny( 'mad4b_oauth_subject_user_not_enrolled', 'Verified OAuth user is not enrolled for the current MCP connection.' );
 		}
 		$user = get_userdata( $user_id );
-		if ( ! $user ) return self::deny( 'mad4b_oauth_subject_user_missing', 'Verified OAuth WordPress user no longer exists.' );
-		if ( class_exists( 'MAD4B_SCP_Policy' ) && method_exists( 'MAD4B_SCP_Policy', 'can_connect_user' ) && ! MAD4B_SCP_Policy::can_connect_user( $user_id ) ) {
+		if ( ! is_object( $user ) || is_wp_error( $user )
+			|| ! is_int( $user->ID ?? null ) || $user->ID !== $user_id )
+			return self::deny( 'mad4b_oauth_subject_user_missing', 'Verified OAuth WordPress user no longer exists or is not an exact user.' );
+		if ( class_exists( 'MAD4B_SCP_Policy' ) && method_exists( 'MAD4B_SCP_Policy', 'can_connect_user' )
+			&& true !== MAD4B_SCP_Policy::can_connect_user( $user_id ) ) {
 			return self::deny( 'mad4b_oauth_subject_user_not_connection_capable', 'Verified OAuth WordPress user is no longer connection-capable.' );
 		}
 
@@ -100,6 +113,29 @@ final class MAD4B_SCP_OAuth_Subject_User_Bridge {
 			'site_profile_revision' => $profile_ready ? MAD4B_SCP_Site_Profile::revision() : 0,
 			'site_profile_digest' => $profile_ready ? MAD4B_SCP_Site_Profile::profile_digest() : MAD4B_SCP_Portable_Readonly_Connection::connection_digest(),
 		);
+		// A verified enrolled WordPress-user connection may establish its
+		// own draft-only governed execution identity once. This is an audit
+		// principal, never a ticket or publication grant. Portable read-only
+		// connections and any Production environment remain excluded.
+		if ( '/mcp/mad4b-chatgpt' === $route
+			&& $profile_ready
+			&& class_exists( 'MAD4B_SCP_Delegation_Mode' )
+			&& MAD4B_SCP_Delegation_Mode::DELEGATED === MAD4B_SCP_Delegation_Mode::selected_mode()
+			&& class_exists( 'MAD4B_SCP_Identity_Context' )
+			&& method_exists( 'MAD4B_SCP_Identity_Context', 'current' )
+			&& user_can( $user, 'edit_posts' ) ) {
+			$identity = MAD4B_SCP_Identity_Context::current();
+			if ( is_array( $identity ) ) {
+				$enrollment = MAD4B_SCP_Delegation_Mode::ensure_content_actor( $identity, true );
+				if ( is_wp_error( $enrollment ) ) {
+					// Failed onboarding must never destroy a legitimate read session
+					// or become implicit write permission. Only a bounded code is
+					// exposed to existing operator diagnostics; no token is logged.
+					do_action( 'mad4b_scp_delegation_onboarding_denied',
+						$enrollment->get_error_code(), $user_id );
+				}
+			}
+		}
 		return $result;
 	}
 

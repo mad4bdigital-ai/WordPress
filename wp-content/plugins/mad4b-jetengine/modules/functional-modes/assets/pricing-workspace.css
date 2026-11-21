@@ -1,0 +1,84 @@
+.mad4b-pricing-unified-shell{box-sizing:border-box;max-width:1600px;margin:12px 20px 14px 2px!important;background:white;border:1px solid #d9e7e1;border-radius:10px;box-shadow:0 1px 3px rgba(29,60,49,.06);padding:12px 14px 0;overflow:visible}
+.mad4b-pricing-unified-shell *{box-sizing:border-box}
+.mad4b-pricing-unified-header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-bottom:11px}
+.mad4b-pricing-unified-header>div{display:grid;gap:3px}
+.mad4b-pricing-unified-header strong{font-size:15px;color:#205448}
+.mad4b-pricing-unified-header small{font-size:11px;color:#526e61}
+.mad4b-pricing-unified-home{font-size:12px;text-decoration:none}
+.mad4b-pricing-unified-nav{display:flex;align-items:stretch;gap:3px;flex-wrap:nowrap;border-top:1px solid #e3ece6;padding:7px 0 0}
+.mad4b-pricing-unified-tabstrip{display:flex;align-items:stretch;gap:3px;flex:1;flex-wrap:wrap;min-width:0}
+.mad4b-pricing-unified-tab{display:inline-flex;align-items:center;min-height:38px;padding:10px 13px 9px;text-decoration:none!important;font-size:12px;font-weight:650;color:#34584f!important;border-bottom:3px solid transparent;border-radius:5px 5px 0 0}
+.mad4b-pricing-unified-tab:hover{background:#f1f7f4;color:#135c4b!important}
+.mad4b-pricing-unified-tab.is-current{color:#0a6052!important;border-bottom-color:#137565;background:#edf7f1}
+.mad4b-pricing-unified-more{position:relative;margin-left:auto;font-size:12px;align-self:stretch;z-index:30}
+.mad4b-pricing-unified-more>summary{cursor:pointer;list-style:none;padding:12px;border-radius:6px;color:#34584f;font-weight:600;white-space:nowrap}
+.mad4b-pricing-unified-more>summary:hover{background:#f2f7f4}
+.mad4b-pricing-unified-more>div{position:absolute;right:0;top:100%;min-width:220px;max-width:min(310px,90vw);background:white;border:1px solid #d9e7e1;border-radius:7px;box-shadow:0 9px 24px rgba(27,44,37,.12);padding:5px;display:grid}
+.mad4b-pricing-unified-more a{padding:9px 11px;color:#265749;text-decoration:none;border-radius:5px;font-weight:550}
+.mad4b-pricing-unified-more a:hover{background:#edf7f1}
+.mad4b-pricing-unified-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,255px),1fr));gap:12px;margin:18px 0}
+.mad4b-pricing-unified-card{background:#fff;border:1px solid #d5e2dc;border-radius:9px;padding:17px;display:flex;flex-direction:column;align-items:flex-start;min-height:178px}
+.mad4b-pricing-unified-card h2{margin:0;color:#235b4e;font-size:16px}
+.mad4b-pricing-unified-card p{color:#45665b;line-height:1.55;flex:1}
+.mad4b-pricing-unified-boundary{font-size:12px;color:#536e62;margin-top:16px}
+.mad4b-pricing-unified-unavailable{font-size:11px;color:#795923}
+.mad4b-pricing-unified-shell a:focus-visible,.mad4b-pricing-unified-shell summary:focus-visible{outline:2px solid #217d68;outline-offset:2px}
+@media(max-width:960px){
+.mad4b-pricing-unified-shell{margin-right:10px!important;padding:10px}
+.mad4b-pricing-unified-tabstrip{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px}
+.mad4b-pricing-unified-tab{white-space:nowrap;flex:none}
+.mad4b-pricing-unified-more{position:relative;background:white;flex:none;z-index:50}
+}
+@media(max-width:600px){.mad4b-pricing-unified-shell{margin:8px 4px 10px 0!important}.mad4b-pricing-unified-header{padding-bottom:8px}.mad4b-pricing-unified-tab{padding:9px 11px}}
+
+/* In-page Rate Generator sections: all controls remain in the same native form */
+.mad4b-rate-native-local-tabs{display:flex;flex-wrap:wrap;align-items:stretch;gap:4px;border-bottom:1px solid #cfdfd4;margin:15px 0 12px;padding:0}
+.mad4b-rate-native-local-tabs button{background:#f4f8f5;border:1px solid transparent;border-bottom:3px solid transparent;border-radius:6px 6px 0 0;color:#355e50;padding:10px 12px;font-size:12px;font-weight:650;cursor:pointer}
+.mad4b-rate-native-local-tabs button.is-current{background:#eaf6ee;color:#165f4f;border-color:#c7ded0;border-bottom-color:#197d64}
+.mad4b-rate-native-local-tabs button:focus-visible{outline:2px solid #136e5b;outline-offset:2px}
+.mad4b-rate-native-section[hidden]{display:none!important}
+.mad4b-rate-native-section{max-width:1200px}
+.mad4b-rate-native-section .form-table{width:100%}
+@media(max-width:800px){
+.mad4b-rate-native-local-tabs{flex-wrap:nowrap;overflow-x:auto}
+.mad4b-rate-native-local-tabs button{flex:none;white-space:nowrap}
+}
+
+
+/* Currency configuration is a native WordPress admin settings section. */
+.mad4b-currency-config{max-width:1250px}
+.mad4b-currency-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,205px),1fr));gap:9px;margin:18px 0}
+.mad4b-currency-summary>div{border:1px solid #d4e4da;background:#fff;border-radius:8px;padding:12px;display:grid;gap:8px}
+.mad4b-currency-summary small{color:#55786a;font-size:12px}
+.mad4b-currency-summary strong{color:#22594b;font-size:15px}
+.mad4b-currency-panel{border:1px solid #d7e6dc;border-radius:9px;background:#fff;padding:15px 18px;margin:14px 0}
+.mad4b-currency-panel h2{font-size:17px;margin:0 0 10px;color:#245b4d}
+.mad4b-currency-panel p{line-height:1.65;color:#47685c}
+.mad4b-currency-panel>label{display:block;margin:10px 0;font-size:13px;line-height:1.5}
+.mad4b-currency-filter{margin:16px 0 9px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.mad4b-currency-filter input{min-width:min(100%,270px)}
+.mad4b-currency-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,245px),1fr));gap:5px;max-height:360px;overflow-y:auto;border:1px solid #dde6df;border-radius:7px;padding:8px}
+.mad4b-currency-option{display:flex;align-items:start;gap:8px;padding:6px;border-radius:5px;font-size:12px;color:#345c4f}
+.mad4b-currency-option:hover{background:#f1f8f3}
+.mad4b-currency-option[hidden]{display:none!important}
+.mad4b-currency-option input{margin-top:2px}
+.mad4b-pricing-source-handoff{background:#fff;border:1px solid #d9e7e1;border-radius:11px;margin:18px 0;padding:19px}
+.mad4b-pricing-source-handoff>h2{color:#235848;font-size:17px;margin:0 0 6px}
+.mad4b-pricing-source-handoff>p{font-size:12px;color:#587268;margin:0 0 16px}
+.mad4b-pricing-source-card{display:flex;align-items:center;justify-content:space-between;gap:15px;border-top:1px solid #e5eee8;padding:14px 0}
+.mad4b-pricing-source-card strong{display:block;color:#285748}
+.mad4b-pricing-source-card small{display:block;color:#65786e;font-size:11px;margin:4px 0}
+.mad4b-pricing-source-card p{font-size:11px;color:#7b6042;margin:7px 0 0}
+@media(max-width:700px){.mad4b-pricing-source-card{align-items:flex-start;flex-direction:column}}
+.mad4b-pricing-rate-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:16px 0}
+.mad4b-pricing-rate-metrics>div{display:grid;gap:6px;border:1px solid #deeadf;background:#f9fcfa;border-radius:8px;padding:14px}
+.mad4b-pricing-rate-metrics strong{font-size:21px;color:#245c49}
+.mad4b-pricing-rate-metrics span{font-size:11px;color:#5c7468}
+.mad4b-pricing-source-details>summary{color:#216953;font-weight:650;cursor:pointer}
+.mad4b-pricing-source-list{max-height:380px;overflow-y:auto;margin-top:12px;border:1px solid #e1ebe5;border-radius:8px}
+.mad4b-pricing-source-list>article{display:grid;gap:4px;padding:9px 12px;border-bottom:1px solid #e8efe9}
+.mad4b-pricing-source-list>article:last-child{border:0}
+.mad4b-pricing-source-list a{font-weight:650;text-decoration:none}
+.mad4b-pricing-source-list span{font-size:11px;color:#64786b}
+@media(max-width:900px){.mad4b-pricing-rate-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:580px){.mad4b-pricing-rate-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}

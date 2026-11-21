@@ -270,7 +270,16 @@ final class MAD4B_SCP_Remote_Work_Queue {
 			return (int) ( isset( $b['created_at_epoch'] ) ? $b['created_at_epoch'] : 0 )
 				<=> (int) ( isset( $a['created_at_epoch'] ) ? $a['created_at_epoch'] : 0 );
 		} );
-		return array( 'contract' => self::CONTRACT, 'read_only' => true, 'mutation_performed' => false, 'count' => count( $items ), 'items' => $items );
+		$lifecycle_count = array();
+        foreach ( $items as &$observed_job ) {
+            $observed_job['global_runtime'] = class_exists( 'MAD4B_SCP_Global_Runtime_Lifecycle' )
+                ? MAD4B_SCP_Global_Runtime_Lifecycle::observe_native_lane('remote_work_queue', $observed_job) : null;
+            $state = is_array( $observed_job['global_runtime'] ) ? $observed_job['global_runtime']['state'] : 'UNAVAILABLE';
+            $lifecycle_count[$state] = (int) ( $lifecycle_count[$state] ?? 0 ) + 1;
+        }
+        unset( $observed_job );
+        return array( 'contract' => self::CONTRACT, 'read_only' => true, 'mutation_performed' => false,
+            'global_runtime_counts' => $lifecycle_count, 'count' => count( $items ), 'items' => $items );
 	}
 
 	public static function get_job( $job_id ) {

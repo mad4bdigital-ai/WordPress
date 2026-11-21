@@ -1,0 +1,104 @@
+/* WordPress Settings API: presentation-only, scoped to 3 MAD4B-owned pages.
+   Preserve every native <form>, checkbox, hidden fallback, nonce, submit.
+   Deliberately DO NOT style the general WP admin, WooCommerce, Gutenberg,
+   JetEngine repeater, Media Modal, password fields or forms inside editors. */
+body.mad4b-native-wp-settings-optin .wrap:has(> form[action$="options.php"]){
+  --mad4b-wp-card-border:#d6e6db;
+  --mad4b-wp-card-accent:#25734f;
+  max-width:1100px;
+  min-width:0;
+  box-sizing:border-box;
+}
+body.mad4b-native-wp-settings-optin .wrap:has(> form[action$="options.php"]) > h1{
+  font-size:25px;
+  font-weight:720;
+  line-height:1.35;
+  color:#204f39;
+}
+body.mad4b-native-wp-settings-optin .wrap:has(> form[action$="options.php"]) > form[action$="options.php"]{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));
+  align-items:stretch;
+  gap:12px;
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+  margin-top:20px;
+}
+body.mad4b-native-wp-settings-optin .wrap > form[action$="options.php"] > p:has(> label){
+  margin:0;
+  padding:15px 16px;
+  border-radius:10px;
+  border:1px solid var(--mad4b-wp-card-border);
+  background:#fff;
+  display:flex;
+  align-items:center;
+  min-height:60px;
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+body.mad4b-native-wp-settings-optin .wrap > form[action$="options.php"] > p > label{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  color:#2b503e;
+  font-weight:600;
+  line-height:1.55;
+  width:100%;
+  min-width:0;
+  cursor:pointer;
+}
+body.mad4b-native-wp-settings-optin .wrap > form[action$="options.php"] input[type=checkbox]{
+  flex:0 0 auto;
+  margin:0;
+  accent-color:var(--mad4b-wp-card-accent);
+}
+body.mad4b-native-wp-settings-optin .wrap > form[action$="options.php"] > .submit{
+  grid-column:1/-1;
+  margin:9px 0 0;
+  padding:10px 0 0;
+  border-top:1px solid var(--mad4b-wp-card-border);
+}
+body.mad4b-native-wp-settings-optin .wrap > form[action$="options.php"] .button-primary{
+  border-radius:7px;
+  min-height:39px;
+  background:var(--mad4b-wp-card-accent);
+  border-color:var(--mad4b-wp-card-accent);
+}
+body.mad4b-native-wp-settings-optin .wrap > form[action$="options.php"] :is(label,input,button):focus-visible{
+  outline:2px solid var(--mad4b-wp-card-accent);
+  outline-offset:3px;
+}
+@media(max-width:600px){
+  body.mad4b-native-wp-settings-optin .wrap > form[action$="options.php"]{
+    grid-template-columns:minmax(0,1fr);
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  body.mad4b-native-wp-settings-optin .wrap > form[action$="options.php"] *{
+    scroll-behavior:auto;
+  }
+}
+
+/* WordPress Settings API also supports a direct <form><label> structure
+   (MAD4B Persistent Site Shell). Match this native layout without
+   wrapping, moving, duplicating or replacing the original checkbox. */
+body.mad4b-native-wp-settings-optin .wrap > form[action$="options.php"] > label:has(>input[type=checkbox]){
+  margin:0;
+  padding:15px 16px;
+  border-radius:10px;
+  border:1px solid var(--mad4b-wp-card-border);
+  background:#fff;
+  display:flex;
+  gap:10px;
+  align-items:center;
+  min-height:60px;
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+  line-height:1.55;
+  font-weight:600;
+  color:#2b503e;
+  cursor:pointer;
+}

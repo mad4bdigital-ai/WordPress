@@ -1,0 +1,84 @@
+{
+  "apply_scope": [
+    "start_company",
+    "company_reconcile",
+    "reconcile_repair"
+  ],
+  "browser_clickability_independent_from_css": true,
+  "contract": "mad4b.contentjob.company-reconcile-skill.v1",
+  "financial_operations_separate": true,
+  "mandatory_phases": [
+    "pre_execution",
+    "post_apply_acceptance"
+  ],
+  "missing_or_stale_evidence": "BLOCKED",
+  "native_execution_owner": "original_mad4b_content_jobs_and_signed_executor",
+  "post_apply_all_required_pass": true,
+  "pre_apply_repair_exception": "original_authorized_repair_only",
+  "states": [
+    "PASS",
+    "FAIL",
+    "UNTESTED",
+    "BLOCKED_PROVIDER_NOT_BOUND"
+  ],
+  "synthetic_evidence": "DENIED",
+  "tasks": {
+    "astra_topbar": [
+      "row_assignment",
+      "visible_children",
+      "localized_display_conditions"
+    ],
+    "clickability": [
+      "menu",
+      "tour_card",
+      "card_cta",
+      "grid_to_list",
+      "list_to_grid",
+      "ajax_filters"
+    ],
+    "content_inventory": [
+      "published_tours",
+      "post_term_relations",
+      "wpml_locale_mapping"
+    ],
+    "css_parity": [
+      "elementor_data",
+      "astra_settings",
+      "global_settings",
+      "generated_css",
+      "cache"
+    ],
+    "destination_eligibility": [
+      "is_public",
+      "is_featured_when_required",
+      "featured_image",
+      "published_tours_count",
+      "live_term_mappings"
+    ],
+    "market_switchers": [
+      "bootstrap",
+      "popup_dom",
+      "click",
+      "state_change",
+      "keyboard"
+    ],
+    "mega_menu": [
+      "menu_tree",
+      "tabs",
+      "contrast",
+      "click_navigation",
+      "occlusion"
+    ],
+    "raw_shortcodes": [
+      "term_pick",
+      "extra_select_actions",
+      "semantic_render"
+    ],
+    "visual_locale_acceptance": [
+      "all_languages",
+      "mobile_desktop",
+      "readback",
+      "no_raw_shortcode"
+    ]
+  }
+}

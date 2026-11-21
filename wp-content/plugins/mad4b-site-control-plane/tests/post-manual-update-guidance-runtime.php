@@ -5,6 +5,10 @@ foreach ( array( 'staging-write-authority', 'skill-runtime-certification', 'goog
  require dirname( __DIR__ ) . '/includes/class-mad4b-scp-' . $file . '.php';
 }
 function guidance_check( $ok, $message ) { if ( ! $ok ) throw new RuntimeException( $message ); }
+// Native WordPress utility used by the current bounded provider-scan snapshot;
+// keep the hermetic fixture behavior identical to WordPress integer coercion.
+function absint( $value ) { return abs( (int) $value ); }
+
 $current = array( 'ready' => false, 'persisted_ready' => true, 'current_grant_snapshot_ready' => true,
  'candidate_binding_required' => true, 'candidate_binding_match' => false,
  'blockers' => array( 'runtime_authority_candidate_not_reconciled' ) );

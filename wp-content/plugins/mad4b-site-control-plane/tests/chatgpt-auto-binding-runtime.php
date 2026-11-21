@@ -12,12 +12,14 @@ $GLOBALS['bind_current_user'] = 7;
 $GLOBALS['bind_bearer'] = false;
 $GLOBALS['bind_client'] = false;
 $GLOBALS['bind_scope'] = false;
+$GLOBALS['bind_verified_client'] = 'https://chatgpt.com/oauth/client.json';
 $GLOBALS['bind_uuid'] = '123e4567-e89b-42d3-a456-426614174000';
 $GLOBALS['bind_digest'] = str_repeat( 'a', 64 );
 function assert_bind( $ok, $msg ) {
     if ( ! $ok ) { fwrite( STDERR, "FAIL: " . $msg . "\n" ); exit( 1 ); }
 }
 function absint( $v ) { return abs( (int) $v ); }
+function wp_parse_url($url,$component=-1){return parse_url($url,$component);}
 function untrailingslashit( $s ) { return rtrim( (string) $s, '/\\' ); }
 function get_option( $name, $default = false ) {
     if (($GLOBALS['bind_fault'] ?? '') === 'read') throw new RuntimeException('PRIVATE read');
@@ -52,12 +54,18 @@ class MAD4B_SCP_Portable_Readonly_Connection {
     public static function connection_uuid() { return '123e4567-e89b-52d3-a456-426614174000'; }
     public static function connection_digest() { return str_repeat( 'c', 64 ); }
 }
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-local-oauth-server.php';
 class MAD4B_SCP_OAuth_Resource_Bridge {
     public static function resource_identifier() { return 'https://staging.example.test/wp-json/mcp/mad4b-chatgpt'; }
     public static function verified_bearer_active() { return !empty( $GLOBALS['bind_bearer'] ); }
     public static function verified_bearer_client_is( $client_id ) {
         return !empty( $GLOBALS['bind_bearer'] ) && !empty( $GLOBALS['bind_client'] ) &&
-            $client_id === MAD4B_SCP_ChatGPT_Auto_Binding::CHATGPT_CLIENT_ID;
+            is_string($client_id) && hash_equals($client_id,$GLOBALS['bind_verified_client']);
+    }
+    public static function verified_bearer_trusted_chatgpt_client_id() {
+        $id=$GLOBALS['bind_verified_client'];
+        return self::verified_bearer_client_is($id) &&
+            MAD4B_SCP_Local_OAuth_Server::trusted_chatgpt_client_id($id) ? $id : '';
     }
     public static function verified_bearer_has_scope( $scope ) {
         return !empty( $GLOBALS['bind_bearer'] ) && !empty( $GLOBALS['bind_scope'] ) &&
@@ -128,6 +136,42 @@ assert_bind( $portable_status['client_observed'] &&
 $GLOBALS['bind_portable'] = false;
 assert_bind( !$c::status()['client_observed'],
     'Disabling portable readiness invalidates its transient binding.' );
+// A signed, connector-scoped client must remain a distinct binding.
+$GLOBALS['bind_profile']=true;
+$GLOBALS['bind_portable']=false;
+$GLOBALS['bind_oauth_feature']=true;
+$GLOBALS['bind_admin']=true;
+$GLOBALS['bind_bearer']=true;
+$GLOBALS['bind_client']=true;
+$GLOBALS['bind_scope']=true;
+$GLOBALS['bind_current_user']=7;
+$GLOBALS['bind_uuid']='123e4567-e89b-42d3-a456-426614174000';
+$GLOBALS['bind_digest']=str_repeat('a',64);
+$GLOBALS['bind_opt']=array();
+$GLOBALS['bind_verified_client']='https://chatgpt.com/oauth/connector_example_123456/client.json';
+$scoped=$GLOBALS['bind_verified_client'];
+assert_bind(MAD4B_SCP_Local_OAuth_Server::trusted_chatgpt_client_id($scoped),
+ 'Actual CIMD policy accepts exact connector identity');
+assert_bind($c::observe_verified_mcp_request($resource,7) && $c::current_bearer_binding_ready(),
+ 'Verified scoped bearer binds and remains current for exact connector');
+$persisted=get_option($c::OPTION,array());
+assert_bind(($persisted['client_id']??'')===$scoped
+    && ($persisted['client_fingerprint']??'')===hash('sha256',$scoped),
+ 'Scoped evidence stores the exact public CIMD URL and its own fingerprint');
+$GLOBALS['bind_verified_client']=$client;
+assert_bind(!$c::current_bearer_binding_ready(),
+ 'Legacy OAuth client cannot reuse a scoped client binding');
+$GLOBALS['bind_verified_client']='https://evil.example/oauth/connector_example_123456/client.json';
+assert_bind(!$c::observe_verified_mcp_request($resource,7),
+ 'Foreign bearer cannot create a new ChatGPT binding');
+$GLOBALS['bind_verified_client']=$scoped;
+$GLOBALS['bind_scope']=false;
+assert_bind(!$c::observe_verified_mcp_request($resource,7) && !$c::current_bearer_binding_ready(),
+ 'Scoped client without read scope cannot observe a connection');
+$GLOBALS['bind_scope']=true;
+assert_bind($c::current_bearer_binding_ready(),
+ 'Same trusted scoped bearer recovers only with exact scope');
+echo "PASS: scoped CIMD client identity bound without foreign-client or legacy substitution\n";
 echo "PASS: ChatGPT OAuth automatic site-bound identity, portable read-only, stale/foreign rejection, no manual App ID or grants\n";
 
 // Passive observation cannot abort a verified request or token response.

@@ -1,0 +1,165 @@
+/* Archive mobile cinema banner: compact without changing other Elementor heroes.
+ * Source branding/background image and Elementor shape dividers are preserved. */
+@media(max-width:767px) {
+ /* Canonical archive hero geometry: the only mobile height authority.
+    Preserve original Elementor order, background gradient and share/dropbar. */
+ body.post-type-archive-tours-and-activities .elementor-element-6cda41f5.e-con {
+  box-sizing:border-box;
+  flex:0 0 auto;
+  height:240px!important;
+  min-height:240px!important;
+  max-height:240px!important;
+  padding:30px 12px!important;
+  display:flex;
+  --flex-wrap-mobile:nowrap; /* Elementor had wrapped hero children into an offscreen 2nd column. */
+  flex-direction:column;
+  flex-wrap:nowrap!important;
+  align-items:stretch;
+  justify-content:center!important;
+  gap:8px!important;
+  isolation:isolate;
+  overflow:visible!important; /* share dropbar remains reachable; gallery stage clips its own images */
+  background-position:center center!important;
+ }
+ /* Keep DFSB slides and UAEL particle canvas behind native hero content. */
+ body.post-type-archive-tours-and-activities .elementor-element-6cda41f5 > .etg-dfsb-background-stage,
+ body.post-type-archive-tours-and-activities .elementor-element-6cda41f5 > .uael-particle-wrapper {
+  z-index:0!important;
+  pointer-events:none!important;
+ }
+ /* UAEL particle canvas was a 215px STATIC flex child, forcing the genuine
+    breadcrumb/title/share below the 240px hero. Make it an overlay again. */
+ body.post-type-archive-tours-and-activities .elementor-element-6cda41f5 > .uael-particle-wrapper {
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  margin:0!important;
+  overflow:hidden;
+ }
+
+ body.post-type-archive-tours-and-activities .elementor-element-6cda41f5 > :is(
+  .elementor-element-59a8984,.elementor-element-3c6d458b,.elementor-element-44b808e
+ ) {
+  position:relative!important;
+  z-index:5!important;
+  visibility:visible!important;
+  opacity:1!important;
+ }
+ /* Share uses the original centered Elementor trigger; its inherited
+    desktop inline width was pushing the button outside a 412px viewport. */
+ body.post-type-archive-tours-and-activities .elementor-element-6cda41f5 > .elementor-element-44b808e {
+  flex:0 0 46px!important;
+  width:46px!important;
+  max-width:46px!important;
+  align-self:center!important;
+  margin-inline:0!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-element-6cda41f5 > .elementor-element-44b808e > .elementor-widget-container,
+ body.post-type-archive-tours-and-activities .elementor-element-6cda41f5 > .elementor-element-44b808e .jet-dropbar {
+  width:100%!important;
+  max-width:100%!important;
+  margin:0!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-element-6cda41f5 > .elementor-element-44b808e .jet-dropbar__inner {
+  margin-inline:auto!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-element-6cda41f5 .elementor-heading-title {
+  font-size:clamp(22px,6.3vw,28px)!important;
+  line-height:1.14!important;
+  letter-spacing:-.015em;
+  margin-block:0!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-element-6cda41f5 .jet-breadcrumbs {
+  font-size:11px;line-height:1.25;
+ }
+ body.post-type-archive-tours-and-activities .elementor-element-6cda41f5>.elementor-shape-bottom svg {
+  height:clamp(28px,9vw,40px)!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-element-6cda41f5>.elementor-shape-bottom {
+  height:clamp(28px,9vw,40px)!important;
+ }
+ /* Keep the Elementor-authored top mountains shape above the image and
+    overlay. The earlier 12px rule cut its SVG paths nearly completely. */
+ body.post-type-archive-tours-and-activities .elementor-element-6cda41f5::before {
+  z-index:0!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-element-6cda41f5>.elementor-shape-top {
+  display:block!important;
+  top:0!important;
+  height:clamp(25px,7.5vw,35px)!important;
+  z-index:8!important;
+  pointer-events:none;
+ }
+ body.post-type-archive-tours-and-activities .elementor-element-6cda41f5>.elementor-shape-top svg {
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-element-6cda41f5>.elementor-shape-top .elementor-shape-fill {
+  fill:var(--e-global-color-bnav001,#F6F2E9)!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-element-6cda41f5>.elementor-shape-bottom {
+  z-index:8!important;
+  pointer-events:none;
+ }
+}
+/* The existing Elementor inquiry banner remains the sole UI. Its title and
+ * price occupy one baseline, with a full-width action below, never 0$. */
+body.post-type-archive-tours-and-activities .elementor-34607 .elementor-element-b512fea .elementor-widget-container {
+ visibility:hidden;
+}
+@media(max-width:767px) {
+ body.post-type-archive-tours-and-activities .elementor-34607 .elementor-element-5f71a5d5.e-con {
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  justify-content:center!important;
+  gap:4px!important;
+  min-height:0!important;
+  padding:5px 9px 7px!important;
+  grid-template-columns:none!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-34607 .elementor-element-f271149.e-con {
+  display:flex!important;
+  flex-direction:row!important;
+  justify-content:center!important;
+  align-items:baseline!important;
+  flex-wrap:nowrap!important;
+  gap:7px!important;
+  width:100%;
+  min-width:0;
+ }
+ body.post-type-archive-tours-and-activities .elementor-34607 .elementor-element-792acb7,
+ body.post-type-archive-tours-and-activities .elementor-34607 .elementor-element-b512fea {
+  width:auto!important;
+  flex:0 1 auto;
+  min-width:0;
+  margin:0!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-34607 .elementor-element-792acb7 .elementor-heading-title {
+  font-size:clamp(12px,3.35vw,14px)!important;
+  font-weight:600;
+  line-height:1.25;
+  white-space:nowrap;
+  margin:0!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-34607 .elementor-element-b512fea .elementor-widget-container {
+  font-size:clamp(10px,2.85vw,12px)!important;
+  line-height:1.25;
+  font-variant-numeric:tabular-nums;
+  text-align:start;
+  white-space:nowrap;
+  margin:0!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-34607 .elementor-element-7b9f120c {
+  width:100%;
+  min-height:0;
+  margin:0!important;
+ }
+ body.post-type-archive-tours-and-activities .elementor-34607 .elementor-element-7b9f120c .elementor-button {
+  padding:7px 12px!important;
+  min-height:31px;
+  line-height:1.2;
+ }
+}

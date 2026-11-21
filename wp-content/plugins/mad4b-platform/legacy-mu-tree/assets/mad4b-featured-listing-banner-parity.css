@@ -1,0 +1,282 @@
+/* Home featured attractions: base Listing #45938: 400px cards, 25px radius.
+   Move injected banner background onto the same top edge as the real cards. */
+.elementor-element-78d62e0 .jet-listing-grid__item .elementor-widget-call-to-action {
+  margin-top:58px!important;
+  margin-bottom:2px!important;
+}
+.elementor-element-78d62e0 .jet-listing-grid__item .elementor-cta {
+  box-sizing:border-box;
+  height:400px!important;
+  min-height:400px!important;
+  max-height:400px!important;
+  border-radius:25px!important;
+  overflow:hidden;
+}
+.elementor-element-78d62e0 .jet-listing-grid__item .elementor-cta__content {
+  box-sizing:border-box;
+  min-height:0!important;
+  height:100%;
+  padding:18px 14px!important;
+  justify-content:center;
+  overflow:hidden;
+}
+.elementor-element-78d62e0 .jet-listing-grid__item .elementor-cta__title {
+  font-size:clamp(18px,1.65vw,23px)!important;
+  line-height:1.17!important;
+  text-wrap:balance;
+  overflow-wrap:normal;
+  word-break:normal;
+  margin-bottom:9px!important;
+}
+.elementor-element-78d62e0 .jet-listing-grid__item .elementor-cta__description {
+  font-size:clamp(11px,1vw,13px)!important;
+  line-height:1.42!important;
+  margin-bottom:10px!important;
+}
+/* Home featured locations: base Listing #45929: 400px cards, 100px radius. */
+.elementor-element-b51f7bd .jet-listing-grid__item .elementor-widget-call-to-action {
+  margin-top:48px!important;
+  margin-bottom:32px!important;
+}
+.elementor-element-b51f7bd .jet-listing-grid__item .elementor-cta {
+  box-sizing:border-box;
+  height:400px!important;
+  min-height:400px!important;
+  max-height:400px!important;
+  border-radius:100px!important;
+  overflow:hidden;
+}
+.elementor-element-b51f7bd .jet-listing-grid__item .elementor-cta__content {
+  box-sizing:border-box;
+  min-height:0!important;
+  height:100%;
+  justify-content:center;
+}
+/* The injected banner has one extra 10px Elementor boxed-container gutter,
+   absent in the native term card: align the visible image edges. */
+.elementor-element-78d62e0 .jet-listing-grid__item .elementor-element-ee915da {
+  padding-inline:0!important;
+}
+@media(max-width:767px) {
+ .elementor-element-78d62e0 .jet-listing-grid__item .elementor-widget-call-to-action {
+  margin-top:24px!important;
+  margin-bottom:0!important;
+ }
+}
+/* Keep safe padding on the narrower mobile card without changing height/radius. */
+@media(max-width:767px) {
+ .elementor-element-78d62e0 .jet-listing-grid__item .elementor-cta__content {
+  padding:20px 16px!important;
+ }
+ .elementor-element-b51f7bd .jet-listing-grid__item .elementor-cta__content {
+  padding:22px 18px!important;
+ }
+}
+
+/* Native JetEngine term-card text hierarchy, the same in each WPML locale. */
+.elementor-element-78d62e0 .elementor-45938 .elementor-element-46370df3 {
+  justify-content:center!important;
+  align-items:center!important;
+  gap:12px!important;
+  text-align:center;
+}
+.elementor-element-b51f7bd .elementor-45929 .elementor-element-85bc6bc {
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:12px!important;
+  width:min(400px,100%)!important;
+  aspect-ratio:1 / 1!important;
+  height:auto!important;
+  min-height:0!important;
+  border-radius:50%!important;
+  overflow:hidden!important;
+  margin-inline:auto!important;
+  text-align:center;
+}
+.elementor-element-78d62e0 .elementor-45938 .elementor-widget-heading,
+.elementor-element-78d62e0 .elementor-45938 .elementor-widget-jet-listing-dynamic-field,
+.elementor-element-b51f7bd .elementor-45929 .elementor-element-85bc6bc > .elementor-widget {
+  margin:0!important;
+  width:92%;
+  flex:0 0 auto;
+  text-align:center!important;
+}
+.elementor-element-78d62e0 .elementor-45938 .elementor-widget-heading .elementor-heading-title,
+.elementor-element-b51f7bd .elementor-45929 .elementor-widget-heading .elementor-heading-title {
+  font-size:clamp(18px,1.5vw,24px)!important;
+  font-weight:600!important;
+  line-height:1.22!important;
+  overflow-wrap:break-word;
+  text-wrap:balance;
+}
+.elementor-element-78d62e0 .elementor-45938 .elementor-widget-jet-listing-dynamic-field,
+.elementor-element-b51f7bd .elementor-45929 .elementor-widget-jet-listing-dynamic-field {
+  font-size:12px!important;
+  line-height:1.4!important;
+  opacity:.9;
+}
+/* Shared CTA content order: title, short supporting line, action. */
+.elementor-element-78d62e0 .elementor-widget-call-to-action .elementor-cta__content,
+.elementor-element-b51f7bd .elementor-widget-call-to-action .elementor-cta__content {
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  text-align:center!important;
+  gap:12px!important;
+}
+.elementor-element-78d62e0 .elementor-widget-call-to-action .elementor-cta__title,
+.elementor-element-b51f7bd .elementor-widget-call-to-action .elementor-cta__title {
+  order:1;
+  flex:0 0 auto;
+  width:100%;
+  margin:0!important;
+  font-size:clamp(19px,1.65vw,23px)!important;
+  font-weight:650!important;
+  line-height:1.24!important;
+  text-wrap:balance;
+  overflow-wrap:normal;
+}
+.elementor-element-78d62e0 .elementor-widget-call-to-action .elementor-cta__description,
+.elementor-element-b51f7bd .elementor-widget-call-to-action .elementor-cta__description {
+  order:2;
+  flex:0 0 auto;
+  margin:0!important;
+  font-size:clamp(12px,1.02vw,14px)!important;
+  line-height:1.5!important;
+  max-width:58ch;
+}
+.elementor-element-78d62e0 .elementor-widget-call-to-action .elementor-cta__button-wrapper,
+.elementor-element-b51f7bd .elementor-widget-call-to-action .elementor-cta__button-wrapper {
+  order:3;
+  flex:0 0 auto;
+  margin:2px 0 0!important;
+}
+.elementor-element-b51f7bd .elementor-widget-call-to-action .elementor-cta__title {
+  font-size:clamp(22px,2.1vw,30px)!important;
+}
+@media(max-width:767px) {
+ .elementor-element-b51f7bd .elementor-45929 .elementor-element-85bc6bc {
+  width:min(300px,100%)!important;
+ }
+ .elementor-element-b51f7bd .elementor-widget-call-to-action .elementor-cta__title {
+  font-size:clamp(18px,5.5vw,23px)!important;
+ }
+}
+
+
+/* Critical: old Elementor templates absolutely positioned the title and count.
+   Static flow is required for a stable reading order across all languages. */
+.elementor-element-78d62e0 .elementor-45938 :is(.elementor-element-f7cb621,.elementor-element-09f31a4),
+.elementor-element-b51f7bd .elementor-45929 :is(.elementor-element-f519f5d,.elementor-element-eba79f3) {
+ position:static!important;
+ inset:auto!important;
+ transform:none!important;
+ margin:0!important;
+ width:92%!important;
+ align-self:center!important;
+ flex:0 0 auto!important;
+ text-align:center!important;
+}
+.elementor-element-78d62e0 .elementor-45938 .elementor-element-f7cb621,
+.elementor-element-b51f7bd .elementor-45929 .elementor-element-f519f5d {
+ order:1!important;
+}
+.elementor-element-78d62e0 .elementor-45938 .elementor-element-09f31a4,
+.elementor-element-b51f7bd .elementor-45929 .elementor-element-eba79f3 {
+ order:2!important;
+}
+
+
+
+/* HOME LOCATIONS LANDSCAPE PRESENTATION — 2026-11-02 */
+/* MAD4B homepage locations: landscape variant of reusable JetEngine term listing.
+   The base listing remains circular in related-destination archives. */
+/* A localized template with only one eligible term must still stretch
+   to the same original homepage section width as other languages. */
+body .elementor-element-22e88af > .elementor-element-fa1b485 {
+ width:100%!important;
+ max-width:100%!important;
+ align-self:stretch!important;
+}
+/* Keep native JetEngine grid gutters and the original full-width section.
+   Do not cap the entire home Locations widget to 900px. */
+body .elementor-element-b51f7bd .jet-listing-grid__items {
+ max-width:none!important;
+ width:auto!important;
+ margin-inline:-10px!important;
+}
+body .elementor-element-b51f7bd .jet-listing-grid__item {
+ height:auto!important;
+ min-height:0!important;
+}
+body .elementor-element-b51f7bd .jet-listing-grid__item .elementor-45929 {
+ height:auto!important;
+ min-height:0!important;
+}
+body .elementor-element-b51f7bd .jet-listing-grid__item .elementor-45929 .elementor-element-85bc6bc {
+ box-sizing:border-box!important;
+ width:100%!important;
+ max-width:100%!important;
+ height:auto!important;
+ min-height:0!important;
+ aspect-ratio:1.58 / 1!important;
+ border-radius:42px!important;
+ overflow:hidden!important;
+ margin:0!important;
+}
+body .elementor-element-b51f7bd .jet-listing-grid__item .elementor-45929 .elementor-element-85bc6bc:before {
+ border-radius:inherit;
+}
+body .elementor-element-b51f7bd .jet-listing-grid__item .elementor-widget-call-to-action {
+ margin:0!important;
+}
+body .elementor-element-b51f7bd .jet-listing-grid__item .elementor-cta {
+ box-sizing:border-box!important;
+ width:100%!important;
+ height:224px!important;
+ min-height:224px!important;
+ max-height:224px!important;
+ border-radius:42px!important;
+ overflow:hidden!important;
+}
+body .elementor-element-b51f7bd .jet-listing-grid__item .elementor-cta__title {
+ max-width:820px!important;
+ font-size:clamp(21px,2.1vw,29px)!important;
+}
+body .elementor-element-b51f7bd .jet-listing-grid__item .elementor-cta__content {
+ box-sizing:border-box;
+ padding:20px 28px!important;
+ overflow:hidden;
+}
+@media(max-width:767px){
+ body .elementor-element-b51f7bd .jet-listing-grid__items {max-width:100%!important;}
+ body .elementor-element-b51f7bd .jet-listing-grid__item .elementor-45929 .elementor-element-85bc6bc {
+  aspect-ratio:1.55 / 1!important;
+  border-radius:30px!important;
+ }
+ body .elementor-element-b51f7bd .jet-listing-grid__item .elementor-cta {
+  height:220px!important;
+  min-height:220px!important;
+  max-height:220px!important;
+  border-radius:30px!important;
+ }
+ body .elementor-element-b51f7bd .jet-listing-grid__item .elementor-cta__content {padding:18px 15px!important;}
+}
+/* Remove the shared listing's 48px top + 32px bottom item margins
+   only in the home landscape layout, leaving other archives unchanged. */
+body .elementor-element-b51f7bd .jet-listing-grid__item .elementor-45929 .elementor-element-03d486d {
+ margin:0!important;
+ padding:0!important;
+ height:auto!important;
+ min-height:0!important;
+}
+body .elementor-element-b51f7bd .jet-listing-grid__item {
+ padding-bottom:24px!important;
+}
+@media(max-width:767px){
+ body .elementor-element-b51f7bd .jet-listing-grid__item {padding-bottom:16px!important;}
+}
+

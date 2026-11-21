@@ -83,6 +83,22 @@ closed = [
     ("g8", ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
      is_exact_ci_history_checkout_successor),
 ]
+# Additional closed historical successors: real archived G2/G4/G8/UI bindings.
+# Each case must pass exact original-Git SHA and current reviewed blob,
+# then deny corrupt history, changed size, tampered source and foreign paths.
+closed.extend([
+    ("g2", "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php", is_exact_historical_delivery_successor),
+    ("g2", "wp-content/plugins/mad4b-site-control-plane/config/remote-operation-catalog.php", is_exact_historical_delivery_successor),
+    ("g4", "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php", is_exact_historical_delivery_successor),
+    ("g4", "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-elementor-adapter.php", is_exact_historical_delivery_successor),
+    ("g4", "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-litespeed-adapter.php", is_exact_historical_delivery_successor),
+    ("g8", "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php", is_exact_historical_delivery_successor),
+    ("ui", "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-provider-connections.php", is_exact_historical_delivery_successor),
+    ("ui", "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt", is_exact_historical_delivery_successor),
+    ("ui", "wp-content/plugins/mad4b-site-control-plane/README.md", is_exact_historical_delivery_successor),
+    ("ui", "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-enrollment-runtime.php", is_exact_historical_delivery_successor),
+])
+
 for group, path, validator in closed:
     archive = json.loads((EXT / (group + "-delivery.json")).read_text(encoding="utf-8"))
     entry = next(

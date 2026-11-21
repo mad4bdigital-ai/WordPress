@@ -30,7 +30,7 @@ final class MAD4B_SCP_Runtime_Obstacle_Resolution {
 
         );
         foreach ( $definitions as $name => $def ) {
-            if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $name ) ) continue;
+            if ( function_exists( 'wp_has_ability' ) && true === wp_has_ability( $name ) ) continue;
             wp_register_ability( $name, array(
                 'label' => ucwords( str_replace( '-', ' ', substr( $name, 6 ) ) ),
                 'description' => 'Governed read-only source evidence and runtime dependency resolution; no approval or mutations.',
@@ -47,11 +47,11 @@ final class MAD4B_SCP_Runtime_Obstacle_Resolution {
     }
 
     private static function allowed() {
-        return class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::can_read();
+        return class_exists( 'MAD4B_SCP_Policy' ) && true === MAD4B_SCP_Policy::can_read();
     }
 
     private static function available( $ability ) {
-        return function_exists( 'wp_has_ability' ) && wp_has_ability( $ability );
+        return function_exists( 'wp_has_ability' ) && true === wp_has_ability( $ability );
     }
 
     private static function site() {
@@ -61,11 +61,17 @@ final class MAD4B_SCP_Runtime_Obstacle_Resolution {
     }
 
     private static function site_stamp( $site ) {
+        foreach ( array( 'site_uuid', 'profile_digest', 'canonical_origin', 'environment' ) as $key ) {
+            if ( ! is_string( $site[ $key ] ?? null ) ) return array(
+                'site_uuid' => '', 'profile_digest' => '', 'canonical_origin' => '',
+                'environment' => '', 'origin_match' => false, 'environment_match' => false
+            );
+        }
         return array(
-            'site_uuid' => (string) ( $site['site_uuid'] ?? '' ),
-            'profile_digest' => (string) ( $site['profile_digest'] ?? '' ),
-            'canonical_origin' => (string) ( $site['canonical_origin'] ?? '' ),
-            'environment' => (string) ( $site['environment'] ?? '' ),
+            'site_uuid' => $site['site_uuid'],
+            'profile_digest' => $site['profile_digest'],
+            'canonical_origin' => $site['canonical_origin'],
+            'environment' => $site['environment'],
             'origin_match' => true === ( $site['origin_match'] ?? false ),
             'environment_match' => true === ( $site['environment_match'] ?? false ),
         );
@@ -90,7 +96,9 @@ final class MAD4B_SCP_Runtime_Obstacle_Resolution {
             ! method_exists( 'MAD4B_SCP_Context_Authority', 'legacy_owner_transfer_discover' ) ||
             ! method_exists( 'MAD4B_SCP_Context_Authority', 'legacy_owner_transfer_evidence' ) )
             return new WP_Error( 'mad4b_selected_folder_provider_missing', 'Existing Context registry unavailable.' );
-        $source = strtolower( trim( (string) ( $input['source_id'] ?? '' ) ) );
+        if ( ! is_string( $input['source_id'] ?? '' ) )
+            return new WP_Error( 'mad4b_selected_folder_source_invalid', 'Selected source identity must be a string.' );
+        $source = strtolower( trim( $input['source_id'] ?? '' ) );
         if ( '' !== $source && ! preg_match( '/^[a-f0-9]{64}$/D', $source ) )
             return new WP_Error( 'mad4b_selected_folder_source_invalid', 'Invalid saved source identity.' );
         $discovery = MAD4B_SCP_Context_Authority::legacy_owner_transfer_discover( array() );
@@ -104,11 +112,17 @@ final class MAD4B_SCP_Runtime_Obstacle_Resolution {
                 'next_read_ability' => 'context/legacy-owner-transfer-discover',
                 'scope_verified' => false, 'ownership_transferred' => false,
                 'read_only' => true, 'mutation_performed' => false );
-        if ( '' === $source ) $source = (string) ( $candidates[0]['source_id'] ?? '' );
+        if ( '' === $source ) {
+            if ( ! is_array( $candidates[0] ) || ! is_string( $candidates[0]['source_id'] ?? null ) )
+                return new WP_Error( 'mad4b_selected_folder_candidate_unverified', 'Original selected source is invalid.' );
+            $source = $candidates[0]['source_id'];
+            if ( ! preg_match( '/^[a-f0-9]{64}$/D', $source ) )
+                return new WP_Error( 'mad4b_selected_folder_candidate_unverified', 'Original selected source identity is invalid.' );
+        }
         $matched = false;
         foreach ( $candidates as $candidate ) {
-            if ( is_array( $candidate ) &&
-                hash_equals( $source, (string) ( $candidate['source_id'] ?? '' ) ) )
+            if ( is_array( $candidate ) && is_string( $candidate['source_id'] ?? null ) &&
+                hash_equals( $source, $candidate['source_id'] ) )
                 $matched = true;
         }
         if ( ! $matched ) return new WP_Error( 'mad4b_selected_folder_quarantined_source_mismatch',
@@ -116,9 +130,15 @@ final class MAD4B_SCP_Runtime_Obstacle_Resolution {
         $proof = MAD4B_SCP_Context_Authority::legacy_owner_transfer_evidence(
             array( 'source_id' => $source ) );
         if ( is_wp_error( $proof ) ) return $proof;
-        if ( ! is_array( $proof ) || true !== ( $proof['folder_membership_verified'] ?? false ) ||
-            ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $proof['provider_proof_sha256'] ?? '' ) ) ||
-            ! hash_equals( $source, (string) ( $proof['source_id'] ?? '' ) ) )
+        if ( ! is_array( $proof ) || true !== ( $proof['folder_membership_verified'] ?? null )
+            || ! is_string( $proof['provider_proof_sha256'] ?? null )
+            || ! preg_match( '/^[a-f0-9]{64}$/D', $proof['provider_proof_sha256'] )
+            || ! is_string( $proof['source_id'] ?? null )
+            || ! hash_equals( $source, $proof['source_id'] )
+            || ! is_string( $proof['original_folder_id'] ?? null )
+            || '' === $proof['original_folder_id']
+            || ! is_int( $proof['matched_file_count'] ?? null )
+            || $proof['matched_file_count'] < 0 )
             return new WP_Error( 'mad4b_selected_folder_provider_proof_incomplete',
                 'Fresh complete original folder/file membership proof required.' );
         if ( self::site_stamp( self::site() ) !== $stamp )
@@ -184,6 +204,24 @@ final class MAD4B_SCP_Runtime_Obstacle_Resolution {
             return new WP_Error( 'mad4b_runtime_resolver_read_denied', 'Governed read required.' );
         $planned = self::reduce( $input );
         if ( is_wp_error( $planned ) ) return $planned;
+        // Follow the first registered, certified read hint in the SAME
+        // request. A write hint is never dispatched by this read planner.
+        // Keep the full original resolution plan and approval boundaries.
+        if ( class_exists( 'MAD4B_SCP_Guided_Continuation' ) ) {
+            foreach ( (array) ( $planned['resolution_routes'] ?? array() ) as $route ) {
+                if ( empty( $route['read_available'] ) || empty( $route['next_read_ability'] ) ) continue;
+                $identity = hash( 'sha256', wp_json_encode( array(
+                    'blockers' => $planned['observed_blockers'] ?? array(),
+                    'target_post_type' => $planned['target_post_type'] ?? '',
+                ) ) );
+                $planned['automatic_read_continuation'] = MAD4B_SCP_Guided_Continuation::run( array(
+                    'next_ability' => (string) $route['next_read_ability'],
+                    'original_operation_sha256' => $identity,
+                    'max_steps' => 2,
+                ) );
+                break;
+            }
+        }
         if ( ! empty( $input['perform_safe_probes'] ) ) {
             foreach ( $planned['resolution_routes'] as $route ) {
                 if ( 'source_onboarding' === $route['category']
@@ -210,7 +248,11 @@ final class MAD4B_SCP_Runtime_Obstacle_Resolution {
         $blockers = $input['blockers'] ?? array();
         if ( ! is_array( $blockers ) || count( $blockers ) > self::MAX_BLOCKERS )
             return new WP_Error( 'mad4b_runtime_resolver_blockers_invalid', 'Bounded blocker list required.' );
-        $post_type = (string) ( $input['target_post_type'] ?? '' );
+        if ( ! is_string( $input['target_post_type'] ?? '' ) )
+            return new WP_Error( 'mad4b_runtime_resolver_type_invalid', 'Post type must be a canonical string.' );
+        if ( array_key_exists( 'perform_safe_probes', $input ) && ! is_bool( $input['perform_safe_probes'] ) )
+            return new WP_Error( 'mad4b_runtime_resolver_probes_invalid', 'Safe probe setting must be boolean.' );
+        $post_type = $input['target_post_type'] ?? '';
         if ( '' !== $post_type && ! preg_match( '/^[a-z0-9_-]{1,64}$/D', $post_type ) )
             return new WP_Error( 'mad4b_runtime_resolver_type_invalid', 'Post type not canonical.' );
         $rows = array(); $unique = array();

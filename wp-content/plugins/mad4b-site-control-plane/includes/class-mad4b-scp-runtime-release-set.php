@@ -220,8 +220,10 @@ final class MAD4B_SCP_Runtime_Release_Set {
     }
 
 	public static function target_adapter_version() {
-		$policy = self::policy();
-		return isset( $policy['target_adapter_version'] ) ? trim( (string) $policy['target_adapter_version'] ) : '';
+        // Target identity is only valid inside the explicitly certified
+        // component transaction. Do not turn a repository config baseline into
+        // an installed Adapter version floor.
+        return self::active_component_target_version( 'mcp_adapter' );
 	}
 
 	public static function component_apply_in_progress( $provider = '' ) {
@@ -261,7 +263,10 @@ final class MAD4B_SCP_Runtime_Release_Set {
 		$control_target_sha = isset( $release_set['control_plane']['source_commit_sha'] ) ? (string) $release_set['control_plane']['source_commit_sha'] : '';
 		$current_control_sha = isset( $current_control['source_commit_sha'] ) ? (string) $current_control['source_commit_sha'] : '';
 		$control_current = '' !== $control_target_sha && '' !== $current_control_sha && hash_equals( $control_target_sha, $current_control_sha );
-		$adapter_current = '' !== $target_adapter && '' !== $current_adapter && hash_equals( $target_adapter, $current_adapter );
+        $adapter_observation = self::installed_adapter_observation();
+        $adapter_compatible = ! empty( $adapter_observation['read_runtime_ready'] );
+		$adapter_current = $adapter_compatible && '' !== $target_adapter && '' !== $current_adapter
+            && hash_equals( $target_adapter, $current_adapter );
 		$ready = $control_current && $adapter_current && ! empty( $readback['ready'] )
             && self::transaction_integrity_ready() && empty( $transaction['error_code'] );
 
@@ -275,9 +280,20 @@ final class MAD4B_SCP_Runtime_Release_Set {
 			'release_set_sha256' => self::release_set_digest( $release_set ),
 			'control_plane_current' => $control_current,
 			'mcp_adapter_current' => $adapter_current,
+            'installed_adapter_runtime_compatible' => $adapter_compatible,
+            'installed_adapter_version_gate' => false,
+            'installed_adapter_compatibility_observation' => $adapter_observation,
+            'release_pair_current' => $ready,
 			'runtime_readback' => $readback,
 			'ready' => $ready,
-			'state' => ! self::transaction_integrity_ready() ? 'transaction_integrity_invalid' : ( $ready ? 'ready' : ( self::transaction_active( $transaction ) && ! empty( $transaction['error_code'] ) ? 'failed_transaction_requires_reconciliation' : ( self::transaction_active( $transaction ) ? 'transition_in_progress' : 'update_or_refresh_required' ) ) ),
+            'state' => ! self::transaction_integrity_ready() ? 'transaction_integrity_invalid'
+                : ( $ready ? 'ready'
+                    : ( self::transaction_active( $transaction ) && ! empty( $transaction['error_code'] )
+                        ? 'failed_transaction_requires_reconciliation'
+                        : ( self::transaction_active( $transaction ) ? 'transition_in_progress'
+                            : ( $adapter_compatible && '' === $target_adapter
+                                ? 'compatible_runtime_release_target_not_published'
+                                : 'update_or_refresh_required' ) ) ) ),
             'transaction_integrity_ready' => self::transaction_integrity_ready(),
             'transaction_recovery' => self::transaction_recovery( $transaction, array( 'control_plane' => $current_control, 'mcp_adapter' => array( 'version' => $current_adapter ) ) ),
 			'transaction' => self::public_transaction( $transaction ),
@@ -329,13 +345,18 @@ final class MAD4B_SCP_Runtime_Release_Set {
 
 		$current_adapter = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::installed_version( 'mcp_adapter' ) : '';
 		$target_adapter = isset( $release_set['mcp_adapter']['version'] ) ? (string) $release_set['mcp_adapter']['version'] : '';
-		$adapter_update_required = '' !== $target_adapter && ( '' === $current_adapter || ! hash_equals( $target_adapter, $current_adapter ) );
-
-		$supported = isset( $policy['supported_transition_adapter_versions'] ) && is_array( $policy['supported_transition_adapter_versions'] )
-			? array_map( 'strval', $policy['supported_transition_adapter_versions'] )
-			: array();
-		if ( '' === $current_adapter || ! in_array( $current_adapter, $supported, true ) ) $blockers[] = 'current_adapter_not_supported_transition';
-		if ( '' === $target_adapter ) $blockers[] = 'target_adapter_version_missing';
+        // A different installed Adapter version is NOT, by itself, a
+        // compatibility failure. Read and normal WP Abilities use observed
+        // official plugin identity + runtime interfaces, not an allowlist.
+        $adapter_observation = self::installed_adapter_observation();
+        $adapter_compatible = ! empty( $adapter_observation['read_runtime_ready'] );
+        if ( ! $adapter_compatible ) $blockers[] = 'installed_adapter_runtime_capabilities_unverified';
+        // An Adapter component update is attempted only for a component
+        // actually present in the certified release manifest (with SHA).
+        $adapter_update_required = '' !== $target_adapter &&
+            ( '' === $current_adapter || ! hash_equals( $target_adapter, $current_adapter ) );
+        if ( $control_update_required && '' === $target_adapter )
+            $blockers[] = 'certified_release_set_adapter_component_missing';
 
 		$profile = array();
 		if ( ! $control_update_required && '' !== $target_adapter && class_exists( 'MAD4B_SCP_Provider_Contracts' ) && method_exists( 'MAD4B_SCP_Provider_Contracts', 'get_for_version' ) ) {
@@ -385,6 +406,9 @@ final class MAD4B_SCP_Runtime_Release_Set {
 				'plan_sha256' => isset( $control_plan['plan_sha256'] ) ? (string) $control_plan['plan_sha256'] : '',
 			),
 			'mcp_adapter' => array(
+                'runtime_compatible' => $adapter_compatible,
+                'version_gate' => false,
+                'compatibility_observation' => $adapter_observation,
 				'update_required' => $adapter_update_required,
 				'current_version' => $current_adapter,
 				'target_version' => $target_adapter,
@@ -560,18 +584,12 @@ final class MAD4B_SCP_Runtime_Release_Set {
 			? $target['runtime_release_set']
 			: array();
 		$adapter = isset( $set['mcp_adapter'] ) && is_array( $set['mcp_adapter'] ) ? $set['mcp_adapter'] : array();
-		if ( empty( $adapter ) ) {
-			$version = isset( $policy['target_adapter_version'] ) ? trim( (string) $policy['target_adapter_version'] ) : '';
-			$profile = '' !== $version && class_exists( 'MAD4B_SCP_Provider_Contracts' ) && method_exists( 'MAD4B_SCP_Provider_Contracts', 'get_for_version' )
-				? MAD4B_SCP_Provider_Contracts::get_for_version( 'mcp_adapter', $version )
-				: array();
-			$adapter = array(
-				'version' => $version,
-				'archive_sha256' => isset( $profile['archive_sha256'] ) ? strtolower( (string) $profile['archive_sha256'] ) : '',
-				'archive_bytes' => isset( $profile['archive_bytes'] ) ? (int) $profile['archive_bytes'] : 0,
-				'package_url' => isset( $profile['package_url'] ) ? (string) $profile['package_url'] : '',
-			);
-		}
+        if ( empty( $adapter ) ) {
+            // Do not synthesize a release component from an old policy
+            // version. Absence means retain the compatible installed Adapter
+            // for reads, and NO component mutation without certified artifact.
+            $adapter = array();
+        }
 		$control = array();
 		foreach ( array( 'version', 'source_commit_sha', 'archive_sha256', 'build_fingerprint', 'package_manifest_digest', 'size_bytes' ) as $field ) {
 			if ( isset( $target[ $field ] ) ) $control[ $field ] = $target[ $field ];
@@ -607,6 +625,13 @@ final class MAD4B_SCP_Runtime_Release_Set {
 			&& ! empty( $profile['runtime_classes'] );
 	}
 
+    public static function installed_adapter_observation() {
+        return class_exists( 'MAD4B_SCP_Dependency_Manager', false )
+            && method_exists( 'MAD4B_SCP_Dependency_Manager', 'adapter_read_runtime_observation' )
+            ? MAD4B_SCP_Dependency_Manager::adapter_read_runtime_observation()
+            : array( 'read_runtime_ready' => false, 'evidence' => array(), 'version_gate' => false );
+    }
+
 	private static function runtime_readback( $target_version, array $release_set, $deep ) {
 		$target_version = trim( (string) $target_version );
 		$current = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::installed_version( 'mcp_adapter' ) : '';
@@ -619,7 +644,17 @@ final class MAD4B_SCP_Runtime_Release_Set {
 			'class_provenance_ready' => false,
 			'mixed_runtime' => false,
 		);
-		if ( '' === $target_version || ! hash_equals( $target_version, $current ) ) return $out;
+        if ( '' === $target_version ) {
+            $observed = self::installed_adapter_observation();
+            $out['state'] = ! empty( $observed['read_runtime_ready'] )
+                ? 'compatible_installed_adapter_no_certified_release_component'
+                : 'installed_adapter_capabilities_unavailable';
+            $out['installed_runtime_compatible'] = ! empty( $observed['read_runtime_ready'] );
+            // Compatibility is not a new signed pair, or an update ticket.
+            $out['ready'] = false;
+            return $out;
+        }
+        if ( ! hash_equals( $target_version, $current ) ) return $out;
 		$profile = method_exists( 'MAD4B_SCP_Provider_Contracts', 'get_for_version' )
 			? MAD4B_SCP_Provider_Contracts::get_for_version( 'mcp_adapter', $target_version )
 			: array();
@@ -635,7 +670,10 @@ final class MAD4B_SCP_Runtime_Release_Set {
 			$out['mixed_runtime'] = ! empty( $provenance['mixed_runtime'] );
 			$out['class_provenance_state'] = isset( $provenance['state'] ) ? (string) $provenance['state'] : '';
 		}
-		$out['ready'] = $out['provider_contract_ok'] && $out['class_provenance_ready'] && ! $out['mixed_runtime'];
+		// Source/hash provenance is informational; provider interface admission
+		// is based on the independently checked live provider contract.
+		$out['source_provenance_observational'] = true;
+		$out['ready'] = $out['provider_contract_ok'];
 		$out['state'] = $out['ready'] ? 'certified_pair_runtime' : 'runtime_revalidation_required';
 		return $out;
 	}

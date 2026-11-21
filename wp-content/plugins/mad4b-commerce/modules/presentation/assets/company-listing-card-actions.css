@@ -1,0 +1,17 @@
+/* Home featured attractions: make the visual card's real JetEngine link clickable.
+   No fabricated navigation, no JS click handler and no overlay outside the card. */
+.elementor-element-35c9e02 .jet-listing-grid__slider {
+    position: relative;
+    z-index: 3;
+}
+.elementor-element-35c9e02 .elementor-45938 .elementor-element-46370df3 {
+    position: relative;
+    isolation: isolate;
+}
+.elementor-element-35c9e02 .elementor-45938 .elementor-widget-heading a::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    cursor: pointer;
+}

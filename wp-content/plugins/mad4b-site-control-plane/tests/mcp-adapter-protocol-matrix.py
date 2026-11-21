@@ -7,6 +7,7 @@ Usage:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sys
@@ -44,8 +45,20 @@ with zipfile.ZipFile(archive_path) as zf:
         match = re.match(r"^\s*\*\s*Version:\s*([^\s]+)\s*$", line)
         if match:
             version_values.append(match.group(1))
-    if version_values != ["0.7.0"]:
-        fail(f"unexpected plugin version header: {version_values}")
+    if len(version_values) != 1 or version_values[0] not in ("0.7.0", "0.7.1"):
+        fail(f"unsupported or ambiguous plugin version header: {version_values}")
+    observed_version = version_values[0]
+    # The independently SHA-pinned certified ZIP is the source of truth.
+    # Never accept a candidate by version text alone or silently fall back.
+    catalog_path = Path(__file__).resolve().parents[1] / "config/certified-provider-profiles.json"
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    profile = (catalog.get("providers") or {}).get("mcp_adapter", {}).get(observed_version)
+    if not isinstance(profile, dict) or profile.get("version") != observed_version:
+        fail("exact official adapter release profile unavailable")
+    digest = hashlib.sha256(archive_path.read_bytes()).hexdigest()
+    if (digest != profile.get("archive_sha256")
+            or archive_path.stat().st_size != profile.get("archive_bytes")):
+        fail("archive SHA256 or byte length does not match exact certified release")
 
     negotiator = source("includes/Core/McpVersionNegotiator.php")
     orchestrator = source("includes/Transport/Infrastructure/McpWireOrchestrator.php")
@@ -93,7 +106,7 @@ with zipfile.ZipFile(archive_path) as zf:
     if "McpVersionNegotiator::requires_protocol_version_header" not in handler:
         fail("legacy protocol-header policy missing")
 
-    # Upstream 0.7.0 still deliberately collapses WP_Error from a custom
+    # Independently pinned upstream release deliberately collapses WP_Error from a custom
     # transport permission callback to false. MAD4B must preserve the bounded
     # error before this seam; if upstream behavior changes we require review.
     permission_block = re.search(
@@ -117,7 +130,7 @@ with zipfile.ZipFile(archive_path) as zf:
 
 evidence = {
     "contract": "mad4b.mcp-adapter-protocol-matrix.v1",
-    "adapter_version": "0.7.0",
+    "adapter_version": observed_version,
     "legacy_session_revisions": ["2024-11-05", "2025-06-18", "2025-11-25"],
     "modern_per_request_revisions": ["2026-07-28"],
     "legacy_session_required_after_initialize": True,

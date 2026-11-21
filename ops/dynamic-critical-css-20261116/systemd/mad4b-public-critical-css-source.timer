@@ -1,0 +1,12 @@
+[Unit]
+Description=MAD4B source first-party dynamic public-page CSS certification on change
+
+[Timer]
+OnCalendar=*-*-* *:01,09,16,24,31,39,46,54:00 UTC
+RandomizedDelaySec=120
+AccuracySec=60s
+Persistent=true
+Unit=mad4b-public-critical-css-source.service
+
+[Install]
+WantedBy=timers.target

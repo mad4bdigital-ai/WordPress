@@ -23,13 +23,19 @@ function wp_set_current_user( $user_id ) { $GLOBALS['mad4b_test_current_user'] =
 function current_user_can( $cap ) {
     return in_array( $cap, $GLOBALS['mad4b_test_user_caps'][ $GLOBALS['mad4b_test_current_user'] ] ?? array(), true );
 }
-function get_userdata( $user_id ) { $user_id = absint( $user_id ); return ! empty( $GLOBALS['mad4b_test_existing_users'][ $user_id ] ) ? (object) array( 'ID' => $user_id ) : false; }
+function get_userdata( $user_id ) {
+	if (isset($GLOBALS['mad4b_test_userdata_override'])) return $GLOBALS['mad4b_test_userdata_override'];
+	$user_id = absint( $user_id ); return ! empty( $GLOBALS['mad4b_test_existing_users'][ $user_id ] ) ? (object) array( 'ID' => $user_id ) : false;
+}
 function add_filter() {}
 
 final class MAD4B_SCP_Site_Profile {
-	public static function origin_enrolled() { return true; }
-	public static function oauth_enabled() { return true; }
-	public static function user_is_enrolled( $user_id ) { return in_array( absint( $user_id ), $GLOBALS['mad4b_test_enrolled_users'], true ); }
+	public static $origin = true, $oauth = true, $enrollment = true;
+	public static function origin_enrolled() { return self::$origin; }
+	public static function oauth_enabled() { return self::$oauth; }
+	public static function user_is_enrolled( $user_id ) {
+		return self::$enrollment === true ? in_array( absint( $user_id ), $GLOBALS['mad4b_test_enrolled_users'], true ) : self::$enrollment;
+	}
 	public static function site_uuid() { return '11111111-2222-4333-8444-555555555555'; }
 	public static function revision() { return 4; }
 	public static function profile_digest() { return str_repeat( 'a', 64 ); }
@@ -40,14 +46,23 @@ final class MAD4B_SCP_Local_OAuth_Server {
 }
 
 final class MAD4B_SCP_Policy {
-	public static function can_connect_user( $user_id ) { return MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) && false !== get_userdata( $user_id ); }
+	public static $override = 'default';
+	public static function can_connect_user( $user_id ) {
+		return 'default' === self::$override
+			? MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) && false !== get_userdata( $user_id )
+			: self::$override;
+	}
 }
 
 final class MAD4B_SCP_OAuth_Resource_Bridge {
-	public static $verified = true;
+	public static $verified = true, $issuer_override = 'default', $subject_override = 'default';
 	public static function verified_bearer_active() { return self::$verified; }
-	public static function is_trusted_issuer( $issuer ) { return 'https://client.test/oauth/mcp' === $issuer; }
+	public static function is_trusted_issuer( $issuer ) {
+		return self::$issuer_override === 'default'
+			? ( 'https://client.test/oauth/mcp' === $issuer ) : self::$issuer_override;
+	}
 	public static function subject_allowed( $issuer, $subject ) {
+		if ('default' !== self::$subject_override) return self::$subject_override;
 		return self::is_trusted_issuer( $issuer ) && in_array( $subject, array( 'user:7', 'user:8', 'user:9', 'tenant:agency' ), true );
 	}
 }
@@ -133,4 +148,68 @@ $GLOBALS['mad4b_test_current_user'] = 1;
 $result = MAD4B_SCP_OAuth_Subject_User_Bridge::map_verified_subject( null, null, new MAD4B_Test_Request( mad4b_bearer( 'user:7' ) ) );
 mad4b_assert( null === $result && 1 === $GLOBALS['mad4b_test_current_user'], 'unverified bearer is never trusted by the mapper' );
 
+// Original verified bearer and enrollment are exact booleans, not PHP truthy
+// WP_Error or a scalar. A failed check must not map to any WP account.
+$GLOBALS['mad4b_test_enrolled_users'] = array(7,8);
+MAD4B_SCP_OAuth_Resource_Bridge::$verified = true;
+foreach(array(new WP_Error('bearer_unverified'),1,'true',null) as $value) {
+ MAD4B_SCP_OAuth_Resource_Bridge::$verified=$value;
+ $GLOBALS['mad4b_test_current_user']=1;
+ $r=mad4b_map('user:7');
+ mad4b_assert(1===$GLOBALS['mad4b_test_current_user'] && empty(MAD4B_SCP_OAuth_Subject_User_Bridge::mapped_context()),
+  'unverified bearer cannot map current WP principal from a truthy nonboolean');
+}
+MAD4B_SCP_OAuth_Resource_Bridge::$verified=true;
+foreach(array(new WP_Error('origin_unknown'),1,'true',null) as $value) {
+ MAD4B_SCP_Site_Profile::$origin=$value;
+ $r=mad4b_map('user:7');
+ mad4b_assert(is_wp_error($r)&&1===$GLOBALS['mad4b_test_current_user'],
+  'unverified enrolled Site Profile must deny verified bearer remapping');
+}
+MAD4B_SCP_Site_Profile::$origin=true;
+foreach(array(new WP_Error('oauth_unknown'),1,'true',null) as $value) {
+ MAD4B_SCP_Site_Profile::$oauth=$value;
+ $r=mad4b_map('user:7');
+ mad4b_assert(is_wp_error($r)&&1===$GLOBALS['mad4b_test_current_user'],
+  'Site OAuth disabled/unverified must not authorize a user mapping');
+}
+MAD4B_SCP_Site_Profile::$oauth=true;
+foreach(array(new WP_Error('issuer_unknown'),1,'true',null) as $value) {
+ MAD4B_SCP_OAuth_Resource_Bridge::$issuer_override=$value;
+ $r=mad4b_map('user:7');
+ mad4b_assert(is_wp_error($r)&&1===$GLOBALS['mad4b_test_current_user'],
+  'original OAuth issuer policy must be exactly true');
+}
+MAD4B_SCP_OAuth_Resource_Bridge::$issuer_override='default';
+foreach(array(new WP_Error('subject_unknown'),1,'true',null) as $value) {
+ MAD4B_SCP_OAuth_Resource_Bridge::$subject_override=$value;
+ $r=mad4b_map('user:7');
+ mad4b_assert(is_wp_error($r)&&1===$GLOBALS['mad4b_test_current_user'],
+  'original OAuth subject policy must be exactly true');
+}
+MAD4B_SCP_OAuth_Resource_Bridge::$subject_override='default';
+foreach(array(new WP_Error('enrollment_unknown'),1,'true',null) as $value) {
+ MAD4B_SCP_Site_Profile::$enrollment=$value;
+ $r=mad4b_map('user:7');
+ mad4b_assert(is_wp_error($r)&&1===$GLOBALS['mad4b_test_current_user'],
+  'original OAuth enrolled WP user must be exactly verified');
+}
+MAD4B_SCP_Site_Profile::$enrollment=true;
+foreach(array(new WP_Error('connection_unknown'),1,'true',null) as $value) {
+ MAD4B_SCP_Policy::$override=$value;
+ $r=mad4b_map('user:7');
+ mad4b_assert(is_wp_error($r)&&1===$GLOBALS['mad4b_test_current_user'],
+  'original WP account connection capability must be exactly true');
+}
+MAD4B_SCP_Policy::$override='default';
+foreach(array(new WP_Error('wp_user_missing'),(object)array('ID'=>8)) as $value) {
+ $GLOBALS['mad4b_test_userdata_override']=$value;
+ $r=mad4b_map('user:7');
+ mad4b_assert(is_wp_error($r)&&1===$GLOBALS['mad4b_test_current_user'],
+  'WP_Error/mismatched user object may not be mapped as verified subject');
+}
+unset($GLOBALS['mad4b_test_userdata_override']);
+$r=mad4b_map('user:7');
+mad4b_assert(null===$r && 7===$GLOBALS['mad4b_test_current_user'],
+ 'original verified multiuser WordPress OAuth mapping remains available');
 fwrite( STDOUT, "MAD4B tenant-bound multi-user OAuth mapping: PASS\n" );

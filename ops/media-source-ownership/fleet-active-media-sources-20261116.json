@@ -1,0 +1,216 @@
+{
+  "contract": "mad4b.media.fleet-shared-source-hashes.v1",
+  "recorded_utc": "2026-11-16T00:25:45.291120+00:00",
+  "source_criterion": "exact_sha256_match_on_two_existing_authorized_wordpress_runtimes",
+  "files": [
+    {
+      "path": "mu-plugins/mad4b-elementor-copy-coverage.php",
+      "sha256": "ce1bee796b5002d9cd83d57b10bf0a06f9dbaae81c23889f5741d5b7c3703458",
+      "installed_and_byte_identical_on": [
+        "wayfatours.com",
+        "tours.dev.mad4b.com"
+      ],
+      "source_ownership": "active_fleet_shared_media_module",
+      "no_new_deployment_performed": true
+    },
+    {
+      "path": "mu-plugins/mad4b-gallery-cruise-content-coverage-v1.php",
+      "sha256": "69869578fe9865163ba6db843eafe799e1d3a420beaefc03b9a6f363f4741787",
+      "installed_and_byte_identical_on": [
+        "wayfatours.com",
+        "tours.dev.mad4b.com"
+      ],
+      "source_ownership": "active_fleet_shared_media_module",
+      "no_new_deployment_performed": true
+    },
+    {
+      "path": "mu-plugins/mad4b-gallery-itinerary-policy-v1.php",
+      "sha256": "adb5183ffb225480446e3cc1cb6da5d1b2cd09318a7fd75f9a9f1cbcac02ba5d",
+      "installed_and_byte_identical_on": [
+        "wayfatours.com",
+        "tours.dev.mad4b.com"
+      ],
+      "source_ownership": "active_fleet_shared_media_module",
+      "no_new_deployment_performed": true
+    },
+    {
+      "path": "mu-plugins/mad4b-gallery-stage-policy-v1.php",
+      "sha256": "5b5b79ba883c9a80c91312087fd1a42c3f526620673c129c4b8fb9d314909a58",
+      "installed_and_byte_identical_on": [
+        "wayfatours.com",
+        "tours.dev.mad4b.com"
+      ],
+      "source_ownership": "active_fleet_shared_media_module",
+      "no_new_deployment_performed": true
+    },
+    {
+      "path": "mu-plugins/mad4b-licensed-term-media-apply-v1.php",
+      "sha256": "81f9a8bf93a61c44e081ef343748e43d62ff62863eb83629d0c91ce8716e5646",
+      "installed_and_byte_identical_on": [
+        "wayfatours.com",
+        "tours.dev.mad4b.com"
+      ],
+      "source_ownership": "active_fleet_shared_media_module",
+      "no_new_deployment_performed": true
+    },
+    {
+      "path": "mu-plugins/mad4b-media-association-v1.php",
+      "sha256": "706dd7a0204d4111b9dab20246b8abb7ae7e9ddac214495d55f6ce90059b3546",
+      "installed_and_byte_identical_on": [
+        "wayfatours.com",
+        "tours.dev.mad4b.com"
+      ],
+      "source_ownership": "active_fleet_shared_media_module",
+      "no_new_deployment_performed": true
+    },
+    {
+      "path": "mu-plugins/mad4b-media-attribution-registry.php",
+      "sha256": "2f069e26de321edea562ffd422fc9b5d44cd6d043b3b98f4925903ca9f8c4bc0",
+      "installed_and_byte_identical_on": [
+        "wayfatours.com",
+        "tours.dev.mad4b.com"
+      ],
+      "source_ownership": "active_fleet_shared_media_module",
+      "no_new_deployment_performed": true
+    },
+    {
+      "path": "mu-plugins/mad4b-media-gallery-identity-v1.php",
+      "sha256": "bf60cd26f71b345e6d7d6d081e823eafa7e9c0767ee3d3e02a236fe875f46476",
+      "installed_and_byte_identical_on": [
+        "wayfatours.com",
+        "tours.dev.mad4b.com"
+      ],
+      "source_ownership": "active_fleet_shared_media_module",
+      "no_new_deployment_performed": true
+    },
+    {
+      "path": "mu-plugins/mad4b-media-library-discovery-v1.php",
+      "sha256": "902a05ecd7844c5d138afcf63ad65655f07f2d3149e97e2441acac95bcda98f7",
+      "installed_and_byte_identical_on": [
+        "wayfatours.com",
+        "tours.dev.mad4b.com"
+      ],
+      "source_ownership": "active_fleet_shared_media_module",
+      "no_new_deployment_performed": true
+    },
+    {
+      "path": "mu-plugins/mad4b-media-origin-integrity.php",
+      "sha256": "e3431227814c2cf57a5ded924c8badbda7f5d24d4e02a0ebc3ec8820ebbf2e50",
+      "installed_and_byte_identical_on": [
+        "wayfatours.com",
+        "tours.dev.mad4b.com"
+      ],
+      "source_ownership": "active_fleet_shared_media_module",
+      "no_new_deployment_performed": true
+    },
+    {
+      "path": "mu-plugins/mad4b-media-review-hierarchy.php",
+      "sha256": "84414755c45ec323fbc33f1aa14caca22e45860fbce737f5695992caca382965",
+      "installed_and_byte_identical_on": [
+        "wayfatours.com",
+        "tours.dev.mad4b.com"
+      ],
+      "source_ownership": "active_fleet_shared_media_module",
+      "no_new_deployment_performed": true
+    },
+    {
+      "path": "mu-plugins/mad4b-media-rights-content-job-bridge.php",
+      "sha256": "d310facf44fe313cdfc4375e8c8e8b82e54f130d0c917da6601a25347b7d6b3c",
+      "installed_and_byte_identical_on": [
+        "wayfatours.com",
+        "tours.dev.mad4b.com"
+      ],
+      "source_ownership": "active_fleet_shared_media_module",
+      "no_new_deployment_performed": true
+    },
+    {
+      "path": "mu-plugins/mad4b-media-visual-lineage-v1.php",
+      "sha256": "8892b255c96eed107fc6515444611c9bfaa80cdffa639955856c84cb392f09d7",
+      "installed_and_byte_identical_on": [
+        "wayfatours.com",
+        "tours.dev.mad4b.com"
+      ],
+      "source_ownership": "active_fleet_shared_media_module",
+      "no_new_deployment_performed": true
+    },
+    {
+      "path": "mu-plugins/mad4b-page-dependency-cache.php",
+      "sha256": "245ded3122acfdcce62cce2906d3d9ea2bf179634ec8431c3c5fa0ffced459dd",
+      "installed_and_byte_identical_on": [
+        "wayfatours.com",
+        "tours.dev.mad4b.com"
+      ],
+      "source_ownership": "active_fleet_shared_media_module",
+      "no_new_deployment_performed": true
+    },
+    {
+      "path": "mu-plugins/mad4b-tour-gallery-presentation.php",
+      "sha256": "8e05b7258ff3bee3f329f581409796493580ec5c8fd264bd42b346aed801826c",
+      "installed_and_byte_identical_on": [
+        "wayfatours.com",
+        "tours.dev.mad4b.com"
+      ],
+      "source_ownership": "active_fleet_shared_media_module",
+      "no_new_deployment_performed": true
+    },
+    {
+      "path": "mu-plugins/mad4b-tour-gallery-source-repair.php",
+      "sha256": "0e27e153e25de01be508ff643396bafa60102150f139216df236ac906db81e55",
+      "installed_and_byte_identical_on": [
+        "wayfatours.com",
+        "tours.dev.mad4b.com"
+      ],
+      "source_ownership": "active_fleet_shared_media_module",
+      "no_new_deployment_performed": true
+    },
+    {
+      "path": "mu-plugins/mad4b-tour-media-governed-apply.php",
+      "sha256": "26953e9d3e6093017309fe2af983ce87c37043f176fd748d76f15c105e4e3e0a",
+      "installed_and_byte_identical_on": [
+        "wayfatours.com",
+        "tours.dev.mad4b.com"
+      ],
+      "source_ownership": "active_fleet_shared_media_module",
+      "no_new_deployment_performed": true
+    },
+    {
+      "path": "mu-plugins/mad4b-tour-media-portrait-derivative.php",
+      "sha256": "54488af9b34e1e7906b2138996f68258d83d9a8107f7b3869aff6e292ca97de8",
+      "installed_and_byte_identical_on": [
+        "wayfatours.com",
+        "tours.dev.mad4b.com"
+      ],
+      "source_ownership": "active_fleet_shared_media_module",
+      "no_new_deployment_performed": true
+    },
+    {
+      "path": "mu-plugins/mad4b-z-company-media-mcp.php",
+      "sha256": "32f179fe787914a5d56bbba0ec5389359cd3bd9a32f4f929bea4ae171ee2aa50",
+      "installed_and_byte_identical_on": [
+        "wayfatours.com",
+        "tours.dev.mad4b.com"
+      ],
+      "source_ownership": "active_fleet_shared_media_module",
+      "no_new_deployment_performed": true
+    },
+    {
+      "path": "mu-plugins/mad4b-tour-media-reconcile.php",
+      "sha256": "3de6aaef468a11e6e8fab0ba21e738d391caf21b5aef4b1cdf0884bf3cc62b73",
+      "installed_and_byte_identical_on": [
+        "wayfatours.com"
+      ],
+      "source_ownership": "fleet_shared_semantically_equivalent_php_with_eof_whitespace_only",
+      "source_site_php_equivalence": "exact_after_trailing_newlines_removed",
+      "source_site_sha256": "edd8b777a9550586d4b1dd1fe48e8508aa8d74c7efbeea9c790e93d8481f463a",
+      "no_new_deployment_performed": true
+    }
+  ],
+  "active_fleet_sites_verified": [
+    "wayfatours.com",
+    "tours.dev.mad4b.com"
+  ],
+  "not_automatic_new_site_mu_activation": true,
+  "no_rights_approval_created": true,
+  "git_source_root": "wp-content",
+  "source_site_eof_whitespace_equivalence_documented": true
+}

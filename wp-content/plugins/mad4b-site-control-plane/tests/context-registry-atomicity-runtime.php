@@ -16,6 +16,7 @@ class WP_Error {
 	public function get_error_data() { return $this->data; }
 }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
+function current_user_can( $cap ) { return $cap === 'manage_options'; }
 function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $value ) ); }
 function sanitize_text_field( $value ) { return trim( strip_tags( (string) $value ) ); }
 function absint( $value ) { return abs( (int) $value ); }
@@ -302,10 +303,167 @@ $write_scalar = new ReflectionMethod( 'MAD4B_SCP_Context_Authority', 'write_opti
 mad4b_atomic_assert( $write_scalar->isPrivate(), 'Context option persistence helper must remain private.' );
 // PHP 7.4 requires an explicit accessibility override for test-only invocation
 // of a private ReflectionMethod. This does not widen the runtime API surface.
-$write_scalar->setAccessible( true );
+if(PHP_VERSION_ID<80100)$write_scalar->setAccessible( true );
 $GLOBALS['mad4b_fail_option'] = 'scalar_failure';
 foreach ( array( false, '', null ) as $scalar ) if ( $write_scalar->invoke( null, 'scalar_failure', $scalar ) ) throw new RuntimeException( 'Missing option falsely verified as an empty scalar' );
 $GLOBALS['mad4b_fail_option'] = '';
 if ( ! $write_scalar->invoke( null, 'scalar_revision', 7 ) ) throw new RuntimeException( 'Cold string revision did not match the persisted integer' );
+
+// A failed archive/cleanup MUST NOT leave the newly created foreign vault
+// batch behind after the active sources/assets are restored. This is one
+// exact Staging-only, no-external-file-mutation fixture.
+$foreign_source_id=str_repeat('d',64);
+$foreign_asset_id=str_repeat('e',64);
+$foreign_site='22222222-2222-4222-8222-222222222222';
+$foreign_brand=str_repeat('e',32);
+$foreign_source=array_replace($source,array(
+ 'source_id'=>$foreign_source_id,'site_uuid'=>$foreign_site,
+ 'brand_id'=>$foreign_brand,'external_root_id'=>'foreign-owned-folder'));
+$foreign_asset=array_replace($asset,array(
+ 'asset_id'=>$foreign_asset_id,'source_id'=>$foreign_source_id,
+ 'site_uuid'=>$foreign_site,'brand_id'=>$foreign_brand,
+ 'file_id'=>'foreign-owned-file','parent_folder_id'=>'foreign-owned-folder'));
+$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::SOURCES_OPTION][$foreign_source_id]=$foreign_source;
+$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::ASSETS_OPTION][$foreign_asset_id]=$foreign_asset;
+$before_recycle_sources=$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::SOURCES_OPTION];
+$before_recycle_assets=$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::ASSETS_OPTION];
+$before_recycle_revision=MAD4B_SCP_Context_Authority::registry_revision();
+$recycle_plan=MAD4B_SCP_Context_Authority::foreign_recycle_plan();
+mad4b_atomic_assert(!is_wp_error($recycle_plan)
+ && $recycle_plan['foreign_sources']===1 && $recycle_plan['foreign_assets']===1
+ && $recycle_plan['archive_only']===true && $recycle_plan['external_files_deleted']===false,
+ 'Only fully foreign site+brand records may be proposed for bounded archive');
+$recycle_input=array(
+ 'expected_registry_revision'=>$recycle_plan['expected_registry_revision'],
+ 'expected_inventory_sha256'=>$recycle_plan['expected_inventory_sha256']);
+MAD4B_SCP_Audit::$fail_append=true;
+$recycle_audit_failed=MAD4B_SCP_Context_Authority::foreign_recycle_apply($recycle_input);
+mad4b_atomic_assert(is_wp_error($recycle_audit_failed)
+ && $before_recycle_sources===$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::SOURCES_OPTION]
+ && $before_recycle_assets===$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::ASSETS_OPTION]
+ && $before_recycle_revision===MAD4B_SCP_Context_Authority::registry_revision()
+ && !array_key_exists(MAD4B_SCP_Context_Authority::RECYCLE_ARCHIVE_OPTION,$GLOBALS['mad4b_context_options']),
+ 'Audit failure must atomically roll back foreign vault batch together with active registry');
+MAD4B_SCP_Audit::$fail_append=false;
+$GLOBALS['mad4b_fail_option']=MAD4B_SCP_Context_Authority::SOURCES_OPTION;
+$recycle_source_failed=MAD4B_SCP_Context_Authority::foreign_recycle_apply($recycle_input);
+mad4b_atomic_assert(is_wp_error($recycle_source_failed)
+ && $before_recycle_sources===$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::SOURCES_OPTION]
+ && $before_recycle_assets===$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::ASSETS_OPTION]
+ && !array_key_exists(MAD4B_SCP_Context_Authority::RECYCLE_ARCHIVE_OPTION,$GLOBALS['mad4b_context_options']),
+ 'When first registry save fails, archive-only change must still trigger compensation');
+$GLOBALS['mad4b_fail_option']=MAD4B_SCP_Context_Authority::ASSETS_OPTION;
+$recycle_cleanup_failed=MAD4B_SCP_Context_Authority::foreign_recycle_apply($recycle_input);
+mad4b_atomic_assert(is_wp_error($recycle_cleanup_failed)
+ && $before_recycle_sources===$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::SOURCES_OPTION]
+ && $before_recycle_assets===$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::ASSETS_OPTION]
+ && $before_recycle_revision===MAD4B_SCP_Context_Authority::registry_revision()
+ && !array_key_exists(MAD4B_SCP_Context_Authority::RECYCLE_ARCHIVE_OPTION,$GLOBALS['mad4b_context_options']),
+ 'Registry cleanup failure must roll back vault and retain foreign records');
+$GLOBALS['mad4b_fail_option']='';
+$recycle_committed=MAD4B_SCP_Context_Authority::foreign_recycle_apply($recycle_input);
+mad4b_atomic_assert(is_array($recycle_committed)
+ && $recycle_committed['state']==='ARCHIVED_AND_ACTIVE_REGISTRY_CLEAN'
+ && $recycle_committed['archive_verified']===true
+ && $recycle_committed['external_files_deleted']===false
+ && !isset($GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::SOURCES_OPTION][$foreign_source_id])
+ && !isset($GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::ASSETS_OPTION][$foreign_asset_id]),
+ 'Healthy exact native recycle commits once without remote file deletion');
+$archive_status=MAD4B_SCP_Context_Authority::foreign_recycle_archive_status();
+mad4b_atomic_assert($archive_status['integrity_verified']===true
+ && $archive_status['archived_sources']===1 && $archive_status['archived_assets']===1
+ && $archive_status['owner_reassignment_authorized']===false,
+ 'Archive readback is immutable company metadata, never ownership reassignment');
+
+// Strict vault bound: 32 independent historical snapshots are the maximum.
+// A 33rd new exact plan must be denied with no cleanup, audit or external
+// mutation; a malformed already-overfull vault must also fail readback.
+$original_vault=$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::RECYCLE_ARCHIVE_OPTION];
+$existing_batch=reset($original_vault['batches']);
+$full_vault=$original_vault;
+for ($i=1;$i<32;++$i) {
+    $digest=hash('sha256','archived-snapshot-'.$i);
+    $old=$existing_batch;
+    $old['snapshot_sha256']=$digest;
+    $full_vault['batches'][$digest]=$old;
+}
+mad4b_atomic_assert(count($full_vault['batches'])===32,
+    'Exact archive capacity fixture must contain thirty-two distinct snapshots.');
+$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::RECYCLE_ARCHIVE_OPTION]=$full_vault;
+$full_status=MAD4B_SCP_Context_Authority::foreign_recycle_archive_status();
+mad4b_atomic_assert(!empty($full_status['integrity_verified'])
+    && $full_status['batches']===32,
+    'Thirty-two valid exact archive batches must remain readable.');
+$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::SOURCES_OPTION][$foreign_source_id]=$foreign_source;
+$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::ASSETS_OPTION][$foreign_asset_id]=$foreign_asset;
+$full_sources=$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::SOURCES_OPTION];
+$full_assets=$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::ASSETS_OPTION];
+$full_revision=MAD4B_SCP_Context_Authority::registry_revision();
+$full_plan=MAD4B_SCP_Context_Authority::foreign_recycle_plan();
+mad4b_atomic_assert(is_array($full_plan)&&$full_plan['foreign_sources']===1,
+    'New foreign batch plan must still detect the exact registered foreign source.');
+$no_space=MAD4B_SCP_Context_Authority::foreign_recycle_apply(array(
+    'expected_registry_revision'=>$full_plan['expected_registry_revision'],
+    'expected_inventory_sha256'=>$full_plan['expected_inventory_sha256']));
+mad4b_atomic_assert(is_wp_error($no_space)
+    && $no_space->get_error_code()==='mad4b_recycle_vault_capacity'
+    && $full_vault===$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::RECYCLE_ARCHIVE_OPTION]
+    && $full_sources===$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::SOURCES_OPTION]
+    && $full_assets===$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::ASSETS_OPTION]
+    && $full_revision===MAD4B_SCP_Context_Authority::registry_revision(),
+    'Full archive must deny a thirty-third batch without changing existing site records.');
+$overfull=$full_vault;
+$digest=hash('sha256','archive-too-many');
+$old=$existing_batch;$old['snapshot_sha256']=$digest;
+$overfull['batches'][$digest]=$old;
+$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::RECYCLE_ARCHIVE_OPTION]=$overfull;
+$overfull_status=MAD4B_SCP_Context_Authority::foreign_recycle_archive_status();
+mad4b_atomic_assert($overfull_status['integrity_verified']===false,
+    'Overfull imported vault must never report verified archive integrity.');
+// Restore the previous exact archived state and active registry fixture.
+$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::RECYCLE_ARCHIVE_OPTION]=$original_vault;
+unset($GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::SOURCES_OPTION][$foreign_source_id]);
+unset($GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::ASSETS_OPTION][$foreign_asset_id]);
+echo "PASS: CONTEXT_RECYCLE_VAULT_CAPACITY 3 bounded archive cases\n";
+
+// Editing an existing enrolled Google folder must preserve identity and
+// invalidate previous complete scan evidence when recursion changes.
+$folder_before=$GLOBALS['mad4b_context_options'][MAD4B_SCP_Context_Authority::SOURCES_OPTION][$source_id];
+$folder_revision=MAD4B_SCP_Context_Authority::registry_revision();
+$folder_change=array(
+ 'expected_external_root_id'=>$folder_before['external_root_id'],
+ 'expected_source_mode'=>$folder_before['mode'],
+ 'expected_registry_revision'=>$folder_revision,
+ 'write_policy'=>$folder_before['write_policy'],
+ 'recursive'=>false);
+$wrong_folder=MAD4B_SCP_Context_Authority::update_existing_google_folder(
+ $source_id,array_replace($folder_change,array('expected_external_root_id'=>'foreign-folder')));
+mad4b_atomic_assert(is_wp_error($wrong_folder)
+ && $wrong_folder->get_error_code()==='mad4b_context_existing_folder_identity_stale'
+ && $folder_revision===MAD4B_SCP_Context_Authority::registry_revision(),
+ 'A Google folder with a different provider ID must never inherit current registry entry');
+$reduced_scope=MAD4B_SCP_Context_Authority::update_existing_google_folder(
+ $source_id,$folder_change);
+mad4b_atomic_assert(is_array($reduced_scope)
+ && $reduced_scope['source_id']===$source_id
+ && $reduced_scope['external_root_id']===$folder_before['external_root_id']
+ && $reduced_scope['recursive']===false
+ && $reduced_scope['last_scan_complete']===false
+ && $reduced_scope['last_scan_generation']===''
+ && $reduced_scope['status']==='selected'
+ && MAD4B_SCP_Context_Authority::registry_revision()===$folder_revision+1,
+ 'Narrowing an existing folder must retain ownership and require a new complete scan');
+$expand=array_replace($folder_change,array('expected_registry_revision'=>MAD4B_SCP_Context_Authority::registry_revision(),'recursive'=>true));
+$unconfirmed_scope=MAD4B_SCP_Context_Authority::update_existing_google_folder($source_id,$expand);
+mad4b_atomic_assert(is_wp_error($unconfirmed_scope)
+ && $unconfirmed_scope->get_error_code()==='mad4b_context_source_recursive_confirmation_required',
+ 'Expanding the existing Google Drive folder must demand explicit scope confirmation');
+$expanded_scope=MAD4B_SCP_Context_Authority::update_existing_google_folder(
+ $source_id,array_replace($expand,array('recursive_scope_confirmed'=>true)));
+mad4b_atomic_assert(is_array($expanded_scope)
+ && $expanded_scope['recursive']===true
+ && $expanded_scope['last_scan_complete']===false
+ && $expanded_scope['source_id']===$source_id,
+ 'Confirmed wider recursion is allowed only on the existing source, with scan invalidated');
 
 echo "mad4b.site-control-plane.context-registry-atomicity.runtime.v3: PASS\n";

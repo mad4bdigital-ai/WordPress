@@ -3,6 +3,18 @@
 if ( ! defined( 'ABSPATH' ) || ! current_user_can( 'manage_options' ) ) throw new RuntimeException( 'Disposable administrator WordPress required.' );
 require_once ABSPATH . 'wp-admin/includes/admin.php';
 set_current_screen( 'dashboard' );
+$company_operations_cap_before = current_user_can( 'mad4b_manage_company_operations' );
+// The Skills Operations view is intentionally NOT available from manage_options
+// alone. In this disposable-only smoke, model a separately authorized company
+// operator using an in-memory capability filter, never a persistent role grant.
+$company_operations_smoke_cap = static function ( $allcaps, $caps, $args, $user ) {
+    if ( ! empty( $user->ID ) && ! empty( $allcaps['manage_options'] )
+        && in_array( 'mad4b_manage_company_operations', (array) $caps, true ) ) {
+        $allcaps['mad4b_manage_company_operations'] = true;
+    }
+    return $allcaps;
+};
+add_filter( 'user_has_cap', $company_operations_smoke_cap, PHP_INT_MAX, 4 );
 $GLOBALS['menu'] = array(); $GLOBALS['submenu'] = array(); $GLOBALS['admin_page_hooks'] = array(); $GLOBALS['_registered_pages'] = array();
 do_action( 'admin_menu' );
 $assertions = 0; $renders = 0; $requests = 0; $render_failures = array(); $rendered_control_counts = array();
@@ -17,13 +29,21 @@ $pages = array(
 	'mad4b-control-plane' => array( 'MAD4B_SCP_Admin_UI', 'render_page', array( 'overview', 'tasks', 'controls', 'agents', 'approvals', 'mutations', 'consent', 'history', 'audit' ) ),
 	'mad4b-control-plane-security' => array( 'MAD4B_SCP_Security_Forensics', 'render', array( 'overview', 'file-integrity', 'activity-audit', 'plugin-guardian', 'threat-scanner', 'incidents', 'evidence-vault', 'policies' ) ),
 	'mad4b-control-plane-context' => array( 'MAD4B_SCP_Context_Admin_UI', 'render_page', array( 'overview', 'google-drive', 'sources', 'assets', 'quality', 'intelligence' ) ),
+	'mad4b-mcp-principal-mode' => array( 'MAD4B_SCP_Delegation_Mode', 'page', array( '' ) ),
 	'mad4b-control-plane-connection' => array( 'MAD4B_SCP_Connection_Admin_UI', 'render_page', array( 'readiness', 'oauth', 'endpoints', 'isolation', 'certification' ) ),
 	'mad4b-control-plane-chatgpt' => array( 'MAD4B_SCP_ChatGPT_Connection_Admin_UI', 'render_page', array( '' ) ),
 	'mad4b-direct-access-profile' => array( 'MAD4B_SCP_Direct_Profile', 'render_page', array( '' ) ),
+	// Source-owned read-only/admin forms introduced after the original page census.
+	// Render real handlers: do not hide newly registered pages from coverage.
+	'mad4b-content-readiness-alerts' => array( 'MAD4B_SCP_Content_Readiness_Alerts', 'render', array( '' ) ),
+	'mad4b-content-readiness-workflow' => array( 'MAD4B_SCP_Readiness_Workflow_Options', 'render', array( '' ) ),
+	'mad4b-content-completeness' => array( 'MAD4B_SCP_Content_Completeness', 'render', array( '' ) ),
+	'mad4b-frontend-impact-priority' => array( 'MAD4B_SCP_Frontend_Impact_Priority', 'admin', array( '' ) ),
 	'mad4b-control-plane-content-pipeline' => array( 'MAD4B_SCP_Dynamic_Content_Pipeline_Admin', 'render', array( '' ) ),
 	'mad4b-control-plane-site-profile' => array( 'MAD4B_SCP_Site_Profile_Admin', 'render_page', array( '' ) ),
 	'mad4b-control-plane-performance' => array( 'MAD4B_SCP_Admin_Query_Performance_UI', 'render_page', array( '' ) ),
 	'mad4b-control-plane-skills' => array( 'MAD4B_SCP_Skills_Admin_UI', 'render_page', array( '' ) ),
+	'mad4b-skills-operations' => array( 'MAD4B_SCP_Skills_Admin_UI', 'render_operations_page', array( '' ) ),
 	'mad4b-browser-acceptance' => array( 'MAD4B_SCP_Browser_Acceptance_Admin_UI', 'render_page', array( '' ) ),
 	'mad4b-control-plane-oauth-canary' => array( 'MAD4B_SCP_Local_OAuth_Browser_Canary', 'render_page', array( '' ) ),
 	'mad4b-runtime-components' => array( 'MAD4B_SCP_Runtime_Components_Admin_UI', 'render_page', array( 'overview', 'core', 'plugins', 'mu-plugins', 'drop-ins', 'themes', 'astra', 'maintenance' ) ),
@@ -35,6 +55,9 @@ $pages = array(
 	'mad4b-growth-providers' => array( 'MAD4B_SCP_G5_External_Providers', 'render', array( '' ) ),
 	'mad4b-ai-knowledge-workspace' => array( 'MAD4B_SCP_G6_Acceptance', 'render', array( '' ) ),
 	'mad4b-plugin-deployment' => array( 'MAD4B_SCP_Cross_Plugin_Admin', 'render', array( '' ) ),
+	// Register and execute the actual DFSB environment form smoke; it is now a
+	// canonical central Admin Route, not an untracked direct submenu.
+	'mad4b-dfsb-environments' => array( 'MAD4B_SCP_DFSB_Environment_Policy', 'render', array( '' ) ),
     // These three pages were registered through the shared Admin Route
     // Registry; smoke each real page as soon as it becomes discoverable.
     'mad4b-market-profiles' => array( 'MAD4B_SCP_Market_Profiles', 'admin_page', array( '' ) ),
@@ -153,6 +176,7 @@ $admin_id = get_current_user_id();
 $deny_die = static function () { return static function () { throw new RuntimeException( 'expected_permission_denial' ); }; };
 add_filter( 'wp_die_handler', $deny_die, PHP_INT_MAX );
 wp_set_current_user( 0 );
+$check( ! current_user_can( 'mad4b_manage_company_operations' ), 'Revoked actor never inherits disposable company operations authorization.' );
 $check( ! MAD4B_SCP_Admin_Workspace::inventory(), 'Revoked actor receives no workspace inventory.' );
 foreach ( $pages as $slug => $page ) {
 	$_GET = array( 'page' => $slug ); $_POST = array(); $_REQUEST = $_GET;
@@ -163,6 +187,10 @@ foreach ( $pages as $slug => $page ) {
 	$check( $denied || '' === trim( $html ), $slug . ': unauthorized direct renderer exposes no settings' );
 }
 wp_set_current_user( $admin_id ); remove_filter( 'wp_die_handler', $deny_die, PHP_INT_MAX );
+// Release the disposable-only operator grant; the tested product must not
+// grant this capability to a normal administrator automatically.
+remove_filter( 'user_has_cap', $company_operations_smoke_cap, PHP_INT_MAX );
+$check( current_user_can( 'mad4b_manage_company_operations' ) === $company_operations_cap_before, 'The disposable test must not persist an operator capability.' );
 update_option( 'home', $old_home ); update_option( 'siteurl', $old_siteurl );
 if ( false === $before_profile ) delete_option( MAD4B_SCP_Site_Profile::OPTION ); else update_option( MAD4B_SCP_Site_Profile::OPTION, $before_profile );
 $check( ! $render_failures, 'All views must pass: ' . implode( ' | ', array_unique( $render_failures ) ) );

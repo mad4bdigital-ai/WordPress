@@ -7,6 +7,7 @@ dispatch = (root / 'includes' / 'class-mad4b-scp-enrollment-dispatch.php').read_
 servers = (root / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8') + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
 servers += (root / 'includes' / 'class-mad4b-scp-server-core-catalog.php').read_text(encoding='utf-8')
 abilities = (root / 'includes' / 'class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
+registration_trait = (root / 'includes' / 'trait-mad4b-scp-abilities-registration.php').read_text(encoding='utf-8')
 write_authority = (root / 'includes' / 'class-mad4b-scp-staging-write-authority.php').read_text(encoding='utf-8')
 oauth = (root / 'includes' / 'class-mad4b-scp-oauth-resource-bridge.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
@@ -379,15 +380,34 @@ for marker in [
     "MAD4B_SCP_Enrollment_Dispatch::discover",
     "MAD4B_SCP_Enrollment_Dispatch::info",
     "MAD4B_SCP_Enrollment_Dispatch::execute",
-    "'expected_registration_digest'",
-    "'expected_dispatch_policy_digest'",
-    "'expected_input_schema_sha256'",
     "MAD4B_SCP_Remote_Operation_Parity::reconciliation_status( $operation_id )",
     "'mad4b.chatgpt-enrollment-mutation-reconciliation.v1'",
     "'blind_retry_allowed' => false",
 ]:
     if marker not in abilities:
         raise SystemExit(f'canonical core Enrollment dispatcher invariant missing: {marker}')
+# Ability registration and its schemas were extracted into the first-party
+# registration Trait. Preserve the actual loader/use/call and exact required
+# enrollment pin fields. A fixture-only string elsewhere is not sufficient.
+for marker in (
+    "require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php';",
+    "use MAD4B_SCP_Abilities_Registration_Trait;",
+    "$this->register_source_abilities();",
+):
+    if marker not in abilities:
+        raise SystemExit(f"core Enrollment registration Trait not loaded: {marker}")
+for marker in (
+    "trait MAD4B_SCP_Abilities_Registration_Trait",
+    "private function register_source_abilities()",
+    "$this->add( 'mad4b/enrollment-execute'",
+    "'expected_registration_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64",
+    "'expected_dispatch_policy_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64",
+    "'expected_input_schema_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64",
+    "array( 'operation_id', 'expected_registration_digest', 'expected_dispatch_policy_digest', 'expected_input_schema_sha256' )",
+):
+    if marker not in registration_trait:
+        raise SystemExit(f"core Enrollment registration Trait missing exact pin: {marker}")
+
 if "MAD4B_SCP_Enrollment_Dispatch::boot();" in dispatch:
     raise SystemExit('Enrollment policy helper must not self-register abilities after core dispatcher adoption')
 

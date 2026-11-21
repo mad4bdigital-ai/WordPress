@@ -1,0 +1,12 @@
+[Unit]
+Description=Automatically requalify Wayfatours Critical CSS after asset updates
+
+[Timer]
+OnCalendar=*-*-* *:02/5:00 UTC
+RandomizedDelaySec=15
+AccuracySec=30s
+Persistent=true
+Unit=mad4b-critical-css-wayfa.service
+
+[Install]
+WantedBy=timers.target

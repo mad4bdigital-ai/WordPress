@@ -1,0 +1,45 @@
+{
+  "contract": "mad4b.company-owned-source-and-original305-diagnostics-parity.v1",
+  "observed_at_utc": "2026-11-16T03:48:53.629007+00:00",
+  "git_head_observed": "1d9c203ba1246ee02faf37f659f2b44b549a2b1d",
+  "source_relationship": "Tours.dev canonical; Wayfatours explicitly independent production overlay",
+  "sources": {
+    "Tours.dev/current-media-owner": {
+      "relative_path": "wp-content/mu-plugins/mad4b-universal-media-readiness.php",
+      "sha256": "6c9886eba4c26cce45951363bf46e3a78da1db6a6c794a7447d096be72c9b4a5",
+      "matched_runtime_source_readback": true
+    },
+    "Wayfatours/media-owner-overlay": {
+      "relative_path": "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-universal-media-readiness.php",
+      "sha256": "ad673d68ed3948cebde90ff4f0769a83ecd2469c8c8c0229340617d05ab67666",
+      "matched_runtime_source_readback": true
+    },
+    "Wayfatours/media-composite-overlay": {
+      "relative_path": "ops/site-company-overlays/wayfatours/media-runtime/wp-content/mu-plugins/mad4b-media-composite-integrity.php",
+      "sha256": "c5f56f47baf7714884881bdbdd2b7bcd83aaf82b56e1f881dc8b36deffff0b12",
+      "matched_runtime_source_readback": true
+    },
+    "Wayfatours/SMTP-provider-overlay": {
+      "relative_path": "ops/site-company-overlays/wayfatours/configuration-runtime/wp-content/mu-plugins/mad4b-configuration-jobs/providers.php",
+      "sha256": "e3da8572c525540d0561285af4a3866d77548c39f5721ebf74d0d86a307ea46a",
+      "matched_runtime_source_readback": true
+    },
+    "Wayfatours/notice-provider-overlay": {
+      "relative_path": "ops/site-company-overlays/wayfatours/configuration-runtime/wp-content/mu-plugins/mad4b-configuration-notice-revalidation.php",
+      "sha256": "184d0415fe8141ae7d669a5b3f1f85be5766183a743c82e577054653355193ef",
+      "matched_runtime_source_readback": true
+    },
+    "Original305/read-only-observer": {
+      "relative_path": "ops/native-source-publisher-v1/original305_runtime_observer_v1.py",
+      "sha256": "a6a5530aa461d8713fcc8a7f1517bfb3ef87d68a256b67468cf61dc0a9c59508",
+      "matched_runtime_source_readback": true
+    }
+  },
+  "site_write_performed": false,
+  "origin_305_signer_invoked": false,
+  "origin_305_hold_deleted": false,
+  "signed_master_incident_review_received": false,
+  "site_release_authorized": false,
+  "previous_wayfatours_notice_sha256": "13d8d4d3716d1ad5a1664d6d16c7aec189f9060f275a96eef1e15402eac46aff",
+  "release_state": "SOURCE_PARITY_REVIEWED__ORIGINAL_INCIDENT_AND_SITE_RELEASE_PENDING"
+}

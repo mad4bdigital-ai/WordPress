@@ -1,0 +1,12 @@
+[Unit]
+Description=MAD4B site-local full WordPress Cron scheduler for source
+
+[Timer]
+OnCalendar=*-*-* *:01/5:00 UTC
+RandomizedDelaySec=20s
+AccuracySec=25s
+Persistent=true
+Unit=mad4b-host-local-wp-cron@source.service
+
+[Install]
+WantedBy=timers.target

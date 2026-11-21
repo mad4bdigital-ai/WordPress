@@ -2,7 +2,15 @@
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
-abilities = (root / 'includes/class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
+abilities_facade = (root / 'includes/class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
+abilities_registration = (root / 'includes/trait-mad4b-scp-abilities-registration.php').read_text(encoding='utf-8')
+# Preserve the real first-party registration ownership: a free-standing
+# declaration without the required facade loader is not evidence.
+assert "require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php';" in abilities_facade
+assert 'use MAD4B_SCP_Abilities_Registration_Trait;' in abilities_facade
+assert 'trait MAD4B_SCP_Abilities_Registration_Trait' in abilities_registration
+assert "do_action( 'mad4b_scp_abilities_registered', $this );" in abilities_registration
+abilities = abilities_facade + abilities_registration
 overrides = (root / 'includes/class-mad4b-scp-governed-ability-overrides.php').read_text(encoding='utf-8')
 plugin = (root / 'includes/class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 runtime = (root / 'tests/runtime-readonly-diagnostics-smoke.php').read_text(encoding='utf-8')

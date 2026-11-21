@@ -61,6 +61,11 @@ function dbDelta( $statement ) {
 final class MAD4B_Test_Schema_WPDB {
 	public $prefix = 'wp_';
 	public $missing_table = '';
+    // The real migration checks and alters this column after dbDelta; track
+    // it rather than pretending all schema DDL automatically succeeds.
+    public $agent_nullable = false;
+    public $agent_alter_count = 0;
+    public $reject_agent_alter = false;
 
 	public function get_charset_collate() { return 'DEFAULT CHARACTER SET utf8mb4'; }
 	public function prepare( $query, ...$args ) {
@@ -76,6 +81,7 @@ final class MAD4B_Test_Schema_WPDB {
 	}
 	public function get_col( $query, $column = 0 ) {
 		return array(
+            'mutation_id', 'principal_type', 'agent_id', 'wp_user_id', 'subject_fingerprint',
 			'candidate_binding_contract', 'candidate_sha', 'build_fingerprint', 'binding_environment',
 			'binding_host', 'site_uuid', 'site_profile_revision', 'site_profile_digest', 'bound_at',
 			'job_id', 'state', 'stage', 'current_artifact_id', 'job_revision', 'updated_at',
@@ -114,6 +120,7 @@ final class MAD4B_Test_Schema_WPDB {
 	public function get_results( $query, $output = null ) {
 		$rows = array();
 		foreach ( array(
+            'mutation_id', 'principal_created',
 			'job_id', 'event_id', 'job_sequence', 'work_id', 'scope_idempotency',
 			'outbox_id', 'provider_idempotency', 'provider_event',
 			'artifact_id', 'job_type_version', 'edge_id', 'artifact_relation',
@@ -127,7 +134,24 @@ final class MAD4B_Test_Schema_WPDB {
 		}
 		return $rows;
 	}
-	public function query( $query ) { return true; }
+    public function get_row( $query, $output = null ) {
+        if ( 0 === strpos( (string) $query, 'SHOW COLUMNS FROM ' )
+            && false !== strpos( (string) $query, 'wp_mad4b_scp_mutations' )
+            && false !== strpos( (string) $query, "LIKE 'agent_id'" ) ) {
+            return array( 'Field' => 'agent_id', 'Null' => $this->agent_nullable ? 'YES' : 'NO' );
+        }
+        return null;
+    }
+    public function query( $query ) {
+        if ( 0 === strpos( (string) $query, 'ALTER TABLE ' )
+            && false !== strpos( (string) $query, 'wp_mad4b_scp_mutations' )
+            && false !== strpos( (string) $query, 'MODIFY COLUMN agent_id bigint(20) unsigned NULL' ) ) {
+            if ( $this->reject_agent_alter ) return false;
+            ++$this->agent_alter_count;
+            $this->agent_nullable = true;
+        }
+        return true;
+    }
 }
 $GLOBALS['wpdb'] = new MAD4B_Test_Schema_WPDB();
 
@@ -152,6 +176,8 @@ function mad4b_schema_reset_fixture( $version ) {
 	$GLOBALS['mad4b_schema_fail_option'] = '';
 	$GLOBALS['mad4b_schema_fail_final_receipt'] = false;
 	$GLOBALS['wpdb']->missing_table = '';
+    $GLOBALS['wpdb']->agent_nullable = false;
+    $GLOBALS['wpdb']->reject_agent_alter = false;
 	mad4b_schema_reset_cache();
 }
 function mad4b_schema_receipt() {
@@ -172,6 +198,18 @@ function mad4b_schema_assert_receipt( $from, $run_type ) {
 	mad4b_schema_assert( 64 === strlen( (string) ( $receipt['physical_integrity_sha256'] ?? '' ) ), 'Receipt physical-integrity digest missing.', $receipt );
 }
 
+// A blocked NULLability DDL must stop before any migration readiness.
+// This is a real effect in MariaDB and must never be mocked as a PASS.
+mad4b_schema_reset_fixture( 6 );
+$GLOBALS['wpdb']->reject_agent_alter = true;
+$ddl_denied = MAD4B_SCP_Schema::install_or_upgrade();
+mad4b_schema_assert( is_wp_error( $ddl_denied )
+    && 'mad4b_principal_agent_nullable_failed' === $ddl_denied->get_error_code(),
+    'Missing mutation agent_id DDL must fail closed.', $ddl_denied );
+mad4b_schema_assert( 6 === (int) get_option( MAD4B_SCP_Schema::OPTION, 0 )
+    && ! MAD4B_SCP_Schema::is_ready(),
+    'Failed NULLability DDL cannot advance schema readiness.' );
+
 // v6 -> current exact additive upgrade.
 mad4b_schema_reset_fixture( 6 );
 $before_calls = $GLOBALS['mad4b_schema_dbdelta_calls'];
@@ -181,6 +219,8 @@ mad4b_schema_assert( MAD4B_SCP_Schema::VERSION === (int) get_option( MAD4B_SCP_S
 mad4b_schema_assert( MAD4B_SCP_Schema::is_ready(), 'Schema must be ready only after exact receipt/token persistence.' );
 mad4b_schema_assert_receipt( 6, 'upgrade' );
 mad4b_schema_assert( $GLOBALS['mad4b_schema_dbdelta_calls'] > $before_calls, 'Initial upgrade must execute dbDelta.' );
+mad4b_schema_assert( $GLOBALS['wpdb']->agent_nullable && $GLOBALS['wpdb']->agent_alter_count > 0,
+    'Migration fixture must observe an explicit nullable mutation principal DDL.' );
 
 // Healthy repeated migration is a no-op and does not repeat DDL.
 $healthy_calls = $GLOBALS['mad4b_schema_dbdelta_calls'];

@@ -1,0 +1,24 @@
+{
+  "contract": "mad4b.pr942.qa31-company-master-security-successor.v1",
+  "historical_qa31_ledger": "governance/release-parity/qa31-commerce-staging-source-parity.json",
+  "historical_qa31_sha256": "24f82e7898d4523bea658f4805329ea62cde807c54e63ecd0b8fe98b43fe1819",
+  "path": "includes/class-mad4b-scp-company-master-admin.php",
+  "historical_state": "STAGING_ONLY",
+  "historical_staging_sha256": "0cfe68ea11598587a9cdaeed2313859cb95dff893b3972d2bb6a593fd2af4e4d",
+  "candidate_blob_sha": "f5f3dc802c4f1931b258257920b908a4f3b6bb59",
+  "candidate_sha256": "e5da7ea83d8c2f0290dfddfcf9c52bc585dd8a24db12bb844cde04bbb8766fff",
+  "candidate_bytes": 25919,
+  "required_regression": "tests/source-unification-review-contract.py",
+  "regressions": [
+    "wp-content/plugins/mad4b-site-control-plane/tests/source-convergence-live-safety-regression.php",
+    "tests/source-unification-review-contract.py"
+  ],
+  "semantic_review": "Company Master Admin role creation is constrained to current caller capabilities; explicitly denies operator/admin escalation, sensitive system capabilities and foreign role assignment. Tests check normal bounded role allowed, forbidden operator, administrator and manage_options denied and caller-owned subset enforced.",
+  "authorizing": false,
+  "production_authorized": false,
+  "host_grant_issued": false,
+  "live_evidence_required": true,
+  "source_promotion_approved": false,
+  "original_qa31_ledger_immutable": true,
+  "release_gate": "BLOCKED_SOURCE_RECONCILIATION"
+}

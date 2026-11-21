@@ -1,0 +1,153 @@
+{
+  "contract": "mad4b.company-experience-unity-verified.v1",
+  "observed_utc": "2026-11-17T03:24:25.352867+00:00",
+  "state": "PASS_VERIFIED_FOR_TESTED_SURFACES",
+  "sites": {
+    "source": {
+      "site_uuid": "e5e64bca-ed62-48d2-b2b3-dff693cd702a",
+      "active_languages": [
+        "en",
+        "es",
+        "de",
+        "fr",
+        "ar",
+        "it"
+      ],
+      "public_http_200_routes": 18,
+      "published_tours_geo_held_by_language": {
+        "en": 0,
+        "es": 0,
+        "de": 0,
+        "fr": 0,
+        "ar": 0,
+        "it": 0
+      },
+      "approved_header_country_ids_by_language": {
+        "en": [
+          665
+        ],
+        "es": [
+          665
+        ],
+        "de": [
+          665
+        ],
+        "fr": [
+          665
+        ],
+        "ar": [
+          665
+        ],
+        "it": [
+          665
+        ]
+      },
+      "archive_price_marker_count_by_language": {
+        "ar": 10,
+        "de": 10,
+        "en": 10,
+        "es": 10,
+        "fr": 10,
+        "it": 10
+      },
+      "combined_filter_and_home_consistent": true,
+      "service_active": [
+        "tours",
+        "properties"
+      ],
+      "operating_countries": [
+        665,
+        2759,
+        2764,
+        2769
+      ],
+      "catalog_countries": [
+        665,
+        2759,
+        2764,
+        2769
+      ],
+      "pricing_workspace_available": true
+    },
+    "wayfatours": {
+      "site_uuid": "a3a7cc36-db7e-4a14-8456-b41857def05c",
+      "active_languages": [
+        "en",
+        "es"
+      ],
+      "public_http_200_routes": 6,
+      "published_tours_geo_held_by_language": {
+        "en": 0,
+        "es": 0
+      },
+      "approved_header_country_ids_by_language": {
+        "en": [
+          665
+        ],
+        "es": [
+          665
+        ]
+      },
+      "archive_price_marker_count_by_language": {
+        "en": 10,
+        "es": 10
+      },
+      "combined_filter_and_home_consistent": true,
+      "service_active": [
+        "tours"
+      ],
+      "operating_countries": [
+        665
+      ],
+      "catalog_countries": [
+        665,
+        2759,
+        2764,
+        2769
+      ],
+      "pricing_workspace_available": true
+    }
+  },
+  "unit_tests": {
+    "country_pricing": 32,
+    "home": 10,
+    "experience": 5,
+    "passed": 47,
+    "failed": 0
+  },
+  "country_scope_sha256_source_target": "1beb1dc8f897c747f977dd469dbe0b93f45ead95a81b968c54a688329ff9b4bf",
+  "semantic_p1": 0,
+  "semantic_p2": 0,
+  "intentional_wayfa_draft_tour_ids": [
+    60619,
+    60621,
+    60625,
+    60663,
+    60665
+  ],
+  "related_published_draft_tour_rate_count": 16,
+  "source_target_company_override_code_drifts": [
+    "001-mad4b-shared-presentation-provider.php",
+    "179-wayfa-program-select-scope.php",
+    "mad4b-destination-cards/company-destination-ajax-bridge.php"
+  ],
+  "residual_advisories": [
+    {
+      "key": "filter:66104",
+      "kind": "stale_fallback_taxonomy_only"
+    },
+    {
+      "key": "tour-rates",
+      "kind": "published_rate_parent_intentionally_held_by_country_scope"
+    },
+    {
+      "key": "programs",
+      "kind": "multi_program_positive_test_unavailable"
+    }
+  ],
+  "original313_release_certified": false,
+  "canonical_master_merged": false,
+  "other_companies_certified": false,
+  "browser_ajax_mobile_accessibility_end_to_end_certified": false,
+  "full_live_http_evidence_path": "/opt/mad4b-backups/geographic-country-wpml-fix-20261117/tests/experience-unity-live.json"
+}

@@ -232,14 +232,14 @@ $qa=MAD4B_SCP_Content_Intelligence_Pipeline::append_qa_bundle(array(
 ));
 $check(is_array($qa) && false===$qa['pass'],'FinalQA averaged away a hard blocker');
 $check(false===$qa['can_publish'] && false===$qa['publication_authorized'],'QA bundle created publish authority');
-$check($qa['quality_evidence_status']==='NEEDS_INDEPENDENT_REVIEW'
+$check($qa['quality_evidence_status']==='QA_BLOCKED'
     &&$qa['independent_review_certified']===false,
     'FinalQA source-only quality pass cannot impersonate independent evidence');
 $final=MAD4B_SCP_Artifacts::$rows[$qa['final_qa_artifact_id']];
 $check(false===$final['payload']['pass'],'FinalQA artifact pass mismatch');
 $check(false===$final['payload']['can_publish'],'FinalQA artifact unexpectedly publishable');
 $check($final['payload']['independent_review_certified']===false
-    &&$final['payload']['quality_evidence_status']==='NEEDS_INDEPENDENT_REVIEW',
+    &&$final['payload']['quality_evidence_status']==='QA_BLOCKED',
     'FinalQA payload carries explicit independent review blocker');
 $check($writer_profile_fingerprint===$final['payload']['writer_profile_fingerprint'],'FinalQA lost WriterProfile lineage');
 

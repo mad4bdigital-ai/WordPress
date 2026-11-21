@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TESTS = (
     ("chatgpt-file-transfer-permission-runtime.php", "CHATGPT_TRANSFER_PERMISSION_RUNTIME: PASS"),
     ("chatgpt-file-transfer-roundtrip-runtime.php", "CHATGPT_TRANSFER_ROUNDTRIP: PASS"),
-    ("staging-write-grant-reviewed-inventory-runtime.php", "PASS: 38 Feature 007 plus 3 native Staging pairs"),
+    ("staging-write-grant-reviewed-inventory-runtime.php", "PASS: 38 reviewed Staging pairs classified by execution purpose; shared company providers match Production, no grants"),
 )
 
 for name, marker in TESTS:

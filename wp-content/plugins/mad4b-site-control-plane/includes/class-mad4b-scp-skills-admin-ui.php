@@ -9,6 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Skills_Admin_UI {
 	const PAGE_SLUG = 'mad4b-control-plane-skills';
+	const OPERATIONS_PAGE_SLUG = 'mad4b-skills-operations';
 	private static $booted = false;
 
 	public static function boot() {
@@ -19,6 +20,17 @@ final class MAD4B_SCP_Skills_Admin_UI {
 	}
 
 	public static function register_menu() {
+		// Separate company-scoped read workspace; NEVER loosen the administrator
+		// Skill editor, export, POST or script gate below.
+		add_menu_page(
+			__( 'MAD4B Operations & Skills', 'mad4b-site-control-plane' ),
+			__( 'MAD4B Operations', 'mad4b-site-control-plane' ),
+			'mad4b_manage_company_operations',
+			self::OPERATIONS_PAGE_SLUG,
+			array( __CLASS__, 'render_operations_page' ),
+			'dashicons-clipboard',
+			81
+		);
 		add_submenu_page(
 			MAD4B_SCP_Admin_UI::PAGE_SLUG,
 			__( 'MAD4B Skills', 'mad4b-site-control-plane' ),
@@ -30,11 +42,219 @@ final class MAD4B_SCP_Skills_Admin_UI {
 	}
 
 	/**
+	 * Compare canonical logical identities with company installed Skills.
+	 * This is non-authorizing advisory evidence; optional company packs are not
+	 * forced onto every tenant and a missing package is not a write grant.
+	 */
+	public static function coverage_plan( array $skills, array $manifest, $cruise_applicable = false ) {
+		$catalog = array();
+		foreach ( $skills as $row ) {
+			if ( ! is_array( $row ) ) continue;
+			$key = (string)( $row['level'] ?? '' ) . ':' . (string)( $row['target'] ?? '' ) . ':' . (string)( $row['name'] ?? '' );
+			$catalog[ $key ] = ! empty( $row['enabled'] );
+		}
+		$required = array();
+		$optional = array();
+		$present = 0;
+		foreach ( array_slice( $manifest, 0, 150 ) as $item ) {
+			if ( ! is_array( $item ) ) continue;
+			$name = (string)( $item['name'] ?? '' );
+			$key = (string)( $item['level'] ?? '' ) . ':' . (string)( $item['target'] ?? '' ) . ':' . $name;
+			$specialist = 0 === strpos( $name, 'nile-' );
+			$needed = ! empty( $item['enabled'] ) && ( ! $specialist || $cruise_applicable );
+			if ( ! $needed && ! empty( $catalog[ $key ] ) ) { ++$present; continue; }
+			if ( ! empty( $catalog[ $key ] ) ) { ++$present; continue; }
+			if ( $needed ) $required[] = $key;
+			else $optional[] = $key;
+		}
+		return array(
+			'contract' => 'mad4b.skill-company-coverage-plan.v1',
+			'read_only' => true,
+			'execution_allowed' => false,
+			'manifest_rows' => count( $manifest ),
+			'available_rows' => $present,
+			'missing_required' => $required,
+			'missing_optional' => $optional,
+			'cruise_applicable' => (bool)$cruise_applicable,
+			'next_action' => $required ? 'inspect_exact_seed_pack_before_governed_reconcile' : 'none',
+		);
+	}
+
+	/** Company-scoped, read-only operational view: never a replacement for a grant. */
+	public static function operations_snapshot() {
+		if ( ! current_user_can( 'mad4b_manage_company_operations' ) ) {
+			return new WP_Error( 'mad4b_master_skills_view_denied', 'Company operations permission required.', array( 'status' => 403 ) );
+		}
+		$skills = MAD4B_SCP_Skill_Registry::list_skills();
+		$status = MAD4B_SCP_Skill_Registry::status();
+		$live = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' )
+			? MAD4B_SCP_Skill_Runtime_Certification::current_status() : array();
+		$persisted = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' )
+			? MAD4B_SCP_Skill_Runtime_Certification::persisted_status() : array();
+		$checks = isset( $live['checks'] ) && is_array( $live['checks'] ) ? $live['checks'] : array();
+		$dimensions = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' )
+			&& method_exists( 'MAD4B_SCP_Skill_Runtime_Certification', 'capability_readiness' )
+			? MAD4B_SCP_Skill_Runtime_Certification::capability_readiness( $checks ) : array();
+		$profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
+		$manifest = array();
+		if ( defined( 'MAD4B_SCP_DIR' ) ) {
+			$path = MAD4B_SCP_DIR . 'config/skill-seed-manifest.json';
+			if ( is_file( $path ) ) {
+				$data = json_decode( (string) file_get_contents( $path ), true );
+				if ( is_array( $data ) && 'mad4b.skill-seed-manifest.v1' === ( $data['contract'] ?? '' )
+					&& is_array( $data['skills'] ?? null ) ) $manifest = $data['skills'];
+			}
+		}
+		$coverage = self::coverage_plan( $skills, $manifest,
+			function_exists( 'post_type_exists' ) && post_type_exists( 'properties' ) );
+		$role = get_role( 'master_admin' );
+		$role_caps = $role && isset( $role->capabilities ) ? (array) $role->capabilities : array();
+		$metadata = array();
+		foreach ( array_slice( $skills, 0, 120 ) as $item ) {
+			if ( ! is_array( $item ) ) continue;
+			$metadata[] = array(
+				'name' => (string) ( $item['name'] ?? '' ),
+				'level' => (string) ( $item['level'] ?? '' ),
+				'target' => (string) ( $item['target'] ?? '' ),
+				'enabled' => ! empty( $item['enabled'] ),
+			);
+		}
+		return array(
+			'contract' => 'mad4b.master-admin-skill-operations.v1',
+			'read_only' => true,
+			'authority_effect' => 'none',
+			'company_origin' => home_url( '/' ),
+			'profile_skills_enabled' => ! empty( $profile['skills_enabled'] ),
+			'catalog_count' => count( $skills ),
+			'catalog_enabled_count' => count( array_filter( $skills, static function( $s ) { return ! empty( $s['enabled'] ); } ) ),
+			'catalog_enabled' => ! empty( $status['catalog_enabled'] ),
+			'coverage' => $coverage,
+			'capability_readiness' => $dimensions,
+			'local_operations_ready' => ! empty( $dimensions['local_operations_ready'] )
+				&& ! empty( $role_caps['mad4b_manage_company_operations'] ),
+			'app_binding_optional_for_local_operations' => true,
+			'live_blockers' => array_values( (array) ( $live['blockers'] ?? array() ) ),
+			'historical_certificate_ready' => ! empty( $persisted['ready'] ),
+			'historical_certificate_build_current' => ! empty( $persisted['build_identity_current'] ),
+			'role_audit' => array(
+				'master_admin_role_exists' => (bool) $role,
+				'company_operations_capability' => ! empty( $role_caps['mad4b_manage_company_operations'] ),
+				'sensitive_manage_options' => ! empty( $role_caps['manage_options'] ),
+				'sensitive_manage_woocommerce' => ! empty( $role_caps['manage_woocommerce'] ),
+				'role_review_required' => ! empty( $role_caps['manage_options'] ) || ! empty( $role_caps['manage_woocommerce'] ),
+			),
+			'skills' => $metadata,
+			'truncated' => count( $skills ) > 120,
+		);
+	}
+
+	/** Exact-code explanation, never a self-grant or automatic repair. */
+	public static function explain_operations_blocker( $code ) {
+		$hints = array(
+			'profile_app_mapping_mismatch' => 'Optional: register a verified company ChatGPT App only if external MCP projection is needed. Local Skills and Master Admin operations work independently.',
+			'site_profile_skills_disabled' => 'Check current Site Profile state before touching feature flags; historical certificates can be stale.',
+			'skill_editor_disabled' => 'Production Skill authoring is disabled by policy, not necessarily the read catalog.',
+			'seed_pack_ready' => 'Review exact canonical Skill seed digests before authorized reconciliation.',
+			'provider_reconciliation_ready' => 'Review currently installed provider Skills and active provider capabilities.',
+			'read_abilities_registered' => 'Verify authenticated WordPress Abilities registration and original MCP read bridge.',
+			'storage_writable' => 'Check tenant-owned Skill storage and audit readiness without bypassing protections.',
+		);
+		return isset( $hints[ $code ] ) ? $hints[ $code ] :
+			'Inspect the exact native owner, runtime evidence and required approval before planning a repair.';
+	}
+
+	public static function render_operations_page() {
+		if ( ! current_user_can( 'mad4b_manage_company_operations' ) ) {
+			wp_die( esc_html__( 'Company operations permission required.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
+		}
+		$view = self::operations_snapshot();
+		if ( is_wp_error( $view ) ) wp_die( esc_html( $view->get_error_message() ), '', array( 'response' => 403 ) );
+		$d = $view['capability_readiness'];
+		echo '<div class="wrap"><h1>' . esc_html__( 'MAD4B Operations & Skills', 'mad4b-site-control-plane' ) . '</h1>';
+		echo '<p>' . esc_html__( 'Company-local read-only operating center. This page never activates Skills, grants permissions, changes site settings or executes remote plans.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<p><strong>' . esc_html__( 'Company:', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html( $view['company_origin'] ) . '</p>';
+		echo '<table class="widefat striped"><thead><tr><th>Operating dimension</th><th>Live state</th></tr></thead><tbody>';
+		$rows = array(
+			'Local Skills & Master Admin operations' => ! empty( $view['local_operations_ready'] ) ? 'Ready (no ChatGPT App required)' : 'Needs catalog or role repair',
+			'Company Skill catalog' => ! empty( $d['catalog_read_ready'] ) ? 'Ready to read' : 'Needs repair',
+			'External ChatGPT App (optional)' => ! empty( $d['external_app_projection_ready'] ) ? 'Connected' : 'Not connected; local operation unaffected',
+			'Skill authoring' => ! empty( $d['authoring_ready'] ) ? 'Enabled' : 'Disabled by environment policy',
+			'Catalog size (enabled / total)' => $view['catalog_enabled_count'] . ' / ' . $view['catalog_count'],
+			'Historical full-stack certificate' => $view['historical_certificate_ready'] ? 'Previously ready (not live evidence)' : 'Incomplete for external integration; not local read access',
+			'Skill execution authority' => 'None conferred by Skills',
+		);
+		foreach ( $rows as $name => $value ) {
+			echo '<tr><th scope="row">' . esc_html( $name ) . '</th><td>' . esc_html( $value ) . '</td></tr>';
+		}
+		echo '</tbody></table>';
+		$coverage = $view['coverage'];
+		if ( ! empty( $coverage['missing_required'] ) ) {
+			echo '<div class="notice notice-warning inline"><p>' .
+				esc_html( sprintf( '%d company-relevant managed Skills require source-pack review; no files were copied or enabled.', count( $coverage['missing_required'] ) ) ) .
+				'</p><ul>';
+			foreach ( array_slice( $coverage['missing_required'], 0, 20 ) as $key ) {
+				echo '<li><code>' . esc_html( $key ) . '</code></li>';
+			}
+			echo '</ul></div>';
+		}
+		// This section contains only local-operation requirements. Do not
+		// classify optional external App binding or Production editor policy
+		// as errors for a company that needs read-only managed Skills.
+		$issues = (array)( $d['catalog_blockers'] ?? array() );
+		if ( ! empty( $view['app_binding_optional_for_local_operations'] )
+			&& empty( $d['external_app_projection_ready'] ) ) {
+			echo '<div class="notice notice-info inline"><p>' .
+				esc_html__( 'External ChatGPT App connection is optional and currently deferred. Local managed Skills, task matching and planning are independent. MCP App projection is unavailable until verified company binding.', 'mad4b-site-control-plane' ) .
+				'</p></div>';
+		}
+		if ( ! empty( $d['editor_disabled_by_policy'] ) ) {
+			echo '<div class="notice notice-info inline"><p>' . esc_html__( 'Skill editing is deliberately disabled; this does not by itself block catalog reading.', 'mad4b-site-control-plane' ) . '</p></div>';
+		}
+		if ( $issues ) {
+			echo '<h2>' . esc_html__( 'Required checks', 'mad4b-site-control-plane' ) . '</h2><ul>';
+			foreach ( array_unique( $issues ) as $issue ) {
+				echo '<li><code>' . esc_html( (string) $issue ) . '</code> — ' .
+					esc_html( self::explain_operations_blocker( (string)$issue ) ) . '</li>';
+			}
+			echo '</ul>';
+		}
+		if ( $view['role_audit']['role_review_required'] ) {
+			echo '<div class="notice notice-warning inline"><p>' .
+				esc_html__( 'Master Admin has a sensitive stored WordPress capability. Review the role source and approved migration before changing it. No role was modified.', 'mad4b-site-control-plane' ) .
+				'</p></div>';
+		}
+		echo '<h2>' . esc_html__( 'Company operations', 'mad4b-site-control-plane' ) . '</h2><p>';
+		$links = array(
+			array( 'mad4b_work_company_tasks', 'fluent-boards', 'Team tasks' ),
+			array( 'edit_shop_orders', 'edit.php?post_type=shop_order', 'Orders' ),
+			array( 'edit_products', 'edit.php?post_type=product', 'Catalog' ),
+			array( 'fluentform_forms_manager', 'admin.php?page=fluent_forms', 'Inquiry forms' ),
+			array( 'manage_options', 'admin.php?page=' . self::PAGE_SLUG, 'Skill authoring (administrator only)' ),
+		);
+		foreach ( $links as $link ) {
+			if ( current_user_can( $link[0] ) ) {
+				echo '<a class="button" style="margin-right:6px" href="' .
+					esc_url( admin_url( $link[1] ) ) . '">' . esc_html( $link[2] ) . '</a> ';
+			}
+		}
+		echo '</p><h2>' . esc_html__( 'Managed Skill catalog', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<table class="widefat striped"><thead><tr><th>Skill</th><th>Level</th><th>Target</th><th>Enabled</th></tr></thead><tbody>';
+		foreach ( $view['skills'] as $skill ) {
+			echo '<tr><td>' . esc_html( $skill['name'] ) . '</td><td>' .
+				esc_html( $skill['level'] ) . '</td><td>' . esc_html( $skill['target'] ) .
+				'</td><td>' . ( $skill['enabled'] ? 'Yes' : 'No' ) . '</td></tr>';
+		}
+		echo '</tbody></table>';
+		if ( $view['truncated'] ) echo '<p>' . esc_html__( 'Catalog table is limited to 120 entries. Use the paged read-only Skill listing for the complete inventory.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '</div>';
+	}
+
+	/**
 	 * Stream exports before wp-admin emits page headers. Failures redirect back
 	 * with a bounded error code so the administrator never gets a silent no-op.
 	 */
 	public static function intercept_export() {
-		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
+		if ( ! is_admin() || true !== current_user_can( 'manage_options' ) ) return;
 		if ( empty( $_POST['mad4b_skill_action'] ) || 'export' !== sanitize_key( MAD4B_SCP_Admin_Experience::request_string( $_POST, 'mad4b_skill_action' ) ) ) return; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- verified below.
 		$page = isset( $_GET['page'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'page' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing only.
 		if ( self::PAGE_SLUG !== $page ) return;
@@ -78,7 +298,7 @@ final class MAD4B_SCP_Skills_Admin_UI {
 	}
 
 	public static function render_page() {
-		if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'You do not have permission to manage MAD4B Skills.', 'mad4b-site-control-plane' ) );
+		if ( true !== current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'You do not have permission to manage MAD4B Skills.', 'mad4b-site-control-plane' ) );
 
 		$message = null;
 		if ( isset( $_POST['mad4b_skill_action'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- verified in handler.
@@ -86,6 +306,7 @@ final class MAD4B_SCP_Skills_Admin_UI {
 			if ( 'save' === $action ) $message = self::handle_save();
 			if ( 'save_resource' === $action ) $message = self::handle_save_resource();
 			if ( 'reconcile_managed' === $action ) $message = self::handle_reconcile_managed();
+			// Preserve the existing nonce-checked administrator source catalog actions.
 			if ( 'source_add' === $action ) $message = SCP_External_Skill_Sources::handle_admin( 'add', $_POST );
 			if ( 'source_remove' === $action ) $message = SCP_External_Skill_Sources::handle_admin( 'remove', $_POST );
 		}
@@ -109,10 +330,12 @@ final class MAD4B_SCP_Skills_Admin_UI {
 			echo esc_html__( 'A current certificate is missing or stale. Use the managed reconciliation step below, then inspect the renewed certificate; this page does not grant new Write authority.', 'mad4b-site-control-plane' );
 			echo '</p></div>';
 		}
-		if ( empty( $status['editor_enabled'] ) ) {
-			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Managed Skills editor is disabled', 'mad4b-site-control-plane' ) . '</strong> — ';
-			echo esc_html__( 'An authorized Staging host operator must review MAD4B_SKILLS_EDITOR_ENABLED in wp-config.php or the managed host bootstrap. Do not enable Production editing or retry a failed remote reconciliation until this prerequisite and the exact build are verified.', 'mad4b-site-control-plane' );
+		if ( empty( $status['editor_enabled'] ) && ! empty( $status['catalog_enabled'] ) ) {
+			echo '<div class="notice notice-info inline"><p><strong>' . esc_html__( 'Managed Skills catalog is active', 'mad4b-site-control-plane' ) . '</strong> — ';
+			echo esc_html__( 'Canonical Skills are provisioned and discoverable automatically for this enrolled company. Skill authoring and scripts remain separately permissioned.', 'mad4b-site-control-plane' );
 			echo '</p></div>';
+		} elseif ( empty( $status['editor_enabled'] ) ) {
+			echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Skill authoring is unavailable; company enrollment and catalog readiness must be reviewed independently.', 'mad4b-site-control-plane' ) . '</p></div>';
 		}
 		if ( isset( $status['storage_writable'] ) && false === $status['storage_writable'] ) {
 			echo '<div class="notice notice-error inline"><p>' . esc_html__( 'Managed Skills storage is not writable. Review the owned filesystem directory and host permissions; do not bypass the governed Skill registry.', 'mad4b-site-control-plane' ) . '</p></div>';
@@ -144,6 +367,7 @@ final class MAD4B_SCP_Skills_Admin_UI {
 
 		echo '<h2>' . esc_html__( 'Skill registry', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<table class="widefat striped" style="max-width:1000px"><tbody>';
+		self::row( 'Company Skill catalog auto-enabled', ! empty( $status['catalog_enabled'] ) ? 'yes' : 'no' );
 		self::row( 'Editor enabled', ! empty( $status['editor_enabled'] ) ? 'yes' : 'no' );
 		self::row( 'Scripts editor enabled', ! empty( $status['scripts_editor_enabled'] ) ? 'yes' : 'no' );
 		self::row( 'Storage initialized', ! empty( $status['storage_initialized'] ) ? 'yes' : 'no' );
@@ -155,7 +379,7 @@ final class MAD4B_SCP_Skills_Admin_UI {
 		if ( ! empty( $identity['identity_token'] ) ) self::row( 'Snapshot identity', $identity['identity_token'] );
 		echo '</tbody></table>';
 
-		if ( empty( $status['editor_enabled'] ) ) {
+		if ( empty( $status['editor_enabled'] ) && empty( $status['catalog_enabled'] ) ) {
 			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Authoring is fail-closed.', 'mad4b-site-control-plane' ) . '</strong> ';
 			echo esc_html__( 'On an explicitly enrolled non-production Site Profile the Control Plane enables the Skill editor automatically unless an explicit MAD4B_SKILLS_EDITOR_ENABLED=false kill-switch is present. Production is never enabled by installation and requires both explicit editor gates. These switches do not enable MCP mutation.', 'mad4b-site-control-plane' );
 			echo '</p></div>';
@@ -305,7 +529,7 @@ final class MAD4B_SCP_Skills_Admin_UI {
 
 	private static function handle_reconcile_managed() {
 		check_admin_referer( 'mad4b_skill_reconcile_managed', 'mad4b_skill_reconcile_nonce' );
-		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_skill_reconcile_forbidden', 'Administrator permission is required to reconcile managed Skills.' );
+		if ( true !== current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_skill_reconcile_forbidden', 'Administrator permission is required to reconcile managed Skills.' );
 		if ( ! class_exists( 'MAD4B_SCP_Skill_Seeder' ) || ! class_exists( 'MAD4B_SCP_Skill_Provider_Discovery' ) ) return new WP_Error( 'mad4b_skill_reconcile_unavailable', 'Managed Skill reconciliation services are unavailable.' );
 
 		$seed = MAD4B_SCP_Skill_Seeder::reconcile();
@@ -365,3 +589,4 @@ final class MAD4B_SCP_Skills_Admin_UI {
 
 // Routes are declared without booting menus or provider lifecycle on frontend requests.
 if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) MAD4B_SCP_Admin_Route_Registry::register( MAD4B_SCP_Skills_Admin_UI::PAGE_SLUG, 'manage_options' );
+if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) MAD4B_SCP_Admin_Route_Registry::register( MAD4B_SCP_Skills_Admin_UI::OPERATIONS_PAGE_SLUG, 'mad4b_manage_company_operations' );

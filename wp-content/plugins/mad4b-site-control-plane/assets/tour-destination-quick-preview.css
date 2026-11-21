@@ -1,0 +1,150 @@
+/* MAD4B native destination Quick Preview — shared dialog/iframe interaction pattern. */
+html.mad4b-destination-preview-active {overflow:hidden!important;overscroll-behavior:contain;}
+.mad4b-destination-quick-preview-dialog {
+  position:fixed;inset:0;z-index:2147480000;
+  width:min(1080px,94vw);max-width:94vw;
+  height:min(820px,88dvh);max-height:88dvh;
+  margin:auto;padding:0;border:1px solid #cad9d8;border-radius:15px;
+  overflow:hidden;background:#fff;color:#153e48;
+  box-shadow:0 22px 70px rgba(8,32,42,.35);
+}
+.mad4b-destination-quick-preview-dialog::backdrop {background:rgba(8,27,37,.7);}
+.mad4b-destination-quick-preview-shell {
+  display:flex;flex-direction:column;width:100%;height:100%;min-height:0;
+}
+.mad4b-destination-quick-preview-toolbar {
+  display:flex;align-items:center;gap:14px;flex:0 0 auto;
+  min-height:73px;padding:11px 16px;
+  background:#fafcfb;border-bottom:1px solid #dbe5e1;
+  box-sizing:border-box;
+}
+.mad4b-destination-quick-preview-heading {
+  min-width:0;display:flex;flex:1 1 auto;flex-direction:column;gap:3px;
+}
+.mad4b-destination-quick-preview-heading span {
+  color:#528177;letter-spacing:.08em;font-size:10px;font-weight:800;
+  text-transform:uppercase;line-height:1.3;
+}
+.mad4b-destination-quick-preview-heading strong {
+  font-size:clamp(15px,1.65vw,20px);font-weight:750;line-height:1.3;
+  overflow-wrap:anywhere;color:#153e48;
+}
+.mad4b-destination-quick-preview-heading small {
+  font-size:11px;line-height:1.35;color:#657f7e;
+}
+.mad4b-destination-quick-preview-full,
+.mad4b-destination-quick-preview-close {
+  display:inline-flex;align-items:center;justify-content:center;
+  flex:0 0 auto;min-height:42px;max-width:100%;
+  padding:9px 13px!important;margin:0!important;
+  border-radius:8px!important;text-decoration:none!important;
+  font-family:inherit!important;font-size:12px!important;
+  line-height:1.25!important;font-weight:700!important;
+  text-align:center!important;cursor:pointer;
+}
+.mad4b-destination-quick-preview-full {
+  background:#fff!important;color:#173f49!important;border:1px solid #bfd7ce!important;
+}
+.mad4b-destination-quick-preview-full:hover {background:#eff7f1!important;}
+.mad4b-destination-quick-preview-close {
+  background:#143f4c!important;color:#fff!important;border:1px solid #143f4c!important;
+}
+.mad4b-destination-quick-preview-close:hover {background:#285c65!important;}
+.mad4b-destination-quick-preview-full:focus-visible,
+.mad4b-destination-quick-preview-close:focus-visible {
+  outline:2px solid #b88c4b!important;outline-offset:3px;
+}
+.mad4b-destination-quick-preview-content {
+  position:relative;display:flex;flex:1 1 auto;min-height:0;
+  width:100%;background:#fff;overflow:hidden;
+}
+.mad4b-destination-quick-preview-frame {
+  border:0;flex:1 1 auto;min-width:0;min-height:0;
+  width:100%;height:100%;background:#fff;
+}
+.mad4b-destination-quick-preview-status {
+  position:absolute;inset:0;z-index:1;
+  display:grid;place-items:center;margin:0;
+  color:#476a6e;background:#f8fbf9;
+  font-size:14px;font-weight:650;line-height:1.5;
+  padding:22px;text-align:center;
+}
+.mad4b-destination-quick-preview-status[hidden] {display:none!important;}
+/* The existing Elementor gallery stays in the authorized iframe,
+   while the outer preview toolbar yields its viewport. */
+.mad4b-destination-quick-preview-dialog.mad4b-destination-preview-gallery-open {
+  width:min(1200px,calc(100vw - 10px));max-width:calc(100vw - 10px);
+  height:calc(100dvh - 10px);max-height:calc(100dvh - 10px);
+}
+.mad4b-destination-preview-gallery-open .mad4b-destination-quick-preview-toolbar {
+  display:none!important;
+}
+@media(max-width:700px){
+  .mad4b-destination-quick-preview-dialog {
+    width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;
+    border:0;border-radius:0;
+  }
+  .mad4b-destination-quick-preview-toolbar {min-height:64px;gap:8px;padding:8px 11px;}
+  .mad4b-destination-quick-preview-heading small {display:none;}
+  .mad4b-destination-quick-preview-heading strong {font-size:15px;}
+  .mad4b-destination-quick-preview-full,
+  .mad4b-destination-quick-preview-close {
+    min-height:40px;padding:8px!important;font-size:11px!important;
+  }
+  .mad4b-destination-preview-gallery-open.mad4b-destination-quick-preview-dialog {
+    width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;
+  }
+}
+
+/* This portion is injected ONLY into an authorized same-origin iframe. */
+html.mad4b-destination-preview-frame,
+html.mad4b-destination-preview-frame body {
+  margin:0!important;padding:0!important;min-width:0!important;
+  max-width:100%!important;overflow-x:hidden!important;
+  scroll-padding-top:8px!important;
+}
+html.mad4b-destination-preview-frame {scroll-behavior:auto!important;}
+body.mad4b-destination-preview-frame #wpadminbar,
+body.mad4b-destination-preview-frame #masthead,
+body.mad4b-destination-preview-frame #colophon,
+body.mad4b-destination-preview-frame #ast-scroll-top,
+body.mad4b-destination-preview-frame .elementor-location-header,
+body.mad4b-destination-preview-frame .elementor-location-footer,
+body.mad4b-destination-preview-frame .site-header,
+body.mad4b-destination-preview-frame .site-footer,
+body.mad4b-destination-preview-frame .mad4b-cookie-consent,
+body.mad4b-destination-preview-frame .cky-consent-container,
+body.mad4b-destination-preview-frame #mad4b-consent-root,
+body.mad4b-destination-preview-frame #mad4b-consent-banner,
+body.mad4b-destination-preview-frame #cookie-law-info-bar,
+body.mad4b-destination-preview-frame .cookie-notice-container,
+body.mad4b-destination-preview-frame .fluentform,
+body.mad4b-destination-preview-frame .fluent_form,
+body.mad4b-destination-preview-frame .wpcf7,
+body.mad4b-destination-preview-frame form,
+body.mad4b-destination-preview-frame .elementor-widget-button,
+body.mad4b-destination-preview-frame .elementor-widget-jet-listing-dynamic-link,
+body.mad4b-destination-preview-frame .elementor-widget-jet-dropbar,
+body.mad4b-destination-preview-frame .elementor-widget-uael-social-share,
+body.mad4b-destination-preview-frame .mad4b-tour-inquiry-column {
+  display:none!important;
+}
+body.mad4b-destination-preview-frame .site-content,
+body.mad4b-destination-preview-frame .ast-container,
+body.mad4b-destination-preview-frame .content-area,
+body.mad4b-destination-preview-frame .site-main,
+body.mad4b-destination-preview-frame .elementor-location-archive {
+  width:100%!important;max-width:100%!important;
+  margin:0 auto!important;padding-inline:0!important;
+}
+body.mad4b-destination-preview-frame .elementor-location-archive .e-con-inner {
+  max-width:100%!important;
+}
+body.mad4b-destination-preview-frame .elementor-popup-modal:not([aria-hidden="true"]) {
+  z-index:2147480000!important;
+}
+@media(max-width:700px){
+  body.mad4b-destination-preview-frame .elementor-location-archive .e-con-inner {
+    padding-inline:clamp(11px,3vw,19px)!important;
+  }
+}

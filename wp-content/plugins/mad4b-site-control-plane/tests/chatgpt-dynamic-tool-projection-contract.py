@@ -161,12 +161,13 @@ for marker in [
 ]:
     require(marker in PROJECTION, f"projected Breakglass call admission missing: {marker}")
 
-# Direct tools/list schemas are bounded independently from chunked catalog transport.
+# Dynamic discovery must not enforce a legacy total-count/byte ceiling.
+# Keep the independent per-tool wire-schema validation and dispatcher fallback.
 for marker in [
-    "MAX_SERIALIZED_TOOL_BYTES",
+    "bounded_single_tool_schema_unbounded_total",
     "mcp_optional_catalog_size_excluded",
     "mcp_required_catalog_size_exceeded",
-    "bounded_serialized_tool_bytes",
+    "per_tool_serialized_bytes_limit",
 ]:
     require(marker in DIAG, f"serialized tools/list byte budget invariant missing: {marker}")
 

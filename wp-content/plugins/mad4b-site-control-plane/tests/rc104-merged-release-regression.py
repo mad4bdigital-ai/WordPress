@@ -31,10 +31,12 @@ def run(args):
 
 def main():
     source = PLUGIN.read_text()
-    require(re.search(r'(?m)^\s*\* Version: 0\.4\.0-rc\.104\s*$', source),
-            'WordPress plugin header did not advance')
-    require("define( 'MAD4B_SCP_VERSION', '" + TARGET + "' );" in source,
-            'Plugin runtime version is inconsistent')
+    header = re.search(r'(?m)^\s*\* Version: (0\.4\.0-rc\.(\d+))\s*$', source)
+    require(header is not None and int(header.group(2)) >= 104,
+            'WordPress plugin header regressed below the reviewed rc.104 source')
+    runtime_version = header.group(1)
+    require("define( 'MAD4B_SCP_VERSION', '" + runtime_version + "' );" in source,
+            'Plugin runtime version is inconsistent with the actual header')
     require(source.count('0.4.0-rc.103') == 0, 'Old plugin version retained')
     router = (INCLUDES/'class-mad4b-scp-adaptive-operation-router.php').read_text()
     guard = (INCLUDES/'class-mad4b-scp-staging-write-planning-guard.php').read_text()

@@ -54,6 +54,24 @@ class MAD4B_SCP_G5_External_Providers {
    'fields'=>array('account_id'=>array('label'=>'Account','kind'=>'account','required'=>true,'max_length'=>128),
                    'api_key'=>array('label'=>'API key','kind'=>'credential','required'=>true,'max_length'=>4096)));}
 }
+class MAD4B_SCP_Firecrawl_Provider {
+ public static $mode='cloud';
+ public static $profile_state='good';
+ public static $last_state='reachable';
+ public static function config() {
+  return self::$mode==='error'?new WP_Error('firecrawl_config_unavailable'):
+   array('mode'=>self::$mode);
+ }
+ public static function profiles() {
+  if(self::$profile_state==='error')return new WP_Error('firecrawl_profiles_unavailable');
+  return array('cloud'=>array('secret_cipher'=>'cloud-really-secret-ciphertext'),
+   'self_hosted'=>array('secret_cipher'=>'selfhost-really-secret-ciphertext'));
+ }
+ public static function test_status() {
+  if(self::$last_state==='error')return new WP_Error('firecrawl_test_unavailable');
+  return array('tested'=>true,'state'=>self::$last_state);
+ }
+}
 require dirname(__DIR__).'/includes/class-mad4b-scp-provider-setup-coverage.php';
 $pass=0;
 function ok($label,$cond){global $pass;if(!$cond){fwrite(STDERR,"FAIL $label\n");exit(1);}++$pass;echo "$label: PASS\n";}
@@ -103,6 +121,36 @@ ok('new_g5_fields_come_from_original_setup_preview',
 ok('g5_account_not_authorized_by_field_exposure',!$growth['new_verified_provider']['authorizing']
     && $growth['new_verified_provider']['execution_state']==='retained_reads_require_separate_execution_grant');
 
+$firecrawl=array_column($inventory['providers'],null,'provider_id')['firecrawl']??null;
+ok('firecrawl_cloud_discovered',is_array($firecrawl)
+ &&$firecrawl['field_names']===array('firecrawl_cloud_secret')
+ &&$firecrawl['execution_state']==='connection_test_only_not_scrape_certified');
+ok('firecrawl_encrypted_secrets_not_returned',
+ strpos(json_encode($inventory),'cloud-really-secret-ciphertext')===false);
+MAD4B_SCP_Firecrawl_Provider::$mode='self_hosted';
+$selfhost=array_column(MAD4B_SCP_Provider_Setup_Coverage::inventory()['providers'],null,'provider_id')['firecrawl'];
+ok('firecrawl_self_hosted_source_fields',
+ $selfhost['field_names']===array('firecrawl_endpoint','firecrawl_username','firecrawl_gateway_password'));
+MAD4B_SCP_Firecrawl_Provider::$mode='error';
+$unsupported=MAD4B_SCP_Provider_Setup_Coverage::inventory();
+ok('missing_firecrawl_config_fails_soft',
+ is_array($unsupported)&&!$unsupported['authorizing']
+ &&!$unsupported['mutation_performed']
+ &&array_column($unsupported['providers'],null,'provider_id')['firecrawl']['execution_state']==='scrape_not_certified'
+ &&array_column($unsupported['providers'],null,'provider_id')['firecrawl']['credential_state']==='unverified');
+MAD4B_SCP_Firecrawl_Provider::$mode='cloud';
+MAD4B_SCP_Firecrawl_Provider::$profile_state='error';
+$profile_failed=MAD4B_SCP_Provider_Setup_Coverage::inventory();
+ok('error_object_in_firecrawl_profile_cannot_crash_site_admin',
+ is_array($profile_failed)&&!$profile_failed['authorizing']
+ &&array_column($profile_failed['providers'],null,'provider_id')['firecrawl']['credential_state']==='unverified');
+MAD4B_SCP_Firecrawl_Provider::$profile_state='good';
+MAD4B_SCP_Firecrawl_Provider::$last_state='error';
+$test_failed=MAD4B_SCP_Provider_Setup_Coverage::inventory();
+ok('error_object_in_firecrawl_connection_test_cannot_crash_admin',
+ is_array($test_failed)&&!$test_failed['authorizing']
+ &&array_column($test_failed['providers'],null,'provider_id')['firecrawl']['execution_state']==='scrape_not_certified');
+MAD4B_SCP_Firecrawl_Provider::$last_state='reachable';
 $GLOBALS['admin']=false;
 ok('non_admin_cannot_inspect',is_wp_error(MAD4B_SCP_Provider_Setup_Coverage::inventory()));
 echo "SUMMARY pass=$pass fail=0\n";

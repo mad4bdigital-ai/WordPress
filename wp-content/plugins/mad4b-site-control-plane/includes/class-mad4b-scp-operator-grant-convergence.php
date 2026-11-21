@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Operator_Grant_Convergence {
     const CONTRACT = 'mad4b.operator-grant-convergence.v1';
     const ABILITY = 'mad4b/operator-grants-converge';
-    const CONFIRM = 'APPROVE FIVE STAGING OPERATOR GRANTS';
+    const CONFIRM = 'APPROVE FIVE GOVERNED OPERATOR GRANTS';
     const CANONICAL_CONFIRM = 'PROVISION MAD4B DEVELOPER AGENT';
 
     private static $scoped = false;
@@ -40,14 +40,14 @@ final class MAD4B_SCP_Operator_Grant_Convergence {
             'expected_plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
             'expected_source_commit_sha' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{40}$' ),
             'expected_site_uuid' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36 ),
-            'expected_environment' => array( 'type' => 'string', 'enum' => array( 'staging' ) ),
+            'expected_environment' => array( 'type' => 'string', 'enum' => array( 'local', 'development', 'staging', 'production' ) ),
             'expected_profile_revision' => array( 'type' => 'integer', 'minimum' => 1 ),
             'expected_profile_digest' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
             'confirmation' => array( 'type' => 'string', 'enum' => array( self::CONFIRM ) ),
         );
         wp_register_ability( self::ABILITY, array(
             'label' => 'Converge Five Operator Developer Grants',
-            'description' => 'Plan or explicitly authorize only the five Staging Operator grants with canonical Developer Authority.',
+            'description' => 'Plan or explicitly authorize only the five policy-governed Operator grants with canonical Developer Authority.',
             'category' => 'mad4b-developer-governance',
             'execute_callback' => array( __CLASS__, 'execute' ),
             'permission_callback' => array( __CLASS__, 'can_access' ),
@@ -62,10 +62,11 @@ final class MAD4B_SCP_Operator_Grant_Convergence {
                     'exact_chatgpt_client_required' => true,
                     'generic_remote_admin' => false,
                     'governed_enrollment_broker' => true,
-                    'broker_dispatch_policy' => 'operator_exact_grants_v1',
+                    'broker_dispatch_policy' => 'registered_operation_policy_v1',
                     'owner_intent_only' => true,
-                    'production_mutation_allowed' => false,
-                    'production_allowed' => false,
+                    'production_mutation_allowed' => 'policy_governed',
+                    'production_allowed' => 'policy_governed',
+                    'governed_operation_policy' => 'registered_write_policy_v1',
                     'operator_grants_only' => true,
                 ),
                 'annotations' => array( 'readonly' => false, 'destructive' => true, 'idempotent' => false ),
@@ -79,9 +80,24 @@ final class MAD4B_SCP_Operator_Grant_Convergence {
         }
         $access = MAD4B_SCP_Developer_Authority::can_access( $input );
         if ( is_wp_error( $access ) || true !== $access ) return $access;
-        if ( 'staging' !== wp_get_environment_type() ||
-             'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) {
-            return new WP_Error( 'mad4b_operator_grants_staging_only', 'Exact Staging environment required.' );
+        if ( ! MAD4B_SCP_Site_Profile::managed_runtime_enabled() ||
+             empty( MAD4B_SCP_Site_Profile::status()['authority_ready'] ) ) {
+            return new WP_Error( 'mad4b_operator_grants_site_not_ready', 'Exact enrolled managed-runtime authority required.' );
+        }
+        // First-party Registry + exact enrolled Site Profile + currently
+        // effective Governance Policy, never a hardcoded environment blacklist.
+        // A positive result is not permission to create a Grant; the canonical
+        // exact-plan and owner step-up are still required below and at apply.
+        if ( ! class_exists( 'MAD4B_SCP_Registered_Write_Admission' ) ) {
+            return new WP_Error( 'mad4b_operator_grants_policy_unavailable',
+                'First-party governed operation admission unavailable.' );
+        }
+        $decision = MAD4B_SCP_Registered_Write_Admission::preflight( self::ABILITY );
+        if ( is_wp_error( $decision ) ) return $decision;
+        if ( ! is_array( $decision ) || 'eligible_for_exact_canonical_plan_only' !== ( $decision['state'] ?? '' )
+            || false !== ( $decision['authorization_issued'] ?? null ) ) {
+            return new WP_Error( 'mad4b_operator_grants_policy_invalid',
+                'Registered operation admission did not return a valid preflight.' );
         }
         $identity = MAD4B_SCP_Identity_Context::current();
         if ( is_wp_error( $identity ) || ! is_array( $identity ) ||
@@ -167,10 +183,23 @@ final class MAD4B_SCP_Operator_Grant_Convergence {
                 return new WP_Error( 'mad4b_operator_grants_scope_drift',
                     'Canonical plan must add exactly the five new Operator abilities.' );
             }
+            // Compute an additive V2 policy view over the *unchanged* V1
+            // canonical Developer Authority plan. It must not change the
+            // signed plan SHA, create rights or bypass the exact Apply gate.
+            if ( ! class_exists( 'MAD4B_SCP_Developer_Authority_Policy_V2' ) ) {
+                return new WP_Error( 'mad4b_operator_grants_policy_projection_missing',
+                    'Current Developer plan policy compatibility runtime unavailable.' );
+            }
+            $live_policy = MAD4B_SCP_Registered_Write_Admission::preflight( self::ABILITY );
+            if ( is_wp_error( $live_policy ) ) return $live_policy;
+            $policy_v2 = MAD4B_SCP_Developer_Authority_Policy_V2::project(
+                $plan, $live_policy, self::ABILITY );
+            if ( is_wp_error( $policy_v2 ) ) return $policy_v2;
             $response = array(
                 'contract' => self::CONTRACT,
+                'developer_policy_v2' => $policy_v2,
                 'state' => 'review_exact_five_grants',
-                'target_environment' => 'staging',
+                'target_environment' => sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ),
                 'server_id' => 'mad4b-developer',
                 'new_grants' => $missing,
                 'ready_to_apply' => true,
@@ -225,7 +254,8 @@ final class MAD4B_SCP_Operator_Grant_Convergence {
                 'completion_audit_recorded' => true,
                 'operator_execution_enabled' => defined( 'MAD4B_MCP_OPERATOR_EXECUTION_ENABLED' )
                     && true === constant( 'MAD4B_MCP_OPERATOR_EXECUTION_ENABLED' ),
-                'mutation_performed' => true, 'production_mutation' => false,
+                'mutation_performed' => true,
+                'production_mutation' => 'production' === MAD4B_SCP_Site_Profile::current_environment(),
             );
         } finally {
             self::$scoped = false;

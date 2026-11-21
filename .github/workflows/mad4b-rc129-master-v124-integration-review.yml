@@ -1,0 +1,73 @@
+name: MAD4B RC129 Master V124 Integration Source Review
+
+on:
+  pull_request:
+    paths:
+      - 'docs/source-reconciliation/master-v124-pr974-forty-six-source-readback-20261120.json'
+      - 'docs/source-reconciliation/MASTER-V124-RC129-INTEGRATED-CANDIDATE-20261120.md'
+      - 'tests/source-reconciliation/test_master_v124_46_source_readback.py'
+      - '.github/workflows/mad4b-rc129-master-v124-integration-review.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-rc129-v124-source-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-readback:
+    name: Source and denial invariants / PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          # The existing trait-parity test reads a SHA-pinned historical Git commit.
+          # The exact commit is an ancestor, but shallow checkout omits its object.
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Prevent source drift or accidental release authorization
+        run: |
+          python3 -m unittest discover -s tests/source-reconciliation -p 'test_master_v124_46_source_readback.py' -v
+          python3 tests/source-reconciliation/pr942_combined_semantic_contract.py --verify-report
+          python3 wp-content/plugins/mad4b-tour-media-host-bridge/tests/verify_source_origin.py
+          python3 tests/test_content_readiness_trait_parity.py
+      - name: Exercise Root-only Host operator fixture in an unprivileged sandbox
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Host operator positive-path requires uid 0; regular GitHub runners use uid 1001.
+          # Never sudo-execute PR source on the host. The container has no network,
+          # Linux capabilities, writeable source tree or inherited credentials.
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 80 --memory 512m \
+            --user 0:0 -v "$PWD":/src:ro -w /src \
+            --entrypoint php "php:${{ matrix.php }}-cli" \
+            tests/execution-authority-identity-native-hermetic.php
+      - name: Confirm content guards without host privilege
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in \
+            tests/brand-quality-readiness-coverage-hermetic.php \
+            tests/readiness-workflow-options-original-hermetic.php \
+            tests/readiness-scopes-events-original-hermetic.php \
+            tests/readiness-draft-only-original-hermetic.php \
+            tests/readiness-native-cron-ownership-hermetic.php \
+            wp-content/plugins/mad4b-site-control-plane/tests/brand-integrity-destination-term-links-runtime.php; do
+            php -l "$path"
+            php "$path"
+          done
+      - name: Protect exact test execution allowlist
+        run: python3 tools/readiness_test_execution.py self-test

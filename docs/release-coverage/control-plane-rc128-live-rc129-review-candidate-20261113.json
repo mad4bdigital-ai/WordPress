@@ -1,0 +1,368 @@
+{
+  "base_git_rc129_commit": "794e732af124eb4bfa2be5f00cb838e1b15f566a",
+  "base_signed_rc128_source_commit": "e18c8090ad217d467296bbfa327fc238799393e0",
+  "contract": "mad4b.control-plane-live-rc128-rc129-conflict-resolution.review.v1",
+  "created_at_utc": "2026-11-13T07:39:59.421161+00:00",
+  "live_snapshots_verified": true,
+  "original_rc129_worktree_modified": false,
+  "original_site_files_modified": false,
+  "owner_signed_release_approved": false,
+  "production_mutation_authorized": false,
+  "review_count": 51,
+  "reviewed_paths": [
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "376eced31a0a68c21a0177662d486521e697456c2364e05c80923e3710ab080e",
+      "candidate_before_sha256": "2696f823f63dcf498aca7cc74060249cc5728d4b7625af3c2c3d4b6b881b7b92",
+      "live_sha256": "376eced31a0a68c21a0177662d486521e697456c2364e05c80923e3710ab080e",
+      "path": "config/skill-seed-manifest.json"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "7dec46f40fdec0e5594509b07d1319bb6c2a7fa23d092aba5d65e172547cb146",
+      "candidate_before_sha256": "cb96c905ec74647750888faeacadec6937f46cf05e07c0f829147976506f0204",
+      "live_sha256": "7dec46f40fdec0e5594509b07d1319bb6c2a7fa23d092aba5d65e172547cb146",
+      "path": "includes/class-mad4b-scp-activity-import-review.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "1518b0d581cc32dd8e39be2121230013289d85788343b0d2c4db08c02a5c938f",
+      "candidate_before_sha256": "1b9d2041c23f3019a75f2bd8283eddb5121f7b3e0340e60064a3c1a22d7185ab",
+      "live_sha256": "1518b0d581cc32dd8e39be2121230013289d85788343b0d2c4db08c02a5c938f",
+      "path": "includes/class-mad4b-scp-activity-import-snapshot.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "389c858945fd69e3bd9966a0995d53ffbb0d2bb13d94852ecdfc14cd281a3228",
+      "candidate_before_sha256": "7d4bbb9b65003edc623138861e91f0216025eaff60e299582266c11dde47d68e",
+      "live_sha256": "389c858945fd69e3bd9966a0995d53ffbb0d2bb13d94852ecdfc14cd281a3228",
+      "path": "includes/class-mad4b-scp-agent-grant-lifecycle.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "9babec220a1d02a990c99c5e1f5ee86990064dfb2e65820b4bf8783807459fae",
+      "candidate_before_sha256": "3fd0093d26be8fe797e3c5819e30d362407f6aaefefb129cfc25e5a4f3b09c27",
+      "live_sha256": "9babec220a1d02a990c99c5e1f5ee86990064dfb2e65820b4bf8783807459fae",
+      "path": "includes/class-mad4b-scp-ai-grant-mode.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "4359c6322cdc5bb64dc33e36c9c9cff32062d819c6387cf3dbce3e4a1409cbc1",
+      "candidate_before_sha256": "ca980531ed98d3391deb66a63573b4ef6becebf2ba3e009d92467879b3212bc3",
+      "live_sha256": "4359c6322cdc5bb64dc33e36c9c9cff32062d819c6387cf3dbce3e4a1409cbc1",
+      "path": "includes/class-mad4b-scp-company-owner-activation.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "a4dfa1ad167d3201f88e4f725986af595dcd789254ecc0ddb18a2fe131a63d02",
+      "candidate_before_sha256": "06447093ff420e76af963d07285922972ff29be17ca1cb5d2072738d9c41bbf9",
+      "live_sha256": "a4dfa1ad167d3201f88e4f725986af595dcd789254ecc0ddb18a2fe131a63d02",
+      "path": "includes/class-mad4b-scp-company-tenant-migration.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "aa32644eba4809cd3ed1c8353195a3e317458798316b377b1d11fba0c75e6966",
+      "candidate_before_sha256": "ce49fe7008e7575dcda1ac141f3dfb96feafe2e4a8915ab67bdc85085fb0c5de",
+      "live_sha256": "aa32644eba4809cd3ed1c8353195a3e317458798316b377b1d11fba0c75e6966",
+      "path": "includes/class-mad4b-scp-content-experience-media-rights.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "f0823b83afc8b2af4981344991b42830b35a9456521da7c557eeee6fd9c41517",
+      "candidate_before_sha256": "f08bc27ae1cf7b751c7492b44a6ac8e43f1c2a81997f994c938d1905ee93af1d",
+      "live_sha256": "f0823b83afc8b2af4981344991b42830b35a9456521da7c557eeee6fd9c41517",
+      "path": "includes/class-mad4b-scp-context-admin-ui.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "a92840334a2f3bc2843634131a75d600bda2c375a91a36ff48b46e66c9ccedf7",
+      "candidate_before_sha256": "434ca62064e7deebc4034e910796cf479095b77ae8952b58ce8978d7bcd66c12",
+      "live_sha256": "a92840334a2f3bc2843634131a75d600bda2c375a91a36ff48b46e66c9ccedf7",
+      "path": "includes/class-mad4b-scp-context-preflight.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "f98848537d910d509ea05edc4fd555fa2db1d00517efe9ad9f233820bd3dd5a4",
+      "candidate_before_sha256": "1dc1c1e3d04a28d494f93ca26d743b7d604f82e9b2d088148c084f4c966edaed",
+      "live_sha256": "f98848537d910d509ea05edc4fd555fa2db1d00517efe9ad9f233820bd3dd5a4",
+      "path": "includes/class-mad4b-scp-developer-authority.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "4076bbf0297b7743bfa9d5d69d7d068d842033c78dccb79237bd6ed01bceb346",
+      "candidate_before_sha256": "e63063cddb62b9528ae620c7b0c9e63c46f1bcea8cbe57a8db1fd72a1ccfd403",
+      "live_sha256": "4076bbf0297b7743bfa9d5d69d7d068d842033c78dccb79237bd6ed01bceb346",
+      "path": "includes/class-mad4b-scp-developer-runtime.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "715971d6e6dd986767b68b785a31bebe118fb046a80347cd93615cab2d47f7e5",
+      "candidate_before_sha256": "7f51a263a9cd3579988cea24f8eead6b7c2b9b53a0deec8b4a8c0c7e6c69ade5",
+      "live_sha256": "715971d6e6dd986767b68b785a31bebe118fb046a80347cd93615cab2d47f7e5",
+      "path": "includes/class-mad4b-scp-developer-workspace.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "c3a69ee0fded972fbe2d07dcdd3bf9a35a5fe02d83d87c9c2b4d27490b76b3be",
+      "candidate_before_sha256": "c21d0a4fe58c3f2a23e00cebd13e68c2f89e765c2fec15d1cc96f07f2a59ce35",
+      "live_sha256": "c3a69ee0fded972fbe2d07dcdd3bf9a35a5fe02d83d87c9c2b4d27490b76b3be",
+      "path": "includes/class-mad4b-scp-google-drive-context.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "1e9dd09979f8b6b329b8d640081a37f818c10cdf6aca38a233f4e91f71797e88",
+      "candidate_before_sha256": "db48d7f29f7ff142aceeedd634586e09f5b4971d77a476416616e590d5e6fad4",
+      "live_sha256": "1e9dd09979f8b6b329b8d640081a37f818c10cdf6aca38a233f4e91f71797e88",
+      "path": "includes/class-mad4b-scp-market-profiles.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "367c9ee747a37916ca59271dcb318faef9ba1ccf767e077f53eaf0bfc277ae2f",
+      "candidate_before_sha256": "aca1eb0e9ccc227073daadbb0a463f8e8e54edba52e6e9536a73e80510d45fac",
+      "live_sha256": "367c9ee747a37916ca59271dcb318faef9ba1ccf767e077f53eaf0bfc277ae2f",
+      "path": "includes/class-mad4b-scp-native-runtime-diagnostics.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "8bb67b1c6d1375339aa191607f06afb5924355be2456775cb90cf23a2d05557f",
+      "candidate_before_sha256": "e31db389b5e21fc76e580a5af3b107145e7c2a59a83bbdde03ddaf177209c712",
+      "followup_review_reason": "Align published non-production policy with runtime gate, preserving managed site enrollment and signed source checks",
+      "live_sha256": "70bd96163aa125f6e317daea7dc06632793e3b60557b373b6399a4a8761f3246",
+      "path": "includes/class-mad4b-scp-operator-grant-convergence.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "64479de6b38e5b7b7c6effdb19b3d231fba1bbe0b7b95b059bede92ea3bff02a",
+      "candidate_before_sha256": "0f2bbc1c924776fa881b8dffc8b3e4151e36afd74f51fd0c9d4b76d0ae75bd79",
+      "live_sha256": "64479de6b38e5b7b7c6effdb19b3d231fba1bbe0b7b95b059bede92ea3bff02a",
+      "path": "includes/class-mad4b-scp-plugin.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "ad8eac90e66ac695ea2ee6aab0c06ed5cb90fea2ffb7415ee6bc45d85b53a01d",
+      "candidate_before_sha256": "68b693e28da0c1ca0a5c5a887f5c8916d0b0132f8c0629babe7c347a708babef",
+      "live_sha256": "ad8eac90e66ac695ea2ee6aab0c06ed5cb90fea2ffb7415ee6bc45d85b53a01d",
+      "path": "includes/class-mad4b-scp-readiness-event-automation.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "cd15718a2d97ffd3c8cd3293305d02d46a56ed4bd944186bbe930f0394a838df",
+      "candidate_before_sha256": "e40d0b368d59140c92a34eab08fcb79bd9f8f3abda94d326faf403b5d50dc59f",
+      "live_sha256": "cd15718a2d97ffd3c8cd3293305d02d46a56ed4bd944186bbe930f0394a838df",
+      "path": "includes/class-mad4b-scp-reconnect-hardening.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "bc2ecd1a7eb0853eda947b99b10011c16db0c80d6d9f471b6a9939cc4c9e45ef",
+      "candidate_before_sha256": "fc8fa46c155a6d4b8ef8d7de7f182a01d16cabafa84e2501ce71a05aecd461d7",
+      "live_sha256": "bc2ecd1a7eb0853eda947b99b10011c16db0c80d6d9f471b6a9939cc4c9e45ef",
+      "path": "includes/class-mad4b-scp-remote-media-rights.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "e154447d2dc0368f61997e4139b16f774344f171b4cee07a3770939bd9a891e2",
+      "candidate_before_sha256": "9eb210a8fca3e7c4f547d4e041639c15c3cbdf48fc524a95ef0d7a23e4fe5d70",
+      "live_sha256": "e154447d2dc0368f61997e4139b16f774344f171b4cee07a3770939bd9a891e2",
+      "path": "includes/class-mad4b-scp-research-groups.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "dfe3bad6c16933a7c5765a0c4cd94e155aa5c5fdcafaa3dba055bdf31e3e89f0",
+      "candidate_before_sha256": "e585452c42745d1c26721faf810bea755aacce0f232143b065b73d8202dcadac",
+      "live_sha256": "dfe3bad6c16933a7c5765a0c4cd94e155aa5c5fdcafaa3dba055bdf31e3e89f0",
+      "path": "includes/class-mad4b-scp-research-intelligence.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "bb3c9a2d6db3a47bfd062a62ca27bfccc148ba21dbc7dcbe2ca6a1169b42c316",
+      "candidate_before_sha256": "5536e2fc9abcda88ce91ee40e5b088b6ca6ed488278029f8cce07fb762003cff",
+      "live_sha256": "bb3c9a2d6db3a47bfd062a62ca27bfccc148ba21dbc7dcbe2ca6a1169b42c316",
+      "path": "includes/class-mad4b-scp-research-task-bridge.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "30446ead9af26abe834f210574e20be265c4165150a130c5f6e0426c44a611f0",
+      "candidate_before_sha256": "388211469ba528fe63f5f32f390a78ac1a8a226b4d3b6a942718414255178e40",
+      "live_sha256": "30446ead9af26abe834f210574e20be265c4165150a130c5f6e0426c44a611f0",
+      "path": "includes/class-mad4b-scp-runtime-components-admin-ui.php"
+    },
+    {
+      "action": "reviewed_live_plus_rc129_diagnostic_compatibility",
+      "candidate_after_sha256": "49c500b48c7f8aea761fb51ff0645cb19a6511be6b30c2d09319e2da58197d74",
+      "candidate_before_sha256": "34c238dfcc51a782ff3484af19ef3510863b5dd941450fa533a4cbb673795eb2",
+      "diagnostic_compatibility_reason": "Preserve the existing blocked native update reason without changing dynamic enrolled site/managed-runtime gate or signing authority",
+      "live_sha256": "b2f315db60ec7d0963923fa33ce1345c388c22f974ad5a52cbfdd2b2e274197d",
+      "path": "includes/class-mad4b-scp-self-update.php",
+      "reviewed_followup_security_reason": "Preserve dynamic managed normal releases while limiting candidate-drift bootstrap to enrolled Staging write policy; verified with negative Production runtime fixture",
+      "source_live_pre_compat_sha256": "b2f315db60ec7d0963923fa33ce1345c388c22f974ad5a52cbfdd2b2e274197d"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "0a15798fca4cb26390d5dd2b214bf7da39e9d0b7846bfed358831e4b22c5dd23",
+      "candidate_before_sha256": "046b4a2f23f05a942ad4fc838bfc8731449b2db401e4064e738d877028d4dbb3",
+      "live_sha256": "0a15798fca4cb26390d5dd2b214bf7da39e9d0b7846bfed358831e4b22c5dd23",
+      "path": "includes/class-mad4b-scp-site-lifecycle-rest.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "4b3d01770beb065a9fa0a64b88c9568f9ea72b8c0c8becd9a1ae4344b32abe33",
+      "candidate_before_sha256": "a06146d42c96dabfe0b1d17f5ec770d7bf0a686facbe3f1f410289c3b7a2099a",
+      "live_sha256": "4b3d01770beb065a9fa0a64b88c9568f9ea72b8c0c8becd9a1ae4344b32abe33",
+      "path": "includes/class-mad4b-scp-skill-provider-discovery.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "bbb97df08740a4f56ed03e0cb7a8b4fc6ae4c75157f26f0a3d85e7c37ef07f76",
+      "candidate_before_sha256": "4510bb92ea5d67d87e8677494d466bb8464c3fbc6e95449cd8730c07efe15fe5",
+      "live_sha256": "bbb97df08740a4f56ed03e0cb7a8b4fc6ae4c75157f26f0a3d85e7c37ef07f76",
+      "path": "includes/class-mad4b-scp-skill-registry.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "f1edddaaf3ab81a5cd74a6a3be4946a23c32500752b8d3089d02514a7f8bb66a",
+      "candidate_before_sha256": "3009d34b3fdbe9b227d116ae3335bfdb0af2319dc5cc1052248b3cee0e0f5401",
+      "live_sha256": "f1edddaaf3ab81a5cd74a6a3be4946a23c32500752b8d3089d02514a7f8bb66a",
+      "path": "includes/class-mad4b-scp-skill-seeder.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "435402a4589b46009a3bddb267865946e4084e8d0cf8998a96c34416601ea382",
+      "candidate_before_sha256": "9427dca11263e82e7c485ec934f158976f728cc9c9ee41bd96398e0aa9bf2014",
+      "live_sha256": "435402a4589b46009a3bddb267865946e4084e8d0cf8998a96c34416601ea382",
+      "path": "includes/class-mad4b-scp-skills-admin-ui.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "3100ff5c698fdf5b8de9870ad0360ead67dfdcadf963b0420504c77b6a3efccf",
+      "candidate_before_sha256": "14baa5105a5cbc14bc0abb2eb911f36884fe9c123ddca2f99257c9c923c2e3dd",
+      "live_sha256": "3100ff5c698fdf5b8de9870ad0360ead67dfdcadf963b0420504c77b6a3efccf",
+      "path": "includes/class-mad4b-scp-switcher-sources.php"
+    },
+    {
+      "action": "fast_forward_reviewed_live_delta_from_rc128",
+      "candidate_after_sha256": "dcf205cb4e0f9af7846cd1b9e47cd6ce820efcef5a37ab2502673d0616d4b768",
+      "candidate_before_sha256": "c229b77426e4c857e231aabda914d3f68e768881ae47cff7041266762a3bb1a6",
+      "live_sha256": "dcf205cb4e0f9af7846cd1b9e47cd6ce820efcef5a37ab2502673d0616d4b768",
+      "path": "includes/class-mad4b-scp-upgrade-continuity.php"
+    },
+    {
+      "action": "clean_original_3way_merge_review",
+      "candidate_after_sha256": "b3e28dc74d6edbf98e480226da89d4bea9b85502963c6a86c75202042c64d5f1",
+      "candidate_before_sha256": "a56813d1e22e650a0160da2be30268d8e5f9bdd0763d342386960cd338f89f68",
+      "live_sha256": "99faacbb9439a7d3406272280352244d417592f07eea8d6396fe0cf3ced1678f",
+      "path": "config/staging-deployment-handoff.json"
+    },
+    {
+      "action": "keep_rc129_stricter_site_authority",
+      "candidate_after_sha256": "11f24340840e5d7e09c53fed8b90a1c959400b2df6a65855e39a9b8199ca859e",
+      "live_sha256": "673e760157b1c3a9b047c655dfe1353afc9d5d7f363f639609616a09403a57fb",
+      "path": "includes/class-mad4b-scp-company-local-wpcli.php"
+    },
+    {
+      "action": "clean_original_3way_merge_review",
+      "candidate_after_sha256": "0092589a05db48a07c7e1f39c9d15556885329b89e10891234b562814cb00e83",
+      "candidate_before_sha256": "c2bb77dcac5d050a69bb67cc6c2c78109dc288df243b697cc63c96e6a2b0929c",
+      "live_sha256": "271574aec2013c0613010afee9f7ee2c75e865b758ea2a0e71703db9f0cd1883",
+      "path": "includes/class-mad4b-scp-company-migration-decisions.php"
+    },
+    {
+      "action": "clean_original_3way_merge_review",
+      "candidate_after_sha256": "40a21583f5f03fad46658de78b6c9dad2eca4aa8ce77b01d49f8903c6af7fb66",
+      "candidate_before_sha256": "dfe8d53001d055e3e5375e788cc28c0f45ad2b5d5aa3a5d99c43af8998ce26ef",
+      "live_sha256": "75586bbcd4d89d160b079be43a4f613a7d26fa788d9b936003867a3bf12b6464",
+      "path": "includes/class-mad4b-scp-company-reconcile-skill-set.php"
+    },
+    {
+      "action": "clean_original_3way_merge_review",
+      "candidate_after_sha256": "26263fcd3f285a9463abe8400c9cc6950a9b2e418fd527b26788b47b249d3fb7",
+      "candidate_before_sha256": "d96e645eb4812ee738d68078e869842dee5d2f7a92062f06f726d671159e791f",
+      "live_sha256": "14adbf1821fd08866c633549245b57df1ae993ae6ec2a4cba7bb232992f6a715",
+      "path": "includes/class-mad4b-scp-content-job-structural-qa.php"
+    },
+    {
+      "action": "reviewed_photo_story_nile_alert_merge",
+      "candidate_after_sha256": "526156e4531d7e61a0334bdd2f0ba45c6ec77ba180a5bda7fbf91bb9d27cd34a",
+      "candidate_before_sha256": "253060af0f2a1322197a9605aea61a29894163801186f5c30512c24ae8831b04",
+      "live_sha256": "526156e4531d7e61a0334bdd2f0ba45c6ec77ba180a5bda7fbf91bb9d27cd34a",
+      "path": "includes/class-mad4b-scp-content-readiness-alerts.php"
+    },
+    {
+      "action": "keep_rc129_stricter_site_authority",
+      "candidate_after_sha256": "1135b08059ef61966a91cf2117131a83ad5f8225857d0ea6f289923271690f4d",
+      "live_sha256": "a828ea29c5421da2ecb2fc2bd2e80db65f1301253c2cb499b3d175d4c2b95929",
+      "path": "includes/class-mad4b-scp-contentjob-structural-cwa.php"
+    },
+    {
+      "action": "clean_original_3way_merge_review",
+      "candidate_after_sha256": "09b201fb39f8a12523861b2505a9c216f2adcbc139c0a9d3e5d2754f3da90d03",
+      "candidate_before_sha256": "76c09f8769935f9eaca21c1a1f07892e33d4a73a27bcb662bd5255edd15f59a3",
+      "live_sha256": "f257d3eab7e12868791b8d90df593235f582f0bbd5d2003ed5b0e44f3bc94990",
+      "path": "includes/class-mad4b-scp-site-profile.php"
+    },
+    {
+      "action": "clean_original_3way_merge_review",
+      "candidate_after_sha256": "e7b602aeb7557ae9c3968c4fd29f7f254749d0163126d5391f9f97c3c10fef7a",
+      "candidate_before_sha256": "95e9723c152a72f8cd173b1ea9b769ee38f31844e46e1769319220e0dc271a80",
+      "live_sha256": "617cd83012928c8598542304298b59bcc926e80e5268f9f8e6e17310ef5a55cf",
+      "path": "mad4b-site-control-plane.php"
+    },
+    {
+      "action": "keep_rc129_same_semantics_ignore_eof_newlines",
+      "candidate_after_sha256": "3f740db26ad6817f2ffb96ad94508f74675535364e85a09450391332acc8ca50",
+      "live_sha256": "67a79f1bb3f628952cc44a3e735dd149052283a4fb3e199a50b2cc7f30c52bda",
+      "path": "includes/class-mad4b-scp-brand-experience-quality.php"
+    },
+    {
+      "action": "keep_rc129_same_semantics_ignore_eof_newlines",
+      "candidate_after_sha256": "3590e7d233aa62bd750a81dd0127f8af307a9d5664801f419ee382f928af1c34",
+      "live_sha256": "fb95cfca37c1155c62d4840e2296f9f8f1519405afe7b0a3ab424b3fef972426",
+      "path": "includes/class-mad4b-scp-brand-review-routing.php"
+    },
+    {
+      "action": "keep_rc129_same_semantics_ignore_eof_newlines",
+      "candidate_after_sha256": "c1d53dc00646551cb93bcbc53f13a2b200953a1b72b8ed4ff2c661308b3d46c7",
+      "live_sha256": "440c556d5f6338ff153e2a87f9392bede3e972fd43a46cba50e3801e7d5545d5",
+      "path": "includes/class-mad4b-scp-drive-scan-cron.php"
+    },
+    {
+      "action": "keep_rc129_same_semantics_ignore_eof_newlines",
+      "candidate_after_sha256": "54eb793bfb8914d7c65e5d5b4e43a08fd2ad7cd501274952ab8d44902b1c9780",
+      "live_sha256": "6fd1de6f37cb7289ad483671c169088109f0fe163d2ede71ade5b8ff801a049e",
+      "path": "includes/class-mad4b-scp-provider-field-intelligence.php"
+    },
+    {
+      "action": "keep_rc129_php74_compatible_strategy",
+      "candidate_after_sha256": "dfb5d77f22a3184943337539a81a5e0b43368c2a97432385faa21efc46d21c6d",
+      "live_sha256": "e51391dd639b6a0e1d6c555ed002e1c1a6c98bc63fbf275b44f3033dc9fffaa9",
+      "path": "includes/class-mad4b-scp-visual-seo-strategy.php"
+    },
+    {
+      "action": "exclude_generated_rc128_provenance_from_rc129_source",
+      "candidate_after_sha256": null,
+      "live_sha256": "8f0603408667d838a4c15d732d65c500e1407ac05ceaf6abfacd69f8c4dfd8a9",
+      "path": "MAD4B-BUILD-PROVENANCE.json"
+    },
+    {
+      "action": "preserve_live_only_source_module_or_test",
+      "candidate_after_sha256": "e8fac42bc4eaf8a6977af03e239f51a86cb5aed0bcc38db071f0cf61b83543d5",
+      "candidate_before_sha256": null,
+      "live_sha256": "e8fac42bc4eaf8a6977af03e239f51a86cb5aed0bcc38db071f0cf61b83543d5",
+      "path": "includes/class-mad4b-scp-company-code-release-readiness.php"
+    },
+    {
+      "action": "preserve_live_only_source_module_or_test",
+      "candidate_after_sha256": "1335a1b5e006a5c8ea3f5b12bbdcc102881788fade766ab15433dd289d5c8966",
+      "candidate_before_sha256": null,
+      "live_sha256": "1335a1b5e006a5c8ea3f5b12bbdcc102881788fade766ab15433dd289d5c8966",
+      "path": "tests/google-gtm-publish-version-scope.php"
+    },
+    {
+      "action": "preserve_live_only_source_module_or_test",
+      "candidate_after_sha256": "88a5bd111b2357083cc212070277f902c164bc0d792f74eb71aa1447a0eebb41",
+      "candidate_before_sha256": null,
+      "live_sha256": "88a5bd111b2357083cc212070277f902c164bc0d792f74eb71aa1447a0eebb41",
+      "path": "tests/google-incremental-consent-panel-regression.php"
+    }
+  ],
+  "strategy": "preserve 30 newer source modifications; exact-base live fast-forwards; clean 3way merges; signed site-bound alerts; stricter rc129 auth; no full replacement"
+}

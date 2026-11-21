@@ -2,6 +2,7 @@
 """Fail-closed negative regression suite for dynamic capability review enforcement."""
 import copy
 import sys
+import tempfile
 from pathlib import Path
 from unittest import mock
 
@@ -35,6 +36,42 @@ provider_path = reg.PLUGIN + "includes/class-mad4b-scp-provider-transport.php"
 assert reg.classify(provider_path, provider_path, policy)["id"] == "mcp"
 content_path = reg.PLUGIN + "includes/class-mad4b-scp-content-create.php"
 assert reg.classify(content_path, content_path, policy)["id"] == "content"
+
+# Sensitive tenant identities and WP users must never inherit a soft P1 admin
+# review merely because the source is a REST route or an admin UI. This rule
+# classifies the resource family, not a fixed list of WordPress operations.
+tenant_user = reg.PLUGIN + "includes/class-mad4b-scp-company-user-lifecycle.php"
+identity = reg.classify(tenant_user, "rest:mad4b/v1/admin/company-team/users", policy)
+assert identity["id"] == "tenant_identity" and identity["risk"] == "P0"
+assert {"ADMIN-01", "SECURITY-01"} <= set(identity["controls"])
+tenant_team = reg.PLUGIN + "includes/class-mad4b-scp-company-master-admin.php"
+assert reg.classify(tenant_team, "rest:mad4b/v1/admin/company-team/create", policy)["risk"] == "P0"
+assert reg.classify(reg.PLUGIN + "includes/class-mad4b-scp-admin-options.php",
+    "rest:mad4b/v1/admin/settings-status", policy)["id"] == "admin"
+assert not policy.get("production_promotion_from_ci") and policy["authorizing"] is False
+
+# A concatenated Ability fragment cannot be certified as a full identity.
+# The original runtime registration (not this heuristic) is separately tested.
+dynamic_ability_source = """
+final class Provider {
+ public static function abilities(){
+  wp_register_ability('mad4b/direct-read', array());
+  foreach(array('inventory'=>false,'reconcile'=>true) as $name=>$write){
+    $ability='mad4b/search-provider-autoprovision-'.str_replace('_','-',$name);
+    wp_register_ability($ability, array());
+  }
+ }
+}
+"""
+with mock.patch.object(reg, "git_text", return_value=dynamic_ability_source):
+    dynamic_caps = reg.php_capabilities(head,
+       reg.PLUGIN + "includes/search/class-mad4b-scp-search-provider-autoprovision.php")
+    assert dynamic_caps == {"ability:mad4b/direct-read"}, dynamic_caps
+assert reg.PHP_ABILITY_PREFIX.search(
+    "$ability='mad4b/search-provider-autoprovision-'.str_replace('_','-',$name);")
+assert not reg.PHP_ABILITY_PREFIX.search(
+    "wp_register_ability('mad4b/static-ability', array());")
+
 
 def initial_baseline(_commit, path):
     if path == reg.CONTROLS:
@@ -122,11 +159,38 @@ with mock.patch.object(reg, "json_file", side_effect=initial_baseline), \
     stale_test["reviewed_capabilities"][0]["regression_tests"] = [
         "tests/unrelated-existing-test.py"
     ]
-    try:
-        reg.validate_coverage(stale_test, controls, base, head, changed, added, {})
-        raise AssertionError("Existing unmodified test must not certify new capability")
-    except ValueError as exc:
-        assert "Test evidence must be committed" in str(exc)
+    failures, accepted, _ = reg.validate_coverage(
+        stale_test, controls, base, head, changed, added, {})
+    assert not accepted and any(
+        "same_pr_capability_regression_missing" in gap["reasons"]
+        for gap in failures), "Existing unmodified test must not certify new capability"
+
+    control_mismatch = copy.deepcopy(covered)
+    control_mismatch["reviewed_capabilities"][0]["control_ids"] = [
+        "PLATFORM-01", "UPDATES-01"]
+    failures, accepted, _ = reg.validate_coverage(
+        control_mismatch, controls, base, head, changed, added, {})
+    assert not accepted and any(
+        "review_controls_do_not_cover_mapped_impact" in gap["reasons"]
+        for gap in failures), "Wrong mapped controls must remain review-blocking"
+
+    source_mismatch = copy.deepcopy(covered)
+    source_mismatch["reviewed_changes"][0]["control_ids"] = [
+        "PLATFORM-01", "UPDATES-01"]
+    failures, accepted, behavior = reg.validate_coverage(
+        source_mismatch, controls, base, head, changed, added, {})
+    assert not behavior and any(
+        "review_controls_do_not_cover_mapped_impact" in gap["reasons"]
+        for gap in failures), "Wrong source controls must never count as reviewed behavior"
+
+    stale_source_test = copy.deepcopy(covered)
+    stale_source_test["reviewed_changes"][0]["regression_tests"] = [
+        "tests/unrelated-existing-test.py"]
+    failures, accepted, behavior = reg.validate_coverage(
+        stale_source_test, controls, base, head, changed, added, {})
+    assert not behavior and any(
+        "same_pr_behavior_regression_missing" in gap["reasons"]
+        for gap in failures), "Unchanged test must never certify new source behavior"
 
     forged = copy.deepcopy(covered)
     forged["reviewed_capabilities"][0]["production_authorized"] = True
@@ -379,5 +443,108 @@ with mock.patch.object(reg, "json_file", side_effect=initial_baseline):
                 "Impact classification contract drift" in str(exc))
     else:
         raise AssertionError("Unbounded precedence override allowed")
+
+
+
+# The complete gap artifact is generated even when coverage must fail.
+# It never represents independent Owner approval or a Production decision.
+with tempfile.TemporaryDirectory(prefix='mad4b-readiness-gaps-') as temp:
+    sample = {
+        'contract': 'mad4b.dynamic-readiness-capability-impact.v1',
+        'source_base_sha': base, 'exact_head_sha': head,
+        'authorizing': False, 'production_authorized': False,
+        'decision': 'FAIL_UNCOVERED_CHANGES',
+        'counts': {'coverage_gaps': 1},
+        'coverage_gaps': [{
+            'id': cap, 'source': path, 'risk': 'P0',
+            'controls': ['SECURITY-01'],
+            'reasons': ['reviewed_coverage_missing'],
+        }],
+        'coverage_gap_reasons': {'reviewed_coverage_missing': 1},
+        'introduced': [], 'retired': [], 'impact': [],
+    }
+    with mock.patch.object(reg, 'json_file', return_value=controls):
+        reg.emit(sample, temp)
+    artifact = json.loads((Path(temp) / 'capability-coverage-gaps.json').read_text())
+    assert artifact['contract'] == 'mad4b.readiness-uncovered-changes.v1'
+    assert artifact['exact_head_sha'] == head
+    assert artifact['uncovered_count'] == 1 and len(artifact['items']) == 1
+    assert not artifact['authorizing'] and not artifact['production_authorized']
+    assert not artifact['independent_owner_approval_present']
+    assert artifact['decision'] == 'FAIL_UNCOVERED_CHANGES'
+    assert 'reviewed_coverage_missing' in (Path(temp) / 'capability-impact.md').read_text()
+
+
+# Source-proofed original Ability maps and non-authorizing event names.
+# Never demand a newly introduced WordPress Ability review for an Audit
+# event or a pointer to an already-existing registered Ability. Still review
+# changed source behavior and genuinely added registrations.
+definition_map = """<?php
+final class Original {
+ const SOURCE_PREFLIGHT_ABILITY='mad4b/context-source-onboarding-preflight';
+ function register_abilities(){
+   $definitions=array(
+     self::SOURCE_PREFLIGHT_ABILITY => array('callback'=>'plan')
+   );
+   foreach ($definitions as $ability => $definition) {
+     if(wp_has_ability($ability))continue;
+     wp_register_ability($ability, array('category'=>'mad4b-read'));
+   }
+ }
+}"""
+assert reg.registered_constant_map_owner(definition_map, "SOURCE_PREFLIGHT_ABILITY")
+for negative in (
+    definition_map.replace("wp_register_ability($ability, array('category'=>'mad4b-read'));",
+                           "audit_record($ability);"),
+    definition_map.replace("foreach ($definitions as $ability => $definition)",
+                           "foreach ($foreign as $ability => $definition)"),
+    definition_map.replace("self::SOURCE_PREFLIGHT_ABILITY =>", "self::SOME_OTHER_ABILITY =>"),
+):
+    assert not reg.registered_constant_map_owner(negative, "SOURCE_PREFLIGHT_ABILITY")
+
+# This genuine ability is registered in a previously existing source tree.
+# The current Context Authority only references its name as a next-step link.
+owner_id="ability:mad4b/context-source-onboarding-preflight"
+owner=reg.registered_ability_owner(reg.git("rev-parse","HEAD").stdout.decode().strip(),owner_id)
+assert owner and owner.endswith("/class-mad4b-scp-brand-core-remote-recovery.php")
+sample = """<?php
+class Owner {
+ function register_abilities(){
+  wp_register_ability('mad4b/real-ability',array());
+  self::audited_registry_result(
+    array('nested'=>array(1,2), 'row'=>array('id'=>3)),
+    'mad4b/context-existing-folder-settings',
+    array('source_id'=>'x')
+  );
+  MAD4B_SCP_Audit::record('mad4b/context-foreign-recycle-archive-cleanup',
+    array('resource'=>array(1,2)));
+ }
+}"""
+masked=reg.mask_audit_event_literals(sample)
+assert "'mad4b/real-ability'" in masked
+assert "'mad4b/context-existing-folder-settings'" not in masked
+assert "'mad4b/context-foreign-recycle-archive-cleanup'" not in masked
+with mock.patch.object(reg, "git_text", return_value=sample):
+    ids=reg.php_capabilities(head,reg.PLUGIN+"includes/class-mad4b-scp-context-authority.php")
+    assert ids == {"ability:mad4b/real-ability"}, ids
+for not_a_registration in (
+    "<?php function register_abilities() { self::audited_registry_result(array(),"
+    "'mad4b/not-a-registration', array()); }",
+    "<?php function register_abilities() { MAD4B_SCP_Audit::record("
+    "'mad4b/another-non-ability', array()); }",
+):
+    with mock.patch.object(reg, "git_text", return_value=not_a_registration):
+        ids=reg.php_capabilities(head,reg.PLUGIN+"includes/class-mad4b-scp-foreign-recovery.php")
+        assert not ids, ids
+
+# Same literal outside the audited argument must remain in the inventory.
+actual_registration=sample.replace(
+    "self::audited_registry_result(", "wp_register_ability('mad4b/new-actual-ability',array());"
+    "self::audited_registry_result("
+)
+with mock.patch.object(reg,"git_text",return_value=actual_registration):
+    ids=reg.php_capabilities(head,reg.PLUGIN+"includes/class-mad4b-scp-context-authority.php")
+    assert "ability:mad4b/new-actual-ability" in ids
+print("PASS: READINESS_SOURCE_EVENT_VS_ABILITY 10 proof and denial cases")
 
 print("DYNAMIC_READINESS_NEGATIVE_REGRESSIONS: PASS")

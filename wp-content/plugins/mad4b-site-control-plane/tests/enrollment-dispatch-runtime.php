@@ -61,11 +61,18 @@ final class MAD4B_SCP_Site_Profile {
     public static function configured() { return true; }
     public static function current_environment() { return isset( $GLOBALS['mad4b_test_env'] ) ? $GLOBALS['mad4b_test_env'] : 'staging'; }
     public static function origin_enrolled() { return true; }
+    public static function managed_runtime_enabled() { return empty( $GLOBALS['test_managed_runtime_revoked'] ); }
+    public static function write_enabled() { return empty( $GLOBALS['test_profile_write_revoked'] ); }
     public static function site_urls_match_enrollment() { return true; }
     public static function user_is_enrolled( $user_id ) { return 7 === (int) $user_id; }
 }
 
-final class MAD4B_SCP_Policy {
+final class MAD4B_SCP_Policy_Resolution {
+    public static function environment_allowed( $environment ) {
+        return empty( $GLOBALS['test_governance_environment_denied'] );
+    }
+}
+class MAD4B_SCP_Policy {
     public static function can_read() { return true; }
     public static function can_breakglass() { return false; }
 }
@@ -544,9 +551,9 @@ mad4b_assert( 'mad4b_enrollment_dispatch_chatgpt_client_required' === mad4b_erro
     'foreign OAuth client was accepted' );
 MAD4B_SCP_OAuth_Resource_Bridge::$client = true;
 $GLOBALS['mad4b_test_env'] = 'production';
-mad4b_assert( 'mad4b_enrollment_dispatch_staging_profile_required' === mad4b_error_code(
+mad4b_assert( 'mad4b_enrollment_dispatch_operation_not_eligible' === mad4b_error_code(
     MAD4B_SCP_Enrollment_Dispatch::can_execute( $owner_input ) ),
-    'Production owner convergence was not rejected' );
+    'Legacy Production-deny operation was admitted without registry governance' );
 unset( $GLOBALS['mad4b_test_env'] );
 mad4b_assert( 1 === $owner->calls, 'unauthorized or malformed owner convergence invoked target unexpectedly' );
 MAD4B_SCP_Remote_Operation_Parity::$include_owner = false;

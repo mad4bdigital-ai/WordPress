@@ -269,53 +269,42 @@ foreach ( array( 'mad4b/skill-create', 'mad4b/skill-update', 'mad4b/skill-delete
 	if ( wp_has_ability( $ability ) ) $fail( 'Forbidden Skill write ability is registered: ' . $ability );
 }
 
-// Register a disposable WPML-compatible route directly on the REST server. The
-// low-level register_route() API expects the full route path; WordPress' public
-// register_rest_route() wrapper performs this namespace prefixing itself.
-// The deep diagnostic intentionally short-circuits when WPML is not active, so
-// this synthetic provider fixture must explicitly model an active WPML runtime.
-if ( ! defined( 'ICL_SITEPRESS_VERSION' ) ) define( 'ICL_SITEPRESS_VERSION', 'ci-fixture' );
-$rest_server = rest_get_server();
-$rest_server->register_route( 'wpml/v1', '/wpml/v1/rest/status', array(
-	array(
-		'methods' => 'GET',
-		'callback' => static function ( $request ) {
-			return new WP_REST_Response( array(
-				'status' => '1' === (string) $request->get_param( 'test_get_parameter' ) ? 'valid' : 'invalid',
-				'get_parameters' => null !== $request->get_param( 'cachebuster' ) ? 'valid' : 'invalid',
-			), 200 );
-		},
-		'permission_callback' => '__return_true',
-	),
-), true );
-// Behavioral proof belongs to the explicit, bounded diagnostic surface.
-$deep = MAD4B_SCP_REST_Compatibility::deep_diagnostic( array( 'provider' => 'wpml' ) );
-if ( is_wp_error( $deep ) ) $fail( 'Explicit WPML deep diagnostic failed: ' . $deep->get_error_code() );
-if ( empty( $deep['ready'] ) || empty( $deep['query_parameters_preserved'] ) || 'behavior_verified' !== (string) $deep['state'] ) {
-	$fail( 'Explicit WPML deep diagnostic did not prove query parameter pass-through.' );
-}
-if ( empty( $deep['active_probe_performed'] ) || empty( $deep['internal_rest_dispatch_performed'] ) || 1 !== (int) $deep['provider_self_calls_started'] ) {
-	$fail( 'Explicit WPML deep diagnostic did not report its one bounded internal dispatch.' );
-}
-if ( ! empty( $deep['loopback_http_performed'] ) || ! empty( $deep['automatic_retry_allowed'] ) || ! empty( $deep['authorizing'] ) || ! empty( $deep['acceptance_evidence_persisted'] ) ) {
-	$fail( 'Explicit WPML deep diagnostic crossed its non-authorizing boundary.' );
-}
-
-$rest_compat = MAD4B_SCP_REST_Compatibility::status();
-if ( empty( $rest_compat['rest_enabled'] ) ) $fail( 'REST API is disabled in the disposable Staging runtime.' );
-if ( ! empty( $rest_compat['control_plane_disables_rest'] ) ) $fail( 'Control Plane reports REST disablement.' );
-if ( ! empty( $rest_compat['control_plane_filters_rest_enabled'] ) ) $fail( 'Control Plane unexpectedly owns a rest_enabled callback.' );
-if ( ! empty( $rest_compat['control_plane_filters_rest_authentication_errors'] ) ) $fail( 'Control Plane unexpectedly owns a global rest_authentication_errors callback.' );
-if ( ! empty( $rest_compat['rest_enabled_hook']['truncated'] ) || ! empty( $rest_compat['rest_authentication_errors_hook']['truncated'] ) ) $fail( 'REST hook evidence was truncated.' );
-if ( true !== $rest_compat['wpml']['route_registered'] || empty( $rest_compat['wpml']['ready'] ) ) $fail( 'Passive WPML route observation did not see the already-materialized route.' );
-if ( null !== $rest_compat['wpml']['query_parameters_preserved'] ) $fail( 'Passive WPML status fabricated behavioral evidence.' );
-if ( ! empty( $rest_compat['wpml']['active_probe_performed'] ) || ! empty( $rest_compat['wpml']['internal_rest_dispatch_performed'] ) || 0 !== (int) $rest_compat['wpml']['provider_self_calls_started'] ) $fail( 'Passive WPML status started provider work.' );
-if ( ! empty( $rest_compat['wpml']['control_plane_block_detected'] ) ) $fail( 'Control Plane blocked the WPML-compatible REST route.' );
-$wpml_receipt = MAD4B_SCP_WPML_Response_Contract::receipt_status();
-if ( ! empty( $wpml_receipt['observed'] ) ) $fail( 'Internal rest_do_request incorrectly minted external WPML evidence.' );
+// WPML behavior is proven in a separate process by the preceding CI step.
+// Never define a synthetic provider version in a request that mutates exact
+// Agent Grants: otherwise the next WordPress request will have a different
+// runtime mounted-Ability fingerprint and report stale grants.
 
 $write_reconciliation = MAD4B_SCP_Staging_Write_Authority::reconcile();
-if ( empty( $write_reconciliation['ready'] ) || 'ready' !== $write_reconciliation['state'] ) $fail( 'Governed write authority is not ready: ' . wp_json_encode( $write_reconciliation ) );
+if ( empty( $write_reconciliation['ready'] ) || 'ready' !== $write_reconciliation['state'] ) {
+    // Read-only CI diagnostic. Do not change the closed grant policy to make
+    // runtime reconciliation succeed; list the exact missing policy pairs.
+    $policy_diffs = array();
+    if ( ( $write_reconciliation['blocker'] ?? '' ) === 'write_grant_source_policy_preflight_blocked' ) {
+        $plan = MAD4B_SCP_Staging_Write_Authority::reconciliation_plan();
+        $policy = MAD4B_SCP_Staging_Write_Grant_Reconciliation::allowed_ability_providers();
+        foreach ( (array) ( $plan['exact_grants_missing'] ?? array() ) as $row ) {
+            $ability = isset( $row['ability'] ) ? (string) $row['ability'] : '';
+            $provider = isset( $row['provider'] ) ? sanitize_key( (string) $row['provider'] ) : '';
+            $reason = isset( $row['reason'] ) ? (string) $row['reason'] : '';
+            if ( '' !== $ability && ( 'missing_exact_grant' !== $reason ||
+                ! isset( $policy[$ability] ) || sanitize_key( (string) $policy[$ability] ) !== $provider ) ) {
+                $policy_diffs[] = array( 'ability' => $ability,
+                    'provider' => $provider,
+                    'expected_provider' => (string) ( $policy[$ability] ?? '' ),
+                    'reason' => $reason );
+            }
+        }
+        usort( $policy_diffs, static function ( $a, $b ) {
+            return strcmp( $a['ability'], $b['ability'] );
+        } );
+    }
+    $fail( 'Governed write authority is not ready: ' . wp_json_encode( array(
+        'blocker' => (string) ( $write_reconciliation['blocker'] ?? '' ),
+        'unapproved_missing_count' => (int) ( $write_reconciliation['source_policy_unapproved_missing_count'] ?? 0 ),
+        'source_policy_differences' => array_slice( $policy_diffs, 0, 50 ),
+        'no_mutation' => empty( $write_reconciliation['mutation_performed'] ),
+    ) ) );
+}
 
 $write_authority = MAD4B_SCP_Staging_Write_Authority::status();
 if ( empty( $write_authority['mutation_gate_configured'] ) ) $fail( 'Governed mutation gate was not configured.' );

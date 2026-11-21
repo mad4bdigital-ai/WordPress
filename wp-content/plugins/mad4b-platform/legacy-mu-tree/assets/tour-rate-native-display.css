@@ -1,0 +1,471 @@
+/* Scoped to the original JetEngine Tour Rate listing, not global Elementor. */
+.elementor-46193 .tour-native-price .elementor-heading-title{
+ font-size:clamp(13px,1vw,15px);
+ line-height:1.35;
+ overflow-wrap:anywhere;
+}
+.elementor-46193 .tour-native-price--previous .elementor-heading-title{
+ text-decoration:line-through;
+ font-weight:400;
+}
+.elementor-46193 .tour-rate-period-row{
+ display:flex;
+ flex-flow:row wrap;
+ align-items:center;
+ column-gap:10px;
+ row-gap:3px;
+}
+.elementor-46193 .tour-rate-period-row .jet-listing-dynamic-field__content{
+ white-space:normal;
+}
+/* No vacant price row, no misleading occupancy unit without an amount.
+   Preserve future/expired state in the single current-price slot. */
+.elementor-46193 :is(
+ .elementor-element-ddf6292,
+ .elementor-element-33033a9,
+ .elementor-element-11e8877,
+ .elementor-element-a38b643,
+ .elementor-element-a353ef6,
+ .elementor-element-fd04e64
+):not(:has(.tour-native-price-amount)){display:none !important;}
+
+/* The secondary authored pricing section needs an explicit price-unit
+   mode. Never render it for an unconfigured Rate. */
+.elementor-46193 .tour-native-extra-pricing-unassigned{
+ display:none !important;
+}
+
+/* Original Package Level identity comes from the existing JetEngine term
+   meta package_color and package_badge. Keep selectors scoped to native
+   Elementor Tour Rate templates and avoid overriding the user's theme. */
+.elementor-46193 .tour-native-package-tier{
+ --tour-rate-package-soft:color-mix(in srgb,var(--tour-rate-package-accent) 11%,white);
+ border-top:3px solid var(--tour-rate-package-accent);
+ background-image:linear-gradient(160deg,var(--tour-rate-package-soft),transparent 28%);
+}
+.elementor-46193 .tour-native-package-tier .elementor-element-e64796e .jet-listing-dynamic-field__content{
+ display:inline-flex;
+ align-items:center;
+ width:fit-content;
+ padding:5px 14px;
+ border:2px solid var(--tour-rate-package-accent);
+ border-radius:11px;
+ background:var(--tour-rate-package-soft);
+ color:color-mix(in srgb,var(--tour-rate-package-accent) 36%,#23374b);
+ font-weight:650;
+ font-size:18px!important;
+ padding:4px 10px;
+ line-height:1.25;
+}
+.elementor-46193 .tour-native-package-tier .elementor-element-9175860 .jet-listing-dynamic-field__content{
+ font-weight:600;
+ color:color-mix(in srgb,var(--tour-rate-package-accent) 45%,#23374b);
+}
+.elementor-46193 .tour-rate-egyptians-unconfigured{
+ display:none !important;
+}
+
+/* Container-level fail-closed visibility, including cached embedded Rate
+   markup that is older than the Query Builder eligibility fix. */
+.elementor-46193 .tour-rate-native-ineligible{
+ display:none !important;
+}
+.elementor-46193 .tour-native-package-tier[data-tour-has-egyptians="0"] .elementor-element-12c9aeb{
+ display:none !important;
+}
+
+/* 25px outer card corners; the original bottom corners remain intact. */
+.elementor-46193 .tour-native-package-tier{
+ border-radius:25px !important;
+ background-clip:padding-box;
+ overflow:visible;
+}
+.elementor-46193 .tour-native-package-tier > .elementor-element-1438893{
+ border-top-left-radius:25px !important;
+ border-top-right-radius:25px !important;
+}
+/* User-selected Elementor layout: amount + display currency on one row;
+   original JetEngine unit label stays in the next existing container. */
+.elementor-46193 .tour-rate-amount-row,
+.elementor-57381 .tour-rate-amount-row{
+ display:flex;
+ flex-flow:row wrap;
+ align-items:baseline;
+ justify-content:flex-start;
+ gap:0 5px;
+}
+.elementor-46193 .tour-rate-amount-row > .elementor-widget,
+.elementor-57381 .tour-rate-amount-row > .elementor-widget{
+ flex:0 0 auto;
+ width:auto;
+ min-width:0;
+}
+.elementor-46193 .tour-native-price-amount .elementor-heading-title,
+.elementor-57381 .tour-native-price-amount .elementor-heading-title{
+ font-size:clamp(13px,1vw,15px);
+ line-height:1.35;
+ font-variant-numeric:tabular-nums;
+}
+.elementor-46193 .tour-native-price-currency .elementor-heading-title,
+.elementor-57381 .tour-native-price-currency .elementor-heading-title{
+ font-size:12px;
+ font-weight:650;
+ color:#62758b;
+ line-height:1.35;
+}
+.elementor-46193 .tour-native-price-amount:has(.elementor-heading-title:empty),
+.elementor-57381 .tour-native-price-amount:has(.elementor-heading-title:empty),
+.elementor-46193 .tour-native-price-currency:has(.elementor-heading-title:empty),
+.elementor-57381 .tour-native-price-currency:has(.elementor-heading-title:empty){
+ display:none;
+}
+.elementor-46193 .tour-native-price--previous .elementor-heading-title,
+.elementor-57381 .tour-native-price--previous .elementor-heading-title{
+ text-decoration:line-through;
+ opacity:.75;
+}
+.elementor-46193 .elementor-element-2eccb44{
+ display:flex;
+ flex-flow:row wrap;
+ align-items:center;
+ gap:5px;
+}
+.elementor-46193 .elementor-widget-tour-rate-term-details{
+ position:relative;
+ width:auto;
+ flex:0 0 auto;
+ z-index:10;
+}
+.elementor-46193 .tour-rate-term-details__button{
+ cursor:pointer;
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ width:27px;
+ height:27px;
+ border-radius:999px;
+ background:white;
+ border:1.5px solid var(--tour-rate-package-accent,#64748b);
+ color:#26384c;
+ font-size:14px;
+ font-weight:700;
+ list-style:none;
+}
+.elementor-46193 .tour-rate-term-details__button::-webkit-details-marker{display:none}
+.elementor-46193 .tour-rate-term-details__button:focus-visible{
+ outline:3px solid #2160b5;
+ outline-offset:3px;
+}
+.elementor-46193 .tour-rate-term-details[open] .tour-rate-term-details__button{
+ background:var(--tour-rate-package-accent,#e2e8f0);
+}
+.elementor-46193 .tour-rate-term-details__content{
+ box-sizing:border-box;
+ position:absolute;
+ top:calc(100% + 8px);
+ left:-15px;
+ z-index:60;
+ width:min(285px,75vw);
+ padding:13px 14px;
+ border-radius:13px;
+ border:1px solid color-mix(in srgb,var(--tour-rate-package-accent,#64748b) 55%,#cbd5e1);
+ background:#fff;
+ color:#24364a;
+ box-shadow:0 10px 28px rgba(17,43,70,.18);
+ line-height:1.5;
+ text-align:start;
+ font-size:13px;
+}
+.elementor-46193 .tour-rate-term-details__content strong{display:block;font-size:15px}
+.elementor-46193 .tour-rate-term-details__content p{margin:6px 0}
+.elementor-46193 .tour-rate-term-details__badge{
+ display:inline-block;
+ padding:2px 7px;
+ margin-top:6px;
+ border-radius:6px;
+ background:color-mix(in srgb,var(--tour-rate-package-accent,#64748b) 20%,white);
+}
+.elementor-46193 .tour-rate-term-details__content ul{
+ margin:8px 0 0;
+ padding-inline-start:18px;
+}
+@media(max-width:767px){
+ .elementor-46193 .tour-rate-term-details__content{
+  left:-12px;
+  width:min(240px,76vw);
+ }
+}
+
+/* Keep the disclosure inside narrow two-column/mobile Rate cards. */
+.elementor-46193 .tour-rate-term-details__content{
+ left:auto;
+ right:0;
+}
+@media(max-width:767px){
+ .elementor-46193 .tour-rate-term-details__content{
+  left:auto;
+  right:0;
+  width:min(228px,74vw);
+ }
+}
+
+/* Badge is a content-width label, so the ! control sits next to it. */
+.elementor-46193 .elementor-element-2eccb44 > .elementor-element-e64796e{
+ flex:0 0 auto !important;
+ width:max-content !important;
+ max-width:100%;
+}
+.elementor-46193 .elementor-element-2eccb44{
+ justify-content:flex-start !important;
+}
+.elementor-46193 .tour-rate-term-details__content{
+ left:0;
+ right:auto;
+}
+@media(max-width:767px){
+ .elementor-46193 .tour-rate-term-details__content{
+  left:0;
+  right:auto;
+ }
+}
+
+/* Centered, slider-aware Package Level popover in the browser top layer.
+ * Do not override Swiper's overflow:hidden or card border clipping.
+ * Inline top/left/width come from the actual button/card/slider geometry.
+ */
+.elementor-46193 .tour-rate-term-details__content[popover]{
+ position:fixed !important;
+ inset:auto;
+ right:auto !important;
+ bottom:auto !important;
+ top:auto;
+ left:auto;
+ margin:0 !important;
+ box-sizing:border-box;
+ z-index:2147483647;
+ min-width:0;
+ max-height:calc(100dvh - 16px);
+ overflow:auto;
+ overscroll-behavior:contain;
+}
+.elementor-46193 .tour-rate-term-details__content[popover]:not(:popover-open){
+ display:none;
+}
+
+/* Respect the original SVG (25x24), instead of replacing it with a glyph. */
+.elementor-46193 .tour-rate-original-price-svg,
+.elementor-57381 .tour-rate-original-price-svg{
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ color:#0A2B4B;
+ line-height:0;
+}
+.elementor-46193 .tour-rate-original-price-svg svg,
+.elementor-57381 .tour-rate-original-price-svg svg{
+ display:block;
+ width:25px;
+ height:auto;
+ max-width:none;
+}
+.elementor-46193 .tour-rate-amount-row > .elementor-widget-tour-rate-original-price-icon,
+.elementor-57381 .tour-rate-amount-row > .elementor-widget-tour-rate-original-price-icon{
+ width:auto;
+ flex:0 0 auto;
+ align-self:center;
+}
+/* Stay stage headings share the site's Internal Transportations h4 tokens. */
+.elementor-46193 .booking-choice-list .booking-choice-stage>legend{
+ font-family:Cairo,sans-serif;
+ color:#202F59;
+ font-size:20px;
+ font-weight:600;
+ line-height:1.2;
+ padding-bottom:8px;
+ overflow-wrap:anywhere;
+}
+@media(max-width:767px){
+ .elementor-46193 .booking-choice-list .booking-choice-stage>legend{
+  font-size:18.24px;
+ }
+}
+
+/* Source-backed original Tour Rate price hierarchy. Brand Kit controls the
+ * palette: Elementor Primary/Secondary/Text/Accent, not fixed website colors.
+ * Existing amount, currency and original SVG widgets remain Elementor-native.
+ */
+:is(.elementor-46193,.elementor-57381) .tour-rate-amount-row{
+ display:flex;
+ flex-direction:row;
+ flex-wrap:wrap;
+ align-items:center;
+ gap:3px 6px;
+}
+:is(.elementor-46193,.elementor-57381) .tour-rate-amount-row > .tour-native-price--previous{
+ order:0;
+}
+:is(.elementor-46193,.elementor-57381) .tour-rate-amount-row > .tour-native-price-currency--previous{
+ order:1;
+}
+/* One old-price row, only when a REAL previous price exists. */
+:is(.elementor-46193,.elementor-57381) .tour-rate-amount-row:has(> .tour-native-price--previous .elementor-heading-title:not(:empty))::before{
+ content:"";
+ flex-basis:100%;
+ width:0;
+ height:0;
+ order:2;
+}
+:is(.elementor-46193,.elementor-57381) .tour-rate-amount-row > .elementor-widget-tour-rate-original-price-icon{
+ order:3;
+}
+:is(.elementor-46193,.elementor-57381) .tour-rate-amount-row > .tour-native-price--current,
+:is(.elementor-46193,.elementor-57381) .tour-rate-amount-row > .tour-native-price--sale{
+ order:4;
+}
+:is(.elementor-46193,.elementor-57381) .tour-rate-amount-row > .tour-native-price-currency:not(.tour-native-price-currency--previous){
+ order:5;
+}
+:is(.elementor-46193,.elementor-57381) .tour-rate-amount-row > .tour-rate-discount-badge{
+ order:6;
+}
+:is(.elementor-46193,.elementor-57381) .tour-native-price-amount .elementor-heading-title{
+ color:var(--e-global-color-secondary, #47729E);
+ font-family:var(--e-global-typography-text-font-family, inherit);
+ font-size:var(--e-global-typography-text-font-size, 16px);
+ font-weight:700;
+ line-height:1.3;
+ font-variant-numeric:tabular-nums;
+}
+:is(.elementor-46193,.elementor-57381) .tour-native-price-currency .elementor-heading-title{
+ color:var(--e-global-color-text,#333333);
+ font-family:var(--e-global-typography-text-font-family,inherit);
+ font-size:clamp(11px,.74em,13px);
+ font-weight:500;
+ line-height:1.3;
+}
+:is(.elementor-46193,.elementor-57381) .tour-native-price--previous .elementor-heading-title{
+ color:var(--e-global-color-text,#333333);
+ font-size:clamp(11px,.85em,14px);
+ font-weight:400;
+ opacity:.65;
+ text-decoration:line-through;
+}
+:is(.elementor-46193,.elementor-57381) .tour-native-price-currency--previous .elementor-heading-title{
+ color:var(--e-global-color-text,#333333);
+ opacity:.65;
+ font-size:11px;
+}
+:is(.elementor-46193,.elementor-57381) .tour-rate-original-price-svg{
+ color:var(--e-global-color-primary,#2C3E50);
+}
+:is(.elementor-46193,.elementor-57381) .tour-rate-original-price-svg svg{
+ stroke:currentColor;
+}
+:is(.elementor-46193,.elementor-57381) .tour-rate-discount-badge .elementor-heading-title{
+ display:inline-block;
+ background:var(--e-global-color-accent,#D4B483);
+ color:var(--e-global-color-primary,#2C3E50);
+ font-family:var(--e-global-typography-text-font-family,inherit);
+ font-size:clamp(10px,.71em,12px);
+ font-weight:700;
+ padding:2px 6px;
+ border-radius:6px;
+ line-height:1.4;
+ white-space:nowrap;
+}
+:is(.elementor-46193,.elementor-57381) .tour-rate-amount-row > .elementor-widget:is(
+ .tour-native-price-amount,
+ .tour-native-price-currency,
+ .tour-rate-discount-badge
+):not(:has(.elementor-heading-title:not(:empty))){
+ display:none !important;
+}
+
+/* The original Elementor e-con::before is absolutely positioned, so it
+ * cannot act as a flex line break. Use the native empty Container instead. */
+:is(.elementor-46193,.elementor-57381) .tour-rate-amount-row > .tour-rate-sale-break{
+ order:2;
+ flex:0 0 100%;
+ width:100%;
+ height:0 !important;
+ min-height:0 !important;
+ padding:0 !important;
+ margin:0 !important;
+ border:0 !important;
+ display:none !important;
+}
+:is(.elementor-46193,.elementor-57381) .tour-rate-amount-row:has(> .tour-native-price--previous .elementor-heading-title:not(:empty)) > .tour-rate-sale-break{
+ display:block !important;
+}
+:is(.elementor-46193,.elementor-57381) .tour-native-price-amount .elementor-heading-title{
+ color:var(--e-global-color-secondary,#47729E) !important;
+ font-size:var(--e-global-typography-text-font-size,16px) !important;
+ font-weight:700 !important;
+}
+:is(.elementor-46193,.elementor-57381) .tour-native-price-currency .elementor-heading-title{
+ color:var(--e-global-color-text,#333333) !important;
+}
+:is(.elementor-46193,.elementor-57381) .tour-native-price--previous .elementor-heading-title{
+ color:var(--e-global-color-text,#333333) !important;
+ font-size:clamp(11px,.85em,14px) !important;
+ font-weight:400 !important;
+ opacity:.65;
+ text-decoration:line-through;
+}
+:is(.elementor-46193,.elementor-57381) .tour-rate-original-price-svg{
+ color:var(--e-global-color-primary,#2C3E50) !important;
+}
+
+:is(.elementor-46193,.elementor-57381) .tour-native-price-currency--previous .elementor-heading-title{
+ text-decoration:line-through;
+}
+
+/* QA listing: hide redundant raw Rate post title without removing metadata
+   or touching the canonical Package Level badge and Rate selection. */
+.elementor-46193 .elementor-element-9bdd038{
+ display:none !important;
+}
+/* Original occupancy rows: consistently identify Triple, Double, Single.
+   Their typography/colors inherit Elementor Brand Kit text tokens. */
+.elementor-46193 .tour-rate-occupancy-label .elementor-heading-title,
+.elementor-57381 .tour-rate-occupancy-label .elementor-heading-title{
+ color:var(--e-global-color-text,#333333);
+ font-family:var(--e-global-typography-text-font-family,inherit);
+ font-size:var(--e-global-typography-text-font-size,14px);
+ font-weight:500;
+ line-height:1.4;
+ overflow-wrap:anywhere;
+}
+.elementor-46193 .tour-rate-occupancy-label .elementor-heading-title:empty,
+.elementor-57381 .tour-rate-occupancy-label .elementor-heading-title:empty{
+ display:none;
+}
+
+/* Clear per-price occupancy differentiation without replacing the data
+ * contract or introducing different brand-specific hardcoded colors. */
+.elementor-46193 .tour-rate-occupancy-container,
+.elementor-57381 .tour-rate-occupancy-container{
+ display:flex;
+ align-items:flex-start;
+ margin-top:4px;
+}
+.elementor-46193 .tour-rate-occupancy-label .elementor-heading-title,
+.elementor-57381 .tour-rate-occupancy-label .elementor-heading-title{
+ display:inline-flex;
+ align-items:center;
+ width:fit-content;
+ min-height:24px;
+ border-radius:8px;
+ border:1px solid color-mix(in srgb,var(--e-global-color-primary,#2C3E50) 20%,transparent);
+ background:color-mix(in srgb,var(--e-global-color-primary,#2C3E50) 7%,transparent);
+ padding:3px 8px;
+ color:var(--e-global-color-text,#333333);
+ font-size:clamp(11px,.82em,13px);
+ font-weight:500;
+ line-height:1.35;
+}
+.elementor-46193 .tour-occupancy-triple,
+.elementor-46193 .tour-occupancy-double,
+.elementor-46193 .tour-occupancy-single{
+ position:relative;
+}

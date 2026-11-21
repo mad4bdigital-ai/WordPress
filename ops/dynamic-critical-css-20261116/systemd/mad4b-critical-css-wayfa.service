@@ -1,0 +1,17 @@
+[Unit]
+Description=MAD4B Wayfatours original v1 mobile Critical CSS browser qualification and publication
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+ConditionPathExists=/opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261115/ops/dynamic-critical-css-20261116/run-site.sh
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261115/ops/dynamic-critical-css-20261116/run-site.sh wayfa
+TimeoutStartSec=3000
+Nice=15
+IOSchedulingClass=idle
+NoNewPrivileges=true
+StandardOutput=journal
+StandardError=journal

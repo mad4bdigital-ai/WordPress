@@ -34,6 +34,7 @@ for marker in (
     "get_option( 'active_plugins'",
     'runtime_provenance()',
     "'runtime_from_hostinger_bundle'",
+    "'runtime_source_observed'",
     "'runtime_provenance_mismatch'",
     "'runtime_class_provenance_enforced'",
     "'runtime_class_provenance_ready'",

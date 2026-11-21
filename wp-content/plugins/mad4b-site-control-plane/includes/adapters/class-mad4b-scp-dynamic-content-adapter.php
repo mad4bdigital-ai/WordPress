@@ -190,7 +190,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			self::READBACK,
 			'Read Dynamic Content Bundle',
 			'readback',
-			array('MAD4B_SCP_Policy','can_read'),
+			array('MAD4B_SCP_Policy','can_plan_mutations'),
 			$this->schema(array(
 				'post_id'=>array('type'=>'integer','minimum'=>1),
 				'meta_keys'=>array('type'=>'array','maxItems'=>200,'items'=>array('type'=>'string','minLength'=>1,'maxLength'=>191)),
@@ -206,7 +206,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			self::PLAN,
 			'Plan Dynamic Content Orchestration',
 			'orchestration_plan',
-			array('MAD4B_SCP_Policy','can_read'),
+			array('MAD4B_SCP_Policy','can_plan_mutations'),
 			$this->schema(array(
 				'mode'=>array('type'=>'string','enum'=>array('create','update'),'default'=>'create'),
 				'post_type'=>array('type'=>'string','minLength'=>1,'maxLength'=>64,'pattern'=>'^[a-zA-Z0-9_-]+$'),
@@ -1089,6 +1089,37 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		$out=array(); foreach(array('post_title','post_content','post_excerpt','post_status','post_parent','post_author') as $k) if(array_key_exists($k,$post)) $out[$k]=in_array($k,array('post_parent','post_author'),true)?absint($post[$k]):(string)$post[$k]; return $out;
 	}
 
+	/**
+	 * The content write has ALREADY succeeded before the terminal journal
+	 * append. A failed/uncertain receipt must never be reported as a normal
+	 * pre-write failure: the original operation must be reconciled against
+	 * its binding and readback before anyone can attempt a new mutation.
+	 */
+	private function completion_journal_uncertain($error,array $operation,array $result){
+		return new WP_Error(
+			'mad4b_dynamic_completion_journal_unverified',
+			'Dynamic content may have changed, but its terminal operation receipt is unverified. Reconcile the original operation before any retry.',
+			array(
+				'contract'=>'mad4b.dynamic-content-postwrite-recovery.v1',
+				'cause_code'=>is_wp_error($error)?$error->get_error_code():'mad4b_operation_journal_result_invalid',
+				'operation_id'=>isset($operation['operation_id'])?(string)$operation['operation_id']:'',
+				'operation_key'=>isset($operation['operation_key'])?(string)$operation['operation_key']:'',
+				'operation_binding_sha256'=>isset($operation['operation_binding_sha256'])?(string)$operation['operation_binding_sha256']:'',
+				'post_id'=>isset($result['post_id'])?absint($result['post_id']):0,
+				'content_mutation_may_have_completed'=>true,
+				'recovery_required'=>true,
+				'reconciliation_required'=>true,
+				'blind_retry_allowed'=>false,
+				'publication_authorized'=>false,
+				'mad4b_execution_state'=>array(
+					'contract'=>'mad4b.execution-state.v1',
+					'started'=>true,
+					'outcome'=>'unknown_after_mutation',
+				),
+			)
+		);
+	}
+
 	private function not_started_error($error){
 		if(!is_wp_error($error)) $error=new WP_Error('mad4b_dynamic_not_started','Dynamic content mutation did not start.');
 		$code=$error->get_error_code();
@@ -1184,7 +1215,13 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 				return $result;
 			}
 			$tail=MAD4B_SCP_Operation_Journal::append($operation,'operation_completed',array('lifecycle_state'=>'completed','terminal_outcome'=>'success','metadata'=>array('post_id'=>isset($result['post_id'])?$result['post_id']:(isset($result['state']['post']['ID'])?$result['state']['post']['ID']:0))));
-			if(is_wp_error($tail)) return $tail;
+			if(is_wp_error($tail)){
+				if(class_exists('MAD4B_SCP_Runtime_Metrics')){
+					MAD4B_SCP_Runtime_Metrics::record('dynamic.apply.completion_journal_unverified',1);
+					MAD4B_SCP_Runtime_Metrics::record('dynamic.apply.recovery_required',1);
+				}
+				return $this->completion_journal_uncertain($tail,$operation,is_array($result)?$result:array());
+			}
 			if(class_exists('MAD4B_SCP_Runtime_Metrics')){
 				MAD4B_SCP_Runtime_Metrics::record('dynamic.apply.success',1);
 				MAD4B_SCP_Runtime_Metrics::record('dynamic.apply.elapsed_ms',(int)round((microtime(true)-$metric_started)*1000));
@@ -1814,6 +1851,28 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		}
 		$desired_parent=isset($state['post']['post_parent'])?absint($state['post']['post_parent']):0;
 		if($desired_parent>0&&!current_user_can('edit_post',$desired_parent)) return new WP_Error('mad4b_dynamic_restore_parent_denied','Current user cannot restore the recorded parent relationship.');
+		// A stored rollback snapshot must still refer to the same post and post
+		// type. Never restore a stale/foreign record to a different live target.
+		if ( (int) ( $state['post']['ID'] ?? 0 ) !== (int) $id
+			|| (string) ( $state['post']['post_type'] ?? '' ) !== (string) $current->post_type )
+			return new WP_Error('mad4b_dynamic_restore_identity_mismatch','Recorded content does not match the rollback target.');
+		// WordPress post/meta/terms are not one SQL transaction. Validate every
+		// known permission and dependent resource BEFORE the first write so a
+		// predictable denial cannot strand half-restored content. Keep the
+		// per-write guards below for policy changes during an operation.
+		foreach ( isset( $state['meta'] ) && is_array( $state['meta'] ) ? $state['meta'] : array() as $key => $_meta_state ) {
+			if ( ! current_user_can('edit_post_meta',$id,(string)$key) )
+				return new WP_Error('mad4b_dynamic_meta_restore_denied','Current user cannot restore a recorded meta key.',array('meta_key'=>(string)$key));
+		}
+		foreach ( isset( $state['taxonomies'] ) && is_array( $state['taxonomies'] ) ? $state['taxonomies'] : array() as $tax => $_ids ) {
+			$taxonomy=sanitize_key((string)$tax);$tax_obj=get_taxonomy($taxonomy);
+			if(!$tax_obj) return new WP_Error('mad4b_dynamic_taxonomy_restore_invalid','Recorded taxonomy is no longer registered.',array('taxonomy'=>$taxonomy));
+			$assign_cap=isset($tax_obj->cap->assign_terms)?(string)$tax_obj->cap->assign_terms:'edit_posts';
+			if(!current_user_can($assign_cap)) return new WP_Error('mad4b_dynamic_taxonomy_restore_denied','Current user cannot restore recorded taxonomy assignments.',array('taxonomy'=>$taxonomy));
+		}
+		$desired_media=isset($state['featured_media_id'])?absint($state['featured_media_id']):0;
+		if($desired_media>0 && 'attachment'!==get_post_type($desired_media))
+			return new WP_Error('mad4b_dynamic_featured_media_restore_invalid','Recorded featured media is no longer an attachment.');
 		$arr=$state['post'];
 		$arr['ID']=$id;
 		unset($arr['post_type']);

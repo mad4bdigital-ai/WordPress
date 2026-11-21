@@ -80,9 +80,33 @@ final class MAD4B_SCP_Authorization {
 
 require dirname(__DIR__) . '/includes/class-mad4b-scp-host-bridge.php';
 
-$fail = static function($m) use ($tmp){
+// Synthetic local Host fixture cleanup never invokes a shell. Resolve the
+// exact generated /tmp root and refuse traversal or unbounded cleanup.
+$cleanup = static function () use ( $tmp ) {
+    $tmp_root = realpath( sys_get_temp_dir() );
+    $fixture_root = realpath( $tmp );
+    if ( ! is_string( $tmp_root ) || ! is_string( $fixture_root )
+        || ! preg_match( '/^mad4b-host-bridge-[a-f0-9]{8}$/D', basename( $fixture_root ) )
+        || dirname( $fixture_root ) !== $tmp_root ) {
+        throw new RuntimeException( 'Host fixture cleanup outside exact temporary source denied.' );
+    }
+    $items = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator( $fixture_root, FilesystemIterator::SKIP_DOTS ),
+        RecursiveIteratorIterator::CHILD_FIRST
+    );
+    foreach ( $items as $item ) {
+        $path = $item->getPathname();
+        $ok = $item->isDir() && ! $item->isLink() ? rmdir( $path ) : unlink( $path );
+        if ( ! $ok ) throw new RuntimeException( 'Host fixture cleanup could not remove temporary entry.' );
+    }
+    if ( ! rmdir( $fixture_root ) ) {
+        throw new RuntimeException( 'Host fixture cleanup could not remove bounded root.' );
+    }
+};
+
+$fail = static function($m) use ($cleanup){
 	fwrite(STDERR, "FAIL host-bridge-contract: $m\n");
-	exec('rm -rf ' . escapeshellarg($tmp));
+	$cleanup();
 	exit(1);
 };
 $check = static function($c,$m) use ($fail){ if(!$c)$fail($m); };
@@ -516,7 +540,7 @@ $check(false===$tampered_receipt['ready'] && in_array('host_receipt_signature_mi
 $parent_site = $tmp . '/nested-wordpress';
 @mkdir( $parent_site, 0777, true );
 $resolver = new ReflectionMethod( 'MAD4B_SCP_Host_Bridge', 'wordpress_config_path' );
-$resolver->setAccessible( true );
+if(PHP_VERSION_ID<80100)$resolver->setAccessible( true );
 $check( $tmp . '/wp-config.php' === $resolver->invoke( null, $parent_site ), 'Parent wp-config was not discovered' );
 file_put_contents( $parent_site . '/wp-config.php', "<?php // root preferred\n" );
 $check( $parent_site . '/wp-config.php' === $resolver->invoke( null, $parent_site ), 'WordPress root precedence was not preserved' );
@@ -579,5 +603,117 @@ $check(is_array($read_plan) && false===$read_plan['mutation_performed']
  && false===$read_plan['production_authorized'] && false===$read_plan['ready_for_host_write'],
  'Missing Host signer incorrectly enabled legacy writes');
 
-exec('rm -rf ' . escapeshellarg($tmp));
+// Original Host Node read proof: synthesize one isolated Ed25519 Host receipt.
+// A valid synthetic local node is NEVER authority over a whole company fleet.
+$node_job='abcdef12-3456-4456-8567-123456789abc';
+$target_ref=new ReflectionMethod('MAD4B_SCP_Host_Bridge','target_identity');
+if(PHP_VERSION_ID<80100)$target_ref->setAccessible(true);
+$node_target=$target_ref->invoke(null);
+$check(is_array($node_target),'Cannot obtain same-site original Node target');
+$site_material=array(
+ 'site_uuid'=>$node_target['site_uuid'],
+ 'environment'=>$node_target['environment'],
+ 'wp_config_sha256'=>$node_target['wp_config_sha256'],
+);
+$node_result=array(
+ 'contract'=>'mad4b.host-node-inventory-observation.v1',
+ 'operation_id'=>'host.node-inventory.read',
+ 'site_uuid'=>$node_target['site_uuid'],
+ 'environment'=>$node_target['environment'],
+ 'wp_config_sha256'=>$node_target['wp_config_sha256'],
+ 'site_binding_sha256'=>hash('sha256',wp_json_encode(
+    $sort_evidence($site_material),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)),
+ 'target_fingerprint'=>$node_target['target_fingerprint'],
+ 'runner_profile_id'=>'ci-runner',
+ 'runner_source_sha256'=>str_repeat('a',64),
+ 'executor_fingerprint'=>str_repeat('b',64),
+ 'read_only'=>true,'mutation_performed'=>false,
+ 'entire_fleet_certified'=>false,'company_topology_certified'=>false,
+ 'node_id'=>'local-ci-node','node_id_enrolled'=>true,
+);
+$node_receipt=array(
+ 'contract'=>'mad4b.tool-execution-receipt.v1',
+ 'job_id'=>$node_job,'profile_id'=>'ci-runner',
+ 'operation_id'=>'host.node-inventory.read',
+ 'site_uuid'=>$node_target['site_uuid'],
+ 'environment'=>$node_target['environment'],
+ 'target_fingerprint'=>$node_target['target_fingerprint'],
+ 'runner_source_sha256'=>str_repeat('a',64),
+ 'executor_fingerprint'=>str_repeat('b',64),
+ 'plan_sha256'=>str_repeat('c',64),
+ 'completed_at'=>gmdate('c',time()-60),
+ 'readback_verdict'=>'PASS','mutation_performed'=>false,
+ 'result'=>$node_result,
+);
+$seal_node=function(array $row)use($fixture_keypair,$sort_evidence) {
+ $json=wp_json_encode($sort_evidence($row['result']),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+ $payload=array(
+  'contract'=>'mad4b.host-node-inventory-signed-payload.v1',
+  'job_id'=>$row['job_id'],'profile_id'=>$row['profile_id'],
+  'site_uuid'=>$row['site_uuid'],'environment'=>$row['environment'],
+  'operation_id'=>$row['operation_id'],
+  'target_fingerprint'=>$row['target_fingerprint'],
+  'runner_source_sha256'=>$row['runner_source_sha256'],
+  'executor_fingerprint'=>$row['executor_fingerprint'],
+  'plan_sha256'=>$row['plan_sha256'],
+  'completed_at'=>$row['completed_at'],
+  'readback_verdict'=>$row['readback_verdict'],
+  'mutation_performed'=>$row['mutation_performed'],
+  'result_sha256'=>hash('sha256',$json),
+ );
+ $signature=sodium_crypto_sign_detached(
+  wp_json_encode($sort_evidence($payload),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),
+  sodium_crypto_sign_secretkey($fixture_keypair));
+ $row['host_node_inventory_attestation']=array(
+  'contract'=>'mad4b.host-node-inventory-ed25519-attestation.v1',
+  'payload_contract'=>'mad4b.host-node-inventory-signed-payload.v1',
+  'algorithm'=>'Ed25519','signature_b64'=>base64_encode($signature),
+  'pinned_public_key_sha256'=>hash('sha256',
+    sodium_crypto_sign_publickey($fixture_keypair)),
+ );
+ return $row;
+};
+$node_file=$receipts.'/'.$node_job.'.json';
+$node_receipt=$seal_node($node_receipt);
+file_put_contents($node_file,json_encode($node_receipt));
+$valid_node=MAD4B_SCP_Host_Bridge::node_inventory_verification(array('job_id'=>$node_job));
+$check(is_array($valid_node) && $valid_node['signature_verified']===true
+ && $valid_node['local_node_enrolled']===true
+ && $valid_node['node_id']==='local-ci-node'
+ && $valid_node['company_topology_verified']===false
+ && $valid_node['cluster_verified']===false
+ && $valid_node['write_authority_issued']===false
+ && $valid_node['mutation_performed']===false,
+ 'Valid signed local node incorrectly asserted Host or fleet authority');
+$wrong_input=MAD4B_SCP_Host_Bridge::node_inventory_verification(array(
+ 'job_id'=>$node_job,'caller_command'=>'whoami'));
+$check(is_wp_error($wrong_input)
+ && $wrong_input->get_error_code()==='mad4b_host_node_exact_job_required',
+ 'Node verification must accept only one exact immutable job ID');
+$tampered=$node_receipt;
+$tampered['result']['node_id']='different-node';
+file_put_contents($node_file,json_encode($tampered));
+$forged=MAD4B_SCP_Host_Bridge::node_inventory_verification(array('job_id'=>$node_job));
+$check(is_wp_error($forged)
+ && $forged->get_error_code()==='mad4b_host_node_independent_signature_invalid',
+ 'A mutated local node after signing passed independent Ed25519 proof');
+$stale=$node_receipt;
+$stale['completed_at']=gmdate('c',time()-1200);
+$stale=$seal_node($stale);
+file_put_contents($node_file,json_encode($stale));
+$expired=MAD4B_SCP_Host_Bridge::node_inventory_verification(array('job_id'=>$node_job));
+$check(is_wp_error($expired)
+ && $expired->get_error_code()==='mad4b_host_node_receipt_stale',
+ 'A correctly re-signed but old local node was accepted');
+$wrong_scope=$node_receipt;
+$wrong_scope['result']['site_uuid']='foreign-site';
+$wrong_scope=$seal_node($wrong_scope);
+file_put_contents($node_file,json_encode($wrong_scope));
+$foreign=MAD4B_SCP_Host_Bridge::node_inventory_verification(array('job_id'=>$node_job));
+$check(is_wp_error($foreign)
+ && $foreign->get_error_code()==='mad4b_host_node_receipt_scope_untrusted',
+ 'A signed but cross-company node was treated as enrolled');
+unlink($node_file);
+
+$cleanup();
 echo "mad4b.host-bridge.v1: PASS\n";

@@ -1,0 +1,17 @@
+[Unit]
+Description=MAD4B source-backed automatic public lazy listing discovery (staging)
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+ConditionPathExists=/opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261115/ops/native-lazy-auto-coverage-20261116/run-auto-coverage-discovery.sh
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261115/ops/native-lazy-auto-coverage-20261116/run-auto-coverage-discovery.sh
+TimeoutStartSec=600
+Nice=15
+IOSchedulingClass=idle
+NoNewPrivileges=true
+StandardOutput=journal
+StandardError=journal

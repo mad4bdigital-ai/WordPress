@@ -81,7 +81,7 @@ final class MAD4B_SCP_LiteSpeed_Adapter extends MAD4B_SCP_Adapter_Base {
         );
         // A plugin constant is not enough: the actual vendor getter must be
         // bound in the live WordPress request, or the observation is invalid.
-        if ( ! function_exists( 'has_filter' ) || false === has_filter( 'litespeed_conf' )
+        if ( ! function_exists( 'has_filter' ) || true !== has_filter( 'litespeed_conf' )
             || ! function_exists( 'apply_filters' ) )
             return array_merge( $base, array(
                 'state' => 'CAPABILITY_GAP',
@@ -90,7 +90,12 @@ final class MAD4B_SCP_LiteSpeed_Adapter extends MAD4B_SCP_Adapter_Base {
             ) );
         $settings = array();
         foreach ( self::optimization_slug_map() as $name => $slug ) {
-            $value = apply_filters( 'litespeed_conf', $slug );
+            try {
+                $value = apply_filters( 'litespeed_conf', $slug );
+            } catch ( \Throwable $error ) {
+                return new WP_Error( 'mad4b_litespeed_setting_readback_unavailable',
+                    'Native LiteSpeed settings readback failed; no optimization state is certified.' );
+            }
             // Reject unexpected schemas; never truncate silently, particularly
             // since the readback digest is a future CAS planning input.
             if ( is_array( $value ) ) {
@@ -203,19 +208,50 @@ final class MAD4B_SCP_LiteSpeed_Adapter extends MAD4B_SCP_Adapter_Base {
 
     public function purge_url( $input ) {
         if ( ! $this->is_available() ) return $this->unavailable_error();
+        if ( ! is_array( $input ) || ! is_string( $input['url'] ?? null )
+            || '' === $input['url'] || strlen( $input['url'] ) > 2048 )
+            return new WP_Error( 'mad4b_litespeed_invalid_url', 'Original purge URL must be a bounded string.' );
         $url = esc_url_raw( $input['url'] );
-        $home_host = wp_parse_url( home_url(), PHP_URL_HOST );
-        $target_host = wp_parse_url( $url, PHP_URL_HOST );
-        if ( ! $target_host || strtolower( $target_host ) !== strtolower( $home_host ) )
-            return new WP_Error( 'mad4b_litespeed_external_url', 'Only this WordPress site can be purged.' );
+        if ( ! is_string( $url ) || '' === $url )
+            return new WP_Error( 'mad4b_litespeed_invalid_url', 'Original purge URL is unavailable.' );
+        // Cache invalidation belongs to this exact site's public origin.
+        // A matching hostname alone is insufficient: reject downgrade,
+        // alternate ports, URL userinfo and fragment-only variants.
+        $home = wp_parse_url( home_url() );
+        $target = wp_parse_url( $url );
+        if ( ! is_array( $home ) || ! is_array( $target )
+            || ! is_string( $home['scheme'] ?? null )
+            || ! is_string( $home['host'] ?? null )
+            || strtolower( $target['scheme'] ?? '' ) !== strtolower( $home['scheme'] )
+            || strtolower( $target['host'] ?? '' ) !== strtolower( $home['host'] )
+            || isset( $target['port'] ) !== isset( $home['port'] )
+            || ( isset( $home['port'] ) && $target['port'] !== $home['port'] )
+            || isset( $target['user'] ) || isset( $target['pass'] )
+            || isset( $target['fragment'] ) )
+            return new WP_Error( 'mad4b_litespeed_external_url',
+                'Only the exact enrolled WordPress site origin can be purged.' );
         do_action( 'litespeed_purge_url', $url );
         MAD4B_SCP_Audit::record( 'litespeed/purge-url', array( 'url' => $url ) );
         return array( 'purged' => true, 'url' => $url );
     }
     public function purge_all() {
         if ( ! $this->is_available() ) return $this->unavailable_error();
-        do_action( 'litespeed_purge_all' );
-        MAD4B_SCP_Audit::record( 'litespeed/purge-all', array() );
-        return array( 'purged' => true, 'scope' => 'all' );
+        if ( ! class_exists( 'MAD4B_Safe_Public_HTML_Purge_V1', false ) )
+            return new WP_Error( 'mad4b_safe_html_purge_unavailable',
+                'Safe public HTML cache controller is not enrolled.' );
+        try {
+            $r = MAD4B_Safe_Public_HTML_Purge_V1::purge_public_html( 'mad4b_scp_public_html_only' );
+        } catch ( \Throwable $error ) {
+            $r = null;
+        }
+        if ( ! is_array( $r )
+            || ! in_array( $r['status'] ?? '', array( 'public_html_purge_queued', 'already_queued_in_request' ), true ) )
+            return new WP_Error( 'mad4b_safe_html_purge_failed',
+                'Public HTML cache invalidation could not be queued.' );
+        MAD4B_SCP_Audit::record( 'litespeed/purge-public-html',
+            array( 'scope' => 'public_html_only', 'object_cache_preserved' => true ) );
+        return array( 'purged' => false, 'queued' => true,
+            'scope' => 'public_html_only', 'redis_flushed' => false,
+            'fastcgi_host_receipt' => 'pending' );
     }
 }

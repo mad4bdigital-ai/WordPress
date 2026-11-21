@@ -1,0 +1,468 @@
+{
+  "contract": "mad4b.provenance-tracked-merge-conflicts.non-authorizing.v1",
+  "created_utc": "2026-11-19T16:06:07.442277+00:00",
+  "base_920": "e1b8c8aa83fd72bea87cfe6511f8200b57420b12",
+  "other_parent_882": "65bb2791f7b46c5887f3e814feb8b48604a3e0ae",
+  "conflict_count": 57,
+  "source_920_collision_preferred": true,
+  "semantic_conflict_review_completed": false,
+  "release_authorized": false,
+  "rows": [
+    {
+      "path": ".github/workflows/country-nationality-switchers.yml",
+      "source_920_blob": null,
+      "source_882_blob": "81318b2bcc25cea639bdeb7bd1b883d7e8fe1ea7",
+      "current_candidate_blob": "d65ce1a0e19382f0f774af0bfd1399f00b426499",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+      "source_920_blob": null,
+      "source_882_blob": "682aabb9dc2885067b11d55e3908c67174dfd35e",
+      "current_candidate_blob": "f2fb4fd8421b4f156708482160ede30e9e5e4f7c",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": ".github/workflows/mad4b-local-oauth-standalone.yml",
+      "source_920_blob": null,
+      "source_882_blob": "f14ac4496aaa1acc6070b1bbe68afc89f16bec74",
+      "current_candidate_blob": "86cded8b695b7ed22f5959f2b1e2996bf58a68d7",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "governance/production-readiness/capability-coverage.json",
+      "source_920_blob": null,
+      "source_882_blob": "594747ab9a60fc750d27b986c307846e1d157d15",
+      "current_candidate_blob": "e43d761abf363afcbc81f0749dd7e36ecb67e33f",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "governance/production-readiness/ci-workflow-source-reviews.json",
+      "source_920_blob": null,
+      "source_882_blob": "fbe345cd9cd073ae3c18ec9494be4427029681e7",
+      "current_candidate_blob": "7a9b971ad636f057e74df285c1d65ca7dc785498",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/change-slices.json",
+      "source_920_blob": null,
+      "source_882_blob": "83b63539d2e287465603a278bcdfb1e8e0923320",
+      "current_candidate_blob": "51daa2b37520ac611554cfc1dde95f2931838b92",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/feature.json",
+      "source_920_blob": null,
+      "source_882_blob": "1f39e71be2167022435799d010d936945f052b8a",
+      "current_candidate_blob": "94ea87e4f4ddfa08de508f6e72ac30fe69ad38ec",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/implementation-closure.json",
+      "source_920_blob": null,
+      "source_882_blob": "48f83de6fde171a2d8b03c29c9ed2a9536731a37",
+      "current_candidate_blob": "1894c9d93b56d7cdbe7a73e999d7354be1111831",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/implementation-closure.md",
+      "source_920_blob": null,
+      "source_882_blob": "bd16f7be1e5b1fa3ed14cf3623623678646f087b",
+      "current_candidate_blob": "fe35887467992fafeda826f81fd6a4e7de771244",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/post-merge-capability-fabric-closure.json",
+      "source_920_blob": null,
+      "source_882_blob": "2c1ec9d4472c9d0e621bcdfd9e84168241926b42",
+      "current_candidate_blob": "a2f651f6785fd5befc549bd30785328ad9465145",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "tools/readiness_test_execution.py",
+      "source_920_blob": null,
+      "source_882_blob": "d83ce534269537f494e5dbdf3238f19a619a99dd",
+      "current_candidate_blob": "8c8c840404a5f4580579986529c3110e071373b7",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dfsb-adapter.php",
+      "source_920_blob": null,
+      "source_882_blob": "4793f8d3fde3d5d7c6086338db44a8c9cf4ff515",
+      "current_candidate_blob": "7f50ad445765751effd2d46224d18248afbc230f",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-local-brand-draft-adapter.php",
+      "source_920_blob": null,
+      "source_882_blob": "30685349b8f927f8a8212f5958695a2fad39af85",
+      "current_candidate_blob": "79df5c728b20d48c59bb4bf1177978ee9624d833",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-interaction-ui.php",
+      "source_920_blob": null,
+      "source_882_blob": "7c284459eb7ad7e9426aef87bd9a96760012929b",
+      "current_candidate_blob": "57f277062ce7a46e2b14ee27f8e21ae24d208e43",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-task-routing.php",
+      "source_920_blob": null,
+      "source_882_blob": "47a51d71b6582d554d8002f400866ce3e243c63d",
+      "current_candidate_blob": "43770d1d0d158f9c508366cd88f0c6362b449a0f",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-auto-reconciliation.php",
+      "source_920_blob": null,
+      "source_882_blob": "d53f6d0d224fa7fcd8318b57762a2e9c9219fe55",
+      "current_candidate_blob": "ab1f5e20b55da464386f47afc7c59d55749ef7a4",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-admission.php",
+      "source_920_blob": null,
+      "source_882_blob": "bb3f7d06966bd0814f2d277bfdda6b2cddf35a34",
+      "current_candidate_blob": "cef6a9ed176c62cc272486f4cc712a8f0e47e266",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-dispatch.php",
+      "source_920_blob": null,
+      "source_882_blob": "799c5de538f4b3b5ba9bcac05587b2ec20891227",
+      "current_candidate_blob": "2170a82900519ea80e51e5a7c6c4922f46c372c0",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-experience-quality.php",
+      "source_920_blob": null,
+      "source_882_blob": "b1c34a6967fbc7fd26a9b310f7b9fbe7f04f2c94",
+      "current_candidate_blob": "d42184db27dc136def5c3f179f5b42e37fd7813e",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-integrity.php",
+      "source_920_blob": null,
+      "source_882_blob": "14e83d1f5e6299d4e69219f1c22735f14a3d24cf",
+      "current_candidate_blob": "9169abd2dbce76dfbe087337799dd475eced8a66",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-completeness.php",
+      "source_920_blob": null,
+      "source_882_blob": "88415df4d689347dd6f0193bd87f9ec2c21200eb",
+      "current_candidate_blob": "a9491c00b2d7d28ef1960037a343d659b307b5f2",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_920_blob": null,
+      "source_882_blob": "07cb352bc79079addee08050dd5eb516ffa11b59",
+      "current_candidate_blob": "4d6800c533ebfb769210ca71fcb121e1cc712f11",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-ai-governance.php",
+      "source_920_blob": null,
+      "source_882_blob": "2929d3656fbc5284077de15809fe60bcfb9d4616",
+      "current_candidate_blob": "1274bb7926db4efca3061141957ee76401c5b3b8",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-connector-vault.php",
+      "source_920_blob": null,
+      "source_882_blob": "e8ed381c3622d93b3853b89acf5d82f7b64e6bc8",
+      "current_candidate_blob": "611a5f943bde86981f70b063bec313446819d3ff",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-web-vitals.php",
+      "source_920_blob": null,
+      "source_882_blob": "16a04428185398355498db7ce8e468ec5a103c97",
+      "current_candidate_blob": "27c97c4ee86bbb5bc260f06ec4c1a0e1795d239e",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dfsb-environment-policy.php",
+      "source_920_blob": null,
+      "source_882_blob": "df85edf5bc9e5f967ea806ea68acc5612f80db6f",
+      "current_candidate_blob": "81b3a06e958de6c5cb477f392e0e50a5930c0fee",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-authority.php",
+      "source_920_blob": null,
+      "source_882_blob": "57c50bca84660969ee5ca5b0e7b6cc8061a7abf1",
+      "current_candidate_blob": "46a974fd23d939b2a7f1fe88e72063d00d047e5b",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-impact-priority.php",
+      "source_920_blob": null,
+      "source_882_blob": "9e2ec4c39b5571a3c3e781464595668bbc07d347",
+      "current_candidate_blob": "c999e9a285835db9976750bf21a6f08ce8cb45d6",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-geo-quality.php",
+      "source_920_blob": null,
+      "source_882_blob": "0356ec10c3cb6163dc26b2f0dcd3cd2dfcdfddd6",
+      "current_candidate_blob": "394583512c30d6b5a92c3027e4461cd649bfc096",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-global-runtime-lifecycle.php",
+      "source_920_blob": null,
+      "source_882_blob": "437bad33ea76f341ea1a5cbce6cd7d5a8d318ad5",
+      "current_candidate_blob": "c690074f1912acaabac867575cc933168366fb85",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-guided-continuation.php",
+      "source_920_blob": null,
+      "source_882_blob": "b09d5b79f69e8c0d7b4479669332c5f8a4661348",
+      "current_candidate_blob": "d1c9872cc9cb01a2f2eeda2f9e18f2f2679d9bd2",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php",
+      "source_920_blob": null,
+      "source_882_blob": "cd74587278d971644cbfce3cd462ad7feaf249b3",
+      "current_candidate_blob": "816bb085c7b5d04dac66257538cf56592b9d3064",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-transport-policy.php",
+      "source_920_blob": null,
+      "source_882_blob": "a45a00c1aa9b12bf05377672c7e8a0f6e3347399",
+      "current_candidate_blob": "bc3b9d3b3dc931892191d8c61df29d72249a8ea4",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-locale-experience-alerts.php",
+      "source_920_blob": null,
+      "source_882_blob": "fca43b0819e24f7f4efb32643b78030b1b371029",
+      "current_candidate_blob": "a23878f53d5a54de26eb9314a663c651743fb3a4",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-settings-locator.php",
+      "source_920_blob": null,
+      "source_882_blob": "17f50bc26c50a196eb509e358d2586befda63027",
+      "current_candidate_blob": "14d06b5c5cf2d44dfd518e94eecdb4ba6c99baa0",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-presentation-browser-evidence.php",
+      "source_920_blob": null,
+      "source_882_blob": "22a20c4a099fa1566b39e69ef10bf36e2fbe562a",
+      "current_candidate_blob": "a2e7f70c02b7d8293558c88723799d1f0668523c",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-presentation-integrity.php",
+      "source_920_blob": null,
+      "source_882_blob": "1e28eb37b231d11ae4eebf190896fe505885d41d",
+      "current_candidate_blob": "4872944441ebd60c128854d8badb80c2c9cf6b1e",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-field-intelligence.php",
+      "source_920_blob": null,
+      "source_882_blob": "92b227d03975a12d0193f439fa931a179c46c156",
+      "current_candidate_blob": "e3807f8e866f194a72ceae1eef73b4f53bc22544",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-event-automation.php",
+      "source_920_blob": null,
+      "source_882_blob": "8ecc0b8adbab400c48eeae24746f756ebcd8d659",
+      "current_candidate_blob": "5d6547301ee3917e7b1033c364c9b67e2df142b3",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-integrations.php",
+      "source_920_blob": null,
+      "source_882_blob": "de18da5e541191152b3399cf9ad74529ead4a297",
+      "current_candidate_blob": "5386ac23cb8166988b4ce7cd453ab5df059d4764",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-preactivation.php",
+      "source_920_blob": null,
+      "source_882_blob": "b371ec10d8ef503b89fa2b94efc3aa6d356e2f63",
+      "current_candidate_blob": "856766f24b49ec949bd51f48f4fae95719c19764",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-scopes.php",
+      "source_920_blob": null,
+      "source_882_blob": "bdaf2de5e4a0dc472125dd48bd4988a8df55697a",
+      "current_candidate_blob": "74dc5bef7d4d49b9730ee6f4d54aa8e23b04a262",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-workflow-options.php",
+      "source_920_blob": null,
+      "source_882_blob": "032b238854e4a900a069030c794723ff1f73be78",
+      "current_candidate_blob": "b790da33c16496013ea408d5a142299ec5fd8724",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-lifecycle-rest.php",
+      "source_920_blob": null,
+      "source_882_blob": "d712e575c11c1a17caffdc037159c51ca45125a3",
+      "current_candidate_blob": "386337dae09b88345c755c8edec1d13200b95a97",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+      "source_920_blob": null,
+      "source_882_blob": "a6da962b1302002b68a567401e7af88e8d35208d",
+      "current_candidate_blob": "511317c6d76a1b19e155aab05c0c6bb581b7fa14",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-abilities.php",
+      "source_920_blob": null,
+      "source_882_blob": "e697afbf941019da49d6f1942043e7410ac201cb",
+      "current_candidate_blob": "e2fcd06a87017f40706c9a31da083ad81ee80264",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-registry.php",
+      "source_920_blob": null,
+      "source_882_blob": "a6cdbf2434a7901ce7fb694c6469c08bb501ab3f",
+      "current_candidate_blob": "a9ce930e87c276dd05d6e429667c469533a0cd56",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php",
+      "source_920_blob": null,
+      "source_882_blob": "7448de7bf3df7c3878df92051843caaedb0c0dc6",
+      "current_candidate_blob": "59b685b92c0a7e009dc8d97cf878f810fe676584",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-source-lifecycle.php",
+      "source_920_blob": null,
+      "source_882_blob": "9629c8e13bdab4b1ff9dde6c90a7d570e13caca1",
+      "current_candidate_blob": "719e6dd726dd50dd8494736f0eaf506617f17e8b",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-visual-seo-strategy.php",
+      "source_920_blob": null,
+      "source_882_blob": "9916696d80be36784dfac39aa84edafa1a279872",
+      "current_candidate_blob": "e70201fafd3e6ec50f9b184d0abcea95bd7ad49e",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_920_blob": null,
+      "source_882_blob": "cd47b7bc7cd8dcbbc9294698a84d39d0f0c1cc12",
+      "current_candidate_blob": "dcae0a0a32495bfcedd4300fd78a8ec765235697",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/context-admin-recovery-runtime.php",
+      "source_920_blob": null,
+      "source_882_blob": "02f96e2eddc562924a7e445fb6bfd8a49529225d",
+      "current_candidate_blob": "137c8ec0c9643cea5c9af276ece95986631ec0da",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py",
+      "source_920_blob": null,
+      "source_882_blob": "efe40f95beff3dec59c88ab57d02578d798ca00d",
+      "current_candidate_blob": "623e5c3b0e645b2d0c15e30b74fa5480a864a2e1",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/native-recovery-status-runtime.php",
+      "source_920_blob": null,
+      "source_882_blob": "ccde5b98968b05445d250bd4323cb49ac95e8c9f",
+      "current_candidate_blob": "b38f8d2c814f5e5e86023aaeb4be2ff20ed32c66",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py",
+      "source_920_blob": null,
+      "source_882_blob": "f9a2be3425b38801a54842be1206f11de0313787",
+      "current_candidate_blob": "55d17f65743c53eff44b24cba196877a86c4a2da",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-policy.json",
+      "source_920_blob": null,
+      "source_882_blob": "642348339104b63e7eefd55b2f6a4d022f4eacd0",
+      "current_candidate_blob": "7a61ef6557d3fadb802f08a3651c5d9b49c8941c",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-cimd-client-security-runtime.php",
+      "source_920_blob": null,
+      "source_882_blob": "18ae5f096610cffbbed03a1f5bc41f54689c81e5",
+      "current_candidate_blob": "8e20a28b5f886f5b02ff62e3dac7e9ff4c5b6a4a",
+      "merge_resolution": "920_overlapping_hunks_plus_882_nonconflicting_hunks",
+      "manual_functional_signoff": false
+    }
+  ]
+}

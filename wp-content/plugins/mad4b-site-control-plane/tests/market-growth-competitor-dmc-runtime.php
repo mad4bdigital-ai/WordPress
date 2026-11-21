@@ -70,9 +70,33 @@ ok(is_wp_error($four)&&$four->get_error_code()==='mad4b_retry_circuit_open','Fou
 $stat=MAD4B_SCP_Recovery_Attempt_Budget::status('brand_draft_create',$attempt);
 ok(!is_wp_error($stat)&&$stat['circuit_open']&&$stat['last_outcome']==='uncertain','Readback did not expose circuit state');
 $reset=MAD4B_SCP_Recovery_Attempt_Budget::reset('brand_draft_create',$attempt,$stat['journal_sha256'],true);
-ok(!is_wp_error($reset)&&$reset['reset'],'Operator reset with exact hash failed');
-$new=MAD4B_SCP_Recovery_Attempt_Budget::reserve('brand_draft_create',$attempt);
-ok(!is_wp_error($new)&&$new['attempt']===1,'Reset did not start clean epoch');
+ok(is_wp_error($reset)&&$reset->get_error_code()==='mad4b_retry_reset_independent_reconciliation_required',
+   'An uncertain original write was cleared without independently verified postcondition');
+$still=MAD4B_SCP_Recovery_Attempt_Budget::status('brand_draft_create',$attempt);
+ok(!is_wp_error($still)&&$still['attempts_reserved']===3
+    &&$still['last_outcome']==='uncertain'
+    &&$still['journal_sha256']===$stat['journal_sha256'],
+    'Operator confirmation silently erased an uncertain journal');
+$successful_scope=['category'=>'tone_of_voice','expected_plan_sha256'=>str_repeat('b',64)];
+$completed=MAD4B_SCP_Recovery_Attempt_Budget::reserve('brand_draft_create',$successful_scope);
+ok(!is_wp_error($completed) &&
+    true===MAD4B_SCP_Recovery_Attempt_Budget::finish($completed,'succeeded'),
+    'Original successful effect could not be recorded');
+$successful_status=MAD4B_SCP_Recovery_Attempt_Budget::status('brand_draft_create',$successful_scope);
+$duplicate=MAD4B_SCP_Recovery_Attempt_Budget::reset(
+    'brand_draft_create',$successful_scope,$successful_status['journal_sha256'],true);
+ok(is_wp_error($duplicate)
+    &&$duplicate->get_error_code()==='mad4b_retry_reset_independent_reconciliation_required',
+    'Successful original write must not become repeatable via an admin reset');
+$failed_scope=['category'=>'editorial_guidelines','expected_plan_sha256'=>str_repeat('a',64)];
+$start=MAD4B_SCP_Recovery_Attempt_Budget::reserve('brand_draft_create',$failed_scope);
+ok(!is_wp_error($start)&&true===MAD4B_SCP_Recovery_Attempt_Budget::finish($start,'failed'),
+    'Independently failed alternative scope could not close');
+$failed_status=MAD4B_SCP_Recovery_Attempt_Budget::status('brand_draft_create',$failed_scope);
+$reset=MAD4B_SCP_Recovery_Attempt_Budget::reset('brand_draft_create',$failed_scope,$failed_status['journal_sha256'],true);
+ok(!is_wp_error($reset)&&$reset['reset'],'Confirmed failed operation cannot reset its exact durable retry journal');
+$new=MAD4B_SCP_Recovery_Attempt_Budget::reserve('brand_draft_create',$failed_scope);
+ok(!is_wp_error($new)&&$new['attempt']===1,'Reset did not start clean failed-only epoch');
 $bad=MAD4B_SCP_Market_Growth_Policies::replace(array('settings'=>array('competitors'=>array('evil'=>array(
  'display_name'=>'Bad','source_url'=>'file:///etc/passwd'))),'confirmed'=>true,'expected_revision'=>1,'expected_sha256'=>$saved['registry_sha256']));
 ok(is_wp_error($bad)&&$bad->get_error_code()==='mad4b_growth_competitor_invalid','Unsafe competitor source accepted');

@@ -1,0 +1,133 @@
+/**
+ * Native Elementor/JetEngine selected-option affordances.
+ * Keep card typography, backgrounds, borders and internal flex structure
+ * entirely owned by the original Elementor template.
+ */
+.booking-component-list .booking-component-item[aria-disabled="false"]{cursor:pointer}
+.booking-component-list .booking-component-item.is-selected{
+ outline:2px solid var(--e-global-color-primary,currentColor);
+ outline-offset:-2px;
+}
+.booking-component-list .booking-component-item[role]::after{content:none}
+.booking-component-list .booking-component-item:focus-visible{
+ outline:2px solid var(--e-global-color-accent,currentColor);
+ outline-offset:2px;
+}
+.booking-component-list .booking-component-item.is-included{
+ outline:2px solid var(--e-global-color-primary,currentColor);
+ outline-offset:-2px;
+}
+/* Never append synthetic rows to the original Elementor card layout. */
+.booking-component-list .booking-component-item>.booking-component-status{
+ position:absolute;
+ inset-block-start:10px;
+ inset-inline-start:10px;
+ inset-inline-end:auto;
+ z-index:5;
+ max-width:calc(100% - 20px);
+ margin:0;
+ padding:2px 6px;
+ line-height:1.3;
+ font-size:.75em;
+ border-radius:4px;
+ background:var(--e-global-color-primary,#2b4050);
+ color:var(--e-global-color-3a5c55e,#fff);
+ pointer-events:none;
+}
+.booking-component-list .booking-component-status[hidden]{display:none!important}
+/* Original Rate controls already show the guidance; do not add another row. */
+.booking-component-list[data-booking-component-status="choose_rate"]::before{content:none;display:none}
+/* Move carousel arrows away from filtering/search controls and titles,
+ * beside the existing native navigation dots. Do not replace Swiper controls. */
+.booking-component-vehicles .jet-listing-grid__slider-icon,
+.booking-component-train .jet-listing-grid__slider-icon,
+.booking-component-air .jet-listing-grid__slider-icon{
+ top:auto!important;
+ bottom:3px!important;
+ width:30px;
+ height:30px;
+}
+.booking-component-vehicles .jet-listing-grid__slider-icon.prev-arrow,
+.booking-component-train .jet-listing-grid__slider-icon.prev-arrow,
+.booking-component-air .jet-listing-grid__slider-icon.prev-arrow{
+ left:8px!important;right:auto!important;
+}
+.booking-component-vehicles .jet-listing-grid__slider-icon.next-arrow,
+.booking-component-train .jet-listing-grid__slider-icon.next-arrow,
+.booking-component-air .jet-listing-grid__slider-icon.next-arrow{
+ right:8px!important;left:auto!important;
+}
+@media(prefers-reduced-motion:reduce){
+ .booking-component-list .booking-component-item{transition:none}
+}
+/* Elementor's original Rail/Air price slots use absolute desktop positioning.
+   Rejoin the normal card flow only when the original columns stack on phones. */
+@media(max-width:767px){
+ .booking-component-train .booking-component-item .elementor-element-fc27ac7,
+ .booking-component-air .booking-component-item .elementor-element-a4a830b{
+  position:relative!important;
+  top:auto!important;
+  right:auto!important;
+  bottom:auto!important;
+  left:auto!important;
+  width:100%!important;
+  max-width:100%!important;
+  transform:none!important;
+  align-self:stretch;
+  margin-block-start:6px;
+ }
+}
+
+/* Optional Extras: Elementor and JetEngine own layout and image visibility.
+ * No MAD4B flex-direction, media size, or image fallback on native Cards or
+ * List View; the controller contributes only an accessible selection marker. */
+.booking-component-list.booking-component-extras .booking-component-item.is-selected{
+ outline:2px solid #2c6797;
+ outline-offset:-2px;
+}
+.booking-component-list.booking-component-extras .booking-component-item.is-selected[aria-checked="true"]::after{
+ content:"✓ Added";
+ position:absolute;inset-block-start:9px;inset-inline-end:9px;
+ z-index:6;display:inline-block;
+ background:#2d678f;border-radius:6px;padding:5px 8px;
+ color:#fff;font-size:11px;line-height:1.15;font-weight:600;
+ pointer-events:none;
+}
+.booking-component-list.booking-component-extras .booking-component-item:focus-visible{
+ outline:3px solid #b58b50;outline-offset:2px;
+}
+
+/* Transport selected effect has ONE perimeter, owned by native
+   booking-component-item. Do not stack an outline on its Elementor border. */
+.booking-component-list .booking-component-item[data-booking-component-type="transport"][aria-checked="true"]:not(.is-included){
+ position:relative;
+ background:#f5f9fe;
+ border-color:#2c6797;
+ outline:none;
+ box-shadow:0 3px 10px rgba(28,73,110,.17);
+}
+.booking-component-list .booking-component-item[data-booking-component-type="transport"][aria-checked="true"]:not(.is-included):focus-visible{
+ outline:3px solid #b58b50;
+ outline-offset:2px;
+}
+.booking-component-list .booking-component-item[data-booking-component-type="transport"][aria-checked="true"]:not(.is-included)::after{
+ content:"✓ Added";
+ position:absolute;inset-block-start:9px;inset-inline-end:9px;
+ z-index:6;display:inline-block;
+ background:#2d678f;color:#fff;
+ border-radius:6px;padding:5px 8px;
+ font-size:11px;line-height:1.15;font-weight:600;
+ pointer-events:none;
+}
+.booking-component-list .booking-component-item[data-booking-component-type="transport"][aria-disabled="false"]:not(.is-selected){
+ transition:border-color .18s ease,background-color .18s ease,box-shadow .18s ease;
+}
+@media(hover:hover) and (pointer:fine){
+ .booking-component-list .booking-component-item[data-booking-component-type="transport"][aria-disabled="false"]:not(.is-selected):not([aria-checked="true"]):hover{
+  background:#f6f9fc;
+  box-shadow:0 4px 14px rgba(33,70,106,.14);
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .booking-component-list .booking-component-item[data-booking-component-type="transport"]{transition:none}
+}

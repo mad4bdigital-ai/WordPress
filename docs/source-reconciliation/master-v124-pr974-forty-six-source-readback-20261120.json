@@ -1,0 +1,1244 @@
+{
+  "contract": "mad4b.46-pr920-collisions-live-mount-source-review.non-authorizing.v1",
+  "counts": {
+    "mount": {
+      "toursdev_staging": {
+        "absent": 10,
+        "different": 33,
+        "exact": 3
+      },
+      "wayfatours_production": {
+        "absent": 10,
+        "different": 34,
+        "exact": 2
+      }
+    },
+    "runtime_php": 36,
+    "total": 46
+  },
+  "historical_pr920": "e1b8c8aa83fd72bea87cfe6511f8200b57420b12",
+  "human_functional_approval": false,
+  "integrated_candidate_base_master": "1ed359a52ecd1c94574ddfd31c9327de5779b856",
+  "production_authorized": false,
+  "readiness_methods_note": "All 37 existing direct methods of Content Readiness source recovered in candidate class+2 Traits; 13 moved with identical PHP tokenizer normalized body SHA; no methods lost. Live WordPress integration still requires acceptance.",
+  "review_date": "2026-11-20",
+  "rows": [
+    {
+      "candidate_git_blob": "f2fb4fd8421b4f156708482160ede30e9e5e4f7c",
+      "category": "repository_governance_or_ci",
+      "mounted": {
+        "toursdev_staging": {
+          "state": "absent"
+        },
+        "wayfatours_production": {
+          "state": "absent"
+        }
+      },
+      "path": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+      "pr920_git_blob": "f2fb4fd8421b4f156708482160ede30e9e5e4f7c",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "7a9b971ad636f057e74df285c1d65ca7dc785498",
+      "category": "repository_governance_or_ci",
+      "mounted": {
+        "toursdev_staging": {
+          "state": "absent"
+        },
+        "wayfatours_production": {
+          "state": "absent"
+        }
+      },
+      "path": "governance/production-readiness/ci-workflow-source-reviews.json",
+      "pr920_git_blob": "7a9b971ad636f057e74df285c1d65ca7dc785498",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "51daa2b37520ac611554cfc1dde95f2931838b92",
+      "category": "repository_governance_or_ci",
+      "mounted": {
+        "toursdev_staging": {
+          "state": "absent"
+        },
+        "wayfatours_production": {
+          "state": "absent"
+        }
+      },
+      "path": "specs/007-content-intelligence-workflow-platform/change-slices.json",
+      "pr920_git_blob": "51daa2b37520ac611554cfc1dde95f2931838b92",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "94ea87e4f4ddfa08de508f6e72ac30fe69ad38ec",
+      "category": "repository_governance_or_ci",
+      "mounted": {
+        "toursdev_staging": {
+          "state": "absent"
+        },
+        "wayfatours_production": {
+          "state": "absent"
+        }
+      },
+      "path": "specs/007-content-intelligence-workflow-platform/feature.json",
+      "pr920_git_blob": "94ea87e4f4ddfa08de508f6e72ac30fe69ad38ec",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "1894c9d93b56d7cdbe7a73e999d7354be1111831",
+      "category": "repository_governance_or_ci",
+      "mounted": {
+        "toursdev_staging": {
+          "state": "absent"
+        },
+        "wayfatours_production": {
+          "state": "absent"
+        }
+      },
+      "path": "specs/007-content-intelligence-workflow-platform/implementation-closure.json",
+      "pr920_git_blob": "1894c9d93b56d7cdbe7a73e999d7354be1111831",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "fe35887467992fafeda826f81fd6a4e7de771244",
+      "category": "repository_governance_or_ci",
+      "mounted": {
+        "toursdev_staging": {
+          "state": "absent"
+        },
+        "wayfatours_production": {
+          "state": "absent"
+        }
+      },
+      "path": "specs/007-content-intelligence-workflow-platform/implementation-closure.md",
+      "pr920_git_blob": "fe35887467992fafeda826f81fd6a4e7de771244",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "7f50ad445765751effd2d46224d18248afbc230f",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 22,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "4793f8d3fde3d5d7c6086338db44a8c9cf4ff515",
+          "mounted_direct_methods": 22,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 22,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "4793f8d3fde3d5d7c6086338db44a8c9cf4ff515",
+          "mounted_direct_methods": 22,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dfsb-adapter.php",
+      "pr920_git_blob": "7f50ad445765751effd2d46224d18248afbc230f",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "79df5c728b20d48c59bb4bf1177978ee9624d833",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 15,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "30685349b8f927f8a8212f5958695a2fad39af85",
+          "mounted_direct_methods": 15,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 15,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "30685349b8f927f8a8212f5958695a2fad39af85",
+          "mounted_direct_methods": 15,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-local-brand-draft-adapter.php",
+      "pr920_git_blob": "79df5c728b20d48c59bb4bf1177978ee9624d833",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "57f277062ce7a46e2b14ee27f8e21ae24d208e43",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 10,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "7c284459eb7ad7e9426aef87bd9a96760012929b",
+          "mounted_direct_methods": 10,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 10,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "7c284459eb7ad7e9426aef87bd9a96760012929b",
+          "mounted_direct_methods": 10,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-interaction-ui.php",
+      "pr920_git_blob": "57f277062ce7a46e2b14ee27f8e21ae24d208e43",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "43770d1d0d158f9c508366cd88f0c6362b449a0f",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 8,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "47a51d71b6582d554d8002f400866ce3e243c63d",
+          "mounted_direct_methods": 8,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 8,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "47a51d71b6582d554d8002f400866ce3e243c63d",
+          "mounted_direct_methods": 8,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-task-routing.php",
+      "pr920_git_blob": "43770d1d0d158f9c508366cd88f0c6362b449a0f",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "ab1f5e20b55da464386f47afc7c59d55749ef7a4",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 10,
+          "candidate_only_methods": [
+            "uncertain_result"
+          ],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "d53f6d0d224fa7fcd8318b57762a2e9c9219fe55",
+          "mounted_direct_methods": 9,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 10,
+          "candidate_only_methods": [
+            "uncertain_result"
+          ],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "d53f6d0d224fa7fcd8318b57762a2e9c9219fe55",
+          "mounted_direct_methods": 9,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-auto-reconciliation.php",
+      "pr920_git_blob": "ab1f5e20b55da464386f47afc7c59d55749ef7a4",
+      "priority": "P0_SECURITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "cef6a9ed176c62cc272486f4cc712a8f0e47e266",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 1,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "bb3f7d06966bd0814f2d277bfdda6b2cddf35a34",
+          "mounted_direct_methods": 1,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 1,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "bb3f7d06966bd0814f2d277bfdda6b2cddf35a34",
+          "mounted_direct_methods": 1,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-admission.php",
+      "pr920_git_blob": "cef6a9ed176c62cc272486f4cc712a8f0e47e266",
+      "priority": "P0_SECURITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "2170a82900519ea80e51e5a7c6c4922f46c372c0",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 6,
+          "candidate_only_methods": [
+            "admitted",
+            "uncertain",
+            "valid_lease"
+          ],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "799c5de538f4b3b5ba9bcac05587b2ec20891227",
+          "mounted_direct_methods": 3,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 6,
+          "candidate_only_methods": [
+            "admitted",
+            "uncertain",
+            "valid_lease"
+          ],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "799c5de538f4b3b5ba9bcac05587b2ec20891227",
+          "mounted_direct_methods": 3,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-background-agent-dispatch.php",
+      "pr920_git_blob": "2170a82900519ea80e51e5a7c6c4922f46c372c0",
+      "priority": "P0_SECURITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "d42184db27dc136def5c3f179f5b42e37fd7813e",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 9,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "d42184db27dc136def5c3f179f5b42e37fd7813e",
+          "mounted_direct_methods": 9,
+          "state": "exact"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 9,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "48d7799b992f631842033e65db54c10bff9f904b",
+          "mounted_direct_methods": 9,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-experience-quality.php",
+      "pr920_git_blob": "d42184db27dc136def5c3f179f5b42e37fd7813e",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "9169abd2dbce76dfbe087337799dd475eced8a66",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 26,
+          "candidate_only_methods": [
+            "scan_term_batch",
+            "scan_term_media_origin_report",
+            "scan_term_report",
+            "term_meta_candidate_preflight",
+            "term_value_report",
+            "unstable_relative_anchor_hrefs"
+          ],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "14e83d1f5e6299d4e69219f1c22735f14a3d24cf",
+          "mounted_direct_methods": 20,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 26,
+          "candidate_only_methods": [
+            "scan_term_batch",
+            "scan_term_media_origin_report",
+            "scan_term_report",
+            "term_meta_candidate_preflight",
+            "term_value_report",
+            "unstable_relative_anchor_hrefs"
+          ],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "14e83d1f5e6299d4e69219f1c22735f14a3d24cf",
+          "mounted_direct_methods": 20,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-integrity.php",
+      "pr920_git_blob": "9169abd2dbce76dfbe087337799dd475eced8a66",
+      "priority": "P0_SECURITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "a9491c00b2d7d28ef1960037a343d659b307b5f2",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 26,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "88415df4d689347dd6f0193bd87f9ec2c21200eb",
+          "mounted_direct_methods": 26,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 26,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "7f93f180e2643cebb20c587ba1e3b4349838d19e",
+          "mounted_direct_methods": 26,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-completeness.php",
+      "pr920_git_blob": "a9491c00b2d7d28ef1960037a343d659b307b5f2",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "4d6800c533ebfb769210ca71fcb121e1cc712f11",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 23,
+          "candidate_only_methods": [],
+          "mount_only_methods": [
+            "audit",
+            "canonical",
+            "discover",
+            "has_media",
+            "issue",
+            "map",
+            "parse_end_date",
+            "reconcile",
+            "rule_enabled_for",
+            "rules",
+            "run_scheduled",
+            "source_backed_hotel_pickup",
+            "trusted_scheduled_cli"
+          ],
+          "mounted_blob_sha1": "8343d91e7df288cf69f7dad089997236dec00a10",
+          "mounted_direct_methods": 36,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 23,
+          "candidate_only_methods": [],
+          "mount_only_methods": [
+            "audit",
+            "canonical",
+            "discover",
+            "has_media",
+            "issue",
+            "map",
+            "parse_end_date",
+            "reconcile",
+            "rule_enabled_for",
+            "rules",
+            "run_scheduled",
+            "trusted_scheduled_cli"
+          ],
+          "mounted_blob_sha1": "6651c27bb7b516ef850258a922c39f76f069c5a9",
+          "mounted_direct_methods": 35,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "pr920_git_blob": "4d6800c533ebfb769210ca71fcb121e1cc712f11",
+      "priority": "P0_SECURITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "1274bb7926db4efca3061141957ee76401c5b3b8",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 12,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "2929d3656fbc5284077de15809fe60bcfb9d4616",
+          "mounted_direct_methods": 12,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 12,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "2929d3656fbc5284077de15809fe60bcfb9d4616",
+          "mounted_direct_methods": 12,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-ai-governance.php",
+      "pr920_git_blob": "1274bb7926db4efca3061141957ee76401c5b3b8",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "611a5f943bde86981f70b063bec313446819d3ff",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 13,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "e8ed381c3622d93b3853b89acf5d82f7b64e6bc8",
+          "mounted_direct_methods": 13,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 13,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "e8ed381c3622d93b3853b89acf5d82f7b64e6bc8",
+          "mounted_direct_methods": 13,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-connector-vault.php",
+      "pr920_git_blob": "611a5f943bde86981f70b063bec313446819d3ff",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "27c97c4ee86bbb5bc260f06ec4c1a0e1795d239e",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 29,
+          "candidate_only_methods": [],
+          "mount_only_methods": [
+            "api_key",
+            "decrypt_api_key",
+            "encrypt_api_key",
+            "encryption_key",
+            "server_api_key",
+            "settings",
+            "validate_monitored_url"
+          ],
+          "mounted_blob_sha1": "a70bfc23212bb9289d3ab218dc08a530f46c5ad1",
+          "mounted_direct_methods": 36,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 29,
+          "candidate_only_methods": [],
+          "mount_only_methods": [
+            "api_key",
+            "decrypt_api_key",
+            "encrypt_api_key",
+            "encryption_key",
+            "server_api_key",
+            "settings",
+            "validate_monitored_url"
+          ],
+          "mounted_blob_sha1": "a70bfc23212bb9289d3ab218dc08a530f46c5ad1",
+          "mounted_direct_methods": 36,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-core-web-vitals.php",
+      "pr920_git_blob": "27c97c4ee86bbb5bc260f06ec4c1a0e1795d239e",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "81b3a06e958de6c5cb477f392e0e50a5930c0fee",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 8,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "8448b67738a2064b03fd9bbe622490c1568e36bb",
+          "mounted_direct_methods": 8,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 8,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "8448b67738a2064b03fd9bbe622490c1568e36bb",
+          "mounted_direct_methods": 8,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dfsb-environment-policy.php",
+      "pr920_git_blob": "81b3a06e958de6c5cb477f392e0e50a5930c0fee",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "46a974fd23d939b2a7f1fe88e72063d00d047e5b",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 3,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "57c50bca84660969ee5ca5b0e7b6cc8061a7abf1",
+          "mounted_direct_methods": 3,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 3,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "317bf207f325b50c386219597e8cd12700a20ba1",
+          "mounted_direct_methods": 3,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-authority.php",
+      "pr920_git_blob": "46a974fd23d939b2a7f1fe88e72063d00d047e5b",
+      "priority": "P0_SECURITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "c999e9a285835db9976750bf21a6f08ce8cb45d6",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 20,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "eee00cbae25ca8dc5d6241fb45b10ce1bc4016c2",
+          "mounted_direct_methods": 20,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 20,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "eee00cbae25ca8dc5d6241fb45b10ce1bc4016c2",
+          "mounted_direct_methods": 20,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-impact-priority.php",
+      "pr920_git_blob": "c999e9a285835db9976750bf21a6f08ce8cb45d6",
+      "priority": "P1_CONTENT_OPS",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "394583512c30d6b5a92c3027e4461cd649bfc096",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 13,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "a47764fb3aa5f38c02ff954ff9cf875b97f9b8b1",
+          "mounted_direct_methods": 13,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 13,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "a47764fb3aa5f38c02ff954ff9cf875b97f9b8b1",
+          "mounted_direct_methods": 13,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-geo-quality.php",
+      "pr920_git_blob": "394583512c30d6b5a92c3027e4461cd649bfc096",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "c690074f1912acaabac867575cc933168366fb85",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 4,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "437bad33ea76f341ea1a5cbce6cd7d5a8d318ad5",
+          "mounted_direct_methods": 4,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 4,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "437bad33ea76f341ea1a5cbce6cd7d5a8d318ad5",
+          "mounted_direct_methods": 4,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-global-runtime-lifecycle.php",
+      "pr920_git_blob": "c690074f1912acaabac867575cc933168366fb85",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "d1c9872cc9cb01a2f2eeda2f9e18f2f2679d9bd2",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 3,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "b09d5b79f69e8c0d7b4479669332c5f8a4661348",
+          "mounted_direct_methods": 3,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 3,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "b09d5b79f69e8c0d7b4479669332c5f8a4661348",
+          "mounted_direct_methods": 3,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-guided-continuation.php",
+      "pr920_git_blob": "d1c9872cc9cb01a2f2eeda2f9e18f2f2679d9bd2",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "816bb085c7b5d04dac66257538cf56592b9d3064",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 10,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "cd74587278d971644cbfce3cd462ad7feaf249b3",
+          "mounted_direct_methods": 10,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 10,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "cd74587278d971644cbfce3cd462ad7feaf249b3",
+          "mounted_direct_methods": 10,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-hub-jetengine-consumer-governance.php",
+      "pr920_git_blob": "816bb085c7b5d04dac66257538cf56592b9d3064",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "bc3b9d3b3dc931892191d8c61df29d72249a8ea4",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 4,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "a45a00c1aa9b12bf05377672c7e8a0f6e3347399",
+          "mounted_direct_methods": 4,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 4,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "a45a00c1aa9b12bf05377672c7e8a0f6e3347399",
+          "mounted_direct_methods": 4,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-transport-policy.php",
+      "pr920_git_blob": "bc3b9d3b3dc931892191d8c61df29d72249a8ea4",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "a23878f53d5a54de26eb9314a663c651743fb3a4",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 8,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "fca43b0819e24f7f4efb32643b78030b1b371029",
+          "mounted_direct_methods": 8,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 8,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "fca43b0819e24f7f4efb32643b78030b1b371029",
+          "mounted_direct_methods": 8,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-locale-experience-alerts.php",
+      "pr920_git_blob": "a23878f53d5a54de26eb9314a663c651743fb3a4",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "14d06b5c5cf2d44dfd518e94eecdb4ba6c99baa0",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 1,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "17f50bc26c50a196eb509e358d2586befda63027",
+          "mounted_direct_methods": 1,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 1,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "17f50bc26c50a196eb509e358d2586befda63027",
+          "mounted_direct_methods": 1,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-settings-locator.php",
+      "pr920_git_blob": "14d06b5c5cf2d44dfd518e94eecdb4ba6c99baa0",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "a2e7f70c02b7d8293558c88723799d1f0668523c",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 9,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "22a20c4a099fa1566b39e69ef10bf36e2fbe562a",
+          "mounted_direct_methods": 9,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 9,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "22a20c4a099fa1566b39e69ef10bf36e2fbe562a",
+          "mounted_direct_methods": 9,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-presentation-browser-evidence.php",
+      "pr920_git_blob": "a2e7f70c02b7d8293558c88723799d1f0668523c",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "4872944441ebd60c128854d8badb80c2c9cf6b1e",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 7,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "1e28eb37b231d11ae4eebf190896fe505885d41d",
+          "mounted_direct_methods": 7,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 7,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "1e28eb37b231d11ae4eebf190896fe505885d41d",
+          "mounted_direct_methods": 7,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-presentation-integrity.php",
+      "pr920_git_blob": "4872944441ebd60c128854d8badb80c2c9cf6b1e",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "5d6547301ee3917e7b1033c364c9b67e2df142b3",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 25,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "2fc31688c9f7e167c4871fb2d912dece40631584",
+          "mounted_direct_methods": 25,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 25,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "2fc31688c9f7e167c4871fb2d912dece40631584",
+          "mounted_direct_methods": 25,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-event-automation.php",
+      "pr920_git_blob": "5d6547301ee3917e7b1033c364c9b67e2df142b3",
+      "priority": "P1_CONTENT_OPS",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "5386ac23cb8166988b4ce7cd453ab5df059d4764",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 21,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "5386ac23cb8166988b4ce7cd453ab5df059d4764",
+          "mounted_direct_methods": 21,
+          "state": "exact"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 21,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "5386ac23cb8166988b4ce7cd453ab5df059d4764",
+          "mounted_direct_methods": 21,
+          "state": "exact"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-integrations.php",
+      "pr920_git_blob": "5386ac23cb8166988b4ce7cd453ab5df059d4764",
+      "priority": "P1_CONTENT_OPS",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "856766f24b49ec949bd51f48f4fae95719c19764",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 24,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "856766f24b49ec949bd51f48f4fae95719c19764",
+          "mounted_direct_methods": 24,
+          "state": "exact"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 24,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "856766f24b49ec949bd51f48f4fae95719c19764",
+          "mounted_direct_methods": 24,
+          "state": "exact"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-preactivation.php",
+      "pr920_git_blob": "856766f24b49ec949bd51f48f4fae95719c19764",
+      "priority": "P1_CONTENT_OPS",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "74dc5bef7d4d49b9730ee6f4d54aa8e23b04a262",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 20,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "28108a29df3109e824bab4d29e9aa66abcb7ff90",
+          "mounted_direct_methods": 20,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 20,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "28108a29df3109e824bab4d29e9aa66abcb7ff90",
+          "mounted_direct_methods": 20,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-scopes.php",
+      "pr920_git_blob": "74dc5bef7d4d49b9730ee6f4d54aa8e23b04a262",
+      "priority": "P1_CONTENT_OPS",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "b790da33c16496013ea408d5a142299ec5fd8724",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 9,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "032b238854e4a900a069030c794723ff1f73be78",
+          "mounted_direct_methods": 9,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 9,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "40787fd08745e7f14d0343576b71b3768c7e4219",
+          "mounted_direct_methods": 9,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-workflow-options.php",
+      "pr920_git_blob": "b790da33c16496013ea408d5a142299ec5fd8724",
+      "priority": "P1_CONTENT_OPS",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "386337dae09b88345c755c8edec1d13200b95a97",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 17,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "d712e575c11c1a17caffdc037159c51ca45125a3",
+          "mounted_direct_methods": 17,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 17,
+          "candidate_only_methods": [
+            "operation_scope"
+          ],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "24dbb41dafd5643f94f935a3c627fe0a09f18943",
+          "mounted_direct_methods": 16,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-lifecycle-rest.php",
+      "pr920_git_blob": "386337dae09b88345c755c8edec1d13200b95a97",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "511317c6d76a1b19e155aab05c0c6bb581b7fa14",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 88,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "be1a6d14b6edf8d0364060e2ad212f87ad3bc74d",
+          "mounted_direct_methods": 88,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 88,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "b1389e637104ab74ddd19a5c83e30c6f25a43d15",
+          "mounted_direct_methods": 88,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+      "pr920_git_blob": "511317c6d76a1b19e155aab05c0c6bb581b7fa14",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "e2fcd06a87017f40706c9a31da083ad81ee80264",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 25,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "2770360f4bdc8d920aea95d2b40e6740c4a9bd9c",
+          "mounted_direct_methods": 25,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 25,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "bf4a36a6968d11efa6a58b396e3ab3c83068306b",
+          "mounted_direct_methods": 25,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-abilities.php",
+      "pr920_git_blob": "e2fcd06a87017f40706c9a31da083ad81ee80264",
+      "priority": "P1_CONTENT_OPS",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "719e6dd726dd50dd8494736f0eaf506617f17e8b",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 10,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "9629c8e13bdab4b1ff9dde6c90a7d570e13caca1",
+          "mounted_direct_methods": 10,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 10,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "9629c8e13bdab4b1ff9dde6c90a7d570e13caca1",
+          "mounted_direct_methods": 10,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-source-lifecycle.php",
+      "pr920_git_blob": "719e6dd726dd50dd8494736f0eaf506617f17e8b",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "e70201fafd3e6ec50f9b184d0abcea95bd7ad49e",
+      "category": "runtime_php",
+      "mounted": {
+        "toursdev_staging": {
+          "candidate_direct_methods": 8,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "42c863414b5fef0dc2cbaceb135ecdfff1e577b0",
+          "mounted_direct_methods": 8,
+          "state": "different"
+        },
+        "wayfatours_production": {
+          "candidate_direct_methods": 8,
+          "candidate_only_methods": [],
+          "mount_only_methods": [],
+          "mounted_blob_sha1": "42c863414b5fef0dc2cbaceb135ecdfff1e577b0",
+          "mounted_direct_methods": 8,
+          "state": "different"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-visual-seo-strategy.php",
+      "pr920_git_blob": "e70201fafd3e6ec50f9b184d0abcea95bd7ad49e",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "137c8ec0c9643cea5c9af276ece95986631ec0da",
+      "category": "other_plugin",
+      "mounted": {
+        "toursdev_staging": {
+          "state": "absent"
+        },
+        "wayfatours_production": {
+          "state": "absent"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/context-admin-recovery-runtime.php",
+      "pr920_git_blob": "137c8ec0c9643cea5c9af276ece95986631ec0da",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "b38f8d2c814f5e5e86023aaeb4be2ff20ed32c66",
+      "category": "other_plugin",
+      "mounted": {
+        "toursdev_staging": {
+          "state": "absent"
+        },
+        "wayfatours_production": {
+          "state": "absent"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/native-recovery-status-runtime.php",
+      "pr920_git_blob": "b38f8d2c814f5e5e86023aaeb4be2ff20ed32c66",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "55d17f65743c53eff44b24cba196877a86c4a2da",
+      "category": "other_plugin",
+      "mounted": {
+        "toursdev_staging": {
+          "state": "absent"
+        },
+        "wayfatours_production": {
+          "state": "absent"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py",
+      "pr920_git_blob": "55d17f65743c53eff44b24cba196877a86c4a2da",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    },
+    {
+      "candidate_git_blob": "8e20a28b5f886f5b02ff62e3dac7e9ff4c5b6a4a",
+      "category": "other_plugin",
+      "mounted": {
+        "toursdev_staging": {
+          "state": "absent"
+        },
+        "wayfatours_production": {
+          "state": "absent"
+        }
+      },
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/tours-dev-cimd-client-security-runtime.php",
+      "pr920_git_blob": "8e20a28b5f886f5b02ff62e3dac7e9ff4c5b6a4a",
+      "priority": "P2_TRACEABILITY",
+      "runtime_accepted": false,
+      "semantic_signoff": false
+    }
+  ],
+  "source_only_tech_checked": true,
+  "source_pr974_head": "0db20cb1e1dfa29bde37bb4a65930b309656869f",
+  "stage": "mounted_file_content_readback_not_verified_deploy_activation",
+  "staging_acceptance": false
+}

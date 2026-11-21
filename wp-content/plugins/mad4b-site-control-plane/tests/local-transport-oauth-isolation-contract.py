@@ -5,6 +5,14 @@ root = Path(__file__).resolve().parents[1]
 plugin = (root / 'includes/class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 connection = (root / 'includes/class-mad4b-scp-connection-status.php').read_text(encoding='utf-8')
 compat = (root / 'includes/class-mad4b-scp-mcp-client-compatibility.php').read_text(encoding='utf-8')
+servers = (root / 'includes/class-mad4b-scp-servers.php').read_text(encoding='utf-8')
+# Every declared MCP server must use its own exact native permission callback.
+# The VPS-local route remains a CLI-only authority boundary and must not be
+# accidentally omitted from the deep connection-readiness identity check.
+assert "'mad4b-vps-local' => array( 'MAD4B_SCP_Servers', 'can_vps_local_transport' )" in connection
+assert "self::expected_server_ids()" in servers
+assert "can_vps_local_transport" in servers
+
 runtime_disabled = (root / 'tests/runtime-local-transport-oauth-isolation-smoke.php').read_text(encoding='utf-8')
 runtime_misconfigured = (root / 'tests/runtime-local-transport-oauth-misconfigured-smoke.php').read_text(encoding='utf-8')
 

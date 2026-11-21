@@ -1,0 +1,28 @@
+[Unit]
+Description=MAD4B unified source critical CSS provenance registry (read-only, no Chromium)
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+ConditionPathExists=/opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261115/ops/dynamic-critical-css-20261116/refresh-source-families.py
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261115/ops/dynamic-critical-css-20261116/refresh-source-families.py
+TimeoutStartSec=490
+Nice=19
+IOSchedulingClass=idle
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/mad4b-company-provisioning/reports/public-critical-css-v1
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+LockPersonality=true
+CapabilityBoundingSet=
+CPUQuota=80%
+UMask=0077
+StandardOutput=journal
+StandardError=journal

@@ -1,0 +1,91 @@
+{
+  "contract": "mad4b.destination-demand-order.v1",
+  "audit_date": "2026-11-17",
+  "policy": "Rank already eligible direct published tour terms per current company and WPML language; never widen content/service eligibility or alter relations.",
+  "eligible_destination_types": [
+    "city",
+    "state_governorate"
+  ],
+  "excluded_destinations": [
+    "country",
+    "continent",
+    "place_attraction",
+    "zone_area"
+  ],
+  "current_presentation_surfaces": [
+    "JetEngine Query Builder Terms Query: detected city/state_governorate meta query",
+    "Elementor native navigation Jet Listing 67125",
+    "Native nested Elementor destination tabs"
+  ],
+  "legacy_query_288_fallback": "Existing single-home rank is disabled when shared policy is loaded, but retained as fallback.",
+  "wpml_language_count_per_site": {
+    "wayfa": 2,
+    "source": 6
+  },
+  "preview_mode": "No taxonomy metadata, sale scope, menu authoring or rate records are updated.",
+  "manual_override": "Filters mad4b/destination_demand_rank/enable and editorial term query sort (anything other than name/term_id) opt out.",
+  "sites": {
+    "wayfa": {
+      "site_origin": "https://wayfatours.com",
+      "elementor_templates_with_listing_widgets": 89,
+      "listing_widgets": 194,
+      "matched_existing_query_ids": [
+        285,
+        286,
+        288,
+        289,
+        294,
+        296
+      ],
+      "selected_query_occurrences": {
+        "285": 4,
+        "286": 2,
+        "288": 4,
+        "289": 2,
+        "294": 6,
+        "296": 4
+      },
+      "selected_unique_templates": 4,
+      "not_ranked_examples": {
+        "283": 10,
+        "284": 8,
+        "287": 6,
+        "291": 5,
+        "299": 2
+      },
+      "native_navigation_listing_id": 67125,
+      "home_query_id": 288
+    },
+    "source": {
+      "site_origin": "https://tours.dev.mad4b.com",
+      "elementor_templates_with_listing_widgets": 204,
+      "listing_widgets": 438,
+      "matched_existing_query_ids": [
+        285,
+        286,
+        288,
+        289,
+        294,
+        296
+      ],
+      "selected_query_occurrences": {
+        "285": 8,
+        "286": 4,
+        "288": 10,
+        "289": 4,
+        "294": 12,
+        "296": 8
+      },
+      "selected_unique_templates": 10,
+      "not_ranked_examples": {
+        "283": 20,
+        "284": 16,
+        "287": 12,
+        "291": 14,
+        "299": 4
+      },
+      "native_navigation_listing_id": 67125,
+      "home_query_id": 288
+    }
+  }
+}

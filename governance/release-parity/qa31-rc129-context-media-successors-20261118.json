@@ -1,0 +1,54 @@
+{
+  "authorizing": false,
+  "base_source_commit": "1fe48421cbc1444bc6698f57bf589784ec4a982f",
+  "contract": "mad4b.qa31-rc129-context-media-successors.v1",
+  "entries": [
+    {
+      "current_blob_sha": "b70e80680ba1a3a8ca00b1a7a2cacb222bc71e2a",
+      "current_sha256": "a7530a45db2e018ea57a47c9752c546fe30a86db9bf279c6dffca647f892b36d",
+      "document_regression": "wp-content/plugins/mad4b-site-control-plane/tests/context-document-normalization-runtime.php",
+      "legacy_qa31_github_sha256": "5bb21c940b0597698169b85488bddfb61c5cb8c0f0520c6a4a8791150d297e32",
+      "legacy_qa31_staging_sha256": "2d5f0fb08a783d53d951554583e8a1818985309bf4b9fc06aef460c61dc28275",
+      "legacy_qa31_state": "DIVERGENT",
+      "parent_blob_sha": "bce973b8a6957e5c820253fc3b6ab4d4cf642a78",
+      "parent_sha256": "77059ff5ad1c2a8b7d4984256ff8e425716b5cdd17d50f42e473161be087f028",
+      "path": "includes/class-mad4b-scp-brand-context-builder.php",
+      "required_regression": "wp-content/plugins/mad4b-site-control-plane/tests/context-scan-media-integrity/isolated-contract.php"
+    },
+    {
+      "current_blob_sha": "aef41cf495697268aa787ee22a899bbb5bc7a271",
+      "current_sha256": "331150970782d3ea4e209904adf63ea618901d76e5b5f2a4cb3a5c992c534c78",
+      "document_regression": "wp-content/plugins/mad4b-site-control-plane/tests/context-document-normalization-runtime.php",
+      "legacy_qa31_state": null,
+      "parent_blob_sha": "d440f529a5a022a266961872d2de16d97bf17074",
+      "parent_sha256": "76f69898a5e205dd5fef0a81e8c27f4795da71ccc9cc1a2f8f4ce87f4e46b43c",
+      "path": "includes/class-mad4b-scp-drive-scan-continuation.php",
+      "required_regression": "wp-content/plugins/mad4b-site-control-plane/tests/context-scan-media-integrity/isolated-contract.php"
+    },
+    {
+      "current_blob_sha": "baa55d92c01aeaaaeb47c815c96a0c492ee49f24",
+      "current_sha256": "440edf20b7588f30a834b6fa21f616a6835cb64bb3b9404e9b7b5629a5db9e89",
+      "document_regression": "wp-content/plugins/mad4b-site-control-plane/tests/context-document-normalization-runtime.php",
+      "legacy_qa31_github_sha256": "9722c5430dbe65f0cd591e080ac637d07388c3f21e78cda04810df671fd7e958",
+      "legacy_qa31_staging_sha256": "93db19edd5e7da7ca5b5815e25563e58ffc6ef9971e89aa9cc36430d2d63a7eb",
+      "legacy_qa31_state": "DIVERGENT",
+      "parent_blob_sha": "2768e78e8ca214145aea083440ff9634adc2304b",
+      "parent_sha256": "c3a69ee0fded972fbe2d07dcdd3bf9a35a5fe02d83d87c9c2b4d27490b76b3be",
+      "path": "includes/class-mad4b-scp-google-drive-context.php",
+      "required_regression": "wp-content/plugins/mad4b-site-control-plane/tests/context-scan-media-integrity/isolated-contract.php"
+    }
+  ],
+  "exact_source_files": 3,
+  "historical_qa31_ledger": "governance/release-parity/qa31-commerce-staging-source-parity.json",
+  "historical_qa31_sha256": "24f82e7898d4523bea658f4805329ea62cde807c54e63ecd0b8fe98b43fe1819",
+  "host_integration_review": "governance/release-parity/qa31-rc129-host-agent-integration-successors-20261118.json",
+  "host_integration_sha256": "3184e983d42404f7792c1784dca621bba33570f8b199b1a22a78c1293f16493e",
+  "is_build_provenance": false,
+  "legacy_qa31_overrides": 2,
+  "live_evidence_required": true,
+  "original_rc129_review_sha256": "dce059a5058b66cc1cb5f6d4cd01aab24b1e6b75a8fba6a1655579de038ff821",
+  "production_authorized": false,
+  "release_gate": "BLOCKED_SOURCE_RECONCILIATION",
+  "source_promotion_approved": false,
+  "source_review_only": true
+}

@@ -1,0 +1,28 @@
+{
+    "schema": 1,
+    "generated_at": "2026-11-13T07:30:36+00:00",
+    "assets": {
+        "etg-dfsb-ajax-filter-state": {
+            "file": "archive-state.219796d27130.a11f40eea2ac.min.js",
+            "source_relative": "dynamic-filter-seo-bridge/assets/js/ajax-filter-state.js",
+            "min_sha256": "a11f40eea2ac7184372d546db896c4749e07905639b4413a931579f11564f62c",
+            "source_sha256": "219796d271309fae28fdc8a74eee9ed5424324ea4179d2c5f18bd77874eee205",
+            "source_size": 44677,
+            "source_mtime": 1794039694,
+            "min_size": 31797,
+            "gzip_original": 10747,
+            "gzip_min": 7874
+        },
+        "mad4b-persistent-site-shell": {
+            "file": "site-shell.ebd96fe7f8d6.d58031680caf.min.js",
+            "source_relative": "mad4b-persistent-site-shell/assets/site-shell.js",
+            "min_sha256": "d58031680cafd108fd5f4879d06dec4e59b4a4002f2de5c59d3aa0e36694af32",
+            "source_sha256": "ebd96fe7f8d60c12e8cb685bdc89b01c91797e15551545ceb677887688b91376",
+            "source_size": 23729,
+            "source_mtime": 1794272865,
+            "min_size": 17032,
+            "gzip_original": 7580,
+            "gzip_min": 5721
+        }
+    }
+}

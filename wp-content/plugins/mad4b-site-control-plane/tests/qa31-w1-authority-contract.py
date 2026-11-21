@@ -6,13 +6,14 @@ root=Path(__file__).resolve().parent
 cases={
     'qa31-w1-authority-owner-boundary-runtime.php':'QA31_W1_OWNER_BROWSER_GATE: PASS',
     'qa31-w1-agent-route-boundary-runtime.php':'QA31_W1_AGENT_REST_ROUTING: PASS',
+    'qa31-w1-ollama-local-permission-runtime.php':'QA31_W1_LOCAL_OLLAMA_GATE: PASS',
     'replay-policy-runtime.php':'mad4b.replay-policy.runtime.v1: PASS',
     'context-authority-runtime.php':'mad4b.site-control-plane.context-authority-runtime.v5: PASS',
     'context-recreate-registry-rollback-runtime.php':'mad4b.site-control-plane.context-recreate-registry-rollback.runtime.v3: PASS',
     'site-profile-lifecycle-matrix-runtime.php':'"result":"PASS"',
     'site-profile-write-enablement-runtime.php':'mad4b.site-profile-write-enablement.runtime.v2: PASS',
     'site-profile-host-environment-reconcile-runtime.php':'PASS: host environment reconciliation decision matrix (11/11)',
-    'staging-write-grant-reviewed-inventory-runtime.php':'PASS: 38 Feature 007 plus 3 native Staging pairs',
+    'staging-write-grant-reviewed-inventory-runtime.php':'PASS: 38 reviewed Staging pairs classified by execution purpose; shared company providers match Production, no grants',
     'staging-write-authority-postcondition-runtime.php':'STAGING_WRITE_SELF_CONFIRMATION: PASS',
     'impact-approval-receipt-routing-runtime.php':'mad4b.impact-approval-receipt-routing.runtime.v1: PASS',
     'approval-plan-reconciliation-runtime.php':'mad4b.approval-plan-reconciliation.runtime.v1: PASS',
@@ -34,3 +35,14 @@ for filename,marker in cases.items():
         raise SystemExit('QA31_W1_CONTRACT: FAIL '+filename)
     print('PASS '+filename)
 print('QA31_W1_AUTHORITY_CONTRACT: PASS '+str(len(cases))+' executed hermetic PHP tests')
+
+
+# The original local Ollama ability remains preserved as source only: it is
+# not loaded by the candidate's main bootstrap and cannot admit native write.
+plugin=root.parent
+ollama=(plugin/'includes/class-mad4b-scp-local-ollama-ability.php').read_text()
+boot=(plugin/'mad4b-site-control-plane.php').read_text()
+assert "'mad4b/ollama-inference'" in ollama
+assert "class-mad4b-scp-local-ollama-ability.php" not in boot
+assert "MAD4B_SCP_Local_Ollama_Ability::boot();" not in boot
+print('SOURCE_ONLY_OLLAMA_NO_BOOT: PASS')

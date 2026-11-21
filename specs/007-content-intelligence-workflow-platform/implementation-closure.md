@@ -43,7 +43,7 @@ certify a working external MCP session. Write remains unverified/unready.
 ## Baseline
 
 - target branch: `master`
-- reviewed repository parent: `3785892316d3c395ad144500fdecc6836ed2c176` (reviewed source-only technical impact for QA30/QA31 W1 PR #587; older reviewed source parent `e7f30d944c354c3a4f7346330ad401d995e768c5` remains preserved in `baseline-review-20261026.md`; new evidence in `baseline-review-20261029.md`. Neither this metadata synchronization nor CI-only source-review hashes authorize merges, package publication, provider activation, Staging writes, or Production deployment.)
+- reviewed repository parent: `c934e0a5a3ddc924db2c7adc2dc1241785ab49ee` (exact source-only PR #814 CI base; historical QA30/QA31 W1 PR #587 parent `3785892316d3c395ad144500fdecc6836ed2c176` and earlier parent `e7f30d944c354c3a4f7346330ad401d995e768c5` remain historical evidence in `baseline-review-20261029.md` and `baseline-review-20261026.md`. This metadata synchronization is non-authorizing; it does not certify individual source changes or approve merge, package publication, provider activation, Staging writes, or Production deployment.)
 - Control Plane line: `0.4.0-rc.59`
 - MCP Adapter line: `0.6.1`
 - Production authorization: false
@@ -53,8 +53,20 @@ certify a working external MCP session. Write remains unverified/unready.
 
 Repository baseline reconciliation (24 October 2026): integration PR #485 merges reviewed PR #482 source with the already merged PR #484 Staging approval-plan fix. The exact current `master` parent above replaces the historical review pointer for repository-bound source checks only. The `0.4.0-rc.104` candidate still requires independent exact-head CI, owner attestation, and live Staging install approval; the historical `rc.59` release-root evidence below remains historical and is not a new release authorization.
 
+### 18 November 2026 — exact master-parent source review after Governance #822
+
+The prior reviewed parent `5c72e4893e36e992f056c90cfc75908b3a8f7785` is an ancestor of the reconciled `master` at `83cbe5ef992e3c99151891a0a55561a98139b948`. GitHub's exact commit comparison reports 14 intervening commits and 16 changed paths: the two baseline-owned release Workflows approved in #822, plus 14 additions limited to on-demand responsive media and site-local cron runtime/source tests. None of those 16 paths is a Feature 007 specification file, Control Plane PHP runtime file, MCP Adapter archive or tracked deployable runtime-release identity source. The #814 merge imports that exact master parent and leaves both protected Workflows byte-identical to `master`. This is a bounded **source-parent provenance review only**, not a certification of the new media/cron runtime or a reapproval of historic Feature 007 delivery fingerprints.
+
+The reviewed master-parent reference is advanced in `feature.json`, the machine-readable closure ledger and this document together. Historic delivery/source SHA-256 records remain unchanged. Feature 007 `runtime_release_identity.state=RECAPTURE_REQUIRED`, original 305/312/313 execution grants, release-authorization flags and Production permissions are not advanced. Independent exact-head Feature 007, source-readiness and release-verdict CI and a fresh exact-head owner decision remain necessary.
+
 Any descendant synchronization MUST update the exact reviewed-parent identity (`feature.json.last_reviewed_master_parent_sha`), this document and the machine-readable closure ledger together. Deployable runtime-release identity remains separately evidenced and MUST NOT be rewritten merely because repository-only changes landed.
 
+
+### 18 November 2026 — reviewed parent advance for merged Form #6 source PR #848
+
+The previous reviewed master parent `83cbe5ef992e3c99151891a0a55561a98139b948` advanced to `c934e0a5a3ddc924db2c7adc2dc1241785ab49ee` through merge PR #848, comprising four Git commits and ten new source paths. The source delta is disjoint from PR #814's 2,643 changed paths: one Form #6 source-only GitHub Workflow, six `ops/site-runtime/form6-native-rate-stay-20261118/` source/manifest/QA files, and three version-pinned mu-plugin JS/CSS presentation assets. No Feature 007 specification source or Control Plane PHP runtime changed in that master delta. The approved PR #848 source does not establish that a live site deployed the commit.
+
+The current reviewed parent is updated only for exact-parent provenance in `feature.json`, `implementation-closure.json`, `post-merge-capability-fabric-closure.json`, the negative test and Change-Slice manifest. Earlier reviewed parents `83cbe5ef992e3c99151891a0a55561a98139b948`, `5c72e4893e36e992f056c90cfc75908b3a8f7785` and original Phase 37 `3785892316d3c395ad144500fdecc6836ed2c176` remain historical evidence. Original release identity remains RECAPTURE_REQUIRED; Production activation remains false. Independent exact-head Feature 007/Readiness/Feature Boundary CI, new owner attestation and General Distribution verification must pass before repository release approval.
 
 ### Baseline release-root evidence
 

@@ -29,7 +29,11 @@ final class MAD4B_SCP_Impact_Policy {
 		$mutation_kind = $readonly ? 'read' : 'mutate';
 
 		if ( ! $readonly ) {
-			if ( 'mad4b/approval-ai-decide' === $ability_name ) {
+			$experience_operation = self::content_experience_operation( $ability_name );
+			if ( '' !== $experience_operation ) {
+				$operation_type = 'publish' === $experience_operation ? 'content_publish' : 'content_change';
+				$mutation_kind = $experience_operation;
+			} elseif ( 'mad4b/approval-ai-decide' === $ability_name ) {
 				$operation_type = 'governance_decision';
 				$mutation_kind = 'decision';
 			} elseif ( 'mad4b/developer-workspace-apply' === $ability_name ) {
@@ -133,6 +137,19 @@ final class MAD4B_SCP_Impact_Policy {
 		return $result;
 	}
 
+
+	/** Resolve an explicitly configured Content Experience route, never infer authority from its name. */
+	private static function content_experience_operation( $ability_name ) {
+		if ( ! class_exists( 'MAD4B_SCP_Content_Experience_Profiles' ) ) return '';
+		$profile = MAD4B_SCP_Content_Experience_Profiles::profile_for_ability( $ability_name );
+		if ( is_wp_error( $profile ) || ! is_array( $profile ) || empty( $profile['enabled'] ) ) return '';
+		$routes = isset( $profile['routes'] ) && is_array( $profile['routes'] ) ? $profile['routes'] : array();
+		foreach ( array( 'create_apply' => 'create', 'update_apply' => 'update', 'publish_apply' => 'publish' ) as $key => $operation ) {
+			if ( isset( $routes[ $key ] ) && hash_equals( (string) $routes[ $key ], (string) $ability_name ) ) return $operation;
+		}
+		return '';
+	}
+
 	public static function impact_for( $ability_name, $provider = 'core', $input = null ) {
 		$ability_name = (string) $ability_name;
 		$provider = sanitize_key( (string) $provider );
@@ -148,8 +165,28 @@ final class MAD4B_SCP_Impact_Policy {
 		$high_core = array(
 			'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/plugin-remote-update-apply', 'mad4b/control-plane-upload-apply', 'mad4b/control-plane-native-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/mutation-undo',
 			'mad4b/provider-canary-execute', 'mad4b/content-pipeline-settings-update',
+			'mad4b/agent-permission-apply', 'mad4b/runtime-release-set-apply', 'mad4b/control-plane-selected-head-apply',
 		);
 		if ( in_array( $ability_name, $high_core, true ) ) return 'high';
+		// Commercial and governance metadata is never an ordinary draft edit.
+		if ( in_array( $ability_name, array( 'mad4b/content-set-meta', 'mad4b/content-delete-meta' ), true ) && is_array( $input ) ) {
+			$key = sanitize_key( (string) ( $input['meta_key'] ?? $input['key'] ?? '' ) );
+			if ( preg_match( '/(?:^|_)(?:price|rate|deposit|balance|payment|booking|discount|markup|currency|tax)(?:_|$)/', $key ) ) return 'high';
+		}
+		if ( 'mad4b/content-update-post' === $ability_name && is_array( $input ) ) {
+			$id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0;
+			if ( $id > 0 && function_exists( 'get_post_status' ) && in_array( get_post_status( $id ), array( 'publish', 'private', 'future' ), true ) ) return 'high';
+		}
+		$experience_operation = self::content_experience_operation( $ability_name );
+		if ( 'publish' === $experience_operation ) return 'high';
+		if ( 'update' === $experience_operation ) {
+			$id = is_array( $input ) && isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0;
+			// Unknown or previously public targets cannot be classified as routine drafts.
+			$status = $id > 0 && function_exists( 'get_post_status' ) ? get_post_status( $id ) : false;
+			if ( ! in_array( $status, array( 'draft', 'pending', 'auto-draft' ), true ) ) return 'high';
+		}
+		if ( 'create' === $experience_operation && is_array( $input )
+			&& isset( $input['post_status'] ) && ! in_array( sanitize_key( (string) $input['post_status'] ), array( 'draft', 'pending' ), true ) ) return 'high';
 		if ( in_array( $ability_name, array( 'mad4b/content-update-post', 'mad4b/content-create-post', 'mad4b/content-apply-bundle' ), true ) && is_array( $input ) ) {
 			$status = 'mad4b/content-apply-bundle' === $ability_name && isset( $input['post'] ) && is_array( $input['post'] ) && isset( $input['post']['post_status'] )
 				? sanitize_key( (string) $input['post']['post_status'] )

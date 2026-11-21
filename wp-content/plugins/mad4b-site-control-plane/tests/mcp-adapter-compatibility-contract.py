@@ -86,10 +86,10 @@ if min(compat_pos, projection_pos, servers_pos) < 0 or not (compat_pos < project
     fail("compatibility seam is not loaded before projection/server construction")
 
 policy = json.loads((ROOT / "config/runtime-release-policy.json").read_text(encoding="utf-8"))
-if policy.get("target_adapter_version") != "0.7.0":
-    fail("runtime release policy no longer targets exact MCP Adapter 0.7.0")
-if set(policy.get("supported_transition_adapter_versions", [])) != {"0.6.1", "0.7.0"}:
-    fail("supported transition set must remain exact 0.6.1 -> 0.7.0")
+if policy.get("installed_adapter_version_gate") is not False:
+    fail("installed Adapter must be judged by runtime capabilities, not version")
+if "target_adapter_version" in policy or "supported_transition_adapter_versions" in policy:
+    fail("fixed Adapter target/transition allowlist must not return")
 
 profiles = json.loads((ROOT / "config/certified-provider-profiles.json").read_text(encoding="utf-8"))
 target = profiles.get("providers", {}).get("mcp_adapter", {}).get("0.7.0")

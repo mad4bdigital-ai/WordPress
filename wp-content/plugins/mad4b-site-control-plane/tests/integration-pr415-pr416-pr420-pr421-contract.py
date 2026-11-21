@@ -63,7 +63,11 @@ require(ROOT / "tests/admin-pages-wordpress.php",
         "Provider Coverage tab manifest and disposable WordPress render cases must match exactly")
 require(".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
         "dynamic-mcp-hybrid-runtime.php", "version_compare(PHP_VERSION, \"8.5.11\", \"<\")",
-        "php: ['7.4', '8.3', '8.4', '8.5']")
+        "php: ['7.4', '8.3', '8.4', '8.5']",
+    "Restore verified WP-CLI when setup-php tool installation fails",
+    "wp-cli-2.12.0.phar",
+    "sha256sum -c -",
+    'echo "$RUNNER_TEMP" >> "$GITHUB_PATH"')
 
 registry = json.loads((ROOT / "config/cross-plugin-sources.json").read_text(encoding="utf-8"))
 etg = next((x for x in registry.get("sources", []) if x.get("id") == "etg-dynamic-filter-seo-bridge"), None)
@@ -147,18 +151,65 @@ def reviewed_source_supersedes_snapshot(path):
     blob_sha = hashlib.sha1(raw).hexdigest()
     if path == workflow_path:
         return (path, blob_sha) in reviewed_workflow_exact_blobs
-    # Disposable WordPress admin smoke is a test fixture, not an executable
-    # production runtime/config path and cannot enter reviewed_changes.
-    # Its one exact successor also requires the reviewed Direct Profile source.
+    # Admin smoke is a disposable WordPress test, not an eligible Production
+    # runtime path. Keep its old Direct Profile review and require each later
+    # exact Git blob via append-only, non-authorizing CI source reviews.
     if path == "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php":
         direct_profile = "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-direct-profile.php"
         source = Path(direct_profile).read_bytes()
         source_blob = hashlib.sha1(b"blob " + str(len(source)).encode("ascii") + b"\0" + source).hexdigest()
-        # Reviewed successor adds the three Admin Route Registry smoke pages.
-        # Pin exact current Git blob; keep historic Feature 007 snapshots immutable.
-        return (blob_sha == "0c0c2052254a5c893a79d45aa9d985b57d8361fd"
-                and (direct_profile, source_blob) in reviewed_exact_blobs
-                and b"'mad4b-direct-access-profile' => array( 'MAD4B_SCP_Direct_Profile', 'render_page'" in data)
+        expected = "0c0c2052254a5c893a79d45aa9d985b57d8361fd"
+        if ((direct_profile, source_blob) not in reviewed_exact_blobs or
+                b"'mad4b-direct-access-profile' => array( 'MAD4B_SCP_Direct_Profile', 'render_page'" not in data):
+            return False
+        if b"'mad4b-skills-operations' =>" in data:
+            # A newly exposed operator workspace needs its own separately reviewed
+            # runtime renderer. Admin smoke alone cannot authorize Skills UI.
+            skills_path = "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php"
+            skills_data = Path(skills_path).read_bytes()
+            skills_blob = hashlib.sha1(b"blob " + str(len(skills_data)).encode("ascii") + b"\0" + skills_data).hexdigest()
+            if (skills_path, skills_blob) not in reviewed_exact_blobs:
+                return False
+        if blob_sha == expected:
+            return True
+        ledger_file = Path("governance/production-readiness/admin-pages-ci-source-reviews.json")
+        if not ledger_file.is_file():
+            return False
+        ledger = json.loads(ledger_file.read_text(encoding="utf-8"))
+        if (ledger.get("contract") != "mad4b.admin-pages-ci-source-reviews.v1" or
+                ledger.get("authorizing") is not False or
+                ledger.get("production_authorized") is not False or
+                ledger.get("owner_attestation_provided") is not False or
+                ledger.get("review_policy") != "append_only_exact_git_blob_and_disposable_wordpress_regressions"):
+            return False
+        rows = ledger.get("successors")
+        if not isinstance(rows, list) or not rows:
+            return False
+        for row in rows:
+            sha = row.get("source_blob_sha", "") if isinstance(row, dict) else ""
+            if (row.get("path") != path or
+                    row.get("prior_source_blob_sha") != expected or
+                    row.get("status") != "reviewed_for_ci_only" or
+                    row.get("production_authorized") is not False or
+                    row.get("live_evidence_required") is not True or
+                    row.get("regression_tests") != [
+                        path,
+                        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py"
+                    ] or
+                    len(str(row.get("review_rationale", ""))) < 80 or
+                    not isinstance(sha, str) or len(sha) != 40 or
+                    any(c not in "0123456789abcdef" for c in sha) or
+                    sha == expected):
+                return False
+            expected = sha
+        required = (
+            b"'mad4b-mcp-principal-mode' =>",
+            b"'mad4b-content-readiness-alerts' =>",
+            b"'mad4b-content-readiness-workflow' =>",
+            b"'mad4b-content-completeness' =>",
+            b"'mad4b-frontend-impact-priority' =>",
+        )
+        return blob_sha == expected and all(p in data for p in required)
     return (path, blob_sha) in reviewed_exact_blobs
 
 
@@ -196,4 +247,15 @@ for name in [*(f"g{x}" for x in range(1, 10)), "ui"]:
         raise SystemExit(f"INTEGRATION CONTRACT FAIL: {name} authorization escalated")
 if verified < 18:
     raise SystemExit(f"INTEGRATION CONTRACT FAIL: only {verified} evidence bindings covered")
+# The exact successor regression executes on the same Runtime Release Set CI
+# lane as this contract. Avoid a new optional workflow or disconnected test.
+import subprocess
+import sys
+negative = subprocess.run(
+    [sys.executable, str(ROOT / "tests/integration-feature007-admin-successor-contract.py")],
+    capture_output=True, text=True, timeout=30, check=False,
+)
+if negative.returncode != 0:
+    raise SystemExit("INTEGRATION CONTRACT FAIL: exact Admin successor negative test: " + negative.stderr[-500:])
+print(negative.stdout.strip())
 print(f"MAD4B_COMBINED_FEATURE_CONTRACT: PASS (evidence_bindings={verified})")
