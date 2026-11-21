@@ -71,8 +71,8 @@ foreach($active as $lang) {
 $check('localized_post_count',$totalLocalRows===51*count($active));
 $check('source_specific_example_cairo',
     (int)($source['rows'][0]['vehicle_rates_unverified']['limousine']??0)===1300 &&
-    (int)($source['rows'][0]['vehicle_rates_unverified']['luxury_7_seats']??0)===1400 &&
-    (int)($source['rows'][0]['vehicle_rates_unverified']['hiace']??0)===1600);
+    (int)($source['rows'][0]['vehicle_rates_unverified']['luxury_7_seats']??0)===1600 &&
+    (int)($source['rows'][0]['vehicle_rates_unverified']['hiace']??0)===1400);
 $missingRow=array_values(array_filter($source['rows'],
     static fn($r)=>$r['source_key']==='Luxor:23'));
 $check('luxor_missing_prices_not_zero',count($missingRow)===1 &&

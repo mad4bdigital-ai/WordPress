@@ -16,7 +16,7 @@ $row=$wpdb->get_row($wpdb->prepare("SELECT id,status,meta_fields FROM {$table} W
 if(!$row||$row['status']!=='publish'||(int)$row['id']!==328)WP_CLI::error('tour_rate_schema_identity');
 $beforeRaw=(string)$row['meta_fields'];
 $fields=(array)maybe_unserialize($beforeRaw);
-if(count($fields)!==52||($fields[50]['name']??'')!=='_mad4b_transport_stages_v1')
+if(!in_array(count($fields),[52,53],true)||($fields[50]['name']??'')!=='_mad4b_transport_stages_v1')
  WP_CLI::error('tour_rate_field_order_changed');
 $children=(array)($fields[50]['repeater-fields']??[]);
 $expected=['key','label','day_offset','origin_term_id','destination_term_id',
@@ -98,6 +98,6 @@ $read=(string)$wpdb->get_var($wpdb->prepare(
 if(hash('sha256',$read)!==hash('sha256',$afterRaw))
  WP_CLI::error('schema_readback_mismatch');
 echo wp_json_encode(['status'=>'tour_stage_points_ready','site'=>$site,
- 'tour_rate_field_count'=>52,'stage_subfields'=>17,
+ 'tour_rate_field_count'=>count($fields),'stage_subfields'=>17,
  'source_values_moved'=>0,'commercial_sales_enabled'=>false,
  'backup'=>$backupKey])."\n";

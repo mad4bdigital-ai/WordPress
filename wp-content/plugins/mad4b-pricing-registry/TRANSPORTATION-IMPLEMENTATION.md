@@ -818,3 +818,265 @@ not public tours, checkout, other settings pages or Form #6.
   the static and DOM smoke tests.
 - Transport service mode remains tour_only. No price, currency,
   availability, stock, booking, checkout or CPT visibility changed.
+
+## 20 November 2026: Owner-confirmed self-provider EGP cost modeling
+
+The owner explicitly confirmed the original Transportation 2026 PDF
+amounts are REAL COMPANY COSTS in Egyptian pounds (EGP). The PDF itself
+does not print the currency or identify the cost role. This owner
+confirmation is recorded separately; original SHA256 remains
+c3bde2be4ac89f1b7b9671720b552d39646c93ea9fa5a786fe2a9bde8f1644cd.
+
+### Source reconciliation
+
+- Source policy: currency EGP, price_role self_cost, provider self.
+  Commercial sales and native Transport Rates remain unapproved.
+- Source PDF vehicle column correction: 13 Cairo operations have Hiace
+  as the second vehicle price and Luxury 7 Seats as the third. Original
+  PDF amounts are unchanged. Corrected source metadata on 78 translated
+  Tours.dev posts and 26 Wayfatours posts.
+- Source backups: mad4b_cairo_pdf_vehicle_label_backup_20261120_v1
+  and mad4b_transport_owner_cost_confirmation_backup_20261120_v1.
+- The PDF five-percent reduction applies once to Aswan and Luxor
+  pre-discount cost values for reference calibration, never twice.
+
+### Dedicated cost engine, non-commercial by design
+
+Files:
+  includes/transport-distance-time-pricing.php
+  assets/transport-distance-time-panel.html
+  assets/transport-distance-time.js
+  assets/transport-distance-time.css
+
+The engine is embedded under Transportation in the original unified
+Dynamic Pricing Controls page. Internal option:
+  mad4b_transport_distance_time_v1
+and audit:
+  mad4b_transport_distance_time_history_v1
+
+The company source model stores an EGP cost profile for six vehicle types:
+Limousine, Luxury 7 Seats, H1, Hiace, Coaster, Bus. Each supports a fixed
+dispatch EGP cost, cost per operating km, cost per driving minute,
+cost per waiting minute, overnight cost, minimum fare and deadhead %.
+
+Route estimation supports either two existing WordPress destination-term
+centroids, two custom coordinate pairs, or manually provided distance
+and driving minutes for previously unknown journeys. Term coordinates
+are WordPress JetEngine native location metadata. Haversine multiplied
+by a disclosed circuity factor and assumed route speed is a LOW-CONFIDENCE
+estimate, NOT an actual road-network driving distance or duration.
+
+Road types include city, highway and desert. Extra factors: road movement
+cost, night, peak, waiting, tolls, parking and other operating expenses.
+Commercial scenario = operating cost + policy markup/adjustments, with a
+minimum fare and an explicitly applied discount, no double tax or automatic
+currency conversion.
+
+Markup precedence: Tour Rate > route > service > vehicle > global.
+Modes inherit, override, adjustment preserve precedence without blindly
+summing successive overriding percentages. A native JetEngine Tour Rate
+field transport_markup_override_pct (blank inherit, zero explicit override)
+is added at position 53 by:
+  tools/reconcile-tour-rate-transport-markup-override.php
+Original 52 parent fields, 17 stage child fields and all existing Tour Rate
+values remain unchanged. Schema before-image backup on each site:
+  mad4b_tour_rate_markup_schema_backup_20261120_v1
+
+### Calibration — source is actual cost; decomposition is estimated
+
+Intercity one-way, single-destination actual supplier/company cost
+examples only. Multi-stops, day tours, roundtrips, overnights, Luxor:7
+anomaly and ambiguous geometry are excluded.
+
+Single trip total costs do not mathematically identify two independent
+distance/time marginal coefficients. The simulator therefore applies a
+transparent 25% time allocation assumption and robust median-based
+cost-per-unit-exposure fit with 35% outlier screening. Fit metrics are
+NOT a future route prediction guarantee.
+
+Seeded in company simulation option on BOTH sites:
+- Limousine: 7 examples, 6 retained; EGP 13.53/km and 4.51/min.
+- Hiace: 6, 5 retained; EGP 16.45/km and 5.48/min.
+- Coaster: 7, 6 retained; EGP 27.00/km and 9.00/min.
+- Bus: 7, 5 retained; EGP 61.60/km and 20.53/min.
+- Luxury 7 Seats: 1 example; insufficient for calibration.
+- H1: 0 examples; no invented profile.
+
+Model revision is 1, source policy revision 3, company scope independent.
+Native original supplier costs and markup scenario are never automatically
+added to a Tour Rate. Tax, stock, supplier day-specific availability,
+vehicle capacity, pickup/dropoff, and actual booking remain separate.
+
+### Test boundaries
+
+Source, language, protected price readback, cost-engine validation, route
+candidate matching, Source Review and native Tour Rate stage metadata are
+all checked live. HTTP-only public transport service remains disabled by
+tour_only. Cost engine is admin-only, nonce- and capability-gated, with a
+revision lock, audit history, readback, numeric validation and fail-closed
+unpriced vehicle profiles. There is no checkout or Woo order integration.
+
+Test coverage (both sites, post source correction):
+- Distance/time cost tests 32/32 each.
+- Source pricing integrity 35/35 each.
+- PDF and translations 381/381 on Tours.dev; 141/141 Wayfatours.
+- Native Tour Rate routing/field dimensions 52/52 each.
+- Operational readiness 24/24 Tours.dev; 12/12 Wayfatours.
+
+Deployment is live for internal admin preview on the two companies; source
+and UI code are maintained under Git review and cannot be called an approved
+production release until its new PR and exact-head governance checks pass.
+
+## 20 November 2026 — Non-additive vehicle call-out BASE
+
+The owner confirmed vehicle call-out BASE must be INCLUDED within the route
+kilometer-and-driving-minute charge, not added above it. The existing
+per-vehicle profile fixed amount stores this EGP BASE; no duplicate
+company profile price field was added.
+
+Dispatch activation is a separate company dispatch_policy (disabled by
+default) with application included_minimum_not_additive. Calculations:
+
+    movement = (operating km cost + driving time cost) * road factor
+    effective movement = max(movement, vehicle call-out BASE)
+    cost = (effective movement + waiting + overnight)
+           * night_factor * peak_factor + tolls + parking + other extras
+
+A 300 EGP BASE with 800 EGP movement costs 800 EGP, not 1100 EGP.
+When movement is 200 EGP, the effective movement is 300 EGP.
+These are arithmetic examples, not actual vehicle price assignments.
+Markup, discounts, tax and other charge types are calculated separately.
+
+### Native JetEngine inheritance and activation
+
+- Transportation CPT (ID 173): new optional native repeater
+  trans_vehicle_cost_overrides_v1. Each row defines one vehicle_key,
+  mode (inherit/override), dispatch_mode (inherit/enabled/disabled),
+  and optional EGP cost overrides for fixed BASE, km, driving minute,
+  waiting minute, overnight, minimum fare and deadhead percentage.
+- Transport Rate CPT (ID 358): new native trans_cost_model_mode,
+  trans_dispatch_mode, seven optional operating-cost overrides and
+  trans_cost_markup_override_pct. Original source_post_id and
+  trans_vehicle_category_key link and validate company price inheritance.
+- Tour Rate CPT (ID 328): existing transport_markup_override_pct,
+  transport selections and OR/AND stages. No new top-level Tour Rate
+  field required.
+- Cost inheritance is company vehicle profile -> Transportation per-
+  vehicle row -> native Transport Rate override. Dispatch activation
+  follows company global toggle -> Transportation vehicle activation
+  -> Transport Rate activation.
+- Blank cost fields inherit and zero is an explicit zero override.
+- Customer extra kilometer and overtime selling prices remain separate
+  native fields (trans_extra_km_price_base and
+  trans_overtime_price_per_hour_base), not operating cost rates.
+- New meta is WPML Copy across translations where relevant.
+
+Tours.dev and Wayfatours schema counts: 71 Transportation fields
+(previously 70), 47 native Transport Rate fields (previously 37),
+53 Tour Rate fields (unchanged). Existing post values and bookings are
+unchanged. A per-company before-image schema backup exists under
+mad4b_jetengine_transport_cost_inheritance_backup_20261120_v1.
+The guarded migration supports exact-hash checked rollback.
+
+### Cancellation / non-refundable BASE
+
+The model carries a non_refundable_after_confirmed_assignment policy
+intention, NOT an automatic refund deduction. Retention of any part
+of a paid booking must satisfy the customer's accepted conditions,
+actual supplier vehicle assignment, the applicable cancellation
+schedule and local law. The cost simulator NEVER creates a payable
+BASE surcharge, real order, auto invoice or refund adjustment.
+
+The company-wide dispatch activation defaults OFF and all saved BASE
+amounts remain zero until a manager inputs actual approved values.
+Unit tests exercise non-additive BASE and inheritance resolution
+at company, Transportation and Transport Rate level. Commercial
+checkout authorization remains false, Transportation stays tour_only.
+
+## 20 Nov 2026 — canonical JetEngine vehicle Term Meta
+
+Vehicle operating costs in EGP are now owned by native JetEngine taxonomy
+transport-vehicle-types, attached to transportations and transport-rates.
+Private admin-only taxonomy: no public queries, routes or REST endpoint.
+Exactly six technical WPML-untranslated terms per company: Limousine,
+Luxury 7 Seats, H1, Hiace, Coaster and Bus. Existing vehicle_classes
+(Economy / Premium / Luxury) and mixed transportation-types remain intact.
+
+Term Meta stores base included minimum EGP, operating EGP/km,
+driving EGP/min, waiting EGP/min, overnight EGP, minimum fare EGP,
+deadhead percentage, calibration basis, sample count and dispatch mode.
+The per-vehicle numeric profiles no longer inherit from wp_options when
+the canonical activation flag is on. Company option retains the previous
+values as an unmodified rollback shadow and continues to own shared
+global/route/service factors and markup policies. Transportation and
+Transport Rate local overrides still have higher priority. Customer
+extra-km and overtime selling prices remain separate from operating
+cost coefficients.
+
+Tours.dev native taxonomy registry ID 37, term IDs 3156-3161.
+Wayfatours registry ID 36, term IDs 3026-3031. Original values
+matched each company profile exactly before activating the new owner.
+The activation flag reader supports WordPress native true and the
+non-autoloaded persisted string 1. Targeted cache invalidation handles
+stale notoptions entries; no broad cache purge is required for approval.
+
+Each original PDF transportation is tagged only with the vehicle terms
+for positive actual-cost PDF prices: 306/306 records on Tours.dev
+(300 priced, six empty); 102/102 Wayfatours (100 priced, two empty).
+Existing Draft Transport Rates with no explicit vehicle category are
+not guessed or activated. Taxonomy technical terms are single-language,
+not per-locale price duplicates.
+
+Guarded site-local backups: mad4b_vehicle_term_migration_backup_20261120_v1,
+mad4b_transport_vehicle_relations_backup_20261120_v1,
+mad4b_vehicle_term_editor_schema_backup_20261120_v1.
+The relation migration may be rerun safely, checking the original and
+expected after-image for every record. Authority-only rollback via
+tools/rollback-vehicle-term-authority.php retains all Term Meta and
+post relationships and restores the saved legacy company profile.
+
+Native term editing keeps JetEngine fields/saving. The cost workspace
+shows the term-owned profile as read-only with a native edit link.
+A scoped progressive presentation adapter groups unit fields as cards,
+shows BASE as an included movement minimum and never modifies form input
+names, values, or save actions. It neither creates new prices nor
+makes the non-refundable label an automatic refund deduction.
+
+Source QA passed 29/29 native Term checks per site; 37/37 cost engine,
+21/21 local inheritance, 35/35 source pricing, and 52/52 tour relation
+tests per site. PDF/WPML tests passed 381/381 Tours.dev and 141/141 Wayfa.
+The confirmed original PDF cost figures remain EGP self_cost. The
+coefficient decomposition from whole trip cost to EGP/km and EGP/min is
+still an estimate. Example stage-only term edit Hiace EGP/km +1 changed
+a 10-km quote by precisely 10 EGP, and was then restored successfully.
+
+The native taxonomy is private; Transportation remains tour_only.
+No published native Transport Rates, inventory claims, Woo orders,
+checkout prices or cancellation refunds were changed by this migration.
+Authenticated Chrome visual QA and broader CPT Functional UI Mode parity
+must still be verified separately before claiming full UX certification.
+
+### Finance-sensitive Vehicle Term editor permissions (20 Nov 2026)
+
+During final production security verification, the default WordPress
+JetEngine taxonomy used manage_categories for managing/editing/deleting
+vehicle cost terms and edit_posts for assignment. That would permit
+ordinary Editors to change actual company costs. The taxonomy's four
+registration-time capabilities (manage_terms, edit_terms, delete_terms
+and assign_terms) now require manage_options, scoped exclusively to
+transport-vehicle-types via register_taxonomy_args. Native JetEngine
+terms and save paths are preserved. Administrator capability readback
+passed on both sites; Editor lacks manage_options. The progressive
+term editor CSS and JS are enqueued only for authorized site admins on
+the appropriate native term admin screen.
+
+Runtime regression now includes capability isolation and scoped
+asset loading; native vehicle term checks passed 33/33 on both sites.
+No provider price role, underlying cost value, vehicle assignment,
+Tour Rate, booking, source PDF or commerce policy was changed by this
+authorization hardening.
+
+A full parallel post-change WP-CLI regression attempt was delayed by
+pre-existing concurrent WordPress CLI work and the STAGING_WPCLI_BUSY
+concurrency guard. Do not treat the declined run as a product failure
+or claim a fresh full-matrix pass without an independent successful run.

@@ -1,0 +1,99 @@
+<details class="mad4b-kinetic" open>
+ <summary><strong>Distance &amp; Time Cost Engine</strong><small>Draft simulator · EGP · Never checkout</small></summary>
+ <div class="mad4b-kinetic-body">
+  <p class="mad4b-kinetic-warning">PDF prices are Egyptian pounds per owner confirmation, but these are confirmed company costs. The proposed EGP/km and EGP/min coefficients are estimated, not separately recorded operating expenses.</p>
+  <nav class="mad4b-kinetic-tabs" aria-label="Transport cost model">
+   <button type="button" data-tab="profiles" aria-current="page">Vehicle profiles</button>
+   <button type="button" data-tab="factors">Factors &amp; markups</button>
+   <button type="button" data-tab="calibrate">PDF calibration</button>
+   <button type="button" data-tab="route">Route calculator</button>
+  </nav>
+  <section data-view="profiles">
+   <h4>Vehicle operating profile</h4>
+   <div class="mad4b-kinetic-grid">
+    <label>Vehicle<select data-id="profile-vehicle"></select></label>
+    <label>Vehicle markup mode<select data-id="vehicle-mode"><option value="inherit">Inherit</option><option value="override">Override</option><option value="adjustment">Adjustment</option></select></label>
+    <label>Vehicle markup (%)<input data-id="vehicle-pct" type="number" step=".25" min="-75" max="200"></label>
+   </div>
+   <div class="mad4b-kinetic-grid" data-id="profile-fields"></div>
+   <p data-id="profile-meta" class="mad4b-kinetic-muted"></p>
+   <p class="mad4b-kinetic-muted">Driving and waiting minutes are distinct. Empty return is a percentage of operating distance, not another paid transfer.</p>
+  </section>
+  <section data-view="factors" hidden>
+   <h4>Road, operational and commercial factors</h4>
+   <div class="mad4b-kinetic-grid" data-id="road-fields"></div>
+   <div class="mad4b-kinetic-grid" data-id="factor-fields"></div>
+   <div class="mad4b-kinetic-base-policy">
+    <label><input type="checkbox" data-id="dispatch-enabled"> Enable vehicle call-out BASE as an <strong>included minimum</strong>, not an additional charge</label>
+    <p class="mad4b-kinetic-muted">The BASE for each vehicle is the existing Fixed/Dispatch EGP profile amount. If movement cost already covers it, no extra fee is added. A short trip is floored to the BASE. Individual Transportation and Transport Rate fields can inherit, enable, or disable this policy.</p>
+    <p class="mad4b-kinetic-muted">Non-refundable on customer cancellation only after confirmed vehicle assignment and accepted booking terms. No automatic deduction or refund decision is made by this simulator.</p>
+   </div>
+   <h4>Service-level markup</h4>
+   <div class="mad4b-kinetic-grid">
+     <label>Service<select data-id="service-key"></select></label>
+     <label>Policy<select data-id="service-mode"><option value="inherit">Inherit</option><option value="override">Override</option><option value="adjustment">Adjustment</option></select></label>
+     <label>Markup / adjustment %<input type="number" data-id="service-pct" min="-75" max="200" step=".25"></label>
+   </div>
+   <h4>Route-specific rule</h4>
+   <div class="mad4b-kinetic-grid">
+     <label>Origin:Destination slugs<input data-id="route-rule-key" placeholder="cairo:hurghada"></label>
+     <label>Policy<select data-id="route-rule-mode"><option value="override">Override</option><option value="adjustment">Adjustment</option><option value="inherit">Inherit</option></select></label>
+     <label>Markup %<input type="number" data-id="route-rule-pct" min="-75" max="200" step=".25" value="0"></label>
+   </div>
+   <button type="button" class="button" data-id="add-rule">Add / update route rule</button>
+   <div data-id="route-rules" class="mad4b-kinetic-rules"></div>
+   <p class="mad4b-kinetic-muted">Priority: Tour Rate → route → service → vehicle → global. Overrides replace inherited markup; explicit adjustments add once.</p>
+  </section>
+  <section data-view="calibrate" hidden>
+   <h4>2026 PDF actual company-cost calibration</h4>
+   <p class="mad4b-kinetic-warning">Only unambiguous one-way city transfers enter the calculation. Approximate city-center distances are not road-network proof. The time-share is an assumption, not independently measured labour/fuel cost. Luxor:7 and mixed packages are excluded.</p>
+   <div data-id="calibration-table"></div>
+   <button type="button" class="button" data-id="apply-proposal">Load selected vehicle proposal into unsaved profile</button>
+   <p class="mad4b-kinetic-muted" data-id="calibration-note"></p>
+  </section>
+  <section data-view="route" hidden>
+   <h4>Route cost calculator — estimated</h4>
+   <fieldset class="mad4b-kinetic-native-context">
+    <legend>Native JetEngine inheritance (optional)</legend>
+    <div class="mad4b-kinetic-grid">
+     <label>Transportation source<select data-id="native-source"></select></label>
+     <label>Existing Transport Rate<select data-id="native-rate"></select></label>
+     <label>Tour Rate ID (linked only)<input type="number" data-id="native-tour-rate" min="1" step="1" placeholder="Optional existing Tour Rate ID"></label>
+    </div>
+    <p class="mad4b-kinetic-muted" data-id="native-context-info">Select a PDF Transportation service. Vehicle profile and optional native cost overrides are then inherited; any Transport Rate must actually belong to that source.</p>
+   </fieldset><p class="mad4b-kinetic-muted">Choose destinations, provide both coordinate pairs, or enter custom labels with manual distance and driving minutes. This estimate never verifies road-network distance.</p>
+   <div class="mad4b-kinetic-grid">
+    <label>Origin destination<select data-id="from"></select></label>
+    <label>End destination<select data-id="to"></select></label>
+    <label>Custom origin label<input data-id="custom-from" maxlength="100" placeholder="For routes outside the list"></label>
+    <label>Custom destination label<input data-id="custom-to" maxlength="100" placeholder="For routes outside the list"></label>
+    <label>Vehicle<select data-id="quote-vehicle"></select></label>
+    <label>Service<select data-id="quote-service"></select></label>
+    <label>Road type<select data-id="quote-road"></select></label>
+    <label>Origin latitude<input data-id="from-lat" type="number" step=".000001" min="-90" max="90"></label>
+    <label>Origin longitude<input data-id="from-lon" type="number" step=".000001" min="-180" max="180"></label>
+    <label>Destination latitude<input data-id="to-lat" type="number" step=".000001" min="-90" max="90"></label>
+    <label>Destination longitude<input data-id="to-lon" type="number" step=".000001" min="-180" max="180"></label>
+    <label>Distance km — optional manual<input data-id="km" type="number" min=".5" max="5000" step=".1" placeholder="Auto from native city coordinates"></label>
+    <label>Driving minutes — pair with manual km<input data-id="drive" type="number" min="1" step="1" placeholder="Auto or enter with km"></label>
+    <label>Waiting minutes<input data-id="wait" type="number" min="0" value="0"></label>
+    <label>Overnight units<input data-id="overnight-units" type="number" min="0" value="0"></label>
+    <label>Tolls EGP<input data-id="tolls" type="number" min="0" value="0"></label>
+    <label>Parking EGP<input data-id="parking" type="number" min="0" value="0"></label>
+    <label>Other operational EGP<input data-id="extras" type="number" min="0" value="0"></label>
+   </div>
+   <div class="mad4b-kinetic-inline">
+    <label><input type="checkbox" data-id="night"> Night operation</label>
+    <label><input type="checkbox" data-id="peak"> Peak period</label>
+   </div>
+   <button class="button button-primary" type="button" data-id="quote">Calculate draft scenario</button>
+   <div data-id="quote-result" aria-live="polite" class="mad4b-kinetic-results">Select a vehicle and route, then calculate.</div>
+  </section>
+  <footer class="mad4b-kinetic-footer">
+   <span data-id="dirty" role="status" aria-live="polite">Loading saved draft model…</span>
+   <div><button type="button" class="button button-primary" data-id="save">Save draft cost model</button>
+   <button type="button" class="button" data-id="reload">Reload / discard changes</button></div>
+   <span data-id="status" role="status" aria-live="polite"></span>
+  </footer>
+ </div>
+</details>
