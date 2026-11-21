@@ -55,6 +55,87 @@ final class MAD4B_Cache_Lifecycle_V1 {
   ];
   return !in_array($key,$non_rendering,true);
  }
+ // MAD4B_SOURCE_RELATION_DEPENDENCY_BEGIN_V1
+ /**
+  * Read the ORIGINAL live JetEngine post relations, not guessed slugs,
+  * supplier names or published status alone.
+  *
+  * Proof is deliberately PARTIAL: missing relations, tour rates, Supplier
+  * and WCML selection could still affect a tour. It may add known cache
+  * targets but must never certify a negative dependency or suppress cache.
+  * No DB writes, assignments, prices or network requests.
+  */
+ public static function source_relation_impact_preview(int $postId):array {
+  $post=$postId>0?get_post($postId):null;
+  $type=is_object($post)?(string)($post->post_type??''):'';
+  $base=['contract'=>'mad4b.cache.source-relation-impact.v1',
+    'source_post_id'=>$postId,'source_type'=>$type,
+    'status'=>'unproven','linked_property_ids'=>[],
+    'linked_tour_ids'=>[],'relations_checked'=>[],
+    'negative_impact_certified'=>false,'mutation_performed'=>false];
+  if(!$post||$postId<1||!in_array($type,['units','properties','transportations'],true))
+   return array_merge($base,['status'=>'unsupported_source_type']);
+  if(!function_exists('jet_engine')||!is_object(jet_engine())
+     ||!isset(jet_engine()->relations)
+     ||!method_exists(jet_engine()->relations,'get_active_relations'))
+   return array_merge($base,['status'=>'jetengine_relations_unavailable']);
+  $relations=[];
+  foreach((array)jet_engine()->relations->get_active_relations() as $rel){
+   if(!is_object($rel)||!method_exists($rel,'get_args'))continue;
+   $args=(array)$rel->get_args();
+   $parent=(string)($args['parent_object']??'');
+   $child=(string)($args['child_object']??'');
+   $key=$parent.'>'.$child;
+   if(in_array($key,[
+      'posts::properties>posts::units',
+      'posts::properties>posts::tours-and-activities',
+      'posts::tours-and-activities>posts::transportations'],true)
+      && !isset($relations[$key]))$relations[$key]=$rel;
+  }
+  $propertyIds=[];$tourIds=[];$checks=[];$truncated=false;
+  $read=function(string $key,int $id,string $method,string $expected)use(&$relations,&$checks,&$truncated):array {
+   if(!isset($relations[$key])||!method_exists($relations[$key],$method)){
+    $checks[$key]='missing_or_unavailable';
+    return [];
+   }
+   try{$rows=(array)$relations[$key]->$method($id,'ids');}
+   catch(Throwable $e){$checks[$key]='relation_read_failed';return [];}
+   if(count($rows)>100){$truncated=true;$checks[$key]='bounded_overflow';}
+   else $checks[$key]='read_partial';
+   $out=[];
+   foreach(array_slice($rows,0,100) as $value){
+    $linked=filter_var($value,FILTER_VALIDATE_INT,
+     ['options'=>['min_range'=>1]]);
+    if($linked===false)continue;
+    $linked=(int)$linked;
+    if(get_post_type($linked)===$expected && get_post_status($linked)==='publish')
+     $out[$linked]=true;
+   }
+   return array_keys($out);
+  };
+  if($type==='units') {
+   $propertyIds=$read('posts::properties>posts::units',$postId,'get_parents','properties');
+  }elseif($type==='properties')$propertyIds=[$postId];
+  if($type==='transportations')
+   $tourIds=$read('posts::tours-and-activities>posts::transportations',
+       $postId,'get_parents','tours-and-activities');
+  else foreach(array_slice($propertyIds,0,40) as $property){
+   $found=$read('posts::properties>posts::tours-and-activities',
+         (int)$property,'get_children','tours-and-activities');
+   foreach($found as $id)$tourIds[(int)$id]=(int)$id;
+  }
+  // Normalize both direct and two-hop relationships; never claim a
+  // complete dependency graph because commercial rate relations may differ.
+  $tourIds=array_values(array_unique(array_map('intval',array_values($tourIds))));
+  sort($tourIds,SORT_NUMERIC);
+  $propertyIds=array_values(array_unique(array_map('intval',$propertyIds)));
+  sort($propertyIds,SORT_NUMERIC);
+  return array_merge($base,['status'=>$truncated?'partial_bounded_overflow':
+     ($tourIds?'known_tour_links_partial':'no_tour_links_proven'),
+    'linked_property_ids'=>$propertyIds,'linked_tour_ids'=>$tourIds,
+    'relations_checked'=>$checks]);
+ }
+ // MAD4B_SOURCE_RELATION_DEPENDENCY_END_V1
  public static function post($id,$force=false){
   if($force)self::$membership_change=true;
   $p=get_post((int)$id);if(isset(self::$posts[(int)$id]))return;if(!$p||wp_is_post_revision($id)||wp_is_post_autosave($id))return;
@@ -70,6 +151,17 @@ final class MAD4B_Cache_Lifecycle_V1 {
    return;
   }
   if($p->post_status==='publish'||$force){self::$posts[(int)$id]=true;$link=get_permalink($id);if(self::safe_url($link))self::$extra[]=$link;
+   // MAD4B_SOURCE_RELATION_CASCADE_BEGIN_V1
+   // Add only directly proven public targets; original graph fallback
+   // remains in force for absent or incomplete supplier/rate relationships.
+   if(in_array($p->post_type,['units','properties','transportations'],true)){
+    $impact=self::source_relation_impact_preview((int)$id);
+    foreach((array)$impact['linked_property_ids'] as $parentId)
+     if((int)$parentId!==(int)$id)self::post((int)$parentId);
+    foreach((array)$impact['linked_tour_ids'] as $tourId)
+     self::post((int)$tourId);
+   }
+   // MAD4B_SOURCE_RELATION_CASCADE_END_V1
   }
  }
  public static function post_terms_changed($id,$terms,$tt_ids,$taxonomy,$append=false,$old_tt_ids=[]){

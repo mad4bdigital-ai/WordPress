@@ -1,0 +1,27 @@
+{
+  "contract": "mad4b.existing-cache-source-relation-forward.v1",
+  "original_owner": "MAD4B_Cache_Lifecycle_V1",
+  "predecessor_cache_sha256": "85509eedb8d5a14fb20900638efd05f35e9587af1ba9f7a16edc7d9af3bc4288",
+  "predecessor_cache_git_blob_sha1": "ce914efd848206765c5cb379e874ed5d61a21173",
+  "current_cache_sha256": "dbd72710e34165277ac3ba3582dfb897edfd7931327822591ac22424f2e921c8",
+  "current_cache_git_blob_sha1": "22c48589fc5f14202e4bf75ef88d86c8ec751359",
+  "original_manager": "MAD4B_SCP_Adaptive_Asset_Intelligence",
+  "predecessor_manager_sha256": "78a2bdfc3342a3da80162e4726d6456ede9aa8b450b0fd108a7466b9b133a138",
+  "predecessor_manager_git_blob_sha1": "b9d898c225453caaa1609f8c299f99a813917487",
+  "current_manager_sha256": "09fd2d054a4acad8698fe51d8f666a76a4adc4c1fbd3b78320d00091805e2979",
+  "current_manager_git_blob_sha1": "71296ba2dd67570ae1e978a9c1504f6d9d4f4622",
+  "relations": [
+    "properties>units",
+    "properties>tours-and-activities",
+    "tours-and-activities>transportations"
+  ],
+  "relation_source": "original_jetengine_active_relation_registry",
+  "negative_dependency_certified": false,
+  "original_home_fallback_preserved": true,
+  "standalone_property_service_activated": false,
+  "historical_tickets_deleted": false,
+  "source_tokens_consumed": false,
+  "no_new_queue_or_worker": true,
+  "production_approval_from_source_receipt": false,
+  "historical_receipts_unchanged": true
+}

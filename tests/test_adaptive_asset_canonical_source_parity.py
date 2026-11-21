@@ -10,6 +10,7 @@ META=ROOT/'ops/site-company-overlays/wayfatours/adaptive-runtime/source-parity-2
 SUCCESSOR=ROOT/'ops/site-company-overlays/wayfatours/adaptive-runtime/source-forward-port-20261116.json'
 FOLLOWUP=ROOT/'ops/site-company-overlays/wayfatours/adaptive-runtime/source-followup-20261121.json'
 TOKEN_BRIDGE=ROOT/'ops/site-company-overlays/wayfatours/adaptive-runtime/source-token-bridge-20261121.json'
+SOURCE_IMPACT=ROOT/'ops/site-company-overlays/wayfatours/adaptive-runtime/source-impact-forward-20261121.json'
 ADAPTIVE='wp-content/plugins/mad4b-adaptive-asset-intelligence/includes/class-mad4b-scp-adaptive-asset-intelligence.php'
 QUEUE_TEST=ROOT/'ops/adaptive-queue-self-heal-20261116/tests/test-adaptive-queue-self-healing.php'
 
@@ -63,8 +64,16 @@ class AdaptiveSourceOwnership(unittest.TestCase):
     self.assertTrue(bridge['no_parallel_scheduler'] and bridge['no_new_queue'])
     self.assertFalse(bridge['automatic_css_certification_from_ack'])
     self.assertFalse(bridge['production_release_authorized_by_this_receipt'])
-    self.assertEqual(hashlib.sha256(actual).hexdigest(),bridge['current_source_sha256'])
-    self.assertEqual(git_blob_sha1(actual),bridge['current_source_git_blob_sha1'])
+    later=json.loads(SOURCE_IMPACT.read_text())
+    self.assertEqual(later['contract'],'mad4b.existing-cache-source-relation-forward.v1')
+    self.assertEqual(later['predecessor_manager_sha256'],bridge['current_source_sha256'])
+    self.assertEqual(later['predecessor_manager_git_blob_sha1'],bridge['current_source_git_blob_sha1'])
+    self.assertTrue(later['original_home_fallback_preserved'])
+    self.assertFalse(later['historical_tickets_deleted'])
+    self.assertFalse(later['negative_dependency_certified'])
+    self.assertFalse(later['standalone_property_service_activated'])
+    self.assertEqual(hashlib.sha256(actual).hexdigest(),later['current_manager_sha256'])
+    self.assertEqual(git_blob_sha1(actual),later['current_manager_git_blob_sha1'])
     self.assertFalse(candidate['production_authorized'])
     self.assertFalse(candidate['certified_for_target'])
    else:

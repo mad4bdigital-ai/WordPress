@@ -2,6 +2,7 @@
 from pathlib import Path
 import hashlib
 import json
+import re
 import subprocess
 import unittest
 ROOT=Path(__file__).resolve().parents[1]
@@ -12,7 +13,17 @@ BASE='a05abada55acb87d112d60606b51cef8b82a4af9'
 
 class CacheForwardParity(unittest.TestCase):
     def test_candidate_pinned_from_reviewed_live_source(self):
-        raw=(ROOT/REL).read_bytes()
+        current=(ROOT/REL).read_bytes()
+        forward=json.loads((ROOT/'ops/site-company-overlays/wayfatours/adaptive-runtime/source-impact-forward-20261121.json').read_text())
+        self.assertEqual(forward['contract'],'mad4b.existing-cache-source-relation-forward.v1')
+        self.assertEqual(hashlib.sha256(current).hexdigest(),forward['current_cache_sha256'])
+        x=current.decode()
+        p1=r' // MAD4B_SOURCE_RELATION_DEPENDENCY_BEGIN_V1\n.*? // MAD4B_SOURCE_RELATION_DEPENDENCY_END_V1\n'
+        p2=r'   // MAD4B_SOURCE_RELATION_CASCADE_BEGIN_V1\n.*?   // MAD4B_SOURCE_RELATION_CASCADE_END_V1\n'
+        self.assertEqual(len(re.findall(p1,x,re.S)),1)
+        self.assertEqual(len(re.findall(p2,x,re.S)),1)
+        raw=re.sub(p2,'',re.sub(p1,'',x,flags=re.S),flags=re.S).encode()
+        self.assertEqual(hashlib.sha256(raw).hexdigest(),forward['predecessor_cache_sha256'])
         # Exact source delta: the reviewed new rate-routing behavior is
         # preserved. Only runtime PHP 7.4 prefix syntax compatibility changes.
         restored=raw.decode()

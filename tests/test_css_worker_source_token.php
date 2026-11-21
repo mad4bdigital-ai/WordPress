@@ -10,6 +10,7 @@ $GLOBALS['options']=[
  ],
  'mad4b_adaptive_asset_job_queue_v1'=>[]
 ];
+function service_visibility_active($type){return $type==='tours';}
 function get_option($k,$default=false){return $GLOBALS['options'][$k]??$default;}
 function update_option($k,$value,$autoload=null){$GLOBALS['options'][$k]=$value;return true;}
 function home_url($p=''){return 'https://wayfatours.com'.$p;}
@@ -40,4 +41,18 @@ $GLOBALS['options']['mad4b_adaptive_asset_job_queue_v1'][]=[
  'id'=>str_repeat('c',64),'reason'=>'elementor_document_saved','path'=>$path,
  'updated'=>$now-30,'state'=>'pending','source_token'=>str_repeat('d',32)];
 yes(($c::worker_source_for_path($path)['error']??'')==='ambiguous_route','ambiguous duplicates fail closed');
+$GLOBALS['options']['mad4b_adaptive_asset_job_queue_v1']=[
+ ['path'=>'/','reason'=>'wp_content_saved'],
+ ['path'=>'/transportations/source-price/','reason'=>'wp_content_saved'],
+ ['path'=>'/units/source-room/','reason'=>'wp_content_saved'],
+ ['path'=>'/properties/source-hotel/','reason'=>'wp_content_saved'],
+ ['path'=>'/tours-and-activities/bookable-route/','reason'=>'wp_content_saved']
+];
+$triage=$c::source_queue_triage();
+yes(($triage['source_only_outside_css_catalog']??-1)===3,'three commerce-only sources not falsely made public CSS');
+yes(($triage['home_independent_owner']??-1)===1,'home remains first-fold owned');
+yes(($triage['requires_original_catalog_and_css_proof']??-1)===1,'route still requires original catalog proof');
+yes($triage['mutation_performed']===false&&$triage['source_tokens_consumed']===false,'read-only classification retains queue and tokens');
+yes(count($GLOBALS['options']['mad4b_adaptive_asset_job_queue_v1'])===5,'no queue data removed');
+echo "CSS_SOURCE_QUEUE_TRIAGE_5_OF_5_PASS\n";
 echo "CSS_WORKER_REVISION_SOURCE_8_OF_8_PASS\n";

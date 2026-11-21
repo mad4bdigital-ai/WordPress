@@ -452,6 +452,44 @@ final class MAD4B_SCP_Adaptive_Asset_Intelligence {
     'pending'=>count($pending),'pending_tasks'=>$pending,
     'last_verified_task'=>$lastJob,'last_verified_at'=>$last?:null];
  }
+ /**
+  * Existing management queue classification; READ-ONLY (no ACK and no
+  * scheduler). JetEngine Units and Transportations are source entities,
+  * not routes enrolled with original public CSS 421/422; disabled Property
+  * service is not a reason to publish its standalone pages.
+  */
+ public static function source_queue_triage(): array {
+  $types=[];$sourceOnly=0;$homeOwned=0;$candidate=0;$unverified=0;
+  $propertyVisible=function_exists('service_visibility_active')
+    ?(bool)service_visibility_active('properties'):null;
+  foreach(self::queue() as $job){
+   $path=self::path($job['path']??'');
+   if($path===''){$unverified++;continue;}
+   if($path==='/'){$homeOwned++;$types['home']=($types['home']??0)+1;continue;}
+   $parts=array_values(array_filter(explode('/',$path)));
+   $type=(string)($parts[0]??'');
+   $types[$type]=($types[$type]??0)+1;
+   if(in_array($type,['units','transportations'],true)
+       ||($type==='properties'&&$propertyVisible===false)){
+    $sourceOnly++;
+   }elseif(in_array($type,['properties','tours-and-activities',
+       'page','post','destination','destinations'],true)){
+    // Eligible-looking path alone is NOT an authenticated route catalog
+    // or a current CSS certificate; original worker must re-verify.
+    $candidate++;
+   }else $unverified++;
+  }
+  ksort($types,SORT_STRING);
+  return ['contract'=>'mad4b.css.management-source-scope.v1',
+   'site_host'=>self::host(),'total'=>count(self::queue()),
+   'source_only_outside_css_catalog'=>$sourceOnly,
+   'home_independent_owner'=>$homeOwned,
+   'requires_original_catalog_and_css_proof'=>$candidate,
+   'unverified_source_type'=>$unverified,
+   'type_counts'=>$types,'standalone_properties_enabled'=>$propertyVisible,
+   'events_closed'=>0,'source_tokens_consumed'=>false,
+   'separate_queue_created'=>false,'mutation_performed'=>false];
+ }
  public static function summary(): array {
   $feed=self::notification_feed();$routes=self::manifest();$statuses=[];
   foreach($routes as $r){$s=$r['state'];$statuses[$s]=($statuses[$s]??0)+1;}
@@ -463,6 +501,7 @@ final class MAD4B_SCP_Adaptive_Asset_Intelligence {
    'js_policies'=>class_exists('MAD4B_Device_JS_Combine_V1',false)?MAD4B_Device_JS_Combine_V1::overview():[],
    'js_cpu'=>class_exists('MAD4B_JS_CPU_Intelligence',false)?MAD4B_JS_CPU_Intelligence::summary():['rows'=>[], 'pending_routes'=>0],
    'worker'=>self::worker_state(),'native_css_jobs'=>self::native_css_jobs(),
+   'source_queue_triage'=>self::source_queue_triage(),
    'litespeed_provider'=>class_exists('MAD4B_LSC_Local_Provider_V1')?MAD4B_LSC_Local_Provider_V1::capabilities():['scope'=>'missing'],'external_delivery'=>false];
  }
  public static function rest(): void {
@@ -516,6 +555,14 @@ final class MAD4B_SCP_Adaptive_Asset_Intelligence {
        ' &nbsp; <strong>Verified UTC:</strong> '.esc_html(!empty($native['last_verified_at'])?
          gmdate('Y-m-d H:i',(int)$native['last_verified_at']):'not yet').'</p>';
   echo '<p><small>Native task completion is not a CSS certification. Management source-change events remain separate until their exact source tokens are acknowledged.</small></p>';
+  $scope=(array)($s['source_queue_triage']??[]);
+  echo '<p><strong>Source changes awaiting relationship review:</strong> '.
+    (int)($scope['source_only_outside_css_catalog']??0).
+    ' &nbsp; <strong>Home first-fold owner:</strong> '.
+    (int)($scope['home_independent_owner']??0).
+    ' &nbsp; <strong>Unverified candidates:</strong> '.
+    (int)($scope['requires_original_catalog_and_css_proof']??0).
+    '</p><p><small>JetEngine supplier, property and unit changes are not independent public CSS certificates. Native Cache Lifecycle handles known related tour invalidations; unknown relationships remain pending for review.</small></p>';
 
   $discovery=$s['presentation_discovery']??[];
   $counts=$discovery['counts']??[];
