@@ -193,6 +193,14 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
             if(in_array($slug,['aswan-city','aswan-gov'],true))$cities['aswan']=true;
             if(in_array($slug,['luxor-city','luxor'],true))$cities['luxor']=true;
         }
+        // Bashtil is in Giza, but officially serves as Greater Cairo's
+        // Upper Egypt train terminal. The exception is ONE verified station
+        // identity, not a general Giza/Cairo destination substitution.
+        if($station===68922 &&
+            get_post_type($station)==='stations' &&
+            in_array('giza-city',(array)$terms,true) &&
+            get_post_status($station)==='publish')
+            $cities['cairo']=true;
         return array_keys($cities);
     }
     private static function train(int $tour,array $stage):array {
@@ -218,10 +226,12 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
             if(stripos(get_the_title($id),'QA ONLY')!==false ||
                 get_post_meta($id,'_booking_experience_qa_pricing_fixture',true)!=='')continue;
             $stops=get_post_meta($id,'trans_train_stops',true);
+            $nativeStationIds=[];
             $pos=[];
             foreach((array)$stops as $stop){
                 if(!is_array($stop))continue;
                 $station=(int)($stop['station_id']??0);
+                $nativeStationIds[$station]=true;
                 if(get_post_type($station)!=='stations' ||
                     get_post_status($station)!=='publish')continue;
                 $order=$stop['sort_num']??null;
@@ -237,10 +247,24 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
             $rates=get_posts(['post_type'=>'transport-rates','post_status'=>'publish',
                 'fields'=>'ids','posts_per_page'=>20,'meta_key'=>'source_post_id',
                 'meta_value'=>(string)$id,'suppress_filters'=>true]);
+            $number=(string)get_post_meta($id,'trans_train_number',true);
+            // Publicly published late-2026 train 86/87 reference lists
+            // Bashtil/Upper Egypt, not the old Ramses terminal. This is
+            // an editorial warning, NEVER an operator-approved timetable.
+            $staleTerminal=in_array($number,['86','87'],true) &&
+                isset($nativeStationIds[54231]) &&
+                !isset($nativeStationIds[68922]);
             $out['train_candidates'][]=[
                 'id'=>$id,'title'=>wp_strip_all_tags(html_entity_decode(get_the_title($id),ENT_QUOTES,'UTF-8')),
-                'number'=>(string)get_post_meta($id,'trans_train_number',true),
+                'number'=>$number,
                 'native_route_order_verified'=>true,
+                'native_terminal_needs_schedule_revalidation'=>$staleTerminal,
+                'native_terminal_source_station_id'=>isset($nativeStationIds[54231])?54231:0,
+                'public_timetable_terminal_station_id'=>68922,
+                'public_timetable_reference'=>'https://egypttrains.com/trains/'.$number.'?lang=en',
+                'official_operator_booking_url'=>'https://abelatrains.com/',
+                'reference_reviewed_on'=>'2026-11-21',
+                'operator_timetable_confirmed'=>false,
                 'published_transport_rate_count'=>count($rates),
                 'cabin_supplier_contract_verified'=>false,
                 'edit_url'=>self::edit($id)
