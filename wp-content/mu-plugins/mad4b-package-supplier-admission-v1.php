@@ -188,15 +188,46 @@ final class MAD4B_Package_Supplier_Admission_V1 {
             $kind=(string)($stage['lodging_kind']??'');
             $price=(string)($stage['price_status']??'');
             $bookable=(array)($stage['bookable_unit_ids']??[]);
-            $hasSelection=(int)($stage['selected_property_id']??0)>0 &&
-                count($bookable)>0;
-            $approved=!empty($stage['supplier_cost_receipt']) &&
-                is_array($stage['supplier_cost_receipt']) &&
-                ($stage['supplier_cost_receipt']['status']??'')==='approved';
+            // Native identities remain distinct for hotels, sailings and sleeper services.
+            $hasSelection=match($kind) {
+                'hotel','resort'=>(int)($stage['selected_property_id']??0)>0 && count($bookable)>0,
+                'cruise'=>(int)($stage['selected_vessel_id']??0)>0 &&
+                    (int)($stage['selected_cabin_unit_id']??0)>0 &&
+                    !empty($stage['cruise_program']) && !empty($stage['sailing_date']),
+                'sleeper_train'=>(int)($stage['selected_train_id']??0)>0 &&
+                    !empty($stage['selected_train_cabin_class']),
+                default=>false,
+            };
+            $startDay=(int)($stage['source_day_start']??0);
+            $nights=(int)($stage['nights']??0);
+            $dateObj=DateTimeImmutable::createFromFormat('!Y-m-d',$date,new DateTimeZone('UTC'));
+            $stageDate=$dateObj&&$startDay>0?$dateObj->modify('+'.($startDay-1).' days'):null;
+            $lastDate=$stageDate&&$nights>0?$stageDate->modify('+'.($nights-1).' days'):null;
+            $receipt=$stage['supplier_cost_receipt']??null;
+            $context=[
+                'tour_id'=>$tour,'stage_key'=>(string)($stage['stage_key']??''),
+                'kind'=>$kind,'currency'=>$currency,
+                'service_date'=>$stageDate?$stageDate->format('Y-m-d'):'',
+                'last_service_date'=>$lastDate?$lastDate->format('Y-m-d'):'',
+                'adults'=>$adults,'children'=>$children,'infants'=>$infants,
+                'property_id'=>(int)($stage['selected_property_id']??0),
+                'unit_ids'=>$bookable,
+                'vessel_id'=>(int)($stage['selected_vessel_id']??0),
+                'cabin_unit_id'=>(int)($stage['selected_cabin_unit_id']??0),
+                'cruise_program'=>$stage['cruise_program']??null,
+                'train_id'=>(int)($stage['selected_train_id']??0),
+                'train_number'=>(string)($stage['selected_train_number']??''),
+            ];
+            $verification=class_exists('MAD4B_Package_Cost_Receipt_Gate_V1',false)
+                ?MAD4B_Package_Cost_Receipt_Gate_V1::validate($receipt,$context)
+                :['qualified'=>false,'blockers'=>['cost_receipt_validator_missing']];
+            $approved=$hasSelection && ($verification['qualified']??false)===true;
             // A bookable selection and a value are never supplier proof by
             // themselves. Every stage also needs a live cost provider check.
             if(!$hasSelection)$add('stay_unit_not_selected');
             if(!$approved)$add('stay_supplier_cost_receipt_missing');
+            if(is_array($receipt))foreach((array)($verification['blockers']??[]) as $reason)
+                $add('cost_receipt:'.$reason);
             $roomStages[]=[
                 'stage_key'=>sanitize_key((string)($stage['stage_key']??'')),
                 'kind'=>sanitize_key($kind),
@@ -204,6 +235,11 @@ final class MAD4B_Package_Supplier_Admission_V1 {
                 'price_status'=>$price,
                 'bookable_unit_selection_present'=>$hasSelection,
                 'supplier_cost_receipt_present'=>$approved,
+                'supplier_cost_receipt_recorded'=>is_array($receipt),
+                'supplier_cost_receipt_qualified'=>$approved,
+                'receipt_blockers'=>$verification['blockers']??['validator_missing'],
+                'service_date'=>$context['service_date'],
+                'last_service_date'=>$context['last_service_date'],
                 'commercial_stage_approved'=>false,
             ];
         }
