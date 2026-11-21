@@ -258,7 +258,8 @@ function renderEffective(data){
     const tr=make('tr');
     tr.append(make('td','',fieldLabels[row.field]||row.field));
     const pct=make('strong','mad4b-aw-percent',neutralPercent(row.percent));
-    const td=make('td');td.append(pct);tr.append(td);
+    const factor=make('small','mad4b-aw-factor',' ×'+(1+Number(row.percent)/100).toFixed(2));
+    const td=make('td');td.append(pct,factor);tr.append(td);
     const source=(data.layers||[]).find(l=>l.scope+':'+l.target_id===row.source);
     tr.append(make('td','',source?.label|| (row.source==='neutral_default'?'System neutral default':row.source)));
     tbody.append(tr);
