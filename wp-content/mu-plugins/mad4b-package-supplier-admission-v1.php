@@ -177,15 +177,46 @@ final class MAD4B_Package_Supplier_Admission_V1 {
         $component=null;
         if($role!=='self_cost')$add('transport_supplier_cost_role_missing');
         if(!$source)$add('transport_original_source_missing');
-        // Original PDF vehicle_rates_unverified values and transportations
-        // start_price are NOT certified tour route supplier cost evidence.
+        // The native Tour Rate routing editor owns explicit stage identity.
+        // Never infer an itinerary leg from a post title or a PDF city name.
+        $transportStages=get_post_meta($tour,'_mad4b_transport_stages_v1',true);
+        $stageRows=is_array($transportStages) &&
+            is_array($transportStages['stages']??null)
+            ?$transportStages['stages']:[];
+        if(!$stageRows)$add('transport_route_stage_binding_missing');
+        $model=class_exists('MAD4B_Transport_Distance_Time_V1',false)
+            ?MAD4B_Transport_Distance_Time_V1::current():[];
+        $profiles=is_array($model['profiles']??null)?$model['profiles']:[];
+        $proposals=[];$unconfigured=[];
+        foreach($profiles as $vehicle=>$profile){
+            if(!is_array($profile))continue;
+            $known=($profile['source']??'')==='pdf_proposal' &&
+                ((float)($profile['per_km']??0)>0 ||
+                 (float)($profile['per_drive_min']??0)>0);
+            if($known)$proposals[]=(string)$vehicle;
+            else $unconfigured[]=(string)$vehicle;
+        }
+        // The PDF rates and distance/time model are useful input, but are
+        // expressly draft estimates. Neither a matching city nor a vehicle
+        // proposal is a signed, dated, tour-specific supplier COST receipt.
         $add('transport_route_cost_unapproved');
         $report['transportation']=[
             'source'=>'mad4b_transport_self_pricing_controls_v1',
             'source_role'=>$role,
             'currency'=>$transport['currency']??'',
             'original_pdf_source_present'=>(bool)$source,
+            'original_source_row_count'=>count($source['rows']??[]),
+            'native_distance_time_policy_present'=>(bool)$model,
+            'native_distance_time_revision'=>(int)($model['revision']??0),
+            'vehicle_profile_owner'=>(string)($model['vehicle_profile_owner']??''),
+            'model_candidate_vehicle_keys'=>$proposals,
+            'vehicle_profiles_needing_review'=>$unconfigured,
+            'explicit_route_stage_count'=>count($stageRows),
+            'route_component_status'=>$stageRows
+                ?'stage_selected_cost_and_provider_review_required'
+                :'route_stages_not_assigned',
             'approved_route_component_id'=>$component,
+            'source_cost_estimate_egp'=>null,
             'cost_qualified'=>false,
         ];
 
