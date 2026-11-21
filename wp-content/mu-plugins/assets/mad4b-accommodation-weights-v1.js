@@ -150,7 +150,11 @@ async function searchNative(){
  try{
   const data=await request('search',{scope:scope.value,search:search.value.trim()});
   result.replaceChildren(new Option('Select original record',''));
-  for(const item of data.items||[])result.add(new Option(item.title+'  #'+item.id,String(item.id)));
+  for(const item of data.items||[]){
+    const option=new Option(item.title+'  #'+item.id,String(item.id));
+    if(item.related_property_id)option.dataset.propertyId=String(item.related_property_id);
+    result.add(option);
+  }
   status.textContent=(data.items||[]).length+' matching original records. Choose one to load its policy.';
  }catch(err){status.textContent='Search failed: '+err.message}
 }
@@ -195,7 +199,11 @@ function selectEditor(entry){
     result.value=String(entry.target_id);
   }
   if(entry.scope==='property'){propertyId.value=entry.target_id;unitId.value='';refreshEffective();}
-  else if(entry.scope==='unit'){unitId.value=entry.target_id;refreshEffective();}
+  else if(entry.scope==='unit'){
+    unitId.value=entry.target_id;
+    if(entry.related_property_id)propertyId.value=String(entry.related_property_id);
+    refreshEffective();
+  }
   editorDetails.open=true;
   load();
   editorDetails.scrollIntoView({block:'nearest',behavior:'smooth'});
@@ -388,7 +396,12 @@ scope.addEventListener('change',()=>{
 result.addEventListener('change',()=>{
  state.revision=null;fieldsReset();
  if(scope.value==='property'){propertyId.value=result.value;unitId.value='';refreshEffective();}
- if(scope.value==='unit'){unitId.value=result.value;refreshEffective();}
+ if(scope.value==='unit'){
+   unitId.value=result.value;
+   const parent=result.selectedOptions[0]?.dataset?.propertyId;
+   if(parent)propertyId.value=parent;
+   refreshEffective();
+ }
  if(result.value)load();
 });
 find.addEventListener('click',searchNative);
