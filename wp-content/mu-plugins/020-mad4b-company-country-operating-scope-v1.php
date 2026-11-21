@@ -47,16 +47,45 @@ final class MAD4B_Company_Country_Operating_Scope_V1 {
         // Resolve the input to canonical EN, then walk unfiltered native term
         // taxonomy parent IDs. Never use locale-mutated get_term()->parent.
         global $wpdb;
+        // The underlying taxonomy parent row is locale-independent by term_id;
+        // only the WPML canonical mapping is recalculated for each request.
+        // Memoize *rows*, never the eligibility/activation/country decision.
+        // Request-local only: no transients, object-cache persistence or writes.
+        // All private, administrative, write-capable or unknown contexts must
+        // still read the current DB state at every authorization decision.
+        static $public_get_parent_rows=[];
+        $safe_public_get =
+            (string)($_SERVER['REQUEST_METHOD']??'')==='GET'
+            && !is_admin()
+            && !(defined('WP_CLI')&&WP_CLI)
+            && !(defined('REST_REQUEST')&&REST_REQUEST)
+            && !(defined('DOING_AJAX')&&DOING_AJAX)
+            && !(defined('DOING_CRON')&&DOING_CRON)
+            && (empty($_GET)&&empty($_POST)&&empty($_COOKIE))
+            && empty($_SERVER['HTTP_COOKIE'])
+            && empty($_SERVER['HTTP_AUTHORIZATION'])
+            && empty($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])
+            && empty($_SERVER['PHP_AUTH_USER'])
+            && empty($_SERVER['HTTP_X_WP_NONCE'])
+            && !(function_exists('is_user_logged_in')&&is_user_logged_in());
         $en=(int)apply_filters('wpml_object_id',$term_id,'destinations',false,'en');
         $id=$en?:$term_id;
         $seen=[];
         for($n=0;$id>0 && $n<24;$n++){
             if(isset($seen[$id]))return 0;
             $seen[$id]=true;
-            $row=$wpdb->get_row($wpdb->prepare(
-                "SELECT term_id,parent FROM {$wpdb->term_taxonomy}
-                 WHERE taxonomy=%s AND term_id=%d LIMIT 1",
-                'destinations',$id),ARRAY_A);
+            // The fixed-capacity map is intentionally scoped to one PHP
+            // request. Even a cached negative row cannot authorize a sale.
+            if($safe_public_get && array_key_exists($id,$public_get_parent_rows)){
+                $row=$public_get_parent_rows[$id];
+            }else{
+                $row=$wpdb->get_row($wpdb->prepare(
+                    "SELECT term_id,parent FROM {$wpdb->term_taxonomy}
+                     WHERE taxonomy=%s AND term_id=%d LIMIT 1",
+                    'destinations',$id),ARRAY_A);
+                if($safe_public_get && count($public_get_parent_rows)<512)
+                    $public_get_parent_rows[$id]=$row;
+            }
             if(!is_array($row))return 0;
             // The metadata belongs to canonical term_id, not a translated
             // ancestor returned by WPML's get_term() interception.

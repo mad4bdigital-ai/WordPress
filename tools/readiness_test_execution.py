@@ -96,6 +96,9 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-boot-hermetic.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-hook-contract-hermetic.php",
+    # Strictly the reviewed policy-parent-row memo denial harness; no database
+    # connection or external country provider. No blanket MU-plugin executions.
+    "tests/company-country-parent-memo-hermetic.php",
     # Exact site-neutral destination Term Meta preflight fixture: fake identity,
     # fake DB baseline, simulated JetEngine admin POST, WP metadata filter
     # rejection, benign first-party URLs and a no-network WP_Error response.
@@ -775,6 +778,10 @@ def self_test():
     assert has_assertion_pass("Public document kernel market/commercial hooks: PASS 21 hooks\n")
     assert not has_assertion_pass("public document kernel admission hermetic: FAIL 1 unsafe cookie request\n")
     assert not has_assertion_pass("No syntax errors detected in public-document-kernel-hermetic.php\n")
+    exact_country="tests/company-country-parent-memo-hermetic.php"
+    assert command_for(exact_country)==["php",str((ROOT/exact_country).resolve())]
+    assert has_assertion_pass("COUNTRY_PARENT_REQUEST_MEMO: PASS 26 checks\n")
+    assert not has_assertion_pass("COUNTRY_PARENT_REQUEST_MEMO: FAIL missing canonical source\n")
     cwv="wp-content/plugins/mad4b-site-control-plane/tests/cwv-site-admission-hermetic.php"
     assert command_for(cwv) == ["php", str((ROOT / cwv).resolve())]
     assert cwv in STANDALONE_PHP_REGRESSIONS

@@ -1,0 +1,51 @@
+name: MAD4B Country Parent Request Memo
+on:
+  pull_request:
+    paths:
+      - 'wp-content/mu-plugins/020-mad4b-company-country-operating-scope-v1.php'
+      - 'tests/company-country-parent-memo-hermetic.php'
+      - 'tools/readiness_test_execution.py'
+      - 'governance/production-readiness/capability-coverage.json'
+      - '.github/workflows/mad4b-country-parent-request-memo.yml'
+  push:
+    branches:
+      - 'fix/country-parent-request-memo-*'
+    paths:
+      - 'wp-content/mu-plugins/020-mad4b-company-country-operating-scope-v1.php'
+      - 'tests/company-country-parent-memo-hermetic.php'
+      - 'tools/readiness_test_execution.py'
+      - 'governance/production-readiness/capability-coverage.json'
+      - '.github/workflows/mad4b-country-parent-request-memo.yml'
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-country-parent-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  country-parent-memo-contract:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: none
+          coverage: none
+      - name: Lint source and hermetic regression
+        run: |
+          php -l wp-content/mu-plugins/020-mad4b-company-country-operating-scope-v1.php
+          php -l tests/company-country-parent-memo-hermetic.php
+      - name: Verify canonical parent row memo, WPML and private denial
+        run: |
+          php tests/company-country-parent-memo-hermetic.php
+      - name: Review-bound readiness executable allowlist
+        run: |
+          python3 tools/readiness_test_execution.py self-test

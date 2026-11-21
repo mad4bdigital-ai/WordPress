@@ -24363,6 +24363,26 @@
       "coverage_reuse_rationale": "An exact staged public-read, request-owned dispatch bound to Site Profile origin/deployment integrity, no anonymous write authority, no new REST route or grants; unknown private/market/currency contexts retain original full runtime.",
       "review_rationale": "Separately SHA-pin the new public-document kernel and eight-line SCP entry successor while preserving earlier CWV/Original305/PR813 historical certificates and mandatory early security and market hooks.",
       "execution_note": "Source-only Draft PR #998. Forty denial cases, Site Profile and exact-route boot, 21 market/policy hooks, PHP 7.4/8.3 isolated tests; no Staging or Production release or live booking performance acceptance."
+    },
+    {
+      "path": "wp-content/mu-plugins/020-mad4b-company-country-operating-scope-v1.php",
+      "source_blob_sha": "18f551f4bf5da040c10e73e51b09770c7e5231e2",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/company-country-parent-memo-hermetic.php"
+      ],
+      "owner_role": "MAD4B company territory and source security reviewer; site owner separately authorizes any site activation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing country operating territory and public-sale publication rules remain unchanged. Only bounded parent taxonomy row lookups are memoized per request for strictly anonymous read-only GET, never a country decision or commerce authorization.",
+      "review_rationale": "Freeze the exact source successor to preserve canonical EN WPML parent chains, negative/missing/cyclic taxonomy fail-closed, and fresh reads for WP-CLI/admin/REST/AJAX/cron/private sessions/POST, verified by hermetic PHP7.4 and PHP8.5 fixtures.",
+      "execution_note": "Source change is not release authority. Live Staging and Production country-policy source must retain its previous state until independently backed-up selective rollout and readback. No successful payment E2E claimed."
     }
   ],
   "code_change_rules": {
