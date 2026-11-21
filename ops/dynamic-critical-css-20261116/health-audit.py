@@ -542,6 +542,20 @@ def run_site(site,run_http=True):
                        'PRIVATE_SAFE','ORIGIN_CCSS_READY',
                        'CACHE_MISS_NATIVE','DELIVERY_UNKNOWN',
                        'HTTP_NOT_200','PROBE_DEFERRED')}
+    # When the site has no active CSS cert, report actual PUBLIC HTML
+    # delivery instead of an empty sample that conceals Native/Private.
+    # This is diagnostic only: never a synthetic CSS certificate.
+    if not delivery_samples:
+        baseline=delivery.baseline_public_route(catalog)
+        if baseline:
+            try:
+                result['html_delivery_native_baseline']={
+                    'path':baseline,
+                    **delivery.fetch(host,baseline)}
+            except (OSError,ValueError,TypeError,UnicodeError) as exc:
+                result['html_delivery_native_baseline']={
+                    'path':baseline,'delivery':'PROBE_DEFERRED',
+                    'reason':type(exc).__name__}
     result['status']=('degraded' if warnings else
                       'healthy_with_safe_fallback' if (
                           result.get('safe_profile_fallbacks')

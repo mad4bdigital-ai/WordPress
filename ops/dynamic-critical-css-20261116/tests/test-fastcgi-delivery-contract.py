@@ -59,4 +59,24 @@ ok("variant['html_delivery_contract']=delivery.fetch(" in audit,
    'periodic health probes inspect delivered body not merely headers')
 ok("result['html_delivery_contract_sample_count']=len(delivery_samples)" in audit,
    'health report labels sample count and never extrapolates all routes')
+ok(m.baseline_public_route({'contract':'mad4b.public-critical-css.routes.v1',
+   'host':'tours.dev.mad4b.com','routes':[{'type':'page','language':'en',
+   'path':'/properties/'},{'type':'page','language':'en','path':'/contact-us/'},
+   {'type':'page','language':'en','path':'/'}]})=='/contact-us/',
+   'Source dashboard can sample active catalog pages without certificates')
+ok(m.baseline_public_route({'contract':'mad4b.public-critical-css.routes.v1',
+   'host':'wayfatours.com','routes':[{'type':'page','language':'en',
+   'path':'/about-us/'}]})=='/about-us/',
+   'secondary verified company page selected when contact absent')
+ok(m.baseline_public_route({'contract':'mad4b.public-critical-css.routes.v1',
+   'host':'wayfatours.com','routes':[{'type':'page','language':'en',
+   'path':'/sample-page/'}]}) is None,
+   'no nonpublic sample or inactive properties catalog admitted')
+try:m.baseline_public_route({'contract':'mad4b.public-critical-css.routes.v1',
+   'host':'untrusted.example','routes':[]})
+except ValueError:ok(True,'foreign site baseline rejected')
+else:raise AssertionError('foreign site baseline accepted')
+ok("result['html_delivery_native_baseline']" in audit
+   and "delivery.baseline_public_route(catalog)" in audit,
+   'site audit emits native/Private CSS baseline without certification')
 print('PASS',n,'FastCGI/Preset HTML delivery classification tests')

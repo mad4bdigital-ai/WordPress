@@ -49,6 +49,34 @@ def classify(host,headers,html,status=200):
             'private_nonshared':('private' in control or 'no-store' in control),
             'http_status':status}
 
+def baseline_public_route(catalog):
+    """Pick a currently discovered English public page for native baseline.
+
+    A negative result never grants readiness. Never select booking routes,
+    homepage (separately certified), unpublished routes or external sites.
+    """
+    if (not isinstance(catalog,dict)
+        or catalog.get('contract')!='mad4b.public-critical-css.routes.v1'
+        or catalog.get('host') not in HOSTS
+        or not isinstance(catalog.get('routes'),list)):
+        raise ValueError('untrusted-live-wordpress-css-catalog')
+    candidates=[]
+    for row in catalog['routes']:
+        if not isinstance(row,dict) or row.get('type')!='page' or row.get('language')!='en':
+            continue
+        path=row.get('path')
+        if (not isinstance(path,str) or path=='/'
+            or not re.fullmatch(r'/[a-zA-Z0-9/_%.-]{1,349}',path)
+            or '//' in path or '..' in path
+            or any(x in path.lower().split('/') for x in
+                   ('checkout','cart','my-account','wp-admin','wp-json','order-pay',
+                    'properties','transportations','sample-page'))):
+            continue
+        rank=0 if path=='/contact-us/' else 1 if path=='/about-us/' else 2
+        candidates.append((rank,len(path),path))
+    return min(candidates)[2] if candidates else None
+
+
 def fetch(host,path):
     if (host not in HOSTS
         or not isinstance(path,str)
