@@ -695,7 +695,7 @@ final class MAD4B_Accommodation_Stay_Margin_V1 {
                !preg_match('/^(?:0|[1-9][0-9]{0,2})(?:\.[0-9]{1,2})?$/D',(string)$percent))
                 return new WP_Error('stay_margin_percent_invalid');
             $n=(float)$percent;
-            $limit=$kind==='target_margin_percent'?80:300;
+            $limit=$kind==='target_margin_percent'?80:100;
             if(!is_finite($n)||$n>$limit)
                 return new WP_Error('stay_margin_percent_out_of_range');
             $out[]=['min_nights'=>(int)$min,'max_nights'=>(int)$max,
