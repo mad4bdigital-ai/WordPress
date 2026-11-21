@@ -1,0 +1,3 @@
+# MAD4B consent-based RUM sampling option enrollment; self-disables on completion.
+# Strict CPU guard and shared CSS worker lock; no live CSS or FastCGI mutations.
+8-58/10 * * * * root /usr/bin/python3 /opt/mad4b-company-provisioning/operations/adaptive-css-rum-v1/sampling-admission-once.py >> /var/lib/mad4b/company-code-release/receipts/css-rum-consented-10pct-20261121/attempts.log 2>&1

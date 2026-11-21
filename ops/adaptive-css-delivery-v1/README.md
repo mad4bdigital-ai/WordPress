@@ -95,3 +95,18 @@ The original first-party Git blob for wp-content/mu-plugins/422-mad4b-public-cri
 
 ## Manager-only RUM source-variant readback
 `GET /wp-json/mad4b-css/v1/cohort?route_sha=<sha256>&variant_sha=<sha256>` returns seven-day histogram p75 upper bounds and sample totals split by the current trusted site, device, observed native/optimized arm, and CSS-restoration counts. The route requires WordPress `manage_options` and validates both exact 64-hex source fingerprints. It reveals no raw URL, personal identity, referrer or unaggregated performance events. It explicitly marks arm_source=client_dom_observed_not_randomized and eligible_to_promote_css=false. The original REST /status endpoint remains manager-only. A fully signed Nginx-controlled canary assignment and cache split are still prerequisites for a causal A/B rollout decision.
+## Live edge cache partition on 2026-11-21
+- Nginx v1 uses its own $request_id for the 1% eligible mobile-public random cohort. No client header or cookie can select the cohort.
+- Canary bypasses both FastCGI read/write and gets private, no-store. Control keeps existing public cache key. Auth, query, personalized, currency and unsafe requests remain excluded.
+- Source and Wayfa configs passed nginx -t before and after installation. Patches: patches/source-edge-canary-v1.patch and patches/wayfa-edge-canary-v1.patch.
+- Source Coolify Nginx originally held an old bind-mount inode. The original running Compose hash matched source Compose; only source Nginx was recreated (no PHP or DB restart), re-binding its config db6fc079.... Wayfa config 4df4c3c0.... Both report healthy.
+- An ephemeral independent Wayfa Nginx clone with test-only 100% canary returned 200, X-MAD4B-CSS-Canary=canary, X-Wayfa-Origin-Cache=BYPASS, Cache-Control=private,no-store, and verified V2 Ready=1 for the Nile Dinner Cruise. Production is still 1%, and the disposable clone was stopped.
+- A source clone without trusted Traefik origin context remained fail-closed control with private/no-store; a synthetic forced result must not bypass this.
+- RUM v3 now signs edge cohort into per-device/per-source HMAC variant, keeping control and canary measurement hashes distinct. DOM-observed CSS arm alone is not causal A/B evidence.
+- This edge isolation does NOT activate candidate CSS for visitors. Private staged CSS still cannot be read by consumer 422. A separate canary-aware consumer/publisher must be qualified before public provisional delivery.
+
+## CPU-governed RUM 10% consenting sample enrollment
+- Early measurement reported zero real RUM histogram samples. The late analytics-consent JS bug was fixed on both sites.
+- A one-shot admission under /etc/cron.d/mad4b-css-rum-sample-once is installed to raise eligible consented sampling from 100bps to 1000bps, while preserving all original CSS and FastCGI files.
+- It checks exact company/environment and source PHP SHA, locks the CSS worker, checks host CPU policy, and permits no conflicting option. It expires after 24 hours and self-disables after exact readback success or fatal drift.
+- Only claim the 10% change active if css-rum-consented-10pct-20261121/success.json exists; otherwise it remains deferred. Real sufficient cohorts require genuine traffic, not synthetic tests.
