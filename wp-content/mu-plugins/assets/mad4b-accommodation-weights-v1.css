@@ -1,0 +1,20 @@
+/* Native Pricing Controls addendum. Small responsive footprint; no extra admin tab. */
+.mad4b-aw-panel{margin-top:18px;border-top:1px solid #dcdcde;padding-top:14px}
+.mad4b-aw-details{border:1px solid #c3c4c7;border-radius:9px;background:#fff}
+.mad4b-aw-details>summary{padding:15px 17px;display:flex;align-items:center;gap:14px;justify-content:space-between;cursor:pointer}
+.mad4b-aw-details>summary strong{font-size:15px}.mad4b-aw-details>summary small{font-size:12px;color:#646970;text-align:right}
+.mad4b-aw-body{padding:15px 17px 19px}
+.mad4b-aw-intro,.mad4b-aw-hint{margin:0 0 12px;color:#50575e;line-height:1.55}
+.mad4b-aw-form,.mad4b-aw-preview{border:1px solid #dcdcde;border-radius:8px;padding:14px;margin:12px 0;background:#fcfcfd}
+.mad4b-aw-form h4,.mad4b-aw-preview h4{margin:0 0 13px;font-size:14px}
+.mad4b-aw-target,.mad4b-aw-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:14px;row-gap:12px;margin-bottom:12px}
+.mad4b-aw-field{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#50575e;min-width:0}
+.mad4b-aw-field input,.mad4b-aw-field select{width:100%;min-width:0;max-width:none;height:36px;color:#1d2327}
+.mad4b-aw-field>span{font-weight:600}
+.mad4b-aw-target>button{align-self:end;max-width:max-content}
+.mad4b-aw-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.mad4b-aw-status,.mad4b-aw-output{background:#f6f7f7;border-left:3px solid #8c8f94;padding:10px 12px;line-height:1.55;margin:12px 0 0;overflow-wrap:anywhere}
+.mad4b-aw-output strong{display:block;font-size:20px;margin-bottom:6px}
+.mad4b-aw-output p{margin:7px 0 0}
+.mad4b-aw-important{font-size:12px;color:#8a3800;font-weight:600}
+@media (max-width:782px){.mad4b-aw-target,.mad4b-aw-columns{grid-template-columns:1fr}.mad4b-aw-details>summary{align-items:flex-start;flex-direction:column;gap:4px}.mad4b-aw-details>summary small{text-align:left}.mad4b-aw-body{padding:12px}}

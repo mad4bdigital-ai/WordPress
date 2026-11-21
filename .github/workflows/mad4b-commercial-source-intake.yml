@@ -1,0 +1,34 @@
+name: MAD4B Commercial Source Intake Regression
+on:
+  pull_request:
+    paths:
+      - 'tests/test_package_commercial_source_intake_non_regression.py'
+      - '.github/workflows/mad4b-commercial-source-intake.yml'
+      - 'wp-content/plugins/mad4b-pricing-registry/**'
+      - 'wp-content/plugins/mad4b-commerce/**'
+      - 'wp-content/mu-plugins/mad4b-package-*'
+      - 'wp-content/mu-plugins/assets/mad4b-package-*'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-commercial-source-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  source-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11','3.12']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python3 tests/test_package_commercial_source_intake_non_regression.py

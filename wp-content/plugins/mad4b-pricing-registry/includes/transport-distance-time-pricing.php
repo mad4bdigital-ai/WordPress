@@ -564,15 +564,28 @@ final class MAD4B_Transport_Distance_Time_V1 {
  public static function catalog():array {
   $slugs=['cairo','aswan-gov','luxor','hurghada','marsa-alam',
    'abu-simbel','edfu-city','kom-ombo-city'];
-  $terms=[];
+  // Keep the original origin cities, discover every verified route target.
+  // Do not limit the draft advisor to a hard-coded eight-term sample.
+  if(class_exists('MAD4B_Transport_Tour_Rate_Routing_V1')){
+   $evidence=MAD4B_Transport_Tour_Rate_Routing_V1::source();
+   foreach(($evidence['route']['entries']??[]) as $item){
+    if(is_string($item['origin_slug']??null))$slugs[]=$item['origin_slug'];
+    foreach((array)($item['dest_slugs']??[]) as $target)
+     if(is_string($target))$slugs[]=$target;
+   }
+  }
+  $slugs=array_values(array_unique($slugs));
+  $terms=[];$missingRouteTerms=[];
   foreach($slugs as $slug){
    $t=get_term_by('slug',$slug,'destinations');
-   if(!$t)continue;
+   if(!$t){$missingRouteTerms[]=$slug;continue;}
    $terms[]=['id'=>(int)$t->term_id,'name'=>$t->name,
     'slug'=>$slug,'has_coordinates'=>self::coords((int)$t->term_id)!==null];
   }
   return ['policy'=>self::current(),
    'calibration'=>self::calibrate(),'terms'=>$terms,
+   'unresolved_route_destination_terms'=>$missingRouteTerms,
+   'languages'=>array_keys((array)apply_filters('wpml_active_languages',null,['skip_missing'=>0])),
    'native_context'=>class_exists('MAD4B_Transport_Native_Cost_Inheritance_V1')?
     MAD4B_Transport_Native_Cost_Inheritance_V1::catalog_options():[],
    'mode'=>'simulation_only','no_checkout'=>true];
@@ -589,6 +602,35 @@ final class MAD4B_Transport_Distance_Time_V1 {
    $raw=json_decode($json,true);
    $result=is_array($raw)?self::calculate($raw):
     new WP_Error('transport_quote_invalid_json');
+  }elseif($mode==='eligibility'){
+   $json=is_string($_POST['payload']??null)?wp_unslash($_POST['payload']):'';
+   if(strlen($json)>6500)wp_send_json_error(['code'=>'payload_too_long'],400);
+   $raw=json_decode($json,true);
+   $result=is_array($raw)&&is_array($raw['stage']??null)&&
+    class_exists('MAD4B_Transport_Package_Workflow_V1')?
+     MAD4B_Transport_Package_Workflow_V1::candidates(
+       $raw['stage'],sanitize_key((string)($raw['lang']??'en'))):
+     new WP_Error('transport_eligibility_input_invalid');
+  }elseif($mode==='quote-sheet'){
+   $result=class_exists('MAD4B_Supplier_Sheet_Reference_V1')?
+     MAD4B_Supplier_Sheet_Reference_V1::catalog(
+       sanitize_key((string)($_POST['tab']??'hotels')),
+       sanitize_key((string)($_POST['period']??'winter_2026_27'))):
+     new WP_Error('quote_sheet_module_missing');
+  }elseif($mode==='package-readiness'){
+   $result=class_exists('MAD4B_Package_Component_Readiness_V1')?
+    MAD4B_Package_Component_Readiness_V1::report(
+      sanitize_text_field((string)($_POST['from']??'')),
+      sanitize_text_field((string)($_POST['to']??''))):
+    new WP_Error('package_readiness_class_missing');
+  }elseif($mode==='bridge'){
+   $json=is_string($_POST['payload']??null)?
+    wp_unslash($_POST['payload']):'';
+   if(strlen($json)>26000)wp_send_json_error(['code'=>'payload_too_long'],400);
+   $raw=json_decode($json,true);
+   $result=is_array($raw)&&class_exists('MAD4B_Transport_Cost_Bridge_V1')?
+    MAD4B_Transport_Cost_Bridge_V1::evaluate($raw):
+    new WP_Error('transport_bridge_invalid_json_or_unavailable');
   }elseif($mode==='save'){
    $json=is_string($_POST['policy']??null)?
     wp_unslash($_POST['policy']):'';

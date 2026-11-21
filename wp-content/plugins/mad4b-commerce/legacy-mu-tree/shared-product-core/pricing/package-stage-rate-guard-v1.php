@@ -267,17 +267,24 @@ final class MAD4B_Package_Stage_Rate_Guard_V1 {
                     $flag('stage_itinerary_overnight_review_required');
                 if($scope['status']!=='mapped')$flag('stage_destination_unmapped');
                 $raw=(array)($saved['room_candidate_refs'][(string)$tier]??[]);
-                $eligible=[];$links=[];$rejections=[];
+                $eligible=[];$links=[];$rejections=[];$seasonalExcluded=[];
                 foreach($raw as $candidate) {
                     if(!is_array($candidate))continue;
                     $property=(int)($candidate['property_id_en']??0);
                     if(!$property)continue;
                     if(isset($links[$property]))continue;
                     $decision=self::propertyEligibility($property,$tier,$scope,$kind);
+                    if($decision['eligible']&&class_exists('MAD4B_Package_Seasonal_Assignment_V1',false))
+                        $decision=MAD4B_Package_Seasonal_Assignment_V1::decision(
+                          $parent,$key,$tier,$property,$from,$to,$begin-1,$nights);
                     $links[$property]=(array)($candidate['unit_ids_en']??[]);
                     if(!$decision['eligible']) {
                         $rejections[]=['property_id'=>$property,'reason'=>$decision['reason']];
-                        $flag('stage_candidate_destination_or_tier_mismatch');
+                        if(str_starts_with((string)$decision['reason'],'stage_property_season_')||
+                           str_starts_with((string)$decision['reason'],'seasonal_')||
+                           str_starts_with((string)$decision['reason'],'season_calendar_'))
+                            $seasonalExcluded[$property]=$decision['reason'];
+                        else $flag('stage_candidate_destination_or_tier_mismatch');
                         continue;
                     }
                     $eligible[$property]=array_values(array_unique(array_filter(array_map('absint',
@@ -289,12 +296,26 @@ final class MAD4B_Package_Stage_Rate_Guard_V1 {
                 foreach((array)($original['hotel_alternatives_or_by_tier'][(string)$tier]??[]) as $pid){
                     $pid=(int)$pid;if(!$pid||isset($links[$pid]))continue;
                     $decision=self::propertyEligibility($pid,$tier,$scope,$kind);
-                    if(!$decision['eligible']){$rejections[]=['property_id'=>$pid,'reason'=>$decision['reason']];$flag('stage_candidate_destination_or_tier_mismatch');}
-                    else $eligible[$pid]=[];
+                    if($decision['eligible']&&class_exists('MAD4B_Package_Seasonal_Assignment_V1',false))
+                        $decision=MAD4B_Package_Seasonal_Assignment_V1::decision(
+                          $parent,$key,$tier,$pid,$from,$to,$begin-1,$nights);
+                    if(!$decision['eligible']){
+                        $rejections[]=['property_id'=>$pid,'reason'=>$decision['reason']];
+                        if(str_starts_with((string)$decision['reason'],'stage_property_season_')||
+                           str_starts_with((string)$decision['reason'],'seasonal_')||
+                           str_starts_with((string)$decision['reason'],'season_calendar_'))
+                            $seasonalExcluded[$pid]=$decision['reason'];
+                        else $flag('stage_candidate_destination_or_tier_mismatch');
+                    }else $eligible[$pid]=[];
                 }
                 $stage['eligible_property_ids']=array_keys($eligible);
                 $stage['rejected_candidates']=$rejections;
-                if(!$eligible)$flag('stage_destination_has_no_candidate_property');
+                $stage['season_rejected_property_ids']=array_keys($seasonalExcluded);
+                $stage['seasonal_assignment_source']='stage_tier_property_season_override_or_inherit';
+                if(!$eligible){
+                    $flag('stage_destination_has_no_candidate_property');
+                    if($seasonalExcluded)$flag('stage_all_candidates_excluded_by_season_or_calendar');
+                }
                 $selected=(int)($saved['selected_property_id']??0);
                 $stage['selected_property_id']=$selected;
                 if(!$selected){$flag('stage_property_not_selected');}

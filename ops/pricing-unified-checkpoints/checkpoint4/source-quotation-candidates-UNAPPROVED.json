@@ -1,0 +1,5737 @@
+{
+  "contract": "mad4b.cp4.supplier-quote-candidates.v1",
+  "created_date": "2026-11-21",
+  "source_spreadsheet": "https://docs.google.com/spreadsheets/d/1PxrMcF2CuZrRGZ6R-2ZEeuqHXoqL6dT150XkhZk04-c/edit",
+  "NOT_COST_RECEIPTS": true,
+  "approval_scope": "none",
+  "strict_note": "Source quotes and optional notes are not approved pricing. Seasonal headers alone are not exact tariff valid-from/valid-to. No supplier invoice, stock confirmation, unit/occupancy binding, cruise vessel program or currency conversion has been approved.",
+  "season_headers": [
+    "Summer",
+    "Winter 26/27",
+    "Peak"
+  ],
+  "hotel_candidates": [
+    {
+      "property_id": 36197,
+      "site": "Wayfatours",
+      "property_name": "Tolip Gardens Hotel",
+      "source_property_name": "Tolip Garden",
+      "source_row": 37,
+      "identity_match": "high",
+      "source_tab": "Hotels",
+      "cost_receipt_status": "not_approved",
+      "unit_id": null,
+      "season_validity_dates": null,
+      "availability_receipt": null,
+      "contract_signed": false,
+      "room_rate_candidates": [
+        {
+          "sheet_row": 37,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "75",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "80",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "80",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": ""
+        },
+        {
+          "sheet_row": 38,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "43",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "45",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "45",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        },
+        {
+          "sheet_row": 39,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "40",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "43",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "43",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        }
+      ]
+    },
+    {
+      "property_id": 36209,
+      "site": "Wayfatours",
+      "property_name": "Triumph Plaza Hotel",
+      "source_property_name": "Triumph Plaza",
+      "source_row": 68,
+      "identity_match": "high",
+      "source_tab": "Hotels",
+      "cost_receipt_status": "not_approved",
+      "unit_id": null,
+      "season_validity_dates": null,
+      "availability_receipt": null,
+      "contract_signed": false,
+      "room_rate_candidates": [
+        {
+          "sheet_row": 68,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "80",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "90",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "120",
+              "meal_plan": "BB",
+              "notes": "inclusive of service charge & applicable taxes",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": ""
+        },
+        {
+          "sheet_row": 69,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "45",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "50",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "65",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        },
+        {
+          "sheet_row": 70,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "43",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "48",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "63",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        }
+      ]
+    },
+    {
+      "property_id": 36316,
+      "site": "Wayfatours",
+      "property_name": "Saray Pyramids & Museum View Hotel",
+      "source_property_name": "Saray Pyramids Hotel",
+      "source_row": 20,
+      "identity_match": "identity_review",
+      "source_tab": "Hotels",
+      "cost_receipt_status": "not_approved",
+      "unit_id": null,
+      "season_validity_dates": null,
+      "availability_receipt": null,
+      "contract_signed": false,
+      "room_rate_candidates": [
+        {
+          "sheet_row": 20,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "56",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "96",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "112",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": ""
+        },
+        {
+          "sheet_row": 21,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "35",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "60",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "70",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        },
+        {
+          "sheet_row": 22,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "33",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "58",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "68",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        }
+      ]
+    },
+    {
+      "property_id": 36475,
+      "site": "Wayfatours",
+      "property_name": "Barcelo Cairo pyramids",
+      "source_property_name": "Barceló Pyramids",
+      "source_row": 56,
+      "identity_match": "high",
+      "source_tab": "Hotels",
+      "cost_receipt_status": "not_approved",
+      "unit_id": null,
+      "season_validity_dates": null,
+      "availability_receipt": null,
+      "contract_signed": false,
+      "room_rate_candidates": [
+        {
+          "sheet_row": 56,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "80",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "88",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "96",
+              "meal_plan": "BB",
+              "notes": "23/12/2026 - 03/01/2027",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": ""
+        },
+        {
+          "sheet_row": 57,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "50",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "55",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "60",
+              "meal_plan": "BB",
+              "notes": "25/03/2027 - 02/04/2027",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        },
+        {
+          "sheet_row": 58,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "48",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "53",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "58",
+              "meal_plan": "BB",
+              "notes": "New YearGala Dinner & Party per person USD130.00 (Obligatory)",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        }
+      ]
+    },
+    {
+      "property_id": 70732,
+      "site": "Wayfatours",
+      "property_name": "Pyramids Park Resort Cairo",
+      "source_property_name": "Pyramids Park Resort Cairo",
+      "source_row": 8,
+      "identity_match": "high",
+      "source_tab": "Hotels",
+      "cost_receipt_status": "not_approved",
+      "unit_id": null,
+      "season_validity_dates": null,
+      "availability_receipt": null,
+      "contract_signed": false,
+      "room_rate_candidates": [
+        {
+          "sheet_row": 8,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "",
+              "price_raw": null,
+              "meal_plan": null,
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "102",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "120",
+              "meal_plan": null,
+              "notes": "25 December 2026 – 2 January 2027 (inclusive) // 25 March – 31 March (inclusive)",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": ""
+        },
+        {
+          "sheet_row": 9,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "",
+              "price_raw": null,
+              "meal_plan": null,
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "60",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "70",
+              "meal_plan": null,
+              "notes": "Christmas Dinner (optional): 85 USD per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": ""
+        },
+        {
+          "sheet_row": 10,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "",
+              "price_raw": null,
+              "meal_plan": null,
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "60",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "70",
+              "meal_plan": null,
+              "notes": "New Year’s Eve Gala Dinner (obligatory): 150 USD per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": ""
+        }
+      ]
+    },
+    {
+      "property_id": 36140,
+      "site": "Wayfatours",
+      "property_name": "Triumph Luxury Hotel",
+      "source_property_name": "Triumph Luxury",
+      "source_row": 93,
+      "identity_match": "high",
+      "source_tab": "Hotels",
+      "cost_receipt_status": "not_approved",
+      "unit_id": null,
+      "season_validity_dates": null,
+      "availability_receipt": null,
+      "contract_signed": false,
+      "room_rate_candidates": [
+        {
+          "sheet_row": 93,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "150",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": "Summer rate till 31 Aug",
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "180",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": "Peak period INC 09.10.26 – 17.10.26",
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "200",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": ""
+        },
+        {
+          "sheet_row": 94,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "85",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "100",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "110",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        },
+        {
+          "sheet_row": 95,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "83",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "98",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "108",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        }
+      ]
+    },
+    {
+      "property_id": 36473,
+      "site": "Wayfatours",
+      "property_name": "Movenpick Media City",
+      "source_property_name": "Movenpick Media City",
+      "source_row": 81,
+      "identity_match": "high",
+      "source_tab": "Hotels",
+      "cost_receipt_status": "not_approved",
+      "unit_id": null,
+      "season_validity_dates": null,
+      "availability_receipt": null,
+      "contract_signed": false,
+      "room_rate_candidates": [
+        {
+          "sheet_row": 81,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": ""
+        },
+        {
+          "sheet_row": 82,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        },
+        {
+          "sheet_row": 83,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        }
+      ]
+    },
+    {
+      "property_id": 36474,
+      "site": "Wayfatours",
+      "property_name": "Hilton Golf 6 oct",
+      "source_property_name": "Hilton Golf",
+      "source_row": 77,
+      "identity_match": "identity_review",
+      "source_tab": "Hotels",
+      "cost_receipt_status": "not_approved",
+      "unit_id": null,
+      "season_validity_dates": null,
+      "availability_receipt": null,
+      "contract_signed": false,
+      "room_rate_candidates": [
+        {
+          "sheet_row": 77,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": ""
+        },
+        {
+          "sheet_row": 78,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        },
+        {
+          "sheet_row": 79,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        }
+      ]
+    },
+    {
+      "property_id": 36477,
+      "site": "Wayfatours",
+      "property_name": "Ramses Hilton",
+      "source_property_name": null,
+      "source_row": null,
+      "identity_match": "not_in_sheet",
+      "source_tab": "Hotels",
+      "cost_receipt_status": "not_approved",
+      "unit_id": null,
+      "season_validity_dates": null,
+      "availability_receipt": null,
+      "contract_signed": false,
+      "room_rate_candidates": []
+    },
+    {
+      "property_id": 36479,
+      "site": "Wayfatours",
+      "property_name": "Hilton Grand Nile Tower",
+      "source_property_name": "HIlton Grand Nile Tower",
+      "source_row": 85,
+      "identity_match": "high",
+      "source_tab": "Hotels",
+      "cost_receipt_status": "not_approved",
+      "unit_id": null,
+      "season_validity_dates": null,
+      "availability_receipt": null,
+      "contract_signed": false,
+      "room_rate_candidates": [
+        {
+          "sheet_row": 85,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "120",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": ""
+        },
+        {
+          "sheet_row": 86,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "60",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        },
+        {
+          "sheet_row": 87,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "60",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        }
+      ]
+    },
+    {
+      "property_id": 70733,
+      "site": "Wayfatours",
+      "property_name": "Sonesta Hotel, Tower & Casino Cairo",
+      "source_property_name": "Sonesta Cairo",
+      "source_row": 64,
+      "identity_match": "identity_review",
+      "source_tab": "Hotels",
+      "cost_receipt_status": "not_approved",
+      "unit_id": null,
+      "season_validity_dates": null,
+      "availability_receipt": null,
+      "contract_signed": false,
+      "room_rate_candidates": [
+        {
+          "sheet_row": 64,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "70",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": "from 1 Sep rate 50 USD PP",
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "130",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": "07.02.2027 – 09.03.2027 with 55 USD PPPN",
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": ""
+        },
+        {
+          "sheet_row": 65,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "40",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "70",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "Dinner (Compulsory) on December 31st",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        },
+        {
+          "sheet_row": 66,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "40",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "68",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        }
+      ]
+    },
+    {
+      "property_id": 36355,
+      "site": "Wayfatours",
+      "property_name": "Sofitel Cairo Downtown Nile",
+      "source_property_name": "Sofitel Down Towen",
+      "source_row": 122,
+      "identity_match": "identity_review",
+      "source_tab": "Hotels",
+      "cost_receipt_status": "not_approved",
+      "unit_id": null,
+      "season_validity_dates": null,
+      "availability_receipt": null,
+      "contract_signed": false,
+      "room_rate_candidates": [
+        {
+          "sheet_row": 122,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": ""
+        },
+        {
+          "sheet_row": 123,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        },
+        {
+          "sheet_row": 124,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        }
+      ]
+    },
+    {
+      "property_id": 70734,
+      "site": "Wayfatours",
+      "property_name": "Four Seasons Hotel Cairo at The First Residence",
+      "source_property_name": null,
+      "source_row": null,
+      "identity_match": "not_in_sheet",
+      "source_tab": "Hotels",
+      "cost_receipt_status": "not_approved",
+      "unit_id": null,
+      "season_validity_dates": null,
+      "availability_receipt": null,
+      "contract_signed": false,
+      "room_rate_candidates": []
+    },
+    {
+      "property_id": 70735,
+      "site": "Wayfatours",
+      "property_name": "Fairmont Nile City",
+      "source_property_name": "Fairmont Nile City",
+      "source_row": 114,
+      "identity_match": "high",
+      "source_tab": "Hotels",
+      "cost_receipt_status": "not_approved",
+      "unit_id": null,
+      "season_validity_dates": null,
+      "availability_receipt": null,
+      "contract_signed": false,
+      "room_rate_candidates": [
+        {
+          "sheet_row": 114,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "160",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": ""
+        },
+        {
+          "sheet_row": 115,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "90",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        },
+        {
+          "sheet_row": 116,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "88",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        }
+      ]
+    },
+    {
+      "property_id": 70736,
+      "site": "Wayfatours",
+      "property_name": "Steigenberger Pyramids Cairo",
+      "source_property_name": "Steigenberger Pyramids",
+      "source_row": 110,
+      "identity_match": "high",
+      "source_tab": "Hotels",
+      "cost_receipt_status": "not_approved",
+      "unit_id": null,
+      "season_validity_dates": null,
+      "availability_receipt": null,
+      "contract_signed": false,
+      "room_rate_candidates": [
+        {
+          "sheet_row": 110,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "128",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": "Summer till 15 Sep & till 30 sep with 90 USD PPPN",
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": ""
+        },
+        {
+          "sheet_row": 111,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "75",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        },
+        {
+          "sheet_row": 112,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "73",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        }
+      ]
+    },
+    {
+      "property_id": 70737,
+      "site": "Wayfatours",
+      "property_name": "Hilton Cairo Heliopolis",
+      "source_property_name": null,
+      "source_row": null,
+      "identity_match": "not_in_sheet",
+      "source_tab": "Hotels",
+      "cost_receipt_status": "not_approved",
+      "unit_id": null,
+      "season_validity_dates": null,
+      "availability_receipt": null,
+      "contract_signed": false,
+      "room_rate_candidates": []
+    },
+    {
+      "property_id": 70738,
+      "site": "Wayfatours",
+      "property_name": "Sofitel Cairo Nile El Gezirah",
+      "source_property_name": "Sofitel El Gezirah",
+      "source_row": 118,
+      "identity_match": "identity_review",
+      "source_tab": "Hotels",
+      "cost_receipt_status": "not_approved",
+      "unit_id": null,
+      "season_validity_dates": null,
+      "availability_receipt": null,
+      "contract_signed": false,
+      "room_rate_candidates": [
+        {
+          "sheet_row": 118,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": ""
+        },
+        {
+          "sheet_row": 119,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        },
+        {
+          "sheet_row": 120,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        }
+      ]
+    },
+    {
+      "property_id": 70739,
+      "site": "Wayfatours",
+      "property_name": "Sheraton Cairo Hotel & Casino",
+      "source_property_name": "Sheraton Cairo",
+      "source_row": 106,
+      "identity_match": "high",
+      "source_tab": "Hotels",
+      "cost_receipt_status": "not_approved",
+      "unit_id": null,
+      "season_validity_dates": null,
+      "availability_receipt": null,
+      "contract_signed": false,
+      "room_rate_candidates": [
+        {
+          "sheet_row": 106,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "120",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "210",
+              "meal_plan": "BB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "280",
+              "meal_plan": "BB",
+              "notes": "NEW YEAR GALA DINNER SUPPLEMENT: • Obligatory Gala Dinner per person on December 31st: $180 per person per night.",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": ""
+        },
+        {
+          "sheet_row": 107,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "65",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "110",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "145",
+              "meal_plan": "BB",
+              "notes": "March 26, 2027 April 02, 2027",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        },
+        {
+          "sheet_row": 108,
+          "price_by_season": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "63",
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "BB",
+              "notes": "December 24, 2026 January 02, 2027",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          },
+          "notes_for_occupancy": "Per person"
+        }
+      ]
+    }
+  ],
+  "cruise_candidates": [
+    {
+      "source_row": 4,
+      "source_name": "Hapi 5 (Monday-Friday)",
+      "source_tab": "Cruises",
+      "program_days_raw": "(Monday-Friday)",
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 4,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "88",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "all summer rates till 28 September",
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "128",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "21-12-2026 03-01-2027//\n22-03-2027 04-04-2027",
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "204",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 5,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "55",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "80",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "128",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 6,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "53",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "78",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "126",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 8,
+      "source_name": "Radamis II (Monday-Friday)",
+      "source_tab": "Cruises",
+      "program_days_raw": "(Monday-Friday)",
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 8,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 9,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 10,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 12,
+      "source_name": "Commodore: (Thursday-Monday)",
+      "source_tab": "Cruises",
+      "program_days_raw": "(Thursday-Monday)",
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 12,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "72",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "120",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "144",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 13,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "45",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "75",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "90",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 14,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "43",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "73",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "88",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 16,
+      "source_name": "Odyssey: (Saturday-Wednesday)",
+      "source_tab": "Cruises",
+      "program_days_raw": "(Saturday-Wednesday)",
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 16,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "72",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "120",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "144",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 17,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "45",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "75",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "90",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 18,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "43",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "73",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "88",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 20,
+      "source_name": "Symphony: (Monday-Friday)",
+      "source_tab": "Cruises",
+      "program_days_raw": "(Monday-Friday)",
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 20,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "88",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "136",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "192",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 21,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "55",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "85",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "120",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 22,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "53",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "83",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "118",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 24,
+      "source_name": "Ms /Seti Kira ( Mon- Fri)",
+      "source_tab": "Cruises",
+      "program_days_raw": "( Mon- Fri)",
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 24,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "112",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "176",
+              "meal_plan": "FB",
+              "notes": "23/12/2026 – 06/01/2027",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 25,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "70",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "110",
+              "meal_plan": "FB",
+              "notes": "21/03/2027 – 0404/2027",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 26,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "70",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "110",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 28,
+      "source_name": "Tivoli Nile Cruises ( Sat - Wed)",
+      "source_tab": "Cruises",
+      "program_days_raw": "( Sat - Wed)",
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 28,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "136",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "200",
+              "meal_plan": "FB",
+              "notes": "23/12/2026 – 06/01/2027",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 29,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "85",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "125",
+              "meal_plan": "FB",
+              "notes": "21/03/2027 – 04/04/2027",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 30,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "85",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "125",
+              "meal_plan": "FB",
+              "notes": "(Peak period)",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 33,
+      "source_name": "Nile Admiral",
+      "source_tab": "Cruises",
+      "program_days_raw": null,
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 33,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "85",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "170",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 34,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "50",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "100",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 35,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "48",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "98",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 37,
+      "source_name": "MS Semiramis III",
+      "source_tab": "Cruises",
+      "program_days_raw": null,
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 37,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "85",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 38,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "50",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 39,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "48",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 41,
+      "source_name": "M\\S Grand Rose (Saturday/Wednesday)",
+      "source_tab": "Cruises",
+      "program_days_raw": "(Saturday/Wednesday)",
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 41,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "100",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "from 2 sep rate will be 70$ PP",
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "170",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "255",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 42,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "55",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "100",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "150",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 43,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "55",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "100",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "150",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 45,
+      "source_name": "M\\S Tower Prestige (Monday/Friday)",
+      "source_tab": "Cruises",
+      "program_days_raw": "(Monday/Friday)",
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 45,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "120",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "205",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "306",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 46,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "70",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "120",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "180",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 47,
+          "season_quote": {
+            "Summer": {
+              "room_type": "TRL",
+              "price_raw": "70",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "TRL",
+              "price_raw": "118",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "TRL",
+              "price_raw": "178",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 49,
+      "source_name": "H/s Solaris I *****",
+      "source_tab": "Cruises",
+      "program_days_raw": null,
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 49,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "111",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 50,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "65",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 51,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "65",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 53,
+      "source_name": "H/s Solaris II *****",
+      "source_tab": "Cruises",
+      "program_days_raw": null,
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 53,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "111",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 54,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "65",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 55,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "65",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 57,
+      "source_name": "Alessandra Nile Cruise ( Mon- Fri)",
+      "source_tab": "Cruises",
+      "program_days_raw": "( Mon- Fri)",
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 57,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "208",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "208",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "288",
+              "meal_plan": "FB",
+              "notes": "23/12/2026 – 06/01/2027",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 58,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "130",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "130",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "180",
+              "meal_plan": "FB",
+              "notes": "21/03/2027 – 04/04/2027",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 59,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "130",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "130",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "180",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 61,
+      "source_name": "Blue Shadow .I.& III",
+      "source_tab": "Cruises",
+      "program_days_raw": null,
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 61,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "119",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "from 29 Aug with 75 usd pppn",
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "221",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "289",
+              "meal_plan": "FB",
+              "notes": "30.Dec.2026 02.JAN.2027 $205.00 PPPN",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 62,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "70",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "130",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "170",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 63,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "70",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "130",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "170",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 65,
+      "source_name": "Kleos",
+      "source_tab": "Cruises",
+      "program_days_raw": null,
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 65,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "145",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "245",
+              "meal_plan": "FB",
+              "notes": "21/12/2026 – 04/01/2027",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 66,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "85",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "145",
+              "meal_plan": "FB",
+              "notes": "21/03/2027 – 04/04/2027",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 67,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 70,
+      "source_name": "(M/S Lady Carol, M/S Lady Mary) : (Thursday-Monday)",
+      "source_tab": "Cruises",
+      "program_days_raw": "(M/S Lady Carol, M/S Lady Mary) | (Thursday-Monday)",
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 70,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "94",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "From 29 Aug till 25 Sep will be with 65 USD PP",
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "187",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "24.12.2026 till 03.01.2027\n18.03.2027 till 31.03.2027",
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "340",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 71,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "55",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "110",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "200",
+              "meal_plan": "FB",
+              "notes": "Easter with 150 PPPN",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 72,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "55",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "110",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "200",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 74,
+      "source_name": "M/S Magic I ( Sat - Wed)",
+      "source_tab": "Cruises",
+      "program_days_raw": "( Sat - Wed)",
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 74,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "144.5",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "23.12.2026 till 01.01.2027\n20.03.2027 till 28.03.2026",
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "238",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 75,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "85",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "140",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 76,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "85",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "140",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 78,
+      "source_name": "M/S Magic II ( Sat - Wed)",
+      "source_tab": "Cruises",
+      "program_days_raw": "( Sat - Wed)",
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 78,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "94",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "From 29 Aug till 25 Sep will be with 65 USD PP",
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "170",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "23.12.2026 till 01.01.2027\n20.03.2027 till 28.03.2026",
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "272",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 79,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "55",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "100",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "160",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 80,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "55",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "100",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "160",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 82,
+      "source_name": "Royal Beau Rivage or Royal Elite ( Sat - Wed)",
+      "source_tab": "Cruises",
+      "program_days_raw": "( Sat - Wed)",
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 82,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "85",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "May 2026 &Sep 2026 with rate 75 USD PP",
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "255",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "Peak from 26 Dec - 30 Dec",
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "357",
+              "meal_plan": "FB",
+              "notes": "19-DEC (Saturday), 21-DEC (Monday), 23-DEC (Wednesday), 25-DEC  (Friday) & 21 Oct",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 83,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "50",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "150",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "210",
+              "meal_plan": "FB",
+              "notes": "with 135 USD PPPN",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 84,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "50",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "15",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": "Easter from 20 Mar - 2 april",
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "210",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 86,
+      "source_name": "M/S Chateau La Fayette ( Mon - Fri)",
+      "source_tab": "Cruises",
+      "program_days_raw": "( Mon - Fri)",
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 86,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "120",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "240",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "peak Dates\n19/10/2026-23/10/2026\n19/02/2027-22/02/2027\n21/12/2026-28/12/2026\n22/03/2027-29/03/2027",
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "288",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 87,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "75",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "150",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "180",
+              "meal_plan": "FB",
+              "notes": "Except New Year 28/12/2026-4/01/2027\n(Including Gala Dinner)",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 88,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "75",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "150",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "180",
+              "meal_plan": "FB",
+              "notes": "with 250 USD PP",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 90,
+      "source_name": "M/S Alma ( Sat - Wed)",
+      "source_tab": "Cruises",
+      "program_days_raw": "( Sat - Wed)",
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 90,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "120",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "240",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "peak Dates\n21/10/2026-24/10/2026\n20/02/2027-24/02/2027\n19/12/2026-30/12/2027\n20/03/2027-31/3/2027",
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "288",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 91,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "75",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "150",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "180",
+              "meal_plan": "FB",
+              "notes": "Except New Year 28/12/2026-4/01/2027\n(Including Gala Dinner)",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 92,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "75",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "150",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "180",
+              "meal_plan": "FB",
+              "notes": "with 250 USD PP",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 94,
+      "source_name": "M/S Nile Treasure ( Sat - Wed)",
+      "source_tab": "Cruises",
+      "program_days_raw": "( Sat - Wed)",
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 94,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "104",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "208",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "peak Dates\n21/10/2026-24/10/2026\n20/02/2027-24/02/2027\n19/12/2026-30/12/2027\n20/03/2027-31/3/2027",
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "248",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 95,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "65",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "130",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "155",
+              "meal_plan": "FB",
+              "notes": "Except New Year 28/12/2026-4/01/2027\n(Including Gala Dinner)",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 96,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "65",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "130",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "155",
+              "meal_plan": "FB",
+              "notes": "with 195 USD PP",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 98,
+      "source_name": "Jamila Nile Cruise ( Mon - Fri )",
+      "source_tab": "Cruises",
+      "program_days_raw": "( Mon - Fri )",
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 98,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "153",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "peak Dates\n21/10/2026-24/10/2026\n20/02/2027-24/02/2027\n19/12/2026-30/12/2027\n20/03/2027-31/3/2027",
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 99,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "85",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 100,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "83",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 102,
+      "source_name": "Kahila Nile Cruise ( Sat - Wed)",
+      "source_tab": "Cruises",
+      "program_days_raw": "( Sat - Wed)",
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 102,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "153",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "peak Dates\n21/10/2026-24/10/2026\n20/02/2027-24/02/2027\n19/12/2026-30/12/2027\n20/03/2027-31/3/2027",
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 103,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "85",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 104,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "83",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 106,
+      "source_name": "M\\S Sun Times (Monday/Friday)",
+      "source_tab": "Cruises",
+      "program_days_raw": "(Monday/Friday)",
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 106,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "125",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "from 2 sep rate will be 90$ PP",
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "272",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "425",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 107,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "70",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "160",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "250",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 108,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "70",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "158",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "158",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 110,
+      "source_name": "Amwaj Livingstone Nile Cruise",
+      "source_tab": "Cruises",
+      "program_days_raw": null,
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 110,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "136",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "from 2 sep rate will be 90$ PP",
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 111,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "80",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 112,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "80",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 114,
+      "source_name": "H/S Nile Capital",
+      "source_tab": "Cruises",
+      "program_days_raw": null,
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 114,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "153",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "from 2 sep rate will be 90$ PP",
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 115,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "90",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 116,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "90",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 118,
+      "source_name": "M/S Zeina",
+      "source_tab": "Cruises",
+      "program_days_raw": null,
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 118,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "127.5",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "from 2 sep rate will be 90$ PP",
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 119,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "75",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "135",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "230",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 120,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "75",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 122,
+      "source_name": "M/S Ciela",
+      "source_tab": "Cruises",
+      "program_days_raw": null,
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 122,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "144.5",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "from 2 sep rate will be 90$ PP",
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 123,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "85",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "160",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "260",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 124,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "85",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 127,
+      "source_name": "Royal Liberty ( Sat - Wed)",
+      "source_tab": "Cruises",
+      "program_days_raw": "( Sat - Wed)",
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 127,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "119",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "May 2026 &Sep 2026 with rate 95 USD PP",
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "255",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "Peak from 26 Dec - 30 Dec",
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "416.5",
+              "meal_plan": "FB",
+              "notes": "19-DEC (Saturday), 21-DEC (Monday), 23-DEC (Wednesday), 25-DEC  (Friday) & 21 Oct",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 128,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "70",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "150",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "245",
+              "meal_plan": "FB",
+              "notes": "with 170 USD PPPN",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 129,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "70",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "150",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": "Easter from 20 Mar - 2 april",
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "245",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 131,
+      "source_name": "Royal Princess Amira ( Mon - Fri )",
+      "source_tab": "Cruises",
+      "program_days_raw": "( Mon - Fri )",
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 131,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "85",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "May 2026 &Sep 2026 with rate 80 USD PP",
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "250",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "Peak from 26 Dec - 30 Dec",
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "391",
+              "meal_plan": "FB",
+              "notes": "19-DEC (Saturday), 21-DEC (Monday), 23-DEC (Wednesday), 25-DEC  (Friday) & 21 Oct",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 132,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "50",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "150",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "230",
+              "meal_plan": "FB",
+              "notes": "with 160 USD PPPN",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 133,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "50",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "150",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": "Easter from 20 Mar - 2 april",
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "230",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 135,
+      "source_name": "M/S Nile Serenity ( Sat - Wed)",
+      "source_tab": "Cruises",
+      "program_days_raw": "( Sat - Wed)",
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 135,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "216",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "from 28 Aug till 26 Sep rate will be  150 USD PP",
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 136,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "120",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 137,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "120",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 139,
+      "source_name": "M/S Esmeralda Cruise",
+      "source_tab": "Cruises",
+      "program_days_raw": null,
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 139,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "340",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "01.06.2026-31.08.2026  with rate 150 USD",
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "595",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "peak Dates\n19/10/2026-23/10/2026\n19/02/2027-22/02/2027\n21/12/2026-28/12/2026\n22/03/2027-29/03/2027",
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "714",
+              "meal_plan": "FB",
+              "notes": "Except New Year 28/12/2026-4/01/2027\n(Including Gala Dinner)",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 140,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "200",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "350",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "420",
+              "meal_plan": "FB",
+              "notes": "with 500 USD PP",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 141,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "200",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "350",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "420",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 143,
+      "source_name": "M/S Nile Style",
+      "source_tab": "Cruises",
+      "program_days_raw": null,
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 143,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "176",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "256",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "384",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 144,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "110",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "160",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "240",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 145,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "110",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "160",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "240",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 147,
+      "source_name": "M/S Acamar Nile Cruise",
+      "source_tab": "Cruises",
+      "program_days_raw": null,
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 147,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "280.5",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "467.5",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "21/12 to\n27/12/2026 \n22/03 to\n28/03/202",
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "629",
+              "meal_plan": "FB",
+              "notes": "New year from 28/12 to 31/12/2026 with 415 USD PPP",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 148,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "165",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "275",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "370",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 149,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 151,
+      "source_name": "Mövenpick M/S HAMEES",
+      "source_tab": "Cruises",
+      "program_days_raw": null,
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 151,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "340",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "680",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "850",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 152,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "200",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "400",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": "21/12/2026 - 31/12/2026",
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "500",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 153,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "195",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "395",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": "22/03/2027- 01/04/2027",
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "495",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 155,
+      "source_name": "Mövenpick M/S SUNRAY",
+      "source_tab": "Cruises",
+      "program_days_raw": null,
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 155,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "357",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": "30/04/2026 - 27/05/2026\r\n03/09/2026 - 30/09/2026",
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "731",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "901",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 156,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "210",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "430",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "530",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 157,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": "205",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "425",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": "525",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 159,
+      "source_name": "Amoura Dahabyia",
+      "source_tab": "Cruises",
+      "program_days_raw": null,
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 159,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "365E",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "365E",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 160,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "220 E",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "220 E",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 161,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": "220 E",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source_row": 163,
+      "source_name": "Royal Cleopatra",
+      "source_tab": "Cruises",
+      "program_days_raw": null,
+      "departure_port": null,
+      "direction": null,
+      "vessel_wp_id": null,
+      "cabin_unit_id": null,
+      "approved": false,
+      "validity_dates": null,
+      "live_inventory_receipt": null,
+      "quotes": [
+        {
+          "row": 163,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Single",
+              "price_raw": "365",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Single",
+              "price_raw": "365",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Single",
+              "price_raw": "456",
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 164,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Double",
+              "price_raw": "220",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Double",
+              "price_raw": "220",
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Double",
+              "price_raw": "275",
+              "meal_plan": "FB",
+              "notes": "New Year’s Eve Dinner Supplement -31 December- USD 120",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        },
+        {
+          "row": 165,
+          "season_quote": {
+            "Summer": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Winter 26/27": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": "Per person",
+              "qualifier": null,
+              "currency_in_header": "USD"
+            },
+            "Peak": {
+              "room_type": "Triple",
+              "price_raw": null,
+              "meal_plan": "FB",
+              "notes": null,
+              "qualifier": null,
+              "currency_in_header": "USD"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "source_rows": {
+    "Hotels": 176,
+    "Cruises": 165
+  },
+  "train_fare_source": "not_in_quotation_sheet"
+}
