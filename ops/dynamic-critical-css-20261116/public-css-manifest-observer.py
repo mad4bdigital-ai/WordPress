@@ -30,8 +30,15 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 def public_fetch(host,path):
     if not re.fullmatch(r'[a-z0-9.-]{3,200}',host) or not re.fullmatch(r'/[a-zA-Z0-9/_%.-]{0,345}',path) or '//' in path or '..' in path:
         raise ValueError('untrusted-catalog-public-route')
+    # The original WordPress HTML is the only safe issuer source. The
+    # Wayfatours FastCGI HIT may describe a stale Elementor template graph.
+    # Request a fresh, uncached source; do not use the cached public shell
+    # to issue a new route-specific CSS certificate.
+    request_headers={'User-Agent':UA,'Accept':ACCEPT,'Accept-Encoding':'identity'}
+    if host=='wayfatours.com':
+        request_headers['X-MAD4B-Bypass-Cache']='1'
     req=urllib.request.Request('https://'+host+path,method='GET',
-       headers={'User-Agent':UA,'Accept':ACCEPT,'Accept-Encoding':'identity'})
+       headers=request_headers)
     with urllib.request.build_opener(NoRedirect()).open(req,timeout=9) as response:
         if response.status!=200 or 'text/html' not in response.headers.get('Content-Type',''):
             raise ValueError('public-html-not-200')
@@ -42,7 +49,12 @@ def public_fetch(host,path):
         safe={name:response.headers.get(name,'') for name in (
           'X-MAD4B-Public-CCSS-Ready',
           'X-MAD4B-Public-CCSS-Currency',
-          'X-MAD4B-Public-CCSS-Market')}
+          'X-MAD4B-Public-CCSS-Market',
+          'X-Wayfa-Origin-Cache','Cache-Control')}
+        if host=='wayfatours.com' and (
+            safe['X-Wayfa-Origin-Cache']!='BYPASS'
+            or 'no-store' not in safe['Cache-Control'].lower()):
+            raise ValueError('wayfa-source-html-not-fresh-fastcgi-bypass')
         return body.decode('utf-8'),safe
 
 def observe(catalog,route,root,*,expected_host,fetch=public_fetch,include_html=False):
@@ -58,6 +70,10 @@ def observe(catalog,route,root,*,expected_host,fetch=public_fetch,include_html=F
     if not isinstance(path,str) or path in ('/','/'+route.get('language','')+'/'):
         raise ValueError('independent-home-controller-not-a-public-route')
     html,headers=fetch(host,path)
+    if host=='wayfatours.com' and (
+        headers.get('X-Wayfa-Origin-Cache')!='BYPASS'
+        or 'no-store' not in headers.get('Cache-Control','').lower()):
+        raise ValueError('wayfa-original-wordpress-html-not-proven-uncached')
     if headers.get('X-MAD4B-Public-CCSS-Ready')=='1':
         raise ValueError('original-html-already-ccss-transformed')
     # Preserve real server-resolved WCML country and currency. Missing source

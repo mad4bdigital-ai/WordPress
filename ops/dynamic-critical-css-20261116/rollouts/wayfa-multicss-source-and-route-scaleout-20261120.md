@@ -184,3 +184,57 @@ Rollback root:
 The 9/9 private receipt regression, 11/11 exact V2 route delivery
 tests and renderer integrity were run separately. The original Cron
 admission and post-release QA policy were not changed.
+
+## 21 November: fresh original source and pre-release DOM stability
+
+Native route CSS coverage expanded to 14 certified V2 paths. A
+source-capture risk was verified: the original manifest observer
+previously requested anonymous HTML without FastCGI BYPASS, whereas
+final post-release PHP 422 readback required uncacheable WordPress
+HTML. A stale cached Elementor document graph could lead to an
+expensive browser-QA run followed by a correct final rollback.
+
+Historic Fayoum Day Trip issuer source included 39 Elementor IDs and
+document SHA-256 04f2263203245168a1bbbc49a4cbb26ae7222cfa2e08ed7b8ca0efdd5e5c1044.
+Fresh origin HTML repeatedly included 40 IDs, including nested
+Accommodation dropbar document 25183, with SHA-256
+7dfe33c0986204227daae1ef298da8e92ec1cadc56b24197cba7ec1855b2ee35.
+Its original CSS still had five ordered stylesheets in two cascade
+slots. The native consumer correctly reverted that historical
+certificate rather than reusing CSS from the stale Elementor graph.
+
+The original observer now sends X-MAD4B-Bypass-Cache: 1 for Wayfa only.
+X-Wayfa-Origin-Cache: BYPASS and Cache-Control: no-store are required.
+FastCGI HIT, MISS or cacheable responses cannot become original
+WordPress CSS issuance sources. Tours.dev HTTP source transport is
+unchanged.
+
+A new read-only private pre-release helper checks the exact original
+snapshot HTML, ordered CSS manifest, server-owned market/currency,
+WordPress route key, CSS source files and live uncacheable Elementor
+document graph. It runs after the original CSS browser capture but
+before the release-first provisional CSS certificate is published.
+A changed DOM/CSS/market gives a normal HOLD, preserving native CSS,
+without issuing a certificate or WordPress ACK. The user's preferred
+post-release browser/performance QA stays unchanged and is not being
+turned into a pre-issuance performance gate. Source stability is a
+distinct, byte-grounded source identity safety check.
+
+The root-only native Cron transcript records the exact bounded source
+drift reason; there is no public visitor logging or cache mutation.
+Wayfa original HTML origin proof passed 8/8; source stability 10/10;
+existing ordered source observer 11/11 and V2 certificate issuer
+30/30. Actual historical Fayoum check reproduced the exact
+Elementor-source-graph drift. Fresh WordPress read-only source of
+Fayoum confirmed 40 documents, 5 CSS files, two cascade slots,
+and issued zero certificates.
+
+Direct Wayfa site-only renderer SHA following both steps:
+24d29ac2b170a14384d00d2e86ffaf559bf219a080469de3d579062d05195ae9.
+
+Private exact rollback receipts:
+- /var/lib/mad4b/company-code-release/receipts/wayfa-original-source-stability-20261121/
+- /var/lib/mad4b/company-code-release/receipts/wayfa-source-stability-exact-reason-20261121/
+
+No old revoked CSS was reactivated. The original WordPress public
+ticket 137 remains subject to the shared 8-vCPU and WP-CLI budget.

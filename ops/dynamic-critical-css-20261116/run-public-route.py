@@ -570,6 +570,24 @@ def run_core(site):
                 try:
                     browser(route,wp,host,env,'capture-ordered-critical.js',
                       jobdir/'ordered-critical-capture.log',{},limit=390)
+                    # A first-party cached HTML body may contain an outdated
+                    # Elementor popup/document graph while the live 422
+                    # WordPress source has a new graph. Never issue a pending
+                    # certificate based on stale cached source: prove the
+                    # exact current, no-store original before release-first.
+                    if site=='wayfa':
+                        try:
+                            print(run(['python3',str(TOOLS/'public-source-stability-before-release.py'),
+                                str(catfile),str(jobdir/'route.json'),str(wp),
+                                str(jobdir)],timeout=34))
+                        except subprocess.CalledProcessError as origin_exc:
+                            # Keep the *exact* fail-closed reason inside the
+                            # root-private native worker log. Never publish
+                            # the invalid candidate or issue a WordPress ACK.
+                            reason=(origin_exc.stderr or '').strip()[-180:]
+                            print('PUBLIC_SOURCE_PRE_RELEASE_HOLD',site,
+                                  route['path'],reason,flush=True)
+                            raise
                     if release_first:
                         # Release the source-bound candidate BEFORE full
                         # layout/FCP/LCP/CLS/interaction QA. Missing browser QA
