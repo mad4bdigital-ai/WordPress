@@ -60,3 +60,55 @@ No commercial Rate is published or approved automatically.
 - A logged-in browser walkthrough remains needed for visual interaction, especially mobile and the JetEngine repeater saving context.
 
 Do not overwrite site-specific bootstrap differences on Wayfatours with the Tours.dev bootstrap file without review.
+
+## 21 November 2026 — cross-site package stage checkpoint
+
+The authorized source-first live operation reconciled all eight canonical English
+package Tours on Tours.dev, with 28 stage geometries (19 hotel/resort, seven
+cruise, two sleeper train), after comparing the underlying itinerary/includes
+digests with Wayfatours. At the outset, Tours.dev lacked all eight active stage
+plans. Five identical-source plans were imported as stage-only, unsellable
+proposals. Three editorial variances were checked in full; two textual changes
+were kept without replacing source content. The third, Tour 60441, had an exact
+duplicate Day 5 and an exact duplicate Cairo hotel included item. Both exact
+duplicates were removed from Tours.dev with before-images and digest readback,
+yielding the reference 10-day geometry.
+
+All eight source stage plans explicitly contain **zero selected hotels, zero
+selected Units, zero approved supplier cost receipts, and no commercial
+authorization**. Structural reconciliation does not copy WordPress post IDs
+across sites: Wayfatours Property ID 70732 identifies a Hotel but Tours.dev
+ID 70732 is Transportation. Source/target identity must always be checked.
+
+Five source Cairo Hotels with verified identical titles, published hotel CPTs,
+Cairo destination, and no pre-existing package tier were classified:
+Silver = Tolip Gardens (36197), Triumph Plaza (36209);
+Gold = Triumph Luxury (36140), Hilton Grand Nile Tower (36479);
+Diamond = Sofitel Cairo Downtown Nile (36355).
+The 16 Cairo stay stages across eight packages now have those as **OR
+alternatives only**, without selected room, contract cost, supplier capacity
+or booking permission. Giza-only and mismatched-title/cross-ID hotels were not
+promoted. Platinum was not assigned. Luxor, Aswan and Sharm have real Property
+catalogs but no approved package-tier, Unit and cost chain yet.
+
+The Package & Rates UI now has a separate, user-triggered read-only multi-tier
+readiness board, based directly on the native Package Stage Guard, for a
+user-selected date window. It reports the eight source Tours, 28 components,
+24 (8 × 3) tier reviews, 28 unpriced stage receipts, and all blockers. Both
+sites returned 16/16 module regression checks, 19/19 pre-existing transport
+workflow regression checks, successful protected AJAX, checkout=false, and
+no price writes. Both live homepages and scripts returned HTTP 200.
+
+Both sites' Property Rates are still Draft only (29 on Tours.dev and 28 on
+Wayfatours in the live audit), with the visible records being QA or synthetic
+fixtures, not published, dated, verified SELF supplier costs. Zero of 24
+package-tier reviews is commercially price-ready. No generator, WooCommerce,
+Quote/Deposit, passenger price, tax/FX or supplier availability is approved by
+this work.
+
+All before-images, audited inputs, staged code and check-point manifests are
+held under the authorized VPS path
+\`/opt/mad4b-package-checkpoints/2026-11-21-stage-components/\`.
+Do not blindly copy plans, terms, IDs or rates to another company. This PR
+contains source code, not the site-specific live postmeta migrations.
+

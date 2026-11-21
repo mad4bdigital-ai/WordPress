@@ -418,6 +418,72 @@ function drawPackageResult(value){
  host.append(footer);
 }
 
+
+function renderPackageReadinessBoard(value){
+ const host=q('readiness-result');host.replaceChildren();
+ const head=document.createElement('p');head.className='mad4b-kinetic-muted';
+ head.textContent='Tours '+value.tours.length+' · stages '+value.totals.stage_count+
+  ' (Hotel / Resort '+value.totals.hotel_resort_count+
+  ', Cruise '+value.totals.cruise_count+
+  ', Sleeper Train '+value.totals.sleeper_train_count+
+  ') · Price-ready level reviews '+value.totals.price_ready_tier_reviews+
+  '/'+value.totals.reviewed_tier_combinations+
+  ' · Unpriced stage receipts '+value.totals.unpriced_stages+
+  ' · Active Rates with saved Transportation '+value.totals.transport_assignments+
+  ' · No commercial authorization.';
+ host.append(head);
+ const rows=document.createElement('div');
+ for(const tour of value.tours){
+  const section=document.createElement('details');section.className='mad4b-kinetic-rule';
+  const title=document.createElement('summary');
+  title.textContent=tour.title+' · '+tour.stage_count+
+    ' stages · structure '+(tour.topology_ready?'recorded':'needs review')+
+    ' · Transportation assignments '+tour.transport_assigned_rates_count;
+  section.append(title);
+  const edit=document.createElement('p');
+  if(tour.edit_link){
+   const link=document.createElement('a');link.href=tour.edit_link;
+   link.textContent='Open original Tour in WordPress';link.target='_blank';link.rel='noopener noreferrer';
+   edit.append(link);
+  }
+  section.append(edit);
+  const table=document.createElement('table');table.className='widefat striped';
+  const header=document.createElement('tr');
+  for(const label of ['Level','Commercial stage blockers','Candidate hotels','Cost status']){
+   const th=document.createElement('th');th.textContent=label;header.append(th);
+  }
+  table.append(header);
+  for(const [name,tier] of Object.entries(tour.levels)){
+   const tr=document.createElement('tr');
+   const hotelCount=tier.stages.reduce((n,x)=>n+x.eligible_properties,0);
+   for(const text of [name,String(tier.blocking_count),
+     String(hotelCount)+' stage-level alternatives',
+     tier.price_ready?'Cost proof ready':'Missing verified supplier receipts']){
+    const td=document.createElement('td');td.textContent=text;tr.append(td);
+   }
+   table.append(tr);
+   const issueRow=document.createElement('tr'),cell=document.createElement('td');
+   cell.colSpan=4;
+   const keys=tier.stages.map(s=>{
+    return s.key+' ['+s.kind+', '+s.destination+']: '+
+      (s.issues.length?s.issues.join(', '):'component proof recorded');
+   });
+   const details=document.createElement('details');
+   const sum=document.createElement('summary');
+   sum.textContent='Stage-level blockers for '+name+' ('+keys.length+' stages)';
+   details.append(sum);
+   const list=document.createElement('ul');
+   for(const text of keys){const li=document.createElement('li');li.textContent=text;list.append(li);}
+   details.append(list);cell.append(details);issueRow.append(cell);table.append(issueRow);
+  }
+  section.append(table);rows.append(section);
+ }
+ host.append(rows);
+ const footer=document.createElement('p');footer.className='mad4b-kinetic-warning';
+ footer.textContent='The review window does not confirm inventory, dates, cabins, supplier contracts, guiding, tax, FX, payment, or checkout. Published Tour Rates were not changed.';
+ host.append(footer);
+}
+
 function bind(){
  mount.querySelectorAll('[data-tab]').forEach(button=>{
   button.addEventListener('click',()=>{
@@ -572,6 +638,22 @@ function bind(){
  });
  q('package-clear').addEventListener('click',()=>{
   packageLines=[];renderPackageLines();q('package-result').textContent='';});
+ q('readiness-run').addEventListener('click',async()=>{
+  const button=q('readiness-run'),host=q('readiness-result');
+  button.disabled=true;host.textContent='Reading current package stages and supplier proof…';
+  try{
+   const from=q('readiness-from').value,to=q('readiness-to').value;
+   if(!from||!to||from>to)throw Error('Choose a valid date window');
+   const result=await api('package-readiness',{from,to});
+   renderPackageReadinessBoard(result);
+  }catch(e){host.textContent='Readiness blocked: '+e.message;}
+  finally{button.disabled=false;}
+ });
+ const now=new Date();
+ const first=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()+1,1));
+ const last=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()+7,0));
+ q('readiness-from').value=first.toISOString().slice(0,10);
+ q('readiness-to').value=last.toISOString().slice(0,10);
  q('package-preview').addEventListener('click',async()=>{
   const button=q('package-preview'),host=q('package-result');
   button.disabled=true;host.textContent='Calculating explicit selected components…';

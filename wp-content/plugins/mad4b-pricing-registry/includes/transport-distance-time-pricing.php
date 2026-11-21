@@ -611,6 +611,12 @@ final class MAD4B_Transport_Distance_Time_V1 {
      MAD4B_Transport_Package_Workflow_V1::candidates(
        $raw['stage'],sanitize_key((string)($raw['lang']??'en'))):
      new WP_Error('transport_eligibility_input_invalid');
+  }elseif($mode==='package-readiness'){
+   $result=class_exists('MAD4B_Package_Component_Readiness_V1')?
+    MAD4B_Package_Component_Readiness_V1::report(
+      sanitize_text_field((string)($_POST['from']??'')),
+      sanitize_text_field((string)($_POST['to']??''))):
+    new WP_Error('package_readiness_class_missing');
   }elseif($mode==='bridge'){
    $json=is_string($_POST['payload']??null)?
     wp_unslash($_POST['payload']):'';
