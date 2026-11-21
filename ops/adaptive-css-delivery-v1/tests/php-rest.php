@@ -7,6 +7,7 @@ class WP_REST_Request {
     private $payload;
     public function __construct($payload){$this->payload=$payload;}
     public function get_json_params(){return $this->payload;}
+    public function get_param($key){return $this->payload[$key]??null;}
 }
 class WP_REST_Response {
     public $data;public $status;
@@ -20,6 +21,14 @@ class FakeWPDB {
     }
     public function query($sql){return 1;}
     public function get_results($sql,$format=null){
+      if (str_contains($sql,'WHERE site_id=%s AND route_sha=%s')) {
+         return [
+          ['device'=>'mobile','arm'=>'native','metric'=>'lcp','bucket'=>4,'total'=>50],
+          ['device'=>'mobile','arm'=>'native','metric'=>'inp','bucket'=>3,'total'=>20],
+          ['device'=>'mobile','arm'=>'native','metric'=>'cls','bucket'=>4,'total'=>50],
+          ['device'=>'mobile','arm'=>'optimized','metric'=>'lcp','bucket'=>3,'total'=>60],
+          ['device'=>'mobile','arm'=>'optimized','metric'=>'css','bucket'=>1,'total'=>60]];
+      }
       return [
        ['arm'=>'optimized','metric'=>'lcp','bucket'=>4,'total'=>20],
        ['arm'=>'optimized','metric'=>'lcp','bucket'=>5,'total'=>5],
@@ -35,6 +44,7 @@ $GLOBALS['mock_transients']=[];
 function get_transient($key){return $GLOBALS['mock_transients'][$key]??false;}
 function set_transient($key,$value,$ttl){$GLOBALS['mock_transients'][$key]=$value;}
 function nocache_headers(){}
+function current_user_can($cap){return !empty($GLOBALS['mock_admin_auth']);}
 $_SERVER['HTTP_ORIGIN']='https://tours.dev.mad4b.com';
 $_SERVER['HTTP_SEC_FETCH_SITE']='same-origin';
 $_SERVER['CONTENT_LENGTH']='260';
@@ -76,5 +86,23 @@ check(($health['vitals']['optimized']['lcp']['p75_upper']??null)===2500
 check(($health['public_rollout_percent_changed']??null)===false
   &&($health['performance_warning_is_not_automatic_certificate_authority']??null)===true,
   'site RUM cannot automatically issue or promote unqualified CSS');
-echo 'PASS 10 endpoint, health and minimum-data contract checks'.PHP_EOL;
+$req=new WP_REST_Request(['route_sha'=>str_repeat('a',64),
+                           'variant_sha'=>str_repeat('b',64)]);
+$GLOBALS['mock_admin_auth']=false;
+$r=$cls::cohort_readback($req);
+check($r instanceof WP_Error && $r->code==='rum_forbidden',
+      'per-cohort RUM readback requires an actual authorized manager');
+$GLOBALS['mock_admin_auth']=true;
+$r=$cls::cohort_readback($req);
+check($r instanceof WP_REST_Response && $r->status===200
+  &&($r->data['data']['mobile']['native']['lcp']['p75_upper']??null)===2500
+  &&($r->data['data']['mobile']['optimized']['full_css_restored']['passed']??null)===60,
+  'admin gets exact source-device arm histogram p75 without PII');
+check(($r->data['eligible_to_promote_css']??true)===false
+  &&($r->data['arm_source']??null)==='client_dom_observed_not_randomized',
+  'observational client arm is not treated as randomized canary evidence');
+$r=$cls::cohort_readback(new WP_REST_Request(['route_sha'=>'bad','variant_sha'=>str_repeat('b',64)]));
+check($r instanceof WP_Error && $r->code==='rum_bad_cohort',
+      'invalid source variants rejected before SQL');
+echo 'PASS 14 endpoint, health and admin-cohort contracts'.PHP_EOL;
 ?>

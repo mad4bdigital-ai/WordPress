@@ -258,6 +258,74 @@ final class MAD4B_Adaptive_CSS_RUM_V1 {
           'permission_callback'=>static function() {
               return current_user_can('manage_options');
           }]);
+        register_rest_route('mad4b-css/v1','/cohort',[
+          'methods'=>'GET','callback'=>[__CLASS__,'cohort_readback'],
+          'permission_callback'=>static function() {
+              return current_user_can('manage_options');
+          }]);
+    }
+    public static function cohort_readback(\WP_REST_Request $req) {
+        // Read-only, company-owned histogram rollup. Browser-reported arms
+        // are NOT signed A/B assignment evidence or certificate authority.
+        if (!current_user_can('manage_options'))
+            return new \WP_Error('rum_forbidden','Forbidden',['status'=>403]);
+        $route=$req->get_param('route_sha');
+        $variant=$req->get_param('variant_sha');
+        if (!is_string($route)||!is_string($variant)
+            ||!preg_match('/^[a-f0-9]{64}$/D',$route)
+            ||!preg_match('/^[a-f0-9]{64}$/D',$variant))
+            return new \WP_Error('rum_bad_cohort','Invalid source fingerprint',['status'=>400]);
+        $site=self::site();
+        if (!$site)return new \WP_Error('rum_wrong_site','Site not enrolled',['status'=>403]);
+        global $wpdb;
+        $table=self::table();
+        $query=$wpdb->prepare(
+          "SELECT device,arm,metric,bucket,SUM(samples) AS total FROM $table
+           WHERE site_id=%s AND route_sha=%s AND variant_sha=%s
+           AND day_utc>=DATE_SUB(UTC_DATE(),INTERVAL 7 DAY)
+           GROUP BY device,arm,metric,bucket LIMIT 320",
+          $site,$route,$variant);
+        $rows=$wpdb->get_results($query,ARRAY_A);
+        if (!is_array($rows) || count($rows)>320)
+            return new \WP_Error('rum_readback_unavailable','Unavailable',['status'=>503]);
+        $hist=[];
+        foreach ($rows as $v) {
+            $device=$v['device']??null;
+            $arm=$v['arm']??null;
+            $name=$v['metric']??null;
+            $bucket=(int)($v['bucket']??-1);
+            $count=(int)($v['total']??0);
+            if (!in_array($device,['mobile','desktop'],true)
+                ||!in_array($arm,['native','optimized'],true)
+                ||!in_array($name,['lcp','inp','cls','css'],true)
+                ||$bucket<0 ||$bucket>count(self::LIMITS['lcp'])
+                ||$count<0 ||$count>100000000)continue;
+            $hist[$device][$arm][$name][$bucket]=
+              ($hist[$device][$arm][$name][$bucket]??0)+$count;
+        }
+        $report=[];
+        foreach (['mobile','desktop'] as $device) {
+            foreach (['native','optimized'] as $arm) {
+                foreach (['lcp','inp','cls'] as $name) {
+                    $b=$hist[$device][$arm][$name]??[];
+                    $report[$device][$arm][$name]=[
+                      'samples'=>array_sum($b),
+                      'p75_upper'=>self::p75_bound($name,$b)
+                    ];
+                }
+                $report[$device][$arm]['full_css_restored']=[
+                   'failed'=>(int)($hist[$device][$arm]['css'][0]??0),
+                   'passed'=>(int)($hist[$device][$arm]['css'][1]??0)];
+            }
+        }
+        nocache_headers();
+        return new \WP_REST_Response([
+          'contract'=>'mad4b.adaptive-css.cohort-readback.v1',
+          'site'=>$site,'route_sha'=>$route,'variant_sha'=>$variant,
+          'range_days'=>7,'data'=>$report,
+          'arm_source'=>'client_dom_observed_not_randomized',
+          'eligible_to_promote_css'=>false,'css_rollout_changed'=>false
+        ],200);
     }
     public static function admin_status() {
         nocache_headers();
