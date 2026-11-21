@@ -11,6 +11,47 @@ final class MAD4B_Supplier_Sheet_Reference_V1 {
  private const TABS=['hotels','cruises','costal'];
  private const PERIODS=['summer','winter_2026_27','peak'];
 
+ /**
+  * Authoritative general calendar: read live Season Term Meta, not a copy
+  * of term IDs or a calendar added by quotation imports.
+  * Peak remains supplier-specific even when its dates fall inside Winter.
+  */
+ private static function baseSeasonContext(string $period,array $doc){
+  if($period==='peak')return [
+    'status'=>'supplier_specific_peak_not_a_global_term',
+    'term_id'=>null,'window_start'=>null,'window_end'=>null,
+    'source'=>'original_supplier_notes',
+    'dates_directly_approved'=>false
+  ];
+  $slug=$period==='summer'?'summer':'winter';
+  $term=get_term_by('slug',$slug,'season');
+  if(!$term instanceof WP_Term)
+   return new WP_Error('supplier_quote_season_term_missing');
+  $id=(int)$term->term_id;
+  if(get_term_meta($id,'season_enabled',true)!=='1')
+   return new WP_Error('supplier_quote_season_term_disabled');
+  $startYear=(int)($doc['sheet_period_anchor_year']??0);
+  if($startYear<2020||$startYear>2100)
+   return new WP_Error('supplier_quote_season_year_missing');
+  $sm=(int)get_term_meta($id,'season_start_month',true);
+  $sd=(int)get_term_meta($id,'season_start_day',true);
+  $em=(int)get_term_meta($id,'season_end_month',true);
+  $ed=(int)get_term_meta($id,'season_end_day',true);
+  $cross=get_term_meta($id,'season_cross_year',true)==='1';
+  if(!checkdate($sm,$sd,$startYear)||!checkdate($em,$ed,$startYear+($cross?1:0)))
+   return new WP_Error('supplier_quote_season_term_dates_invalid');
+  return [
+   'status'=>'base_calendar_from_existing_term_meta',
+   'source'=>'season_taxonomy_term_meta',
+   'term_id'=>$id,'term_slug'=>$term->slug,
+   'window_start'=>sprintf('%04d-%02d-%02d',$startYear,$sm,$sd),
+   'window_end'=>sprintf('%04d-%02d-%02d',$startYear+($cross?1:0),$em,$ed),
+   'cross_year'=>$cross,
+   'term_priority'=>(int)get_term_meta($id,'season_priority',true),
+   'dates_directly_approved'=>false,
+   'supplier_exception_notes_may_override'=>true
+  ];
+ }
  private static function document(){
   if(!current_user_can('manage_options'))
    return new WP_Error('quote_sheet_access_denied');
@@ -47,7 +88,10 @@ final class MAD4B_Supplier_Sheet_Reference_V1 {
   if(!in_array($period,self::PERIODS,true))
    return new WP_Error('quote_sheet_period_invalid');
   $doc=self::document();if(is_wp_error($doc))return $doc;
+  $calendar=self::baseSeasonContext($period,$doc);
+  if(is_wp_error($calendar))return $calendar;
   $out=['contract'=>self::CONTRACT,'site'=>home_url('/'),
+   'base_season'=>$calendar,'note_cell_count'=>0,
    'tab'=>$tab,'period'=>$period,'source_url'=>$doc['source_url'],
    'matched_entities'=>0,'unmapped_entities'=>0,'tariff_values'=>0,
    'rows'=>[],'unmapped'=>[],'commercial_approved'=>false,
@@ -72,6 +116,9 @@ final class MAD4B_Supplier_Sheet_Reference_V1 {
     ];
    }
    $out['tariff_values']+=count($tariffs);
+   $noteCells=array_values(array_filter((array)($record['source_note_cells']??[]),
+     static fn($n)=>is_array($n)&&($n['period']??'')===$period));
+   $out['note_cell_count']+=count($noteCells);
    $gid=(int)$record['gid'];
    $row=(int)$record['source_entity_row'];
    $out['rows'][]=[
@@ -79,6 +126,7 @@ final class MAD4B_Supplier_Sheet_Reference_V1 {
     'title'=>(string)$record['expected_title'],
     'sheet_entity'=>(string)$record['source_entity'],
     'source_row'=>$row,
+    'source_note_cells'=>$noteCells,
     'source_link'=>esc_url_raw($doc['source_url']).'?gid='.$gid.'#range=A'.$row.':O'.($row+2),
     'tariffs'=>$tariffs,'supplier_quote_status'=>'reference_only_not_verified',
     'commercially_approved'=>false

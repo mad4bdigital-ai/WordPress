@@ -427,6 +427,16 @@ function renderSheetQuoteCatalog(value){
   value.tariff_values+' quoted values for '+value.period+' · '+
   value.unmapped_entities+' unresolved property identities. Not approved for booking.';
  host.append(summary);
+ const calendar=document.createElement('p');calendar.className='mad4b-kinetic-muted';
+ if(value.base_season?.status==='base_calendar_from_existing_term_meta'){
+  calendar.textContent='Existing Season Term Meta ('+value.base_season.term_slug+
+   ', term #'+value.base_season.term_id+'): '+
+   value.base_season.window_start+' to '+value.base_season.window_end+
+   '. General season only; supplier exceptions in notes may override.';
+ }else{
+  calendar.textContent='Peak is supplier-specific. There is no universal Peak term date; review the original notes for each property.';
+ }
+ host.append(calendar);
  const list=document.createElement('div');
  for(const item of value.rows){
   const details=document.createElement('details');
@@ -438,6 +448,21 @@ function renderSheetQuoteCatalog(value){
   source.href=item.source_link;source.target='_blank';source.rel='noopener noreferrer';
   source.textContent='View source quotation row '+item.source_row;
   details.append(source);
+  const sheetNotes=(item.source_note_cells||[]).filter(x=>
+   typeof x.text==='string' && x.text.trim().toLowerCase()!=='per person');
+  if(sheetNotes.length){
+   const disclosure=document.createElement('details');
+   const label=document.createElement('summary');
+   label.textContent='Original sheet notes ('+sheetNotes.length+' cells) · date exceptions, optional and mandatory supplements';
+   disclosure.append(label);
+   const noteList=document.createElement('ul');
+   for(const note of sheetNotes){
+    const line=document.createElement('li');
+    line.textContent=note.cell+': '+note.text;noteList.append(line);
+   }
+   disclosure.append(noteList);
+   details.append(disclosure);
+  }
   if(item.tariffs.length){
    const table=document.createElement('table');table.className='widefat striped';
    const tr=document.createElement('tr');
@@ -477,7 +502,7 @@ function renderSheetQuoteCatalog(value){
   others.append(ul);host.append(others);
  }
  const caution=document.createElement('p');caution.className='mad4b-kinetic-warning';
- caution.textContent='Original quotation sheet only. Seasonal dates, unit basis, taxes/supplements, capacity and supplier contracts require verification. All values are excluded from booking and Tour Rate generation.';
+ caution.textContent='Existing general Season Term Meta is respected. Original supplier notes may override dates and include mandatory/optional supplements. Quotes remain reference-only until specific notes are normalized without conflict; no Tour Rate or checkout activation.';
  host.append(caution);
 }
 
