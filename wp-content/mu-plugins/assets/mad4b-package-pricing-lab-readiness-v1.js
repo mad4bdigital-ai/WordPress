@@ -127,10 +127,15 @@ function renderReport(data){
     );
     section.append(badgeLine);
     const scope=stage.destination_scope||{};
+    const hotelStay=['hotel','resort'].includes(stage.kind);
+    const locationRule=hotelStay
+      ? ('Hotel destination: '+(scope.accepted_slugs||[]).join(' / ')+
+         (scope.metro_exception?' (sourced Cairo/Giza scope)':'')+
+         (scope.status==='mapped'?'':' · destination taxonomy needs review'))
+      : ('Separate '+String(stage.kind||'travel')+' component — hotel destination matching does not apply');
     const scopeP=el('p','mad4b-pcl-stage-scope',
-      'Destination match: '+(scope.accepted_slugs||[]).join(' / ')+
-      (scope.metro_exception?' (documented Cairo / Giza area)':'')+
-      ' · Separate stay instance: '+String(stage.key||'')+
+      locationRule+
+      ' · Stay instance: '+String(stage.key||'')+
       ' · arrival day '+String(stage.day_start||'?')+
       ' · departure day '+String(stage.departure_day_number||'?'));
     section.append(scopeP);
