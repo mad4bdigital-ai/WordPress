@@ -1,0 +1,1156 @@
+{
+  "contract": "mad4b.cp4.coastal-supplier-quote-candidates.v1",
+  "source_spreadsheet": "https://docs.google.com/spreadsheets/d/1PxrMcF2CuZrRGZ6R-2ZEeuqHXoqL6dT150XkhZk04-c/edit",
+  "source_tab": "Costal",
+  "received_at": "2026-11-21",
+  "supplier_name_provenance_only": true,
+  "receipt_approved": false,
+  "seasonal_validity_unverified": true,
+  "availability_unverified": true,
+  "source_notes_preserved": true,
+  "fee_classification": "Use explicit Optional/Mandatory wording from source; never silently treat supplements as base or sell price",
+  "mixed_currency_review": [
+    {
+      "source_row": 16,
+      "supplier": "Stella Gardens Resort & Spa - Makadi Bay",
+      "season": "Summer",
+      "raw": "114 EUR"
+    },
+    {
+      "source_row": 17,
+      "supplier": "Stella Gardens Resort & Spa - Makadi Bay",
+      "season": "Summer",
+      "raw": "65 EUR"
+    },
+    {
+      "source_row": 18,
+      "supplier": "Stella Gardens Resort & Spa - Makadi Bay",
+      "season": "Summer",
+      "raw": "65 EUR"
+    }
+  ],
+  "quotes": [
+    {
+      "source_row": 4,
+      "supplier": "Sentido Caribbean World Resorts Soma Bay",
+      "rooms": [
+        {
+          "row": 4,
+          "occupancy_label": "Single",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "104",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                "Rates Till 31 Oct"
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                " Inclusive Basis\t\t\t\t\t",
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": null,
+              "meal_plan_raw": " Inclusive Basis\t\t\t\t\t",
+              "notes": [
+                null
+              ]
+            }
+          ]
+        },
+        {
+          "row": 5,
+          "occupancy_label": "Double",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "65",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                " Inclusive Basis\t\t\t\t\t",
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": null,
+              "meal_plan_raw": " Inclusive Basis\t\t\t\t\t",
+              "notes": [
+                null
+              ]
+            }
+          ]
+        },
+        {
+          "row": 6,
+          "occupancy_label": "Triple",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "63",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                " Inclusive Basis\t\t\t\t\t",
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": null,
+              "meal_plan_raw": " Inclusive Basis\t\t\t\t\t",
+              "notes": [
+                null
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source_row": 8,
+      "supplier": "Continental Hotel Hurghada",
+      "rooms": [
+        {
+          "row": 8,
+          "occupancy_label": "Single",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "104",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                "from 1 Jul till 31 Aug with 80 USD PP",
+                " From 01.09.26 till 31.10.26 with 75 USD PP "
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": "112.5",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                "FRom 1 Mar 2027 till 30 April rate is 80 USD PP",
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": "127.5",
+              "meal_plan_raw": null,
+              "notes": [
+                "- Compulsory Christmas Gala Dinner on 24/12 $85.00 Per Person"
+              ]
+            }
+          ]
+        },
+        {
+          "row": 9,
+          "occupancy_label": "Double",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "65",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": "75",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": "85",
+              "meal_plan_raw": null,
+              "notes": [
+                null
+              ]
+            }
+          ]
+        },
+        {
+          "row": 10,
+          "occupancy_label": "Triple",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "65",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": "75",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": "85",
+              "meal_plan_raw": null,
+              "notes": [
+                "- Compulsory New Year Gala Dinner on 31/12 $175.00 Per Person."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source_row": 12,
+      "supplier": "Sea Star beau Rivage Hotel Hurghada,",
+      "rooms": [
+        {
+          "row": 12,
+          "occupancy_label": "Single",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "83",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                "25 -31 may with 65 usd \n21 jun -31 july 55 usd pp",
+                "from 1 aug wirh 65 usd "
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null
+              ]
+            }
+          ]
+        },
+        {
+          "row": 13,
+          "occupancy_label": "Double",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "50",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null
+              ]
+            }
+          ]
+        },
+        {
+          "row": 14,
+          "occupancy_label": "Triple",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "50",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source_row": 16,
+      "supplier": "Stella Gardens Resort & Spa - Makadi Bay",
+      "rooms": [
+        {
+          "row": 16,
+          "occupancy_label": "Single",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "114 EUR",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                "Aqua Park entrance fees:10.00 EUR per person per night OBLIGATORY SUPPLEMENT",
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null
+              ]
+            }
+          ]
+        },
+        {
+          "row": 17,
+          "occupancy_label": "Double",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "65 EUR",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null
+              ]
+            }
+          ]
+        },
+        {
+          "row": 18,
+          "occupancy_label": "Triple",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "65 EUR",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source_row": 20,
+      "supplier": "SWISS INN RESORT I HURGHADA",
+      "rooms": [
+        {
+          "row": 20,
+          "occupancy_label": "Single",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "120",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                "22/05/2026 31/05/2026 rate will be 80 USD PP",
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": "112",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                "26/12/2026 10/01/2027\n24/03/2027 31/03/2027"
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": "128",
+              "meal_plan_raw": null,
+              "notes": [
+                " Compulsory New Year’s Gala Dinner on December 31st 2026: $ 150 per person"
+              ]
+            }
+          ]
+        },
+        {
+          "row": 21,
+          "occupancy_label": "Double",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "75",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": "70",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": "80",
+              "meal_plan_raw": null,
+              "notes": [
+                "Children 07 - 11.99 years old are entitled to a 50% discount on Christmas and New Year"
+              ]
+            }
+          ]
+        },
+        {
+          "row": 22,
+          "occupancy_label": "Triple",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "73",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": "70",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": "80",
+              "meal_plan_raw": null,
+              "notes": [
+                "Gala Dinner."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source_row": 24,
+      "supplier": "SRNTY Sahl Hasheesh",
+      "rooms": [
+        {
+          "row": 24,
+          "occupancy_label": "Single",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "142.5",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                "06.07.26 21/08/26 rate will be 105",
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null
+              ]
+            }
+          ]
+        },
+        {
+          "row": 25,
+          "occupancy_label": "Double",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "95",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null
+              ]
+            }
+          ]
+        },
+        {
+          "row": 26,
+          "occupancy_label": "Triple",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "90",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source_row": 29,
+      "supplier": "SRNTY Alma Heights",
+      "rooms": [
+        {
+          "row": 29,
+          "occupancy_label": "Single",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "120",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                "06.07.26 21/08/26 rate will be 105",
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null
+              ]
+            }
+          ]
+        },
+        {
+          "row": 30,
+          "occupancy_label": "Double",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "80",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null
+              ]
+            }
+          ]
+        },
+        {
+          "row": 31,
+          "occupancy_label": "Triple",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "75",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source_row": 33,
+      "supplier": "SRNTY Alpha",
+      "rooms": [
+        {
+          "row": 33,
+          "occupancy_label": "Single",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "120",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                "06.07.26 21/08/26 rate will be 90",
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null
+              ]
+            }
+          ]
+        },
+        {
+          "row": 34,
+          "occupancy_label": "Double",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "80",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null
+              ]
+            }
+          ]
+        },
+        {
+          "row": 35,
+          "occupancy_label": "Triple",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "75",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source_row": 37,
+      "supplier": "Cleopatra Luxury Resort Makadi Bay.",
+      "rooms": [
+        {
+          "row": 37,
+          "occupancy_label": "Single",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "120",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                "01.10.26 – 31.10.26\n with 80 $ ",
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null
+              ]
+            }
+          ]
+        },
+        {
+          "row": 38,
+          "occupancy_label": "Double",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "75",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null
+              ]
+            }
+          ]
+        },
+        {
+          "row": 39,
+          "occupancy_label": "Triple",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "75",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source_row": 41,
+      "supplier": "Gravity Hotel & Aqua Park Sahl Hasheesh",
+      "rooms": [
+        {
+          "row": 41,
+          "occupancy_label": "Single",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "93.5",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                "\r\n01.07 - 31.08 65 USD",
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null
+              ]
+            }
+          ]
+        },
+        {
+          "row": 42,
+          "occupancy_label": "Double",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "55",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null
+              ]
+            }
+          ]
+        },
+        {
+          "row": 43,
+          "occupancy_label": "Triple",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "55",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": null,
+              "meal_plan_raw": null,
+              "notes": [
+                null
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source_row": 45,
+      "supplier": "the cascade shotel",
+      "rooms": [
+        {
+          "row": 45,
+          "occupancy_label": "Single",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "105",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                "01.10.26 – 31.10.26\n with 85 $ ",
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": "152",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": "168",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                "Christmas Gala Dinner 24.12.2026: US$ 90 per person obligatory"
+              ]
+            }
+          ]
+        },
+        {
+          "row": 46,
+          "occupancy_label": "Double",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "75",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": "95",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": "105",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                "New Year’s Gala Dinner 31.12.2026: US$ 120 per person obligatory"
+              ]
+            }
+          ]
+        },
+        {
+          "row": 47,
+          "occupancy_label": "Triple",
+          "season_quotes": [
+            {
+              "season": "Summer",
+              "amount_raw": "75",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Winter 26/27",
+              "amount_raw": "95",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null,
+                null
+              ]
+            },
+            {
+              "season": "Peak",
+              "amount_raw": "105",
+              "meal_plan_raw": "Soft all-inclusive",
+              "notes": [
+                null
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
