@@ -107,9 +107,26 @@ function renderReport(data){
     history.push('Recorded source-plan policy warning: '+data.source_plan_policy_error);
   if(Array.isArray(data.source_plan_warnings)&&data.source_plan_warnings.length)
     history.push('Source review: '+data.source_plan_warnings.join(', '));
-  if(history.length)
-    h.append(el('p','mad4b-pcl-warning',history.join(' · ')+
-      ' (recorded source evidence, not a fresh live policy verdict)'));
+  if(history.length){
+    const userFriendly={
+      policy_company_binding_invalid:'Company pricing policy link needs review',
+      cruise_cabin_and_vessel_not_yet_bound:'Cruise vessel and cabin are not linked',
+      pending_quote:'Supplier quote is pending'
+    };
+    const friendly=history.map(value=>{
+      let words=String(value);
+      for(const [code,description] of Object.entries(userFriendly))
+        words=words.replaceAll(code,description);
+      return words.replaceAll('_',' ');
+    });
+    h.append(el('p','mad4b-pcl-warning',
+      'Saved source conditions need review: '+friendly.join(' · ')+
+      '. These are recorded findings, not a new live approval check.'));
+    const technical=el('details','mad4b-pcl-diagnostics');
+    technical.append(el('summary','','Technical source references'));
+    technical.append(el('p','',history.join(' · ')));
+    h.append(technical);
+  }
   const kpis=el('div','mad4b-pcl-kpis');
   kpis.append(
     metric(String(s.stages||0),'Travel and stay stages'),
@@ -220,6 +237,26 @@ function renderReport(data){
     'Open one stage to inspect candidate hotels or cruise source requirements. Returning to Cairo does not copy room prices, dates or inventory.'));
   panels.cost.append(warn,el('p','mad4b-pcl-step-intro',
     'Missing supplier costs are unknown, never zero. Cost and margin remain unavailable until source receipts, dates, occupancy and availability are approved.'));
+  const costGaps=el('ul','mad4b-pcl-cost-gaps');
+  const addGap=(message)=>costGaps.append(el('li','',message));
+  if(Number(s.unit_cost_role_positive_prices||0)===0)
+    addGap('No linked units have a recorded supplier cost source.');
+  if(Number(s.units_referenced||0)>Number(s.unit_occupancy_recorded||0))
+    addGap('Occupancy information is incomplete for '+String(
+      Number(s.units_referenced||0)-Number(s.unit_occupancy_recorded||0))+' linked unit(s).');
+  if(Number(s.unit_available||0)===0)
+    addGap('No linked units are currently marked available. This is not a live availability verdict.');
+  if(Number(s.hotel_stages_requiring_itinerary_review||0)>0)
+    addGap(String(s.hotel_stages_requiring_itinerary_review)+
+      ' hotel stay stage(s) require overnight itinerary confirmation.');
+  if(guide && Number(guide.reviewed_days||0)<Number(guide.day_count||0))
+    addGap('Guide pricing review: '+String(guide.reviewed_days||0)+' of '+
+      String(guide.day_count||0)+' days completed.');
+  if(transport && Number(transport.native_rate_stage_count||0)===0)
+    addGap('No transport stages have been recorded in the linked Rate review.');
+  if(stages.some(stage=>stage.kind==='cruise'))
+    addGap('Cruise supplier cost requires confirmed vessel, program, cabin and departure.');
+  if(costGaps.childElementCount)panels.cost.append(costGaps);
   panels.review.append(el('p','mad4b-pcl-step-intro',
     'Review source gaps before generating any Rate. This read-only section does not write a Tour Rate, activate a policy or approve checkout.'));
   panels.review.append(components,actions);
@@ -253,9 +290,13 @@ function renderReport(data){
     stageDisclosure.append(stageToggle,section);
     const badgeLine=el('p','mad4b-pcl-stage-status');
     badgeLine.append(
-      status(false,'','Supplier price: '+String(stage.price_status||'unpriced')),
-      status(Boolean(stage.selected_property_id),'Hotel selected','No hotel selected'),
-      status(stage.selected_unit_count>0,'Room selected','No room/cabin selected'),
+      status(false,'','Supplier cost: '+String(stage.price_status||'not approved').replaceAll('_',' ')),
+      status(Boolean(stage.selected_property_id),
+        stage.kind==='cruise'?'Vessel selected':'Hotel selected',
+        stage.kind==='cruise'?'No vessel selected':'No hotel selected'),
+      status(stage.selected_unit_count>0,
+        stage.kind==='cruise'?'Cabin selected':'Room selected',
+        stage.kind==='cruise'?'No cabin selected':'No room selected'),
       status(Boolean(stage.native_rate_stage_written),'In native Rate','Not exported to Tour Rate')
     );
     section.append(badgeLine);
