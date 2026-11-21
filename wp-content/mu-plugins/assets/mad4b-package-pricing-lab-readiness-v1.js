@@ -79,12 +79,15 @@ function renderReport(data){
   const kpis=el('div','mad4b-pcl-kpis');
   kpis.append(
     metric(String(s.stages||0),'Stay / travel stages'),
-    metric(String(s.candidate_mentions||0),'Hotel suggestions in selected tier'),
+    metric(String(s.candidate_mentions||0),'Hotel-stage candidates (may repeat)'),
+    metric(String(s.unique_candidate_properties||0),'Unique candidate Properties in tier'),
     metric(String(s.units_referenced||0),'Unique linked units in this tier'),
     metric(String(s.unit_occupancy_recorded||0),'Units with recorded occupancy'),
     metric(String(s.unit_cost_role_positive_prices||0),'Units with declared cost source'),
     metric(String(s.unit_available||0),'Units marked available'),
-    metric(String(s.stages_without_candidates||0),'Hotel stages without candidates')
+    metric(String(s.stages_without_candidates||0),'Hotel stages without candidates'),
+    metric(String(s.destination_excluded_candidates||0),'Excluded candidate-stage mismatches'),
+    metric(String(s.hotel_stages_requiring_itinerary_review||0),'Stay stages awaiting itinerary confirmation')
   );
   h.append(kpis);
   const warn=el('p','mad4b-pcl-warning','No approved Package Cost total. Missing unit rates, supplier receipts, inventory, and stage assignments must not be treated as zero.');
@@ -111,7 +114,9 @@ function renderReport(data){
     const title=el('h4','',
       'Stage '+(index+1)+' · '+String(stage.kind||'Stay')+
       (stage.destination?' · '+stage.destination.replaceAll('_',' '):'')+
-      ' · '+String(stage.nights||0)+' night(s)');
+      ' · day '+String(stage.day_start||'?')+'–'+
+      String(Math.max(Number(stage.day_start||0),Number(stage.departure_day_number||1)-1))+
+      ' ('+String(stage.nights||0)+' night(s))');
     section.append(title);
     const badgeLine=el('p','mad4b-pcl-stage-status');
     badgeLine.append(
@@ -121,9 +126,56 @@ function renderReport(data){
       status(Boolean(stage.native_rate_stage_written),'In native Rate','Not exported to Tour Rate')
     );
     section.append(badgeLine);
+    const scope=stage.destination_scope||{};
+    const scopeP=el('p','mad4b-pcl-stage-scope',
+      'Destination match: '+(scope.accepted_slugs||[]).join(' / ')+
+      (scope.metro_exception?' (documented Cairo / Giza area)':'')+
+      ' · Separate stay instance: '+String(stage.key||'')+
+      ' · arrival day '+String(stage.day_start||'?')+
+      ' · departure day '+String(stage.departure_day_number||'?'));
+    section.append(scopeP);
+    if(stage.same_destination_revisit){
+      section.append(el('p','mad4b-pcl-info',
+        'Return to the same destination. Some hotel alternatives may overlap, but Property/Unit selection, dates, occupancy, availability and supplier tariff must be assessed independently for this stage.'));
+    }
+    const evidence=stage.itinerary_evidence||{};
+    if(['hotel','resort'].includes(stage.kind)){
+      const itineraryOk=evidence.status==='explicit_overnights_matched';
+      const dayLabel=itineraryOk?'Explicit overnight destinations match the saved stage':
+        evidence.status==='itinerary_destination_conflict'?'Itinerary conflicts with the saved stage destination':
+        'Saved stage needs more itinerary overnight evidence; no automatic confirmation';
+      section.append(row('p',[status(itineraryOk,'',''),el('span','',dayLabel)],
+        'mad4b-pcl-stage-itinerary'));
+      const nights=Array.isArray(evidence.night_days)?evidence.night_days:[];
+      if(nights.length){
+        const details=el('details','mad4b-pcl-night-evidence');
+        details.append(el('summary','','Itinerary days used for this stay ('+nights.length+' nights)'));
+        const list=el('ol','');
+        for(const night of nights){
+          list.append(el('li','',
+            'Day '+night.day+' · '+(night.source_title||'Untitled')+
+            ' · '+(night.observed_overnight_destinations||[]).join(', ')+
+            ' · '+night.result));
+        }
+        details.append(list);section.append(details);
+      }
+    }
+    const excluded=Array.isArray(stage.excluded_candidates)?stage.excluded_candidates:[];
+    if(excluded.length){
+      section.append(el('p','mad4b-pcl-warning',
+        excluded.length+' saved hotel candidate(s) excluded because destination, tier, publication or Property type did not match. Excluded candidates are never priced or shown as selectable.'));
+      const hidden=el('details','mad4b-pcl-excluded');
+      hidden.append(el('summary','','Inspect excluded source candidates ('+excluded.length+')'));
+      const entries=el('ul','');
+      for(const item of excluded){
+        entries.append(el('li','',(item.title||'Property #'+item.property_id)+
+          ' · '+String(item.reason||'unqualified')));
+      }
+      hidden.append(entries);section.append(hidden);
+    }
     const candidates=Array.isArray(stage.candidates)?stage.candidates:[];
     if(!candidates.length){
-      let msg='No candidate Properties and priced Units are linked to this stage/tier.';
+      let msg='No destination- and tier-matched hotel candidates are linked to this stage. Pricing remains unavailable.';
       if(stage.kind==='cruise')
         msg='Cruise is a separate component: confirm vessel, sailing program, cabin Unit, departure, and supplier tariff.';
       else if(stage.kind==='sleeper_train')
@@ -178,7 +230,8 @@ function renderReport(data){
     section.append(list);
     result.append(section);
   }
-  result.append(el('p','mad4b-pcl-footer','This inventory reads original Package stay plans, JetEngine Properties and Units. It does not calculate selling prices, approve supplier costs, write Rate stage repeaters or enable checkout.'));
+  result.append(el('p','mad4b-pcl-footer',
+    'Each stage is a separate stay and pricing identity. Exact native Destination and Package Level taxonomy are checked independently against every candidate Property (with documented Cairo/Giza metro scope only). Repeated options do not share a saved room, nightly tariff or availability. The itinerary overnight text provides review evidence, not booking approval. No Tour Rate, supplier contract, checkout or pricing settings were changed.'));
 }
 async function load(event){
   if(event)event.preventDefault();
