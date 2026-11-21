@@ -29,12 +29,12 @@ final class MAD4B_Tour_Rate_Native_Tabs_20261121 {
     ];
     public static function transform(array $fields) {
         $names=array_column($fields,'name');
-        $already=array_keys(array_filter($names,static fn($n)=>
-            is_string($n)&&str_starts_with($n,'mad4b_rate_tab_')));
+        $already=array_values(array_filter($names,static fn($n)=>
+            is_string($n)&&strpos($n,'mad4b_rate_tab_')===0));
         if($already){
             $expected=array_column(self::ANCHORS,0);
             if(count($already)!==count($expected) ||
-                array_diff(array_intersect($names,$expected),$expected))
+                array_diff($expected,$already)||array_diff($already,$expected))
                 return new WP_Error('tour_rate_tabs_partial_schema');
             // Explicit idempotency validation below: only trusted tab IDs.
             foreach(self::ANCHORS as $anchor=>[$key,$title,$id]){
@@ -80,7 +80,7 @@ final class MAD4B_Tour_Rate_Native_Tabs_20261121 {
             $f['title']='Traveler Prices & Availability';
         unset($f);
         $actual=array_values(array_filter($out,
-            static fn($f)=>!str_starts_with((string)($f['name']??''),'mad4b_rate_tab_')));
+            static fn($f)=>strpos((string)($f['name']??''),'mad4b_rate_tab_')!==0));
         if($actual!==$expected)
             return new WP_Error('tour_rate_tabs_original_fields_changed');
         return $out;
