@@ -149,3 +149,38 @@ an already certified tour. No destination certificate is yet
 recertified until its native public queue runs and verifies the
 new source-bounded delivery; the historical rejected certificates
 remain reverted_post_release_qa.
+
+## 21 November 2026: private post-release hold diagnostics
+
+Production Cron expanded independently from 5 to 14 certified exact V2
+route certificates. Five independently issued candidates remain reverted;
+historical reruns do not re-certify them.
+
+The Fayoum Day Trip candidate provides a useful separate failure mode.
+Its post-release 5-viewport performance QA PASSED, but the immutable
+private source HTML contained 39 Elementor document IDs, while repeated
+fresh uncacheable WordPress source renders contain 40. The added nested
+Elementor document ID 25183 is the Accommodation dropbar. Original
+issuer snapshot fingerprint:
+04f2263203245168a1bbbc49a4cbb26ae7222cfa2e08ed7b8ca0efdd5e5c1044.
+Current repeated native source fingerprint:
+7dfe33c0986204227daae1ef298da8e92ec1cadc56b24197cba7ec1855b2ee35.
+This is genuine dynamic source-document drift, and the post-release
+revert is CORRECT. Do not weaken the Elementor source-graph check,
+reuse this historical certificate, or count the route as READY.
+
+Added observational-only first-party private readback hold receipts:
+on an exact enrolled Wayfa V2 existing/postrelease origin-probe
+failure, record the bounded failure reason in the root-only original
+Cron job directory, never the shared public CSS assets, browser
+cache, WordPress ACK or HTML. Paths, job timestamps, root ownership
+and non-symlink constraints remain bounded. A failure record is
+not a certificate and does not authorize a rerun.
+
+Production site-only renderer SHA:
+125e444bdd634b7064b0753b6dc3b3ab1671d105bc10f63632efee4f990d2403.
+Rollback root:
+ /var/lib/mad4b/company-code-release/receipts/wayfa-v2-original-html-source-reason-20261121/
+The 9/9 private receipt regression, 11/11 exact V2 route delivery
+tests and renderer integrity were run separately. The original Cron
+admission and post-release QA policy were not changed.

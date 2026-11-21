@@ -117,6 +117,37 @@ def verify(site,wp,catalog,route,state):
          'critical_slots':critical,'rest_links':len(manifest['files']),
          'origin_cache':'BYPASS','depends_on_listing':bool(deps.get('contains_dynamic_listing')),
          'source_reused':True}
+def record_bounded_hold(site,target,error,root=None):
+    # Preserve the precise original WordPress 422/Elementor/source reason in
+    # the private first-party job only. A previous post-release QA failure
+    # must not be erased, marked certified, or ACKed by this diagnostic.
+    if site!='wayfa':return False
+    source=(Path('/opt/mad4b-company-provisioning/reports/public-critical-css-v1/wayfa')
+            if root is None else Path(root))
+    output=Path(target)
+    if (not output.is_absolute()
+        or output.name not in ('v2-existing-readback.json',
+                                'v2-postqa-origin-readback.json')
+        or not re.fullmatch(r'20[0-9]{6}T[0-9]{6}Z',output.parent.name)
+        or output.parent.parent!=source or source.is_symlink()
+        or output.parent.is_symlink() or not output.parent.is_dir()
+        or output.is_symlink()):
+        return False
+    receipt=output.with_name(output.stem+'.hold.json')
+    if receipt.is_symlink():return False
+    if receipt.exists() and (not receipt.is_file()
+       or receipt.stat().st_size>4096):return False
+    reason=str(error)
+    data={'contract':'mad4b.public-ccss.v2.exact-origin-hold.v1',
+          'status':'hold_no_qualification','site':site,
+          'stage':output.stem,
+          'reason':reason[:170],
+          'critical_css_certificate_issued_by_this_step':False,
+          'wordpress_ack_issued_by_this_step':False}
+    queue.atom(receipt,data)
+    return True
+
+
 def main():
  if len(sys.argv)!=7:raise ValueError('USAGE site wp-root catalog route state output')
  _,site,wp,cat,route,state,target=sys.argv
@@ -126,4 +157,9 @@ def main():
 if __name__=='__main__':
  try:main()
  except (OSError,ValueError,KeyError,TypeError,IndexError,json.JSONDecodeError) as exc:
+  try:
+   if len(sys.argv)==7:
+    record_bounded_hold(sys.argv[1],sys.argv[-1],exc)
+  except (OSError,ValueError,TypeError):
+   pass
   print('HOLD_V2_REUSE',str(exc)[:170],file=sys.stderr);sys.exit(4)
