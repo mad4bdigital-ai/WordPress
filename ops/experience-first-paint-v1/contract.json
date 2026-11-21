@@ -1,0 +1,24 @@
+{
+  "contract": "mad4b.experience-first-paint.city-geometry.v1",
+  "status": "source_review_candidate",
+  "component": "mad4b-experience/src/presentation",
+  "live_site_targets": ["tours.dev.mad4b.com", "wayfatours.com"],
+  "changes": [
+    {
+      "target": "modules/366-mad4b-city-visible-image.php",
+      "source": "release/366-mad4b-city-visible-image.php",
+      "previous_sha256": "d18dee895d146c7f75ab8385f58ea7d75ad32fd921c5ccad7baf50e6617ebfad",
+      "source_sha256": "188da0445da4314f9ab49b1301eecbeb1e8675b55b5b26f700f08970bee6fc0f"
+    },
+    {
+      "target": "assets/mad4b-city-visible-image.339807974258.js",
+      "source": "release/mad4b-city-visible-image.339807974258.js",
+      "previous_sha256": null,
+      "source_sha256": "339807974258b258c6bdfce6ae36d43d1b3526db46a63544628782eb86850de3"
+    }
+  ],
+  "legacy_js_sha256": "e13274a815bd967f5b497305a934a78a95c6fe5bcea17bf3ef6cf54244202c02",
+  "site_scope": "home/city widget only; no pricing or checkout modifications",
+  "css_status": "not_released_pending_fresh_template_device_locale_css_certificate",
+  "auto_promotion": false
+}
