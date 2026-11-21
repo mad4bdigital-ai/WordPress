@@ -15,8 +15,8 @@ $t('pdf_51_source_rows',count($source['rows']??[])===51);
 $t('pdf_sha_locked',$policy['source_sha256']===$c::SHA);
 $t('pdf_is_trusted',$policy['source_type']==='trusted_original_pdf_2026');
 $t('provider_is_company_self',$policy['provider']==='self');
-$t('currency_not_guessed',$policy['currency']==='');
-$t('reference_role_not_guessed',$policy['price_role']==='reference_only');
+$t('currency_owner_confirmed_EGP',$policy['currency']==='EGP');
+$t('company_cost_role_owner_confirmed',$policy['price_role']==='self_cost');
 $t('source_date_2026_04_01',$policy['effective_from']==='2026-04-01');
 $t('pdf_total_210_price_cells',array_sum(array_map(static fn($r)=>
   count(array_filter($r['vehicle_rates_unverified'],static fn($v)=>$v!==null)),
@@ -24,7 +24,7 @@ $t('pdf_total_210_price_cells',array_sum(array_map(static fn($r)=>
 $t('document_5pct_active',$policy['apply_upper_egypt_five_pct']===true);
 $full=$c::catalog('','en');
 $t('catalog_all_51',count($full['items']??[])===51);
-$t('catalog_currency_not_auto',$full['policy']['currency']==='');
+$t('catalog_currency_owner_confirmed',$full['policy']['currency']==='EGP');
 $t('catalog_no_public_price',$full['public_price_written']===false);
 $t('catalog_read_only_checkout',$full['checkout_authorized']===false);
 $cairo=$c::preview(['key'=>'Cairo:1','vehicle'=>'limousine','quantity'=>1]);
@@ -77,7 +77,7 @@ $t('site_currency_usd_not_inferred',$policy['currency']!==get_option('woocommerc
 $fail=array_keys(array_filter($tests,static fn($pass)=>!$pass));
 echo wp_json_encode(['site'=>$site,'total'=>count($tests),
  'passed'=>count($tests)-count($fail),'failed'=>$fail,
- 'provider'=>'self','source_trusted'=>true,'currency_guessed'=>false,
+ 'provider'=>'self','source_trusted'=>true,'currency_confirmed_by_owner'=>true,
  'localized_self_posts'=>count($drafts),'checkout_authorized'=>false],
  JSON_UNESCAPED_SLASHES)."\n";
 if($fail)exit(1);

@@ -20,7 +20,10 @@ global $wpdb;
 $r=$wpdb->get_row($wpdb->prepare("SELECT meta_fields FROM {$wpdb->prefix}jet_post_types WHERE slug=%s",'tour-rates'),ARRAY_A);
 $fields=(array)maybe_unserialize($r['meta_fields']??'');
 $names=array_column($fields,'name');
-$check('tour_rate_52_jetengine_fields',count($fields)===52);
+$check('tour_rate_53_jetengine_fields',count($fields)===53);
+$check('tour_rate_markup_override_native_field',
+ ($fields[52]['name']??'')==='transport_markup_override_pct' &&
+ ($fields[52]['default_val']??'unexpected')==='');
 $check('tour_rate_stages_after_stay',array_slice($names,45,6)===
  ['has_transportations','transport_assignment_mode','transport_selection_mode',
   'related_transportations_id','transport_price_policy','_mad4b_transport_stages_v1']);
