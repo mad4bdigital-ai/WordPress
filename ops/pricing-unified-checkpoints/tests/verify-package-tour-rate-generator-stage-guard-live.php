@@ -55,8 +55,17 @@ foreach($tours as $tour) {
             $assert(!in_array('source_stage_bindings_stale',$v['blockers'],true),
                 'Package saved source and bindings digest agree '.$tour.'/'.$tier);
         }else{
-            $assert(in_array('source_accommodation_stage_plan_missing',$v['blockers'],true),
-                'source site has no package source stages yet');
+            // Tours.dev Package plans may be reconciled independently while
+            // this guard runs. Both missing and saved-but-unpriced source
+            // plans must remain blocked without creating any commercial Rate.
+            $sourcePlan=get_post_meta($tour,
+                '_mad4b_package_accommodation_source_plan_v1',true);
+            if(is_array($sourcePlan)&&!empty($sourcePlan['stages']))
+                $assert(count($v['stages'])===count($sourcePlan['stages']),
+                    'reconciled source plan stages match native stage readback');
+            else
+                $assert(in_array('source_accommodation_stage_plan_missing',
+                    $v['blockers'],true),'missing native Package plan fails closed');
         }
     }
 }
