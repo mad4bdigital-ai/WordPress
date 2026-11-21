@@ -119,7 +119,7 @@ echo json_encode(["latest"=>$latest,"html"=>$html],JSON_THROW_ON_ERROR);
     def test_mock_dom_renders_four_steps_and_hides_duplicate_forms(self):
         for locale,scenario,should_hide_button in (
             ("ar_EG","existing",True),("en_US","existing",True),
-            ("en_US","expired",False),("ar_EG","empty",False),
+            ("en_US","expired",True),("ar_EG","empty",False),
             ("fr_FR","existing",True),("de_DE","existing",True),
             ("es_ES","existing",True),("it_IT","existing",True),
             ("ja","existing",True)
@@ -184,6 +184,11 @@ const actions=pane.children.find(x=>x.className==='human-actions');
 assert.ok(actions);
 const primary=actions.children.find(x=>x.tag==='button');
 assert.equal(primary.hidden,__HIDE__);
+assert.equal(primary.style.display,__HIDE__?'none':'inline-flex');
+assert.equal(primary.disabled,__HIDE__);
+if(__HIDE__){assert.equal(primary.textContent,'');assert.equal(primary.attrs['aria-hidden'],'true');}
+const secondary=actions.children.filter(x=>x.tag==='button')[1];
+if(__HIDE__){assert.equal(secondary.hidden,false);assert.equal(secondary.style.marginInlineStart,'0');}
 const advanced=pane.children.find(x=>x.tag==='details');
 assert.ok(advanced);
 assert.equal(advanced.children[1].children.length,4);
