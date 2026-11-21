@@ -434,6 +434,15 @@ function renderReport(data){
             ' · '+String(train.published_transport_rate_count||0)+
             ' published transport rates · sleeper cabin fare not verified')
         ]));
+        if(train.native_terminal_needs_schedule_revalidation){
+          scout.append(el('p','mad4b-pcl-warning',
+            'Station source conflict: the saved train stop data uses Ramses. The late-2026 published reference lists Upper Egypt (Bashtil) as the Cairo terminal. Revalidate the service station, date, ticket class and fare with Abela before booking.'));
+          scout.append(row('p',[
+            link(train.public_timetable_reference,'Review published timetable reference'),
+            el('span','',' · '),
+            link(train.official_operator_booking_url,'Verify on Abela')
+          ],'mad4b-pcl-source-line'));
+        }
       }
       if(!trains.length)scout.append(el('p','mad4b-pcl-empty',
         'No published sleeping train supports the route in the original itinerary.'));
