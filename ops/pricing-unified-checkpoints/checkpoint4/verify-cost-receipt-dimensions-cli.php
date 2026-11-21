@@ -41,5 +41,11 @@ $r=$receipt;$r['unit_id']=11;$check('wrong_room_unit',$r,$context,false,'receipt
 $r=$receipt;$r['kind']='cruise';$r['basis']='per_cabin_night';$c=$context;$c['kind']='cruise';$check('cruise_program_missing',$r,$c,false,'receipt_cruise_program_cabin_or_departure_missing');
 $r=$receipt;$r['kind']='sleeper_train';$r['basis']='per_cabin_trip';$r['train_id']=54552;$r['cabin_class']='Elite';$r['service_date']='2026-12-12';$r['boarding_station_id']=54231;$r['arrival_station_id']=54258;
 $c=$context;$c['kind']='sleeper_train';$c['train_id']=54552;$c['train_number']='86';$check('ramses_not_86_boarding',$r,$c,false,'receipt_train_boarding_station_invalid');
+$r['boarding_station_id']=(int)get_post_meta(54552,'trans_from_station_id',true);
+$r['departure_time']='19:45';$r['arrival_time']='09:25';
+$c['last_service_date']='2026-12-12';
+$check('matched_train_time_and_station_fixture',$r,$c,true);
+$r['departure_time']='21:00';
+$check('wrong_train_departure_time',$r,$c,false,'receipt_train_timetable_invalid');
 remove_all_filters('mad4b/package-cost-receipt/verify-authority');
 echo "CP4_COST_RECEIPT_GATE_TESTS_OK\n";
