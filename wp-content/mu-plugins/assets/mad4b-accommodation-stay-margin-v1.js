@@ -146,7 +146,7 @@ function makeBand(data={}){
  row.dataset.nightsBand='1';
  const from=control('number',{min:'1',max:'365',step:'1',placeholder:'1'});
  const to=control('number',{min:'1',max:'365',step:'1',placeholder:'365'});
- const pct=control('number',{min:'0',max:kind.value==='target_margin_percent'?'80':'300',
+ const pct=control('number',{min:'0',max:kind.value==='target_margin_percent'?'80':'100',
   step:'0.01',placeholder:'Enter %'});
  from.value=data.min_nights??'';
  to.value=data.max_nights??'';
@@ -383,7 +383,7 @@ kind.addEventListener('change',()=>{
  bands.hidden=inherited;add.disabled=inherited;
  if(inherited)bands.replaceChildren();
  for(const el of bands.querySelectorAll('[data-nights-band]')){
-  el.querySelectorAll('input')[2].max=kind.value==='target_margin_percent'?'80':'300';
+  el.querySelectorAll('input')[2].max=kind.value==='target_margin_percent'?'80':'100';
  }
 });
 finder.addEventListener('click',searchTargets);
