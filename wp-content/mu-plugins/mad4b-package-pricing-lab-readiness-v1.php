@@ -186,6 +186,12 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
      * Only explicit overnight-IN-city text is accepted as positive evidence;
      * missing text stays "review_needed", not a fabricated mismatch or match.
      */
+    /** Blocking errors prevent source candidate eligibility; absence of explicit
+     * overnight evidence is a review task and does not hide editorial options. */
+    public static function stageSourceAllowsCandidates(array $evidence):bool {
+        return !in_array((string)($evidence['status']??''),
+            ['itinerary_destination_conflict','invalid_stage_night_geometry'],true);
+    }
     public static function itineraryNightEvidence(int $tour,array $stage):array {
         $start=(int)($stage['source_day_start']??0);
         $nights=(int)($stage['nights']??0);
@@ -202,6 +208,11 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
         }
         $raw=get_post_meta($tour,'itinerary_item',true);
         $days=is_array($raw)?array_values($raw):[];
+        if(!$days || $start+$nights-1>count($days)){
+            $out['status']='invalid_stage_night_geometry';
+            $out['requires_editor_review']=true;
+            return $out;
+        }
         $cities=['cairo'=>'cairo','giza'=>'giza','luxor'=>'luxor',
             'aswan'=>'aswan','sharm'=>'sharm',
             'sharm el sheikh'=>'sharm','red sea'=>'red_sea_unspecified'];
@@ -294,6 +305,8 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
                 if(!$pid||isset($candidateIds[$pid]))continue;
                 $candidateIds[$pid]=true;
                 $decision=self::propertyEligibility($pid,$tierId,$destinationScope,$kind);
+                if($decision['eligible'] && !self::stageSourceAllowsCandidates($itineraryEvidence))
+                    $decision=['eligible'=>false,'reason'=>'stage_itinerary_conflicts_with_destination'];
                 if(!$decision['eligible']){
                     $excluded[]=['property_id'=>$pid,'title'=>get_the_title($pid),
                         'reason'=>$decision['reason']];
@@ -315,6 +328,8 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
                 if(!$pid||isset($candidateIds[$pid]))continue;
                 $candidateIds[$pid]=true;
                 $decision=self::propertyEligibility($pid,$tierId,$destinationScope,$kind);
+                if($decision['eligible'] && !self::stageSourceAllowsCandidates($itineraryEvidence))
+                    $decision=['eligible'=>false,'reason'=>'stage_itinerary_conflicts_with_destination'];
                 if(!$decision['eligible']){
                     $excluded[]=['property_id'=>$pid,'title'=>get_the_title($pid),
                         'reason'=>$decision['reason']];
