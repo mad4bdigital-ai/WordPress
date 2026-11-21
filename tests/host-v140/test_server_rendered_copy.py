@@ -26,7 +26,8 @@ class ServerRenderedExactCopyTests(unittest.TestCase):
                 ssr=re.search(r'<div id="mad4b-owner-copy-ssr-v140".*?</div>',html,re.S)
                 self.assertIsNotNone(ssr)
                 chunk=ssr.group(0)
-                self.assertIn('data-ui-version="v140"',chunk)
+                self.assertIn('data-ui-version="v141"',chunk)
+                self.assertIn("hidden role=",chunk)
                 self.assertIn('type="text" readonly value="'+PHRASE+'"',chunk)
                 self.assertIn('id="mad4b-exact-confirm-select-v140"',chunk)
                 self.assertIn(label,chunk)
@@ -44,6 +45,7 @@ class ServerRenderedExactCopyTests(unittest.TestCase):
         area=h.split('id="mad4b-owner-copy-ssr-v140"',1)[1].split('</div>',1)[0]
         self.assertIn(PHRASE,area)
         self.assertNotIn("Your review is already recorded",area)
+        self.assertNotIn("hidden role=",area)
 
     def test_unprivileged_user_has_no_confirmation_panel(self):
         h=fixture.php_fixture("existing",privileged=False)["html"]

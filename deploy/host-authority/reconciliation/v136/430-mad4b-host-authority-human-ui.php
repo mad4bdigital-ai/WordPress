@@ -251,9 +251,15 @@ final class MAD4B_Host_V3_Human_UI {
 #mad4b-owner-copy-ssr-v140 .button {min-height:36px;padding:6px 14px}
 #mad4b-owner-copy-ssr-v140 .v140-message {font-size:13px;color:#50575e;margin:8px 0 0}
 #mad4b-owner-copy-ssr-v140 [hidden] {display:none !important}
+<?php if ($existing) : ?>
+/* Once this owner has a review, the v134 confirmation/request form
+   is obsolete. Hide it on the SERVER, not only after JS hydration. */
+.mad4b-host-v3 section.v3-card[aria-labelledby="v3-review"] {display:none !important}
+#mad4b-owner-copy-ssr-v140 {display:none !important}
+<?php endif; ?>
 </style>
-<div id="mad4b-owner-copy-ssr-v140" data-ui-version="v140"
-     role="group" aria-label="<?php echo esc_attr($l['label']); ?>">
+<div id="mad4b-owner-copy-ssr-v140" data-ui-version="v141"
+     <?php if ($existing) : ?>hidden<?php endif; ?> role="group" aria-label="<?php echo esc_attr($l['label']); ?>">
   <label for="mad4b-exact-confirm-select-v140"><?php echo esc_html($l['label']); ?></label>
   <input id="mad4b-exact-confirm-select-v140" class="v140-exact-input"
      type="text" readonly value="<?php echo esc_attr($copyable); ?>"
@@ -420,6 +426,25 @@ function init() {
     const oldCards=Array.from(layout.querySelectorAll(".v3-card"))
         .filter(card=>!pane.contains(card));
     for (const card of oldCards) advancedBody.append(card);
+    // The v135 card contains a *second* Create review request button.
+    // The sole reviewed request now lives in v136's canonical flow.
+    // Keep v135's signed-proof intake available when Original313 actually
+    // publishes a verified offer; never leave duplicate submits actionable.
+    const remoteCard=oldCards.find(card=>{
+        if(typeof card.querySelector!=="function")return false;
+        const h=card.querySelector("h2");
+        return h && h.textContent==="Remote Owner Step-up";
+    }) || null;
+    if(remoteCard) {
+        const remoteButtons=typeof remoteCard.querySelectorAll==="function"
+            ? Array.from(remoteCard.querySelectorAll("button")) : [];
+        for(const b of remoteButtons.slice(0,2)){
+            b.hidden=true;b.style.display="none";b.disabled=true;
+            b.setAttribute("aria-hidden","true");
+        }
+        remoteCard.hidden=true;
+        remoteCard.style.display="none";
+    }
     // v134 uses the exact protocol phrase as an input placeholder. A
     // placeholder is not selectable; render an explicit copyable value
     // alongside the original, keeping the signed request protocol intact.
@@ -571,6 +596,10 @@ function init() {
     renderReview();
     api("/remote-status").then(result=>{
         rootOffer=result.signed_root_offer_present===true;
+        if(remoteCard){
+            remoteCard.hidden=!rootOffer;
+            remoteCard.style.display=rootOffer?"block":"none";
+        }
         if (!review || review.expires_epoch < Date.now()/1000) renderReview();
         if (rootOffer) {
             help.textContent=tr("offerHelp");
