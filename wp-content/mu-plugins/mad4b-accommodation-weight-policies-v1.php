@@ -607,6 +607,18 @@ final class MAD4B_Accommodation_Weight_Policies_V1 {
                 ['id'=>'unit','label'=>'Original Unit'],
                 ['id'=>'rate','label'=>'Original Property Rate (margin only)']]],
                JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT).';','before');
+        // Financial-length editor composes with the existing weights panel:
+        // it uses the original Property/Unit and Nights selection, not a new catalog.
+        $marginJS=WPMU_PLUGIN_DIR.'/assets/mad4b-accommodation-stay-margin-v1.js';
+        $marginCSS=WPMU_PLUGIN_DIR.'/assets/mad4b-accommodation-stay-margin-v1.css';
+        if(is_readable($marginJS)&&is_readable($marginCSS)){
+            wp_enqueue_style('mad4b-accommodation-stay-margin',
+                content_url('mu-plugins/assets/'.basename($marginCSS)),
+                ['mad4b-accommodation-weight-policy'],(string)filemtime($marginCSS));
+            wp_enqueue_script('mad4b-accommodation-stay-margin',
+                content_url('mu-plugins/assets/'.basename($marginJS)),
+                ['mad4b-accommodation-weight-policy'],(string)filemtime($marginJS),true);
+        }
     }
 }
 add_action('wp_ajax_'.MAD4B_Accommodation_Weight_Policies_V1::ACTION,
