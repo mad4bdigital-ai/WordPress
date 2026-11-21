@@ -24650,6 +24650,30 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-addon-registry.php",
+      "source_blob_sha": "b901793c67eba29764311e0fae5af016531c96a0",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "EXECUTION-01",
+        "CROSSPLUGIN-01",
+        "UPDATES-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php"
+      ],
+      "owner_role": "MAD4B first-party Provider/Add-on Registry security, source and Host reviewer; Production release authorization remains independent",
+      "review_rationale": "EXACT MANUAL SOURCE-ONLY WAYFA DYNAMIC RELEASE RING: The exact frozen Wayfatours Production Addon Registry implements an opt-in dynamic release ring with a site-bound certificate, while the latest Git source lost its dynamic policy validation and excluded the enrolled Site Profile from exact-pair authorization. This nonauthorizing manual source reconciliation restores a canonical strictly non-Production release policy; it validates the enrolled Site Profile UUID, digest, origin and URL; and it requires one uniquely matching provider/addon version, installed add-on main-file SHA, extension-point fingerprint, site UUID, profile digest and release-ring certificate. Duplicate or contradictory certificates must not be selected based on array order; unknown combinations fall back to shadow. Dynamic shadow and canary remain read-only; dynamic active only supplies a bounded execution-binding candidate subject to existing independent caller approval, source, runtime and commit-time fingerprint guards. Provider loss, addon deactivation, site/profile drift, plugin updates and registry epoch changes deny old commitments. Error-shaped provider observations must never crash or become certified strings. Frozen legacy explicit canary behavior and original pending Company Management addon exclusion remain unchanged. Repository and Hermetic tests carry no release authority, version approval, operator grant, or Production mutation.",
+      "coverage_reuse_rationale": "Reuses the independent current Site Profile origin/URL checks, exact provider/addon SHA/version, signed operation and commit-time mutation_guard contracts. The historical explicit-ring, empty catalog, and pending Company Management source exclusions remain unchanged. No new authorization or runtime mutator.",
+      "execution_note": "Original PHP 7.4 and PHP 8.5 full execution-binding fixture with exact dynamic site UUID/profile cases, foreign/error-shape denial, duplicate certificate denial, ring demotion, fingerprint drift and original static canary preserved; two inverted policy mutants verified detected. No Production data written.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
