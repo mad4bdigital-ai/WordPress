@@ -242,8 +242,8 @@ def approved_native_runtime_sha(site,wp):
     # Explicitly approved source-sha pair. A locally edited or partially
     # installed v2 file cannot impersonate this pair.
     released_v2_pairs={
-        'source':('e6a4bba04a1839be5ef400f76cf3b58762ebb7724508c5d168b397af21811993',
-                  '1ffefcb36102f39feb0cf6263b9b79b75a776721cd92c7a682ff845f5322edfb'),
+        'source':('13e98efebaef87918d38c1d5be30bd6cf45c9f40c0e3264a31beca79b4663a36',
+                  '249083d5aa0124ea1280a88f5062945cdff2885eca63b36ba5c66682b0faf3d1'),
         'wayfa':('597a31f0ea962d2700ead68f9856596727a4e07055650705f52ba57bbaf11119',
                  '249083d5aa0124ea1280a88f5062945cdff2885eca63b36ba5c66682b0faf3d1')}
     released_v2_422,released_v2_consumer=released_v2_pairs[site]
@@ -277,8 +277,8 @@ def approved_v2_consumer_sha(site,wp,runtime_sha):
     if site not in CONFIG or wp!=CONFIG[site][2] or wp.is_symlink():
         raise ValueError('MULTI_CSS_V2_COMPANY_ROOT_UNTRUSTED')
     approved_pairs={
-        'source':('e6a4bba04a1839be5ef400f76cf3b58762ebb7724508c5d168b397af21811993',
-                  '1ffefcb36102f39feb0cf6263b9b79b75a776721cd92c7a682ff845f5322edfb'),
+        'source':('13e98efebaef87918d38c1d5be30bd6cf45c9f40c0e3264a31beca79b4663a36',
+                  '249083d5aa0124ea1280a88f5062945cdff2885eca63b36ba5c66682b0faf3d1'),
         'wayfa':('597a31f0ea962d2700ead68f9856596727a4e07055650705f52ba57bbaf11119',
                  '249083d5aa0124ea1280a88f5062945cdff2885eca63b36ba5c66682b0faf3d1')}
     released_runtime,approved=approved_pairs[site]
