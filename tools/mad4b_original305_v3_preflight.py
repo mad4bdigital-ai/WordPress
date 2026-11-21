@@ -23,8 +23,10 @@ PROFILE=Path("/opt/mad4b-company-transport/host-runner-readonly-toursdev-v129/pr
 ROOT_TRUST=Path("/opt/hostinger-migrations/hosting-3/etg-commerce-staging/site-copy/wp-content/mu-plugins/000-mad4b-host-v3-root-trust.php")
 WORKER_SOURCE=Path("/opt/mad4b-company-transport/native-313-independent/host-source-v1")
 STATUS_CONTRACT="mad4b.original305.host-v3-root-preflight.v1"
+POLICY=Path("/etc/mad4b/native-source-publisher-policy.v2.json")
+ROLE_CENSUS=Path("/opt/mad4b-company-transport/host-authority-v133-root-role-pins/V3-ROOT-PUBLIC-ROLE-CENSUS.json")
 MANIFEST="dynamic-operation-registry-v1/providers/host.source.release/manifest.v8.json"
-MU_PUBLIC_SHA="9ac13f38b8a685d54ed89a5f0624d04d7e08f42b98604012e247be3878254d3d"
+MU_PUBLIC_SHA="325b954c9c1059ad37371b170c2cc82c1f64f3bce4bf851c45e5d9bea610a538"
 EXPECTED_SITE="e5e64bca-ed62-48d2-b2b3-dff693cd702a"
 EXPECTED_ORIGIN="https://tours.dev.mad4b.com"
 
@@ -66,8 +68,26 @@ def status()->dict:
         or bind["site_uuid"]!=EXPECTED_SITE or bind["origin"]!=EXPECTED_ORIGIN
         or bind["environment"]!="staging" or bind["company"]!="mad4b-central"):
         raise ReadinessHold("SITE_BINDING_READONLY_PROFILE_CHANGED")
+    role=json.loads(check_root_file(ROLE_CENSUS))
+    if (role.get("contract")!="mad4b.host-v133.original-v3-verified-public-roles.v1"
+        or role.get("site_uuid")!=EXPECTED_SITE
+        or role.get("origin")!=EXPECTED_ORIGIN
+        or role.get("root_public_role_mapping")!="SOURCE_VERIFIED_STAGING_ONLY"
+        or role.get("existing_firstparty_registry_sha256")!=hashlib.sha256(
+            check_root_file(INDEX)).hexdigest()
+        or role.get("existing_firstparty_publisher_policy_sha256")!=hashlib.sha256(
+            check_root_file(POLICY)).hexdigest()
+        or role.get("existing_firstparty_original312_resource_public_b64")!=
+            registry["host_resource_312_public_key_b64"]
+        or role.get("existing_firstparty_original313_independent_public_b64")!=
+            registry["independent_verifier_public_key_b64"]
+        or role.get("human_owner_v3_stepup_signed") is not False
+        or role.get("original312_v3_issuer_enabled") is not False
+        or role.get("standing_host_write_authorized") is not False):
+        raise ReadinessHold("ROOT_V133_PUBLIC_ROLES_SOURCE_DRIFT")
     current_sha=hashlib.sha256(ROOT_TRUST.read_bytes()).hexdigest()
-    if current_sha!=MU_PUBLIC_SHA:
+    if (current_sha!=MU_PUBLIC_SHA
+        or current_sha!=role.get("wordpress_public_verifier_desired_sha256")):
         raise ReadinessHold("ROOT_PUBLIC_VERIFIER_SOURCE_DRIFT")
     if not HOLD.is_file() or HOLD.is_symlink():
         raise ReadinessHold("ORIGINAL305_HOLD_MARKER_CHANGED_REVIEW_REQUIRED")
@@ -97,6 +117,9 @@ def status()->dict:
       "current_original_registry_sha256":hashlib.sha256(
           check_root_file(INDEX)).hexdigest(),
       "root_public_verifier_live_sha256":current_sha,
+      "original312_v3_public_role_provenance_verified":True,
+      "original305_master_legacy_policy_role_provenance_verified":True,
+      "original305_v3_owner_stepup_not_yet_issued":True,
       "approved_write":False,
       "automatic_signature_attempted":False,
       "production_authorized":False,

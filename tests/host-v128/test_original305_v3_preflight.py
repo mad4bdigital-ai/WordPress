@@ -49,6 +49,29 @@ class Original305PreflightTests(unittest.TestCase):
           "reason_code":"ISSUER_SIGNED_RESULT_UNCONFIRMED",
           "automatic_retry_allowed":False}))
         self.hold.chmod(0o600)
+        self.role_file=self.root/"v133-roles.json"
+        pol_file=self.root/"publisher-policy-v2.json"
+        pol_file.write_text(json.dumps({"contract":"mad4b.native-source-publisher-policy.v2"}))
+        pol_file.chmod(0o600)
+        self.role={
+          "contract":"mad4b.host-v133.original-v3-verified-public-roles.v1",
+          "site_uuid":p.EXPECTED_SITE,"origin":p.EXPECTED_ORIGIN,
+          "root_public_role_mapping":"SOURCE_VERIFIED_STAGING_ONLY",
+          "existing_firstparty_registry_sha256":hashlib.sha256(self.index.read_bytes()).hexdigest(),
+          "existing_firstparty_publisher_policy_sha256":hashlib.sha256(pol_file.read_bytes()).hexdigest(),
+          "existing_firstparty_original312_resource_public_b64":base64.b64encode(bytes([0x33])*32).decode(),
+          "existing_firstparty_original313_independent_public_b64":base64.b64encode(self.pub313).decode(),
+          "human_owner_v3_stepup_signed":False,
+          "original312_v3_issuer_enabled":False,
+          "standing_host_write_authorized":False,
+          "wordpress_public_verifier_desired_sha256":hashlib.sha256(self.trust.read_bytes()).hexdigest(),
+        }
+        self.role_file.write_text(json.dumps(self.role))
+        self.role_file.chmod(0o600)
+        self.payload["host_resource_312_public_key_b64"]=self.role["existing_firstparty_original312_resource_public_b64"]
+        self.index.write_text(json.dumps(self.payload))
+        self.role["existing_firstparty_registry_sha256"]=hashlib.sha256(self.index.read_bytes()).hexdigest()
+        self.role_file.write_text(json.dumps(self.role))
         patches=(
           mock.patch.object(p,"INDEX",self.index),
           mock.patch.object(p,"REGISTRY",self.reg),
@@ -56,6 +79,8 @@ class Original305PreflightTests(unittest.TestCase):
           mock.patch.object(p,"PROFILE",self.profile),
           mock.patch.object(p,"HOLD",self.hold),
           mock.patch.object(p,"ROOT_TRUST",self.trust),
+          mock.patch.object(p,"ROLE_CENSUS",self.role_file),
+          mock.patch.object(p,"POLICY",pol_file),
           mock.patch.object(p,"MU_PUBLIC_SHA",hashlib.sha256(self.trust.read_bytes()).hexdigest()),
           mock.patch.object(p.os,"geteuid",return_value=0),
           # CI may run as a non-root user. These fixture files represent
@@ -64,6 +89,15 @@ class Original305PreflightTests(unittest.TestCase):
           mock.patch.object(p,"check_root_file",side_effect=lambda path:path.read_bytes()),
         )
         for patch in patches:patch.start();self.addCleanup(patch.stop)
+
+    def test_original312_public_resource_pin_is_verified(self):
+        self.assertTrue(p.status()["original312_v3_public_role_provenance_verified"])
+
+    def test_root_v133_role_tamper_denied(self):
+        self.role["standing_host_write_authorized"]=True
+        self.role_file.write_text(json.dumps(self.role))
+        with self.assertRaisesRegex(p.ReadinessHold,"ROOT_V133_PUBLIC_ROLES_SOURCE_DRIFT"):
+            p.status()
 
     def test_real_registered_v8_manifest_verified_without_v3_approval(self):
         result=p.status()
