@@ -5,6 +5,7 @@
  * Description: Conditional read-only per-Package/tier hotel, unit and supplier cost gap inventory alongside existing Pricing Lab strategy simulator.
  */
 defined('ABSPATH') || exit;
+require_once __DIR__.'/mad4b-package-stage-sourcing-v1.php';
 if(!class_exists('MAD4B_Package_Pricing_Lab_Readiness_V1',false)){
 final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
     const AJAX='mad4b_package_pricing_lab_read_v1';
@@ -407,6 +408,9 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
                 'supplier_receipt_approved'=>is_array($receipt)&&($receipt['status']??'')==='approved',
                 'native_rate_stage_written'=>!empty($b['native_rate_stage_written']),
                 'cruise_program_term'=>(int)(is_array($program)?($program['program_term_id_en']??0):0),
+                // Separate from saved qualified Package candidates; these
+                // are real-site *discovery options*, never price authority.
+                'source_discovery'=>MAD4B_Package_Stage_Sourcing_V1::inspect($tour,$p,$tierId),
                 'candidates'=>$candidates
             ];
         }
