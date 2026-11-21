@@ -481,7 +481,17 @@ trait MAD4B_SCP_Content_Readiness_Scanning_Trait {
                     && is_array($dtEvidence['fields'])
                     && is_array($dtEvidence['sample_urls']??null)
                     && !empty($dtEvidence['reference_count']);
-                $valid=$wpmlPriorityValid && is_array($row) && ($dfsb||$localization||$performance||$pricing||$structural||$ratePlan||$gallery||$gttd||$companyPolicy||$companyTourPublication||$faqGap||$homeCopy||$elementorCopy||$mediaOrigin||$tourPhotoQuality||$storyMonitor||$nileInheritance||$destinationTermAlerts) &&
+                // CP4 source rows are admitted only when independently
+                // regenerated from the live stage/source receipt evidence.
+                $cp4Cost=($source==='mad4b-package-cost-readiness')
+                    && $type==='tours-and-activities' && $object_id>0
+                    && get_post_type($object_id)===$type
+                    && get_post_status($object_id)==='publish'
+                    && ($row['severity']??'')==='high'
+                    && preg_match('/^cp4_cost_[a-f0-9]{12}$/D',$code)
+                    && class_exists('MAD4B_CP4_Cost_Alerts_V1',false)
+                    && MAD4B_CP4_Cost_Alerts_V1::admissible((array)$row);
+                $valid=$wpmlPriorityValid && is_array($row) && ($dfsb||$localization||$performance||$pricing||$structural||$ratePlan||$gallery||$gttd||$companyPolicy||$companyTourPublication||$faqGap||$homeCopy||$elementorCopy||$mediaOrigin||$tourPhotoQuality||$storyMonitor||$nileInheritance||$destinationTermAlerts||$cp4Cost) &&
                     hash_equals($expected,$id) &&
                     in_array($row['severity']??'',array('critical','high','medium','low'),true) &&
                     is_string($row['label']??null) &&
@@ -495,6 +505,15 @@ trait MAD4B_SCP_Content_Readiness_Scanning_Trait {
                     'severity'=>$row['severity'],'label'=>sanitize_text_field($row['label']),
                     'source'=>$source
                 );
+                if($cp4Cost) {
+                    $e=$row['source_evidence'];
+                    $accepted['source_evidence']=array_intersect_key($e,array_flip([
+                        'contract','site_uuid','stage_key','kind','source_day_start',
+                        'owner_group','action','reason_codes','source_sha256',
+                        'source_is_commercial_approval','checkout_authorized'
+                    ]));
+                    $accepted['priority']=85;
+                }
                 if($destinationTermAlerts) {
                     $accepted['source_evidence']=array_intersect_key($dtEvidence,array_flip(array(
                         'contract','site_uuid','taxonomy','term_id','fields','meta_ids',

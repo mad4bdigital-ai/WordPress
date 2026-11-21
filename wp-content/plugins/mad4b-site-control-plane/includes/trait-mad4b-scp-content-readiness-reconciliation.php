@@ -510,6 +510,12 @@ trait MAD4B_SCP_Content_Readiness_Reconciliation_Trait {
         if(($issue['source']??'')==='mad4b-media-origin-integrity')
             return class_exists('MAD4B_Media_Origin_Integrity_V1',false)
                 && has_filter('mad4b/content_readiness/external_issues')!==false;
+        // CP4 alerts resolve only with a complete current native source census.
+        // If the provider is unavailable or the stage source changes mid-scan,
+        // retain every existing alert rather than treating an omission as approval.
+        if(($issue['source']??'')==='mad4b-package-cost-readiness')
+            return class_exists('MAD4B_CP4_Cost_Alerts_V1',false)
+                && MAD4B_CP4_Cost_Alerts_V1::can_resolve((array)$issue);
         if(($issue['source']??'')==='mad4b-rate-planner')return false; // Only its explicit, covered Tour/period scan may resolve planner gaps.
         if(($issue['source']??'')==='mad4b-locale-experience' &&
             preg_match('/^lexp_(?:asset_http_error|cross_locale_link|visible_term_parity|filter_visibility_drift|untranslated_ui_candidate)_[a-z]{2}$/D',(string)($issue['code']??'')))
