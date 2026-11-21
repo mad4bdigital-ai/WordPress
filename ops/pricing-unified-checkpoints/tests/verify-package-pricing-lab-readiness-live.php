@@ -90,7 +90,16 @@ if($wayfa){
     $assert($summary['supplier_receipts_approved']===0,'no invented supplier receipts');
     $assert($summary['native_stage_rows_written']===0,'no Rate stage written by audit');
 }else{
-    $assert(count($rows)===0,'source site has no package source plans as of checkpoint');
+    // Tours.dev Package source plans are independently reconciled at runtime.
+    // Do not pin their count to an older empty-site checkpoint.
+    $assert(is_array($rows),'Tours.dev saved Package catalog is readable');
+    foreach($rows as $p){
+        $tour=(int)$p['id'];
+        $guard=MAD4B_Package_Stage_Rate_Guard_V1::review(
+            $tour,(int)$tiers[0]['id'],'2027-02-01','2027-02-28');
+        $assert(!empty($guard['applies'])&&$guard['ready']===false,
+            'source Package remains commercially unverified '.$tour);
+    }
 }
 $assert($beforePosts===(int)$GLOBALS['wpdb']->get_var(
         "SELECT COUNT(*) FROM {$GLOBALS['wpdb']->posts} WHERE post_type='tour-rates'"),
