@@ -74,3 +74,9 @@ device, CSS epoch, JetEngine listing generation, Elementor global generation
 and timestamp. Both generations are re-checked on every RUM POST against the
 current WordPress source; a stale HTML token fails closed on source changes.
 Previously cached v1 tokens are rejected and can simply skip observations.
+
+## Verified production RUM activation and E2E receipt (2026-11-21)
+- Wayfatours: exactly-once resource-guarded schema activation succeeded at 12:08:26 UTC. The temporary activation cron self-disabled and retained a root receipt. Observe samples 100bps of eligible consenting visits; live CSS canary remains 0%.
+- Wayfatours: signed v2 token POST to the real first-party WordPress REST endpoint returned HTTP202, inserted four histogram counts; synthetic route+variant counters were deleted and verified absent. Test code: tests/e2e-wayfa-rum-v2.sh.
+- WordPress runtime files 421/422, v2 certificates, FastCGI cache keys and public CSS remained unchanged by adaptive RUM deployment.
+- A few WP-CLI stderr entries about missing FluentCRM/FluentBoards abilities are unrelated to RUM; they do not authorize any change to Fluent components.
