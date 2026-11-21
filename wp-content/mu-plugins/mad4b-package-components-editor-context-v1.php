@@ -164,9 +164,12 @@ final class MAD4B_Package_Components_Editor_Context_V1 {
             ],
             // A source-linked editorial stage and a Rate price are NOT
             // equivalent to an approved supplier COST or checkout-ready Rate.
-            'cost'=>['verified'=>false,'amount_shown'=>false,
-                'checkout_activation'=>false,
-                'message'=>'Component costs and financial policy require independent supplier review'],
+            'cost'=>['evaluated'=>false,'verified'=>null,
+                'known_guide_days_needing_review'=>$guide['unknown_days'],
+                'known_stay_units_needing_selection'=>$needsUnits,
+                'known_stay_supplier_receipts_missing'=>$needsReceipts,
+                'amount_shown'=>false,'checkout_activation'=>false,
+                'message'=>'This editorial panel does not issue cost certification; use the original provider review'],
         ];
     }
     private static function editUrl(int $post):string {
@@ -199,7 +202,7 @@ final class MAD4B_Package_Components_Editor_Context_V1 {
         $rateNew=current_user_can('edit_posts')
             ?admin_url('post-new.php?post_type=tour-rates'):'';
         $rateAction=$rateUrl?:$rateNew;
-        $rateActionLabel=$rateUrl?'Open original Tour Rate':'Create Tour Rate · select Tour first';
+        $rateActionLabel=$rateUrl?'Open first linked Tour Rate · select correct tier':'Create Tour Rate · select Tour first';
         $guide=$v['guide'];$stay=$v['accommodation'];$transport=$v['transportation'];
         echo '<div class="mad4b-pkg-context">';
         echo '<p class="description">Shown only for tours classified as <strong>Packages</strong>. This is a read-only preparation checklist, not a second Tour Rate or cost editor. The existing <strong>Queried Rates</strong> field remains the one Rate inventory in the Tour.</p>';
@@ -237,8 +240,8 @@ final class MAD4B_Package_Components_Editor_Context_V1 {
         $costUrl=current_user_can('commerce_manage_pricing')&&
             current_user_can('manage_woocommerce')
             ?admin_url('admin.php?page=dynamic-pricing-controls'):'';
-        self::line('5. Cost & financial readiness','Not commercially certified',
-            'Finish reviewed supplier cost receipts, children/infants, FX, taxes, margin, and customer price inclusion before generation or checkout. No automatic pricing is performed.',
+        self::line('5. Cost & financial readiness','Not certified by this panel',
+            'Check the original provider cost receipts, children/infants, FX, taxes, margin, and customer price inclusion before generation or checkout. This read-only view does not certify or change a selling Rate.',
             $costUrl,'Review existing Pricing Controls');
         echo '</ol>';
         echo '<p class="description mad4b-pkg-context__footer">For other Rate variants, use the Tour\'s existing Queried Rates inventory. This panel does not save, select, or synchronize any additional Rate IDs.</p>';
