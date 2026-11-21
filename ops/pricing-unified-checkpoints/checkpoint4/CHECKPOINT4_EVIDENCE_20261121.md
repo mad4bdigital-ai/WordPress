@@ -35,7 +35,7 @@ On Wayfatours changed only native transportations 54552 and 54553: source/destin
 Read-only `MAD4B_Package_Supplier_Admission_V1::inspect()` now derives stage service dates using the original itinerary `source_day_start`, rejects unqualified receipt data and returns receipt blockers. Existing commercial `rate_generation_ready=false`, `checkout_ready=false` behavior stays unchanged. A hypothetical signed valid fixture in the WP-CLI test is **test-only**, not a real receipt.
 
 ## Live regression
-Two sites: 11/11 receipt gate tests each, including unauthorized signature fail, positive signed mock, mismatched FX/date/occupancy, expired inventory, self estimate, missing source, wrong room/cabin and incorrect Ramses boarding. The live read-only checkpoint test passes on both sites.
+Two sites: 13/13 receipt gate tests each, including unauthorized signature fail, positive signed mock, mismatched FX/date/occupancy, expired inventory, self estimate, missing source, wrong room/cabin and incorrect Ramses boarding, a correctly matched Abela 86 QA fixture and a mismatched departure time. The live read-only checkpoint test passes on both sites.
 
 Eight canonical Package tours, **28 stage records per company, 0 approved/source Cost Receipts**. 60623 sample request date 12 December 2026 creates 5 stage-specific service windows on 12, 13, 14–16, 17 and 18 December. **No tour rate, checkout or customer price was changed.**
 
