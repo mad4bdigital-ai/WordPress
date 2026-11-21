@@ -105,6 +105,9 @@ $GLOBALS['approved_guide']=true;
 $b=$cls::inspect(101,'2027-01-18','EGP',2,0,0);
 check($b['components']['guide']['cost_qualified']===true,'verified guide costs recognized');
 check($b['components']['guide']['source_cost_egp']===5000.0,'correct cost-only readback');
+check($b['components']['guide']['included_in_customer_price']===null &&
+      $b['components']['guide']['not_added_to_retail_price']===true,
+      'unknown Tour Rate guide inclusion must not be double-charged');
 check(!in_array('guide:guide_coverage_not_reviewed',$b['blockers'],true),'no false guide ready blocker');
 check($b['checkout_ready']===false && $b['total_cost_minor']===null &&
       $b['rate_generation_ready']===false,'no selling, checkout or generation authority');
