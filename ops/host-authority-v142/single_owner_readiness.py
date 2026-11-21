@@ -108,6 +108,15 @@ def evaluate(*,original305:dict, archive313:dict,
     # scoped operation grants remain distinct checks in their own channel.
     code=("FIRSTPARTY_ISSUANCE_READBACK_REQUIRED" if not blockers
           else "WAITING_FOR_INDEPENDENT_FIRSTPARTY_EVIDENCE")
+    if not checks["independent_owner_signer_enrolled"]:
+        owner_action=("PREPARE_DEVICE_HELD_OWNER_PUBLIC_KEY_"
+                      "AND_REGISTER_WITH_INDEPENDENT_FIRSTPARTY_IDENTITY_AUTHORITY")
+    elif not checks["complete_original313_history"] or not checks["fresh_signed_original313_predecessor"]:
+        owner_action="WAIT_FOR_INDEPENDENT_ORIGINAL313_SIGNED_OFFER"
+    elif not checks["human_owner_stepup_registered"]:
+        owner_action="SIGN_FRESH_EXACT_ORIGINAL313_OFFER_ON_OWNER_DEVICE"
+    else:
+        owner_action="NO_REPEAT_WORDPRESS_REVIEW"
     return {
       "contract":CONTRACT,"observed_epoch":now,
       "site_uuid":SITE,"company":"mad4b-central","environment":"staging",
@@ -123,7 +132,7 @@ def evaluate(*,original305:dict, archive313:dict,
          original305.get("original305_legacy_hold_reason"),
       "host_signed_current_snapshot_sha256":current.get("snapshot_sha256"),
       "source_activation_state":standby["activation_state"],
-      "owner_action":"NONE_UNTIL_SIGNED_ORIGINAL313_OFFER_AND_ENROLLED_SIGNER",
+      "owner_action":owner_action,
       "original305_retry_performed":False,
       "owner_signature_issued":False,
       "v3_enrollment_issued":False,
