@@ -43,7 +43,14 @@ $ensure('live_no_fake_supplier_cost',is_array($empty)&&$empty['cost_reference']=
 $ensure('live_preview_no_checkout',is_array($empty)&&$empty['checkout_ready']===false);
 $ensure('live_preview_no_price_write',is_array($empty)&&$empty['mutation_performed']===false);
 $ensure('cost_preview_does_not_reprice',is_array($empty)&&$empty['price_status']==='unpriced_or_cost_only');
-$rate=get_posts(['post_type'=>'property-rates','post_status'=>'draft','fields'=>'ids','posts_per_page'=>1]);
+// Select an actual legacy Unit-linked fixture, not the newest Property-wide
+// supplier quote Draft created by the native import workflow.
+$allRates=get_posts(['post_type'=>'property-rates','post_status'=>'draft','fields'=>'ids',
+ 'posts_per_page'=>200,'suppress_filters'=>true]);
+$rate=[];
+foreach($allRates as $candidate)if((int)get_post_meta($candidate,'prop_related_unit_id',true)>0){
+ $rate=[(int)$candidate];break;
+}
 if($rate){
  $id=(int)$rate[0];
  $original=(int)get_post_meta($id,'prop_related_unit_id',true);
