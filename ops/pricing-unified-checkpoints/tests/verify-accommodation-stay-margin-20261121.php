@@ -36,6 +36,10 @@ $error($margin::validate(array_replace($valid,['pricing_rule_kind'=>'inherit']))
  'stay_margin_kind_bands_mismatch');
 $error($margin::validate(array_replace($valid,['pricing_rule_kind'=>'fixed_profit'])),
  'stay_margin_kind_invalid');
+$error($margin::validate(array_replace($valid,[
+ 'pricing_rule_kind'=>'markup_percent',
+ 'bands'=>[['min_nights'=>1,'max_nights'=>2,'percent'=>'101']]])),
+ 'stay_margin_percent_out_of_range');
 $error($margin::authorize('invalid',0),'stay_margin_scope_invalid');
 $qa=67063;$post=get_post($qa);
 $check($post instanceof WP_Post&&$post->post_type==='properties'
