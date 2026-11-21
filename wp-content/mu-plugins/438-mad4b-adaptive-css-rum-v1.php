@@ -80,7 +80,15 @@ final class MAD4B_Adaptive_CSS_RUM_V1 {
         $id=(int)get_queried_object_id();
         $modified=$id>0?(string)get_post_field('post_modified_gmt',$id):'';
         $route=hash('sha256',self::host().'|'.$language.'|'.$path.'|'.$market.'|'.$currency);
-        $variant=hash('sha256',$route.'|'.$device.'|'.$epoch.'|'.$modified);
+        // Source epochs are not enough on JetEngine listing routes. An
+        // Elementor/listing global generation change makes the previous
+        // aggregate incompatible even if the individual post is untouched.
+        $listingGeneration=(int)get_option('mad4b_ccss_listing_generation_v1',0);
+        $globalGeneration=(int)get_option('mad4b_ccss_global_generation_v1',0);
+        if ($listingGeneration<0||$listingGeneration>1000000000
+            ||$globalGeneration<0||$globalGeneration>1000000000)return null;
+        $variant=hash('sha256',implode('|',['v2',$route,$device,$epoch,
+              $globalGeneration,$listingGeneration,$modified]));
         return [$site,$route,$variant,$device,(string)$epoch];
     }
     public static function signed_proof(array $fields,int $created):string {
@@ -120,12 +128,14 @@ final class MAD4B_Adaptive_CSS_RUM_V1 {
           'sampleBps'=>$policy['sample_bps'],
           'proof'=>self::signed_proof($scope,time()),
           'endpoint'=>rest_url('mad4b-css/v1/rum'),
-          'vendor'=>content_url(self::ASSETS.'web-vitals-6.2.3.iife.js')];
+          'vendor'=>content_url(self::ASSETS.'web-vitals-6.2.3.iife.js').
+             '?v='.(string)filemtime($vendor)];
         $json=wp_json_encode($cfg,JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_QUOT|JSON_HEX_APOS);
         if (!$json)return;
         echo '<script data-no-optimize="1" id="mad4b-css-rum-config">window.MAD4B_CSS_RUM='.$json.';</script>';
         echo '<script data-no-optimize="1" id="mad4b-css-rum-client" defer src="'.
-             esc_url(content_url(self::ASSETS.'mad4b-css-rum-client.js')).'"></script>';
+             esc_url(content_url(self::ASSETS.'mad4b-css-rum-client.js').
+                '?v='.(string)filemtime($client)).'"></script>';
     }
     public static function bucket(string $metric,int $value):int {
         if (!isset(self::LIMITS[$metric])||$value<0||$value>60000)

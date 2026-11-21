@@ -26,4 +26,7 @@ assert.strictEqual(trial(true,{sampleBps:0}).appended.length,0);
 assert.strictEqual(trial(true,{vendor:'https://other.example/evil.js'}).appended.length,0);
 assert.strictEqual(trial(true,{endpoint:'http://tours.dev.mad4b.com/rum'}).appended.length,0);
 assert.strictEqual(trial(true,{mode:'off'}).appended.length,0);
-console.log('PASS 6 consent, probability and same-origin RUM JS invariants');
+assert(code.includes("d.addEventListener('visibilitychange',function()") &&
+       code.includes("w.addEventListener('pagehide',send);") &&
+       !code.includes("setTimeout(send,150)"));
+console.log('PASS 7 consent, probability, same-origin and synchronous unload RUM JS invariants');

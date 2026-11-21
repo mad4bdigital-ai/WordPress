@@ -47,3 +47,16 @@ Source: PR #989; site-owned, company-scoped CSS architecture.
 - cat tests/php-pre.php 438-mad4b-adaptive-css-rum-v1.php tests/php-post.php tests/php-rest.php | php
 
 Vendor web-vitals IIFE is from Google's Apache-2.0 project, pinned to version 6.2.3 and SHA256 1e5e9b9af6b8d71cfef508e5a869c53b4cf2bbccad8c9b5ac664c34e93f6151a.
+
+## Independent adaptive rollout status
+- RUM JS URL versioning uses the first-party file mtime so corrected client code is not confused with a stale browser cache.
+- Cohort hash includes the trusted mobile/desktop device, CSS epoch, Elementor/global and JetEngine listing generation, and individual post revision; no cross-language or market aggregation.
+- The cache isolation scanner is a mandatory fail-closed read-only preflight. On 21 Nov both source and Wayfa report HOLD_CACHE_ISOLATION: active Nginx has no signed public CSS cohort cache separation. User traffic canary=0%; only existing certified Native/CCSS delivery is unchanged.
+- The site's public-css authoritative 421/422 files are never modified by the RUM plugin. RUM never creates or issues certificates.
+
+## Verified deployment checkpoint (2026-11-21)
+- Tours.dev Staging: mode observe, 100 basis points, signed REST HTTP202 -> actual MariaDB histogram 4 counters, synthetic fixture deleted in a finally clause; source's 421/422 and FastCGI remain untouched.
+- Wayfatours Production: additive plugin and pinned local JS installed, sample mode off until independently admitted source WP-CLI schema installation (CPU/WP-CLI guard and worker lock).
+- Public CSS Canary: zero percent; both real Nginx profiles fail cache partition and first-party cohort attestation. No unqualified CSS reaches public visitors.
+- The 30-day histograms are observational, not anti-spoofed evidence of a controlled A/B test until the signed serving arm is added at the edge.
+- The original worker and the existing 5-viewport synthetic QA continue to hold the source-based certificate authority.

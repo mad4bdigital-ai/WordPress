@@ -4,6 +4,8 @@ $_SERVER['HTTP_HOST']='tours.dev.mad4b.com';
 function get_option($key,$default=null) {return match($key){
   'home'=>'https://tours.dev.mad4b.com',
   'mad4b_css_ai_epoch_v1'=>14,
+  'mad4b_ccss_listing_generation_v1'=>($GLOBALS['genListing']??0),
+  'mad4b_ccss_global_generation_v1'=>($GLOBALS['genGlobal']??0),
   'mad4b_css_rum_v1'=>['mode'=>'observe','sample_bps'=>100],
   default=>$default};}
 function wp_get_environment_type(){return 'staging';}

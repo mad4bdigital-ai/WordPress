@@ -65,10 +65,12 @@
     api.onLCP(receive,{reportAllChanges:true});
     api.onINP(receive,{reportAllChanges:true});
     api.onCLS(receive,{reportAllChanges:true});
+    // The page may be destroyed immediately after pagehide. Keepalive
+    // fetch must be initiated synchronously, never through a future timer.
     d.addEventListener('visibilitychange',function(){
-      if(d.visibilityState==='hidden')w.setTimeout(send,150);
+      if(d.visibilityState==='hidden')send();
     });
-    w.addEventListener('pagehide',function(){w.setTimeout(send,150);});
+    w.addEventListener('pagehide',send);
     w.addEventListener('pageshow',function(e){if(e.persisted){sent=false;m={};}});
   }
   var script=d.createElement('script');
