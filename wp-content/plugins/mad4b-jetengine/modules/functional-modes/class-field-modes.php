@@ -294,12 +294,19 @@ final class MAD4B_JetEngine_Field_Modes_V1 {
         }
         // Shared modern JetEngine field cards, types and native Save: loaded
         // for all supported Options Pages, not solely the Pricing Recipe.
-        wp_enqueue_style('mad4b-jetengine-field-recipe',
-            $url.'jetengine-field-recipe.css',
-            ['mad4b-jetengine-functional-modes'],
-            (string)filemtime(self::$dir.'/assets/jetengine-field-recipe.css'));
-
-        MAD4B_JetEngine_Recipe_Registry_V1::enqueue('options', $slug);
+        // Recipe Registry is a separately installed optional module. A
+        // company can have core Functional Modes without the Recipe bundle.
+        // The native JetEngine editor must still load and save normally.
+        $recipeStyle = self::$dir . '/assets/jetengine-field-recipe.css';
+        if (is_readable($recipeStyle)) {
+            wp_enqueue_style('mad4b-jetengine-field-recipe',
+                $url.'jetengine-field-recipe.css',
+                ['mad4b-jetengine-functional-modes'],
+                (string)filemtime($recipeStyle));
+        }
+        if (class_exists('MAD4B_JetEngine_Recipe_Registry_V1', false)) {
+            MAD4B_JetEngine_Recipe_Registry_V1::enqueue('options', $slug);
+        }
 
         wp_enqueue_script('mad4b-jetengine-repeater-overview', $url.'repeater-overview.js',
             ['mad4b-jetengine-functional-modes'], (string)filemtime(self::$dir.'/assets/repeater-overview.js'), true);

@@ -1,0 +1,1054 @@
+/*
+ * MAD4B Unified JetEngine Workspace surface v1.
+ * Styling only. Native <form>, .cx-control inputs, JetEngine repeaters, and all
+ * service panels retain their original DOM location and Save authority.
+ * Deliberately scoped to Grouped JetEngine view: raw native mode is untouched.
+ */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell{
+ --mad4b-shell-paper:#fff;
+ --mad4b-shell-border:#dbe4e8;
+ --mad4b-shell-accent:#17675d;
+ --mad4b-shell-tint:#f3f8f6;
+ --mad4b-shell-ink:#253f49;
+ --mad4b-shell-gap:14px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell
+ .mad4b-ws-nav-group-label{
+ padding:12px 10px 7px;
+ margin-top:9px;
+ font-size:10px;
+ font-weight:800;
+ letter-spacing:.07em;
+ text-transform:uppercase;
+ color:#637d80;
+ border-top:1px solid #e6ecef;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell
+ .mad4b-ws-nav-group-label:first-child{
+ margin-top:0;
+ padding-top:5px;
+ border-top:0;
+}
+/* Company settings: Workspace section heading and original JetEngine form
+   are TWO independent DOM elements yet ONE visual column, joined seamlessly. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell:not([data-mad4b-pricing-pane]):not(.mad4b-guide-cost-tab-active)
+ .mad4b-ws-content{
+ border:1px solid var(--mad4b-shell-border);
+ border-bottom:0;
+ border-radius:13px 13px 0 0;
+ background:var(--mad4b-shell-paper);
+ padding-bottom:9px;
+ box-shadow:none;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell:not([data-mad4b-pricing-pane]):not(.mad4b-guide-cost-tab-active)
+ >.mad4b-ws-original{
+ background:var(--mad4b-shell-paper)!important;
+ border:1px solid var(--mad4b-shell-border)!important;
+ border-top:0!important;
+ border-radius:0 0 13px 13px!important;
+ box-shadow:none!important;
+ padding:0 15px 15px!important;
+ margin-top:calc(-1 * var(--mad4b-shell-gap))!important;
+ box-sizing:border-box;
+ min-width:0;
+ position:relative;
+}
+/* Remove the duplicated JetEngine page shell (including the native H1-like
+   title), NOT the form, field legends, tooltips, repeater or Save button. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell
+ >.mad4b-ws-original .cx-section__info{
+ display:none!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell
+ >.mad4b-ws-original :is(.cx-section__holder,.cx-section__inner){
+ border:0!important;
+ border-radius:0!important;
+ background:transparent!important;
+ box-shadow:none!important;
+ padding:0!important;
+ margin:0!important;
+ max-width:100%;
+ min-width:0;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell
+ >.mad4b-ws-original .cx-section__holder{
+ overflow:visible!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell
+ >.mad4b-ws-original form{
+ background:transparent!important;
+ box-shadow:none!important;
+ border:0!important;
+ max-width:100%;
+ min-width:0;
+}
+/* The product source panels are already mounted by the original pricing
+   workspace composer. Do not put a white card INSIDE a white card. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell:is([data-mad4b-pricing-pane],.mad4b-guide-cost-tab-active)
+ .mad4b-ws-content{
+ background:var(--mad4b-shell-paper);
+ border:1px solid var(--mad4b-shell-border);
+ border-radius:13px!important;
+ box-shadow:none!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell:is([data-mad4b-pricing-pane],.mad4b-guide-cost-tab-active)
+ .mad4b-ws-external-section{
+ background:transparent;
+ border:0;
+ box-shadow:none;
+ padding:0;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell:is([data-mad4b-pricing-pane],.mad4b-guide-cost-tab-active)
+ .mad4b-ws-external-section :is(.mad4b-stay-panel,.mad4b-ts-panel){
+ margin:9px 0 0;
+ background:transparent;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell:is([data-mad4b-pricing-pane],.mad4b-guide-cost-tab-active)
+ .mad4b-ws-external-section :is(.mad4b-stay-panel__accordion,.mad4b-ts-accordion){
+ background:transparent!important;
+ border:0!important;
+ border-radius:0!important;
+ box-shadow:none!important;
+ overflow:visible!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell:is([data-mad4b-pricing-pane],.mad4b-guide-cost-tab-active)
+ .mad4b-ws-external-section :is(.mad4b-stay-panel__body,.mad4b-ts-body){
+ background:transparent;
+ padding:12px 0 0!important;
+}
+/* Guide Costs uses an independent original company/term approval form.
+   It was previously moved by its own module as a WordPress postbox. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell.mad4b-guide-cost-tab-active
+ #mad4b-guide-taxonomy-cost-panel.postbox{
+ margin:0!important;
+ padding:0!important;
+ border:0!important;
+ border-radius:0!important;
+ background:transparent!important;
+ box-shadow:none!important;
+ max-width:100%!important;
+ min-width:0;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell.mad4b-guide-cost-tab-active
+ #mad4b-guide-taxonomy-cost-panel>section{
+ padding:14px 0;
+ margin:12px 0!important;
+ border-top:1px solid var(--mad4b-shell-border);
+ background:transparent;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell.mad4b-guide-cost-tab-active
+ #mad4b-guide-taxonomy-cost-panel>section>h3{
+ font-size:14px;
+ color:var(--mad4b-shell-ink);
+ font-weight:750;
+ margin:0 0 10px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell.mad4b-guide-cost-tab-active
+ #mad4b-guide-taxonomy-cost-panel .widefat{
+ box-shadow:none;
+ border-color:var(--mad4b-shell-border);
+}
+/* Normalize the interaction affordance of TOP-LEVEL accordions and the
+   reusable pricing dimension controller. Nested controls keep their semantic
+   native markup, focus, keyboard handlers and independent state. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-ws-provider-panel,
+ .mad4b-ws-dimension-group,
+ .mad4b-supplier-readiness>details){
+ border:1px solid var(--mad4b-shell-border)!important;
+ border-radius:9px!important;
+ background:var(--mad4b-shell-paper)!important;
+ box-shadow:none!important;
+ overflow:hidden;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-ws-provider-panel>summary,
+ .mad4b-ws-dimension-group>summary,
+ .mad4b-supplier-readiness>details>summary,
+ .mad4b-stay-panel__accordion>.mad4b-stay-panel__summary,
+ .mad4b-ts-accordion>summary){
+ display:flex;
+ align-items:center;
+ gap:10px;
+ padding:12px 14px!important;
+ min-height:44px;
+ font-size:13px!important;
+ font-weight:700;
+ line-height:1.45;
+ color:var(--mad4b-shell-ink)!important;
+ background:var(--mad4b-shell-tint)!important;
+ border-bottom:1px solid transparent;
+ list-style:none!important;
+ cursor:pointer;
+ box-sizing:border-box;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-ws-provider-panel>summary,
+ .mad4b-ws-dimension-group>summary,
+ .mad4b-supplier-readiness>details>summary,
+ .mad4b-stay-panel__accordion>.mad4b-stay-panel__summary,
+ .mad4b-ts-accordion>summary)::-webkit-details-marker{
+ display:none;
+}
+/* A consistent right chevron, without replacing the native <summary>. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-ws-provider-panel>summary,
+ .mad4b-ws-dimension-group>summary,
+ .mad4b-supplier-readiness>details>summary,
+ .mad4b-stay-panel__accordion>.mad4b-stay-panel__summary,
+ .mad4b-ts-accordion>summary)::after{
+ content:"";
+ width:7px;
+ height:7px;
+ flex:0 0 7px;
+ margin-inline-start:auto;
+ border-inline-end:2px solid #447d71;
+ border-bottom:2px solid #447d71;
+ transform:rotate(45deg);
+ transition:transform .15s ease;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-ws-provider-panel[open]>summary,
+ .mad4b-ws-dimension-group[open]>summary,
+ .mad4b-supplier-readiness>details[open]>summary,
+ .mad4b-stay-panel__accordion[open]>.mad4b-stay-panel__summary,
+ .mad4b-ts-accordion[open]>summary){
+ border-bottom-color:var(--mad4b-shell-border);
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-ws-provider-panel[open]>summary,
+ .mad4b-ws-dimension-group[open]>summary,
+ .mad4b-supplier-readiness>details[open]>summary,
+ .mad4b-stay-panel__accordion[open]>.mad4b-stay-panel__summary,
+ .mad4b-ts-accordion[open]>summary)::after{
+ transform:rotate(225deg);
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-ws-provider-panel>summary,
+ .mad4b-ws-dimension-group>summary,
+ .mad4b-supplier-readiness>details>summary,
+ .mad4b-stay-panel__accordion>.mad4b-stay-panel__summary,
+ .mad4b-ts-accordion>summary):focus-visible{
+ outline:2px solid var(--mad4b-shell-accent)!important;
+ outline-offset:2px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-ws-provider-panel>summary,
+ .mad4b-ws-dimension-group>summary,
+ .mad4b-supplier-readiness>details>summary,
+ .mad4b-stay-panel__accordion>.mad4b-stay-panel__summary,
+ .mad4b-ts-accordion>summary):hover{
+ background:#eaf4f0!important;
+}
+/* Nested disclosure gets the same indentation/type rhythm, without the
+   parent-level border and without manufacturing extra clickable controls. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-ws-nested-policy,
+ .mad4b-ws-policy-advanced,
+ .mad4b-ws-policy-scope-details,
+ .mad4b-stay-panel__filters,
+ .mad4b-stay-panel__rates){
+ border:1px solid var(--mad4b-shell-border);
+ border-radius:8px;
+ box-shadow:none;
+ background:#fff;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-ws-nested-policy>summary,
+ .mad4b-ws-policy-advanced>summary,
+ .mad4b-ws-policy-scope-details>summary,
+ .mad4b-stay-panel__filters>summary,
+ .mad4b-stay-panel__rates>summary){
+ font-size:12px;
+ font-weight:650;
+ line-height:1.5;
+ padding:10px 12px;
+ color:#28594f;
+ cursor:pointer;
+}
+/* Responsive layout: the native Save remains in document flow after the
+   content. Never modify native input widths or field modes. */
+@media(max-width:900px){
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell:not([data-mad4b-pricing-pane]):not(.mad4b-guide-cost-tab-active)>.mad4b-ws-original{
+  padding-inline:11px!important;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .jet-engine-options-page-wrap.mad4b-ws-unified-shell summary::after{transition:none!important}
+}
+
+/* Product configuration follows the same Step 2 pattern as company-wide
+   dimensions, without fabricating product-specific JetEngine fields. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell
+ .mad4b-ws-product-context{
+ display:flex;align-items:center;justify-content:space-between;gap:14px;
+ margin:14px 0 4px;padding:13px 14px;
+ border:1px solid #cbdedb;border-radius:9px;background:#f5faf8;
+ box-shadow:none;min-width:0;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell
+ .mad4b-ws-product-context[hidden]{display:none!important}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell
+ .mad4b-ws-product-context>div{flex:1;min-width:0}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell
+ .mad4b-ws-product-context__eyebrow{
+ display:block;font-size:10px;letter-spacing:.04em;font-weight:750;
+ color:#387066;margin:0 0 4px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell
+ .mad4b-ws-product-context__title{
+ display:block;font-size:13px;line-height:1.4;font-weight:750;color:#245951;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell
+ .mad4b-ws-product-context__text{
+ color:#4a6a61;font-size:11px;line-height:1.55;margin:5px 0 0;
+ overflow-wrap:anywhere;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell
+ .mad4b-ws-product-context__action{
+ flex:0 0 auto;min-height:36px;border-radius:7px;
+ font-size:12px;font-weight:650;
+}
+/* The outer native JetEngine section was still painting its own grey
+   backdrop inside the new white Workspace in some field/UI modes. Remove
+   that outer chrome, not the original form or any field/repeater structure. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell
+ >.mad4b-ws-original.cx-section{
+ background:var(--mad4b-shell-paper)!important;
+ background-image:none!important;
+ box-shadow:none!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell
+ >.mad4b-ws-original .cx-section__inner>.cx-section__info{
+ display:none!important;
+}
+/* One disclosure system with two levels. Primary source accordions share
+   the same border/header/body spacing; secondary filters are quieter. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-ws-provider-panel,
+ .mad4b-supplier-readiness>details),
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell:is([data-mad4b-pricing-pane],.mad4b-guide-cost-tab-active)
+ .mad4b-ws-external-section :is(.mad4b-stay-panel__accordion,.mad4b-ts-accordion){
+ border:1px solid var(--mad4b-shell-border)!important;
+ border-radius:9px!important;
+ overflow:hidden!important;
+ background:#fff!important;
+ box-shadow:none!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-ws-provider-panel[open],
+ .mad4b-supplier-readiness>details[open]),
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell:is([data-mad4b-pricing-pane],.mad4b-guide-cost-tab-active)
+ .mad4b-ws-external-section :is(.mad4b-stay-panel__accordion[open],.mad4b-ts-accordion[open]){
+ overflow:visible!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-stay-panel__accordion>.mad4b-stay-panel__summary,
+ .mad4b-ts-accordion>summary,
+ .mad4b-ws-provider-panel>summary,
+ .mad4b-supplier-readiness>details>summary){
+ background:var(--mad4b-shell-tint)!important;
+ min-height:46px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-stay-panel__accordion[open]>.mad4b-stay-panel__summary,
+ .mad4b-ts-accordion[open]>summary,
+ .mad4b-ws-provider-panel[open]>summary,
+ .mad4b-supplier-readiness>details[open]>summary){
+ border-bottom:1px solid var(--mad4b-shell-border)!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-stay-panel__filters,
+ .mad4b-stay-panel__rates,
+ .mad4b-ws-nested-policy,
+ .mad4b-ws-policy-advanced,
+ .mad4b-ws-policy-scope-details){
+ background:#fff!important;
+ border:1px solid #dae7e2!important;
+ border-radius:8px!important;
+ box-shadow:none!important;
+ overflow:visible;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-stay-panel__filters>summary,
+ .mad4b-stay-panel__rates>summary,
+ .mad4b-ws-nested-policy>summary,
+ .mad4b-ws-policy-advanced>summary,
+ .mad4b-ws-policy-scope-details>summary){
+ display:flex;align-items:center;gap:8px;
+ min-height:38px;padding:9px 12px!important;
+ font-size:12px!important;line-height:1.5;
+ color:#28594f!important;background:#fbfdfc!important;
+ border-bottom:1px solid transparent;
+ cursor:pointer;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell :is(
+ .mad4b-stay-panel__filters[open]>summary,
+ .mad4b-stay-panel__rates[open]>summary,
+ .mad4b-ws-nested-policy[open]>summary,
+ .mad4b-ws-policy-advanced[open]>summary,
+ .mad4b-ws-policy-scope-details[open]>summary){
+ border-bottom-color:#dae7e2;
+}
+@media(max-width:700px){
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell
+  .mad4b-ws-product-context{
+  flex-direction:column;align-items:stretch;
+ }
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-unified-shell
+  .mad4b-ws-product-context__action{align-self:flex-start}
+}
+
+/* Native editor truly composed inside the SAME central content element.
+   This applies ONLY if the complete original JetEngine section was moved
+   intact by the approved shell; raw/native mode restores vendor layout. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed{
+ --mad4b-unified-surface:#fff;
+ --mad4b-unified-separator:#e0e8e6;
+ row-gap:12px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+ .mad4b-ws-layout{
+ display:grid!important;
+ grid-column:1/3;
+ grid-row:3;
+ grid-template-columns:215px minmax(0,1fr);
+ column-gap:0;
+ align-items:stretch;
+ min-width:0;
+ background:var(--mad4b-unified-surface);
+ border:1px solid var(--mad4b-shell-border);
+ border-radius:13px;
+ box-shadow:none;
+ overflow:visible;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+ .mad4b-ws-layout>.mad4b-ws-sidebar{
+ grid-column:1!important;
+ grid-row:1!important;
+ position:sticky;
+ top:48px;
+ align-self:start;
+ min-width:0;
+ border:0!important;
+ border-inline-end:1px solid var(--mad4b-unified-separator)!important;
+ border-radius:13px 0 0 13px!important;
+ box-shadow:none!important;
+ background:var(--mad4b-unified-surface);
+ padding:14px 12px!important;
+ z-index:1;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+ .mad4b-ws-layout>.mad4b-ws-content{
+ grid-column:2!important;
+ grid-row:1!important;
+ min-width:0;
+ width:100%;
+ padding:20px!important;
+ margin:0!important;
+ background:var(--mad4b-unified-surface)!important;
+ border:0!important;
+ border-radius:0 13px 13px 0!important;
+ box-shadow:none!important;
+ box-sizing:border-box;
+}
+/* No second JetEngine page wrapper, regardless of whether the selected
+   functional section is company settings or a supplier product editor. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+ .mad4b-ws-content>.mad4b-ws-original{
+ display:block;
+ position:relative;
+ min-width:0;
+ width:100%;
+ margin:12px 0 0!important;
+ padding:0!important;
+ background:transparent!important;
+ border:0!important;
+ border-radius:0!important;
+ box-shadow:none!important;
+ box-sizing:border-box;
+}
+/* Product panels have their own native supplier editor. Hide unrelated
+   company controls in their visual view; returning to a company tab restores
+   the exact same JetEngine form, without moving or reconstructing inputs. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed:is(
+ [data-mad4b-pricing-pane],.mad4b-guide-cost-tab-active)
+ .mad4b-ws-content>.mad4b-ws-original{
+ display:none!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+ .mad4b-ws-content>.mad4b-ws-original .cx-section__info{
+ display:none!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+ .mad4b-ws-content>.mad4b-ws-original :is(
+ .cx-section__holder,.cx-section__inner){
+ padding:0!important;
+ margin:0!important;
+ background:transparent!important;
+ border:0!important;
+ border-radius:0!important;
+ box-shadow:none!important;
+ max-width:100%;
+ min-width:0;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+ .mad4b-ws-content>.mad4b-ws-original .cx-section__holder{
+ overflow:visible!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+ .mad4b-ws-content>.mad4b-ws-original form{
+ border:0!important;
+ padding:0!important;
+ margin:0!important;
+ max-width:100%;
+ min-width:0;
+ background:transparent!important;
+ box-shadow:none!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+ .mad4b-ws-content>.mad4b-ws-original #settings_top{
+ padding:0!important;
+ border:0!important;
+}
+/* A single compact information strip, not three detached dashboard cards. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+ .mad4b-ws-summary{
+ background:#f8fbfa;
+ border:1px solid var(--mad4b-shell-border);
+ border-radius:10px;
+ padding:4px 10px;
+ column-gap:6px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+ .mad4b-ws-summary>.mad4b-ws-metric{
+ background:transparent!important;
+ box-shadow:none!important;
+ border:0!important;
+ border-radius:0!important;
+ min-height:39px;
+ padding:6px 9px!important;
+ gap:8px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+ .mad4b-ws-summary>.mad4b-ws-metric strong{
+ font-size:18px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+ .mad4b-ws-summary>.mad4b-ws-metric+.mad4b-ws-metric{
+ border-inline-start:1px solid var(--mad4b-unified-separator)!important;
+}
+/* The Tour Preview is a right-hand inspector of the same workspace,
+   not a floating nested admin application. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+ >.mad4b-tour-inspector{
+ grid-column:3;
+ grid-row:3;
+ box-shadow:none!important;
+ border-color:var(--mad4b-shell-border);
+ border-radius:13px;
+}
+@media(max-width:1300px){
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+  .mad4b-ws-layout{grid-template-columns:195px minmax(0,1fr)}
+}
+@media(max-width:1100px){
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+  .mad4b-ws-layout{grid-column:1/-1;grid-template-columns:190px minmax(0,1fr)}
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+  >.mad4b-tour-inspector{
+  grid-column:1/-1;grid-row:4;position:static;
+ }
+}
+@media(max-width:900px){
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+  .mad4b-ws-layout{
+  grid-column:1!important;grid-row:auto!important;
+  grid-template-columns:minmax(0,1fr);
+ }
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+  .mad4b-ws-layout>.mad4b-ws-sidebar{
+  grid-column:1!important;grid-row:1!important;
+  border-inline-end:0!important;
+  border-bottom:1px solid var(--mad4b-unified-separator)!important;
+  border-radius:13px 13px 0 0!important;
+  position:static;
+ }
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+  .mad4b-ws-layout>.mad4b-ws-content{
+  grid-column:1!important;grid-row:2!important;
+  border-radius:0 0 13px 13px!important;
+  padding:14px!important;
+ }
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+  >.mad4b-tour-inspector{
+  grid-column:1!important;grid-row:auto!important;
+ }
+}
+@media(max-width:580px){
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+  .mad4b-ws-summary{grid-template-columns:repeat(3,minmax(0,1fr));gap:0}
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+  .mad4b-ws-summary>.mad4b-ws-metric{
+  display:grid;gap:3px;padding:7px!important;
+ }
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+  .mad4b-ws-summary>.mad4b-ws-metric span{font-size:10px}
+}
+
+/* The original JetEngine Save must be reachable after the real fields, not
+   float above them when a large repeater or product list is being edited. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+ .mad4b-ws-content .cx-component.dialog-save{
+ position:static!important;
+ bottom:auto!important;
+ inset:auto!important;
+ margin:16px 0 0!important;
+ box-shadow:none!important;
+ border:1px solid var(--mad4b-unified-separator)!important;
+ border-radius:8px!important;
+ padding:10px 12px!important;
+ background:#f7faf9!important;
+}
+/* One mobile section selector, owned by original navigation; no shadow tabs. */
+.jet-engine-options-page-wrap.mad4b-ws-unified-shell
+ .mad4b-ws-mobile-section-toggle{
+ display:none;
+ width:100%;
+ min-height:40px;
+ border:1px solid #bdd6d0;
+ border-radius:8px;
+ padding:9px 12px;
+ background:#f3f8f6;
+ color:#24584e;
+ font-size:12px;
+ font-weight:700;
+ text-align:start;
+ cursor:pointer;
+}
+.jet-engine-options-page-wrap.mad4b-ws-unified-shell
+ .mad4b-ws-mobile-section-toggle::after{
+ content:"";
+ flex:0 0 7px;
+ width:7px;height:7px;
+ margin-inline-start:auto;
+ border-inline-end:2px solid #447d71;
+ border-bottom:2px solid #447d71;
+ transform:rotate(45deg);
+}
+.jet-engine-options-page-wrap.mad4b-ws-unified-shell
+ .mad4b-ws-mobile-section-toggle[aria-expanded="true"]::after{
+ transform:rotate(225deg);
+}
+.jet-engine-options-page-wrap.mad4b-ws-unified-shell
+ .mad4b-ws-mobile-section-toggle:focus-visible{
+ outline:2px solid var(--mad4b-shell-accent);
+ outline-offset:2px;
+}
+@media(max-width:900px){
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+  .mad4b-ws-mobile-section-toggle:not([hidden]){
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:5px 0 8px;
+ }
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+  .mad4b-ws-sidebar>.mad4b-ws-nav[hidden]{
+  display:none!important;
+ }
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+  .mad4b-ws-sidebar{
+  padding:11px 12px!important;
+ }
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed
+  .mad4b-ws-sidebar .mad4b-ws-tip{
+  margin:4px 0 0;padding:4px 0 0;
+ }
+}
+
+/* Single cohesive header: existing title, controls and real metric strip
+   share one parent element, rather than three detached dashboard cards. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed.mad4b-ws-integrated-header
+ .mad4b-ws-banner{
+ display:grid!important;
+ grid-template-columns:minmax(0,1fr) auto;
+ gap:9px 14px;
+ align-items:center;
+ padding:15px 18px 9px!important;
+ border-radius:12px!important;
+ box-shadow:none!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed.mad4b-ws-integrated-header
+ .mad4b-ws-banner>.mad4b-ws-summary{
+ grid-column:1/-1;
+ grid-row:2;
+ display:flex;
+ gap:0;
+ margin:3px 0 0!important;
+ padding:7px 0 1px!important;
+ background:transparent!important;
+ border:0!important;
+ border-top:1px solid var(--mad4b-unified-separator)!important;
+ border-radius:0!important;
+ box-shadow:none!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed.mad4b-ws-integrated-header
+ .mad4b-ws-banner>.mad4b-ws-summary>.mad4b-ws-metric{
+ flex:0 1 auto;
+ min-width:0;
+ padding:3px 15px!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed.mad4b-ws-integrated-header
+ .mad4b-ws-banner>.mad4b-ws-summary>.mad4b-ws-metric:first-child{
+ padding-inline-start:0!important;
+}
+/* The header consumes row 1, and the joined sidebar/editor row 2. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed.mad4b-ws-integrated-header
+ .mad4b-ws-layout,
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed.mad4b-ws-integrated-header
+ >.mad4b-tour-inspector{
+ grid-row:2;
+}
+@media(max-width:1100px){
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed.mad4b-ws-integrated-header
+  >.mad4b-tour-inspector{grid-row:3}
+}
+@media(max-width:900px){
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed.mad4b-ws-integrated-header
+  >.mad4b-tour-inspector{grid-row:auto}
+}
+@media(max-width:700px){
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed.mad4b-ws-integrated-header
+  .mad4b-ws-banner{
+  grid-template-columns:minmax(0,1fr);
+  gap:8px;
+ }
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed.mad4b-ws-integrated-header
+  .mad4b-ws-banner>.mad4b-ws-actions{grid-column:1;grid-row:2}
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed.mad4b-ws-integrated-header
+  .mad4b-ws-banner>.mad4b-ws-summary{
+  grid-column:1;grid-row:3;
+  justify-content:space-between;
+ }
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-editor-composed.mad4b-ws-integrated-header
+  .mad4b-ws-banner>.mad4b-ws-summary>.mad4b-ws-metric{
+  padding-inline:7px!important;
+  flex:1 1 0;
+  display:grid;
+  gap:3px;
+ }
+}
+
+/* MAD4B Pricing Canvas · neutral, cardless settings surface (v4).
+   The previous iterations aligned multiple bordered panels; this edition
+   deliberately removes those inner card boundaries. Every override is gated
+   to the authenticated Grouped Pricing workspace and never affects raw
+   JetEngine mode, CPT post meta editors, or storefront controls. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas{
+ --mad4b-flat-ink:#223c40;
+ --mad4b-flat-muted:#657b7d;
+ --mad4b-flat-hairline:#e7eeec;
+ --mad4b-flat-panel:#f8faf9;
+ --mad4b-flat-accent:#176f64;
+ background:#fff!important;
+ border:1px solid #dbe5e2!important;
+ border-radius:13px!important;
+ box-shadow:0 3px 18px rgba(29,63,56,.035)!important;
+ gap:0!important;
+ row-gap:0!important;
+ column-gap:0!important;
+ overflow:visible;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-banner{
+ background:#fff!important;
+ border:0!important;
+ border-bottom:1px solid var(--mad4b-flat-hairline)!important;
+ border-radius:13px 13px 0 0!important;
+ padding:20px 23px 13px!important;
+ box-shadow:none!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-title h2{
+ color:var(--mad4b-flat-ink);
+ letter-spacing:-.028em;
+ font-weight:720;
+ font-size:25px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-title p{font-size:12px;color:var(--mad4b-flat-muted)}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-banner>.mad4b-ws-summary{
+ border-top:1px solid var(--mad4b-flat-hairline)!important;
+ margin-top:9px!important;
+ padding-top:9px!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-banner>.mad4b-ws-summary>.mad4b-ws-metric strong{
+ font-size:16px;
+ font-weight:750;
+ color:#295b53;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-layout{
+ border:0!important;
+ border-radius:0!important;
+ box-shadow:none!important;
+ background:transparent!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-layout>.mad4b-ws-sidebar{
+ background:var(--mad4b-flat-panel)!important;
+ border:0!important;
+ border-inline-end:1px solid var(--mad4b-flat-hairline)!important;
+ border-radius:0!important;
+ padding:19px 14px!important;
+ box-shadow:none!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-layout>.mad4b-ws-content{
+ border:0!important;
+ border-radius:0!important;
+ background:#fff!important;
+ padding:24px 24px 17px!important;
+ box-shadow:none!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-section-heading{
+ margin:0 0 16px;
+ padding:0 0 13px;
+ border-bottom:1px solid var(--mad4b-flat-hairline);
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-section-heading h3{
+ font-size:17px;
+ line-height:1.3;
+ letter-spacing:-.018em;
+ color:var(--mad4b-flat-ink);
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-search{
+ background:#fff!important;
+ border-color:#d7e2de!important;
+ min-height:38px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-nav-btn{
+ border-radius:6px;
+ min-height:38px;
+ padding:9px 10px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-nav-btn.is-active{
+ border-color:transparent!important;
+ background:#e8f2ef!important;
+ box-shadow:inset 3px 0 0 var(--mad4b-flat-accent);
+}
+/* Compact neutral dimensions and source selectors; these are steps, not
+   bright nested cards. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-dimension-launcher,
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-product-context{
+ background:#f5f8f7!important;
+ border:0!important;
+ border-radius:7px!important;
+ box-shadow:none!important;
+ padding:13px 15px!important;
+}
+/* JetEngine fields become real settings ROWS. Metadata remains visible,
+   all original field info/content descendants remain in the same form. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-content>.mad4b-ws-original #settings_top
+ .mad4b-ws-control:not(.mad4b-ws-filtered):not(.cx-control-repeater):not(.mad4b-source-cards-mode){
+ display:grid!important;
+ grid-template-columns:minmax(150px,33%) minmax(0,1fr);
+ align-items:start;
+ column-gap:23px;
+ row-gap:6px;
+ min-width:0!important;
+ margin:0!important;
+ padding:17px 0!important;
+ border:0!important;
+ border-bottom:1px solid var(--mad4b-flat-hairline)!important;
+ border-radius:0!important;
+ background:transparent!important;
+ box-shadow:none!important;
+ transition:background .14s ease;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-content>.mad4b-ws-original #settings_top
+ .mad4b-ws-control:not(.cx-control-repeater):not(.mad4b-source-cards-mode):focus-within{
+ background:#fcfefd!important;
+ box-shadow:inset 3px 0 0 #85b6aa!important;
+}
+/* Override vendor inline flex widths only for the two direct native parts;
+   keep nested repeaters, media and upload layouts untouched. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-content>.mad4b-ws-original #settings_top
+ .mad4b-ws-control:not(.cx-control-repeater):not(.mad4b-source-cards-mode)
+ >.cx-control__info,
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-content>.mad4b-ws-original #settings_top
+ .mad4b-ws-control:not(.cx-control-repeater):not(.mad4b-source-cards-mode)
+ >.cx-control__content{
+ width:auto!important;
+ max-width:100%!important;
+ flex:none!important;
+ min-width:0;
+ padding:0!important;
+ margin:0!important;
+ box-sizing:border-box;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-content>.mad4b-ws-original #settings_top
+ .mad4b-ws-control>.cx-control__info .cx-control__title{
+ font-size:12px!important;
+ line-height:1.55!important;
+ font-weight:700!important;
+ color:var(--mad4b-flat-ink)!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-content>.mad4b-ws-original #settings_top
+ .mad4b-ws-control :is(.cx-control__description,.cx-control__desc){
+ color:var(--mad4b-flat-muted)!important;
+ font-size:11px!important;
+ line-height:1.55;
+}
+/* Complex and repeater source policies retain full-width content, but no
+   outer card around the vendor row list. Individual rows/choices retain
+   their functional boundaries. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-content>.mad4b-ws-original #settings_top
+ .mad4b-ws-control:is(.cx-control-repeater,.mad4b-source-cards-mode,[data-control-name="shared_price_source_mode_rows"]){
+ margin:0!important;
+ padding:18px 0!important;
+ border:0!important;
+ border-bottom:1px solid var(--mad4b-flat-hairline)!important;
+ border-radius:0!important;
+ background:transparent!important;
+ box-shadow:none!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-content>.mad4b-ws-original #settings_top
+ .mad4b-ws-control:is(.cx-control-repeater,.mad4b-source-cards-mode,[data-control-name="shared_price_source_mode_rows"]):focus-within{
+ box-shadow:none!important;
+}
+/* Save is the bottom ACTION ROW of the editor. Never visually another card. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-content .cx-component.dialog-save.mad4b-ws-native-save-bar{
+ margin:18px 0 0!important;
+ padding:17px 0 4px!important;
+ background:transparent!important;
+ border:0!important;
+ border-top:1px solid var(--mad4b-flat-hairline)!important;
+ border-radius:0!important;
+ box-shadow:none!important;
+}
+/* Right-side Tour Preview uses the same surface with a dividing rule rather
+   than its own "floating application" card and shadow. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ >.mad4b-tour-inspector{
+ border:0!important;
+ border-inline-start:1px solid var(--mad4b-flat-hairline)!important;
+ border-radius:0!important;
+ background:var(--mad4b-flat-panel)!important;
+ box-shadow:none!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-tour-inspector__header{
+ background:transparent!important;
+ border-bottom:1px solid var(--mad4b-flat-hairline)!important;
+ padding:18px 16px 13px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-tour-inspector__content{
+ background:transparent!important;
+ padding:12px 15px 20px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-tour-inspector__facet{
+ border:0!important;
+ border-bottom:1px solid var(--mad4b-flat-hairline)!important;
+ border-radius:0!important;
+ background:transparent!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-tour-inspector__facet>summary{
+ background:transparent!important;
+ padding:11px 5px!important;
+ font-weight:650;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-tour-inspector__tour{
+ border:1px solid transparent!important;
+ border-bottom-color:var(--mad4b-flat-hairline)!important;
+ border-radius:6px!important;
+ background:transparent!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-tour-inspector__tour.is-selected{
+ border-color:#9dc4ba!important;
+ background:#edf6f3!important;
+}
+/* Supplier panels remain FUNCTIONAL components rather than full independent
+   pages nested under Pricing Controls. */
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-external-section,
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ .mad4b-ws-external-section :is(.mad4b-stay-panel,.mad4b-ts-panel){
+ background:transparent!important;
+ box-shadow:none!important;
+ border:0!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ :is(.mad4b-ws-provider-panel,.mad4b-supplier-readiness>details){
+ border:0!important;
+ border-bottom:1px solid var(--mad4b-flat-hairline)!important;
+ border-radius:0!important;
+ box-shadow:none!important;
+ background:transparent!important;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+ :is(.mad4b-ws-provider-panel>summary,.mad4b-supplier-readiness>details>summary){
+ background:transparent!important;
+ padding:13px 8px!important;
+ min-height:44px;
+}
+/* Desktop provides label + control columns. Narrow view returns to one
+   comfortable column; native JetEngine mode is entirely unaffected. */
+@media(max-width:1200px){
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  .mad4b-ws-content>.mad4b-ws-original #settings_top
+  .mad4b-ws-control:not(.cx-control-repeater):not(.mad4b-source-cards-mode){
+  grid-template-columns:minmax(0,1fr)!important;
+  row-gap:9px;
+ }
+}
+@media(max-width:1100px){
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  >.mad4b-tour-inspector{
+  border-inline-start:0!important;
+  border-top:1px solid var(--mad4b-flat-hairline)!important;
+ }
+}
+@media(max-width:900px){
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  .mad4b-ws-layout>.mad4b-ws-sidebar{
+  border-inline-end:0!important;
+  border-bottom:1px solid var(--mad4b-flat-hairline)!important;
+  background:var(--mad4b-flat-panel)!important;
+  padding:12px!important;
+ }
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  .mad4b-ws-layout>.mad4b-ws-content{
+  padding:17px!important;
+ }
+}
+@media(max-width:580px){
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  .mad4b-ws-banner{padding:16px!important}
+ .jet-engine-options-page-wrap.mad4b-ws-visual.mad4b-ws-flat-canvas
+  .mad4b-ws-title h2{font-size:21px!important}
+}

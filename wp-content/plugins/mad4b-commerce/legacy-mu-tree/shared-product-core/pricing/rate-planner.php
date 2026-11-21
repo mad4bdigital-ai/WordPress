@@ -105,7 +105,39 @@ final class MAD4B_Rate_Planner {
      if($stayRequested&&$package&&!shared_product_assignment_stars_tier($package))self::issue($p,$tour,'stars_policy_missing','Package has no stars-tier rule; no hotel category was invented.',$scope,'pricing','medium',$key);
      $ownedRate=get_posts(['post_type'=>'tour-rates','post_status'=>'any','fields'=>'ids','posts_per_page'=>1,'suppress_filters'=>true,'meta_key'=>'_mad4b_rate_plan_key','meta_value'=>$key]);
      if($ownedRate&&get_post_status((int)$ownedRate[0])==='draft'&&get_post_meta((int)$ownedRate[0],'_mad4b_rate_plan_owned_snapshot',true)!==self::managedSnapshot((int)$ownedRate[0]))self::issue($p,$tour,'generation_review','Draft generation requires review: draft_manually_changed_review_required',$key,'pricing','high',$key);
-     $c['evidence_digest']=hash('sha256',wp_json_encode([$c['identity'],$source,$policy,$c['assignment'],$c['existing_ids'],$c['overlap_ids']]));$p['candidates'][]=$c;
+     // Mandatory package-stage provenance even when no retail selling price
+     // exists. The original price planner must report the stage blocker and
+     // never emit a Draft via generic city/Property auto-assignment.
+     $stageReview=MAD4B_Package_Stage_Rate_Guard_V1::review(
+        $tour,(int)$package,(string)($w['from']??''),(string)($w['to']??''));
+     if(!empty($stageReview['applies'])){
+       $c['package_stage_review']=[
+          'contract'=>$stageReview['contract'],
+          'applies'=>$stageReview['applies'],
+          'source_tour_id'=>$stageReview['source_tour_id'],
+          'ready'=>$stageReview['ready'],
+          'blockers'=>$stageReview['blockers'],
+          'source_digest'=>$stageReview['source_digest'],
+          'stage_count'=>count($stageReview['stages']),
+          'checkout_ready'=>false
+       ];
+       if(!$stageReview['ready']){
+          $c['reasons'][]='package_stage_source_incomplete';
+          $c['input']=null;
+          $c['state']='proposal';
+          self::issue($p,$tour,'package_stage_source_incomplete',
+            'Package destination/Unit/cost-stage sources are incomplete. Open Pricing Lab for individual stage blockers.',
+            $key,'pricing','high',$key);
+       }
+     }
+     $c['reasons']=array_values(array_unique($c['reasons']));
+     // Preserve the historical semantic digest byte-for-byte for ordinary
+     // Tour Rates. Append source-specific evidence only for Package variants.
+     $digestInput=[$c['identity'],$source,$policy,$c['assignment'],
+        $c['existing_ids'],$c['overlap_ids']];
+     if(isset($c['package_stage_review']))$digestInput[]=$c['package_stage_review'];
+     $c['evidence_digest']=hash('sha256',wp_json_encode($digestInput));
+     $p['candidates'][]=$c;
     }
    }
   }

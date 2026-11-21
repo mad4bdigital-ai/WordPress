@@ -1,0 +1,221 @@
+# Pricing & JetEngine UX: integrated checkpoint evidence (20 November 2026)
+
+Source: tours.dev.mad4b.com staging. Target: wayfatours.com production. Branch feature/pricing-unified-checkpoints-20261120 stacked on Draft PR #965.
+
+**Commercial pricing release NOT approved.** New calculators, cost validators and preflight endpoints are internal/read-only. Existing Tour Rates, public prices and Checkout stay under their original source authority.
+
+## Checkpoints
+
+| Checkpoint | Tours.dev | Wayfatours | Outstanding gate |
+| --- | --- | --- | --- |
+| CP0 | Original preview source SHA verified; #965 CI 5/5 | Matching SHA | New branch CI and release |
+| CP1 | 228 WPML relation checks passed | 477 checks, 87 translated, 193 unassigned rejected, 0 failures | Authenticated browser cross-language selection |
+| CP2 | Nine JetEngine Modes, 53 Pricing and 31 Service Activation fields pass | Same server contract after missing optional Recipe guard, original files restored from first failed attempt | Browser native Save/repeater/mobile |
+| CP3 | Cost-only contract, 10 risk denials, quantity and missing cases pass | Same and matching source SHA | Real certified component receipts |
+| CP4 | Shadow integer minor-unit evaluator; 7 unsafe cases rejected | Same and matching SHA | Real FX, passengers, taxes, native Rate integration |
+| CP5 | AJAX lookup, DOM input/change, advanced-field disclosure pass | Server lookup and asset hash parity pass | Actual browser Save, row handling, responsive |
+| CP6 | RBAC, Draft and Binding revision, malformed IDs blocked, zero writes | Same, native JetEngine Options writer blocked | Source-owned optimistic CAS, approvals |
+| CP7 | 221 published Tours and 116 assigned package terms, all preview blocked by unconfigured source preview policy | 84 Tours, 197 selections, 192 previews good, 1 disabled Platinum, 4 base price missing | Eight-package full E2E, actual supplier data, browser |
+| CP8 | Not approved | Not approved | CI, signed release, merge, rollback receipt |
+
+## Live data and financial release boundaries
+
+Wayfatours Tour Rates: 0 publish, 106 Draft, 2 auto-draft. Tours.dev: 196 publish, 29 Draft. Source and target pricing policies differ. No read-only test changed pricing options or Rate status.
+
+A complete synthetic component-cost fixture is not proof of a real supplier invoice. The public package preview still applies Tour Type and Package Level markup to old retail start_price, not a verified cost. Checkout and commercial Rate generation must remain gated.
+
+## CP5 / CP6 restrictions
+
+- Native entity picker writes only the chosen ID to JetEngine original input and emits input/change; its internal search is not a saved field.
+- Conditional controls never remove/disable native input values or add a second Save.
+- The authenticated Edge browser tab cannot be read through the connected browser in this session, so browser UI Save/resize remains unverified.
+- CP6 is preflight only; it does not call original native writer. Options Page save increments source revision without enforcing expected revision, so true transactional writer unification is not yet possible.
+- A broad suite rerun was blocked by the STAGING_WPCLI_BUSY resource guard because other WP CLI work was running. Do not record this attempted rerun as completed; individual checkpoint tests and CP7 source matrix were already verified.
+
+## Release blockers and owners
+
+1. Data/suppliers: certify hotels/units, meal plans, occupancy, supplier rate, transport distance-time & BASE, guided days and languages, extras inclusion.
+2. Pricing policy owner: approve margin vs markup, FX receipt, applicable taxes and child/infant rates, policy precedence and cancellation treatment.
+3. JetEngine developer: add source-native expected-version check and signed approval without duplicating options.
+4. UX QA: logged-in real-browser test of Save, repeater add/edit/remove, AJAX picker, validation messages, EN/ES, and 320/390/768/1024/1440.
+5. Release owner/CI: new branch workflows green, Git/live SHA audit, rollback evidence, explicit approval.
+
+CP8 must remain OPEN until those conditions are fulfilled.
+
+
+## 20 November addendum: Source CAS and Package supplier readiness
+
+- Native JetEngine Options Page etg-dynamic-pricing-controls is protected with an HMAC fingerprint over 54 original SEPARATE option values read directly from DB. Original form receives signed hidden revision and nonce; admin_init priority 39 guard gets a MySQL advisory lock before JetEngine save priority 40. After-save or shutdown releases lock; no duplicate write store.
+- Both source and Wayfatours passed tests/verify-native-pricing-cas.php and tests/verify-native-pricing-cas-dom.js. An unsigned vendor POST was rejected in an isolated staging simulation without altering source fingerprint. Authenticated parallel browser save remains unverified.
+- Policy Write Preflight was updated to read source CAS revision, return native_validation_required and still perform no write.
+- New MAD4B_Package_Supplier_Admission_V1 inspects original Stay Package Program bindings, Transport Self source, Guide composition and Extras quote runtime without relying on historic selling prices. All cost eligibility decisions fail closed until real supplier evidence is signed.
+- Eight canonical Wayfatours Tours 60629,60627,60623,60443,60441,60439,60437,57562 were checked in EN/ES, EGP/USD/EUR/GBP, adult-only and adult+children+infants: 128 checks; 0 commercial approvals. Unselected room and missing stay cost (128), unapproved route cost (128), guide coverage not reviewed (128), extras supplier rate not certified (128), company margin and tax pending (128), FX needed (96), child/infant rates needed (64). No Rates or pricing options mutated.
+- Eight Tour Property Stage x Package Level backlog exported to reports/wayfatours-eight-package-supplier-gaps.csv: 60 real source rows, zero commercially approved room units. Selected cruise vessels/programs and supplier prices remain missing on relevant stages.
+- Actual room source receipts are editorial, rates intentionally unset; transport source records use vehicle_rates_unverified; Extras source runtime explicitly marks rate_eligibility_verified false.
+- Source Tour Rates 196 Published and 29 Draft; Wayfatours 0 Published, 106 Draft and 2 Auto Draft. No commerce activation.
+
+Remaining gates: real approved dated hotel/boat unit costs, verified transport vehicle-route costs, Guide day coverage, extras cost, FX, company margin/tax, child pricing, real browser dual-tab Save acceptance, updated CI and release owner approval. CP8 remains OPEN.
+
+
+### Additional rendered JetEngine admin markup acceptance
+
+Both sites passed tests/verify-native-jetengine-form-markup.php using the real native JetEngine page factory. One original form and Save button exist, and the actual Mode/Package Repeater input-name patterns match. Staging has no stored Package rows and Production has six; both are supported. Option source revision is identical before and after HTML rendering. The previous busy staging rerun later succeeded. Browser-authenticated click/Save and responsive testing remain separately open.
+
+
+### 20 November addendum: UI review source visibility and HTTP method guard
+
+- Reproduced a native JetEngine Save bypass: the original vendor save action accepts a GET REQUEST action, while the first custom CAS guard only inspected POST. The guard now intercepts all requests that name the vendor save action, rejects any non-POST request before the vendor action, and enforces signed source revision for POST.
+- Tests/run-native-cas-request-regression.sh and tests/verify-native-pricing-cas-request.php passed on Tours.dev and Wayfatours for GET, unsigned POST, stale POST and current signed POST. All tests call only the pre-save guard, not the vendor write operation. No original pricing option changed. Live code and local Git SHA matched after the deployment.
+- A new read-only admin panel displays native supplier eligibility from original Stay, Transport Self, Guide and Extras sources. Available in Pricing Controls for authorized managers. It requires an admin nonce and never writes a Rate or source field. User can select Tour/date/currency/occupancy; blocker details and source Tour edit link are displayed on demand.
+- Files deployed with backups on both sites and accepted by tests/verify-package-supplier-admin-ui.php plus tests/verify-package-supplier-admin-ui-dom.js. This is not a completed authenticated-browser UX inspection.
+
+
+### Supplier Readiness UX placement
+
+Moved full read-only Inspector into Price Sources and reduced Overview to a compact summary. The published Tour Preview is the canonical Tour selection; its CTA opens the inspector and switching tours clears old diagnostic receipts. Original JetEngine inputs and Save remain untouched. Both sites passed backend dependency and actual form markup checks, plus standalone DOM tests. Two staging attempts were rolled back automatically: first STAGING_WPCLI_BUSY, then a WP-CLI test that needed to reproduce the real priority-55 native script enqueue. Corrected staging and Wayfatours deployments passed with matching four source hashes and HTTP 200. Authenticated graphical browser/mobile checks are pending.
+
+
+### 20 November addendum: JetEngine single workspace surface
+
+Source inspection found a duplicate native JetEngine cx-section__info title and visual gap between the original form and MAD4B workspace. Accommodation and Transportation each wrapped their source tools in additional differently styled details cards.
+
+A separately reversible MU presentation layer now joins the native form and workspace into one visual paper in Grouped View, hides only the duplicated page title, flattens the outer Product accordion shell, standardizes native disclosure styling, and adds Company-wide versus Product / Supplier navigation headings. No original control is moved, named differently or saved through an alternative writer. Native JetEngine View stays unchanged.
+
+Accepted on Tours.dev and Wayfatours: PHP syntax, CSS brace check, standalone JS navigation/late-service DOM tests, pricing admin enqueue/authorization, Site Service Activation Options Page enqueue, unchanged native source revision, 3/3 live/source file SHA, public HTTP 200. Authenticated graphical browser comparison at mobile/tablet/desktop is still pending.
+
+Deployment caveat: original pricing composition JS and CSS already exist on both live sites but their script sources are not tracked on the current #987 branch; this new layer does not overwrite them. Reconcile their baseline source separately before any broader plugin re-release.
+
+
+### Guide Costs shell parity follow-up
+
+Guide Costs is a separate Global + Taxonomy Term approval panel rather than an external pane owned by the Accommodation/Transport composer. The shared shell now recognizes the guide-cost-tab-active state as a Product section, avoids company form joined-bottom-border styling while native controls are hidden, flattens the Guide panel legacy postbox frame, and groups its navigation under Products & Supplier Services even if it mounts first. Staging/Production parity and tests passed. No Guide policy was saved.
+
+### 20 Nov follow-up: original JetEngine shell consolidation v2
+
+The existing shell was extended rather than replaced. Company-wide settings and product source panels remain separated in one navigation. Each Accommodation, Transportation and Guide Costs pane displays an inherited-dimensions Step 2 summary with a button to open the single existing company dimension controller. Keyboard focus follows the actual control. No product override store or new rate/source writer exists.
+
+CSS removes residual outer JetEngine grey chrome, normalizes primary/secondary accordions with consistent border, background, open divider and chevron, and ensures expanded service panels allow custom dropdown overflow. The original native form and fields are unchanged. Visual mode only.
+
+Read-only verified tests:
+- verify-jetengine-shell-nav-dom.js PASS.
+- verify-jetengine-shell-product-context-dom.js PASS (new).
+- verify-package-supplier-admin-ui-dom.js PASS.
+- CSS static scope/brace integrity PASS.
+- verify-jetengine-shell-ui.php PASS on both sites; original source revision unchanged.
+- verify-native-jetengine-form-markup.php PASS on both sites; real native form, Save and repeaters intact.
+
+The two shell JS/CSS files were deployed to staging and production with source SHA parity and rollback backups. No authenticated graphical browser/mobile/real Save certificate has been issued. Commercial pricing remains blocked by supplier evidence.
+
+
+### 20 Nov final UI correction: structural integration, not cosmetic camouflage
+
+Replaced the prior CSS-only seam joining with one actual shared visual editor. The existing native JetEngine form is moved intact into the central content when Grouped View is on and restored when Native View is selected. Its field object identities, input names, nonce and submit remain unchanged. New guard allows separate supplier-specific forms without confusing them with the unique JetEngine original. The header statistics are nested in the existing header, and mobile navigation collapses rather than consuming the whole screen. Native Save remains in normal flow after the inputs.
+
+Testing: original WordPress factory form readback (54 fields), component script/style verification on staging and Wayfatours, DOM identity tests, Chromium at 1440/1024/768/390/320 with zero horizontal overflow and mobile navigation click/close, intact source revision. No live authenticated browser certificate issued. All changes are scoped to the presentation shell; commerce and supplier cost approvals were not changed.
+
+
+### CP2.4 Visual UX correction — Flat Canvas
+
+Source: real Wayfatours Pricing Controls screenshot (20 Nov). Heavy native field cards and nested shells created the impression of separate applications. Scoped design mode mad4b-ws-flat-canvas only activates with Grouped Pricing Controls and original JetEngine editor composed. Native standard fields become flat rows, repeaters remain full width, and Save, Preview and supplier product panels integrate into one surface. Raw native view unaffected.
+
+Chromium UI fixture: 1440, 1024, 768, 390, 320 PASS, including CSS computed styles and product state. Narrow-screen grid specificity issue was identified and corrected before deployment. Native WordPress readback/markup tests PASS on staging and Wayfatours, settings revision unchanged. Both sites retain backups and source SHA parity. A real logged-in browser interaction/save certificate was not issued.
+
+### CP2.5 — Design language across similar services and settings
+
+The owner clarified the referenced modern style should be applied to all comparable components. Added one pricing-specific shared design stylesheet after the existing shell. Unified disclosure headers, typography, spacing, stepstrips, simple input/label rows and single workspace separators across Stay, Transport, Guide Languages, pricing dimensions, provider policies and supplier inspector. Existing JetEngine and service forms, data and write authority are unchanged.
+
+Acceptance: independent Chromium fixture tested actual vendor Stay/Transport CSS and V2 override at 1440, 1024, 768, 390 and 320. No horizontal overflow, no extra outer product card border, equal primary disclosure heights, and Guide Taxonomy table scrolling preserved. Staging and Wayfatours server tests verify-pricing-interface-v2.php, verify-jetengine-composed-workspace.php and verify-native-jetengine-form-markup.php all PASS. Source revision unchanged, backup available. Live logged-in browser and mutating Save/Approve acceptance remain OPEN.
+
+### CP2.7 — Horizontal alignment, single policy registry, and repeater-first presentation
+
+Root causes were fixed at source and view composition rather than with decorative card layering: a 2-vs-3-column vendor source-composer layout, native JetEngine CX repeater split width, two copies of the Unified Policy Registry, verbose dimension guidance before editing, and company-only search above shared navigation.
+
+The same company search node was moved into the editor; source handlers and values are unchanged. Company and supplier views now begin their main column at identical x coordinates at 1440, 1280, 1024, 768, 390 and 320px. Native repeater rows and their content render at the same full width. A compact read-only policy summary precedes the original editable policy repeaters; the sole full read-only registry is under a closed on-demand disclosure and linked from General. Dimension groups precede long optional WPML and source authority explanations; ARIA descriptions remain valid. Product panes no longer repeat global Step 2.
+
+Chrome fixture QA passed all six viewport widths. Staging and Production native WordPress source/readback tests passed after guarded deployment with backups; 54 original JetEngine fields, single source form and same options revision. The logged-in browser and real mutating Save or supplier approval E2E remain OPEN. No published price or Checkout authority was changed.
+
+### CP2.8 — Native ownership and duplicate-field correction
+
+A real rendered Wayfatours native form reproduced fields in multiple
+grouped tabs because the filtered state lost the CSS cascade to inline
+repeater and field-card display rules. Applied a shared visibility
+invariant at the original native owner and the Pricing Canvas owner.
+The exact 45-field/9-repeater mapping now has one owner section for each
+field, with six tabs and six browser fixture breakpoints passing.
+
+Legacy JSON policies and booking-hours setting are empty or unused
+in the current source and moved to Advanced presentation only.
+The actual stored options and consumers are untouched.
+Currency/market catalog remains WooCommerce/WCML-owned.
+Native input ARIA labeling improved 116/177 to 177/177 in read-only
+real-HTML Chromium; this is not a full WCAG audit.
+The original native form, source CAS, prices, rates and checkout were
+not changed. The logged-in browser Save and commercial E2E remain OPEN.
+
+### CP3.0 — 21 November continuation
+
+- Both sites: native CAS request modes GET, missing nonce, stale signed
+  revision and current signed admission passed. Admin rights and real
+  database advisory lock availability passed without writing settings.
+- Both sites: two distinct MySQL connections contested the exact same
+  CAS lock; the contender was blocked while held and could acquire after
+  release. Original source revisions remained unchanged.
+- Chromium Playwright: six widths by six tabs passed unique-owner control
+  visibility. Native field and repeater pending edits persist during navigation;
+  new repeater rows are labeled with row index and edited after reorder.
+  Desktop keyboard Enter changes sections, and tab traversal skips hidden
+  native settings.
+- Full authenticated browser Save and two-browser editing conflict remain open:
+  request/lock admission is not a substitute for a real original writer commit
+  and native JetEngine response. The connected browser tab could be listed,
+  but its page context was unavailable to the read-only browser connector.
+
+### CP3.1 — Repeater modernisation and source drift repair (21 Nov)
+
+- Native pricing Repeaters no longer show a duplicate full Live overview
+  above their original row editors by default. The operator can expand
+  a read-only preview via native details/summary, including keyboard Enter.
+  Closed previews generate no idle/background AJAX requests.
+- Playwright regression passed: one original Save, one original row,
+  no changed checkbox or form, one per-row summary. Pricing mode performs
+  AJAX only after explicit expansion. Other JetEngine pages retain their
+  normal overview. Existing one-owner and layout tests also passed.
+- A previously missed live-only drift was found in Wayfatours:
+  repeater-overview.js was an older 188-line version without the later
+  full-width Price Source Mode fix already present in Git/Tours.dev.
+  After reviewing the exact diff and taking backups, the newer file and
+  CP3.1 CSS were deployed on Wayfatours. Tours.dev received the CP3.1
+  modification first. Both sites now have matching SHA for both assets.
+- Both sites: original native JetEngine form source check and protected
+  CAS markup source tests passed; public pages responded 200. No vendor
+  Save action or ecommerce modification was run.
+
+### CP3.2 — 21 Nov real native form and field adapter verification
+
+- Tours.dev and Wayfatours: 4 genuine JetEngine Repeater definitions and
+  44 combined original child fields verified.
+- Tours.dev and Wayfatours: native Repeater sanitization followed by
+  WordPress serialize/unserialize passed on read-only sample rows; original
+  protected source fingerprint remained unchanged. No Save writer invoked.
+- Original captured JetEngine HTML passed five widths x six sections in
+  offline Chromium: one original Save and form, 45 fields with single owners,
+  no hidden fields visible, keyboard and mobile navigation, no overflow.
+  This native HTML snapshot contained 91 original input elements.
+- Authenticated browser Save and native vendor database write remain
+  unverified because the testing access/mutation safety controls blocked
+  the attempts. No fake success or generated login credentials.
+
+### CP3.5 — Metadata-only original Save verification
+
+Added an admin-only diagnostic observer after the original JetEngine
+Save handler and before existing CAS unlock. It records changed versus
+unchanged source revision, exact Repeater post-save DB readback counts,
+and signed stale denials separately from deliberate browser probes.
+The original JetEngine Save remains the only pricing writer.
+
+Tours.dev and Wayfatours passed the read-only observer/source checks,
+native CAS guard and real two-connection lock tests. Offline Chromium
+confirmed the probe sends NO pricing fields and accepts only HTTP 409
+as proof. No user login was minted, no customer orders created and no
+pricing option changed during tests. The browser operator flow remains
+the final live-E2E proof; see SAVE_VERIFICATION_20261121.md.

@@ -2294,3 +2294,64 @@
     z-index:auto;
   }
 }
+
+/* CP2.8 - canonical section ownership, visibility invariant.
+   A field may belong to ONE grouped section only. Some legacy field-card
+   and repeater selectors have display:flex/grid!important; those must NEVER
+   override the grouped navigation's filtered state. This is presentation
+   only: inputs remain in the original native JetEngine form for Save.
+   More specific than the historical [data-control-name] repeater overrides.
+*/
+.jet-engine-options-page-wrap.mad4b-ws-visual
+ #settings_top .cx-control.mad4b-ws-control.mad4b-ws-filtered,
+.jet-engine-options-page-wrap.mad4b-ws-visual
+ #settings_top .cx-control.mad4b-ws-control.mad4b-ws-filtered[data-control-name]{
+ display:none!important;
+}
+
+/* CP3.1 — a native Repeater has one editor, not a second summary card.
+   The optional unsaved overview is a compact disclosure, collapsed by
+   default. Original fields, JetEngine Add Item and Save remain unchanged. */
+.jet-engine-options-page-wrap.mad4b-ws-visual
+ #settings_top .cx-control-repeater>.cx-control__info
+ .mad4b-repeater-overview-disclosure{
+ display:block;
+ min-width:0;
+ width:100%;
+ max-width:100%;
+ margin:7px 0 0;
+ padding:0;
+ border:0;
+ background:transparent;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual
+ #settings_top .cx-control-repeater>.cx-control__info
+ .mad4b-repeater-overview-disclosure>summary{
+ display:list-item;
+ padding:5px 0;
+ cursor:pointer;
+ color:#2b685f;
+ font-size:11px;
+ line-height:1.45;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual
+ #settings_top .cx-control-repeater>.cx-control__info
+ .mad4b-repeater-overview-disclosure>summary:focus-visible{
+ outline:2px solid #27726b;
+ outline-offset:2px;
+}
+.jet-engine-options-page-wrap.mad4b-ws-visual
+ #settings_top .cx-control-repeater>.cx-control__info
+ .mad4b-repeater-overview-disclosure>.mad4b-repeater-overview{
+ margin:4px 0 0;
+ padding:8px 0;
+ border:0;
+ border-block-start:1px solid #cbdedb;
+ border-radius:0;
+ background:transparent;
+}
+/* Native/All-fields view remains the unmodified JetEngine presentation. */
+.jet-engine-options-page-wrap.mad4b-ws-native
+ .mad4b-repeater-overview-disclosure{
+ display:none!important;
+}
