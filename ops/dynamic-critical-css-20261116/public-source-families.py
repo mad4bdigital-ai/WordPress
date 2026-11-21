@@ -196,8 +196,10 @@ def verifier_only_recheck_candidates(site,catalog,state,ledger,root,rows,now=Non
         if certfile.name!=key+'.json':continue
         evidence=cert.get('evidence')
         if (not isinstance(evidence,dict)
-            or evidence.get('decision')!='failed_public_post_release_readback'
+            or evidence.get('decision') not in (
+                'failed_public_post_release_readback','failed_post_release')
             or type(evidence.get('verified_at')) is not int):continue
+        actual_perf_failed=evidence['decision']=='failed_post_release'
         rec=ledger.get('routes',{}).get(route['route_key'])
         if (not isinstance(rec,dict) or rec.get('status')!='hold'
             or type(rec.get('attempted_at')) is not int
@@ -206,6 +208,16 @@ def verifier_only_recheck_candidates(site,catalog,state,ledger,root,rows,now=Non
             or now<rec['retry_after']
             or type(rec.get('failures')) is not int
             or not 1<=rec['failures']<=2):continue
+        # Unlike an obsolete public readback rejection, a measured failure
+        # is retried ONLY after the actual Chromium QA implementation
+        # changes. Never treat a repeat run of identical QA as recovery.
+        if actual_perf_failed:
+            old_policy=rec.get('qa_policy_sha')
+            new_policy=state.get('qa_policy_sha')
+            if (not isinstance(old_policy,str) or not isinstance(new_policy,str)
+                or not re.fullmatch('[a-f0-9]{64}',old_policy)
+                or not re.fullmatch('[a-f0-9]{64}',new_policy)
+                or old_policy==new_policy):continue
         if rec.get('source_key')!=queue.source_key(
                 catalog,route,state,bool(rec.get('depends_on_listings'))):continue
         # Native version/revision must remain exact. The original publisher

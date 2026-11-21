@@ -28,7 +28,8 @@ with tempfile.TemporaryDirectory(prefix='mad4b-wayfa-verifier-negative-retry-') 
   key=f.queue.source_key(catalog,route,state,False)
   ledger['routes'][route['route_key']]={
       'status':'hold','source_key':key,'depends_on_listings':False,
-      'attempted_at':now-100,'retry_after':now-1,'failures':1}
+      'attempted_at':now-100,'retry_after':now-1,'failures':1,
+      'qa_policy_sha':'a'*64}
   context='wayfatours.com|en|'+path+'|base|USD'
   cert={'contract':f.v2.CONTRACT,'status':'reverted_post_release_qa',
         'host':'wayfatours.com','type':'destinations','object_id':route['id'],
@@ -42,8 +43,16 @@ with tempfile.TemporaryDirectory(prefix='mad4b-wayfa-verifier-negative-retry-') 
  def inspect(rows=routes,led=ledger,site='wayfa',cat=catalog,now_at=now):
   return f.verifier_only_recheck_candidates(site,cat,state,led,root,rows,now=now_at)
  check(inspect()==[r['route_key'] for r in routes[:3]],
-       'only three failed post-release readbacks may retry; real LCP veto stays reverted')
+       'only three readback failures retry while real LCP remains on same QA policy')
  check(inspect(site='source')==[], 'source staging never inherits Wayfa retry lane')
+ upgraded_state={**state,'qa_policy_sha':'b'*64}
+ original_state=state
+ state=upgraded_state
+ check(set(inspect())=={r['route_key'] for r in routes},
+       'new signed QA implementation restores only a fresh LCP recheck slot')
+ state={**original_state,'qa_policy_sha':'a'*64}
+ check(inspect()==[r['route_key'] for r in routes[:3]],
+       'same QA implementation never retries true LCP regression automatically')
  changed=json.loads(json.dumps(ledger));changed['routes'][routes[0]['route_key']]['source_key']='0'*64
  check(routes[0]['route_key'] not in inspect(led=changed),
        'changed WP route dependency cannot reuse old negative evidence')

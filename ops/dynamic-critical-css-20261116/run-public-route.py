@@ -293,7 +293,8 @@ def qa_policy_sha():
     # Exact deployed original Chromium QA code, never a user-supplied key.
     # Invalidating negative attempts never publishes a public certificate.
     digest=hashlib.sha256(b'mad4b-public-css-qa-implementation-v1\x00')
-    for name in ('verify.js','lcp-observation-window.js'):
+    for name in ('verify.js','verify-native-ordered-critical.js',
+                 'lcp-observation-window.js'):
         p=TOOLS/'tools'/name
         if p.is_symlink() or not p.is_file():
             raise ValueError('QA_VERIFIER_TOOL_MISSING_OR_SYMLINK:'+name)
