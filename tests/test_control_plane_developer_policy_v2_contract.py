@@ -1,5 +1,6 @@
 from tour_highlights_bootstrap_overlay import original_bootstrap_bytes
 from control_plane_pr808_historical_successor import assert_source_successor
+from control_plane_pr995_selective_historical_source import assert_operator_historical_and_exact_successor
 """Review-only, non-authorizing V2 projection and exact portable Skill parity."""
 from pathlib import Path
 import hashlib
@@ -40,7 +41,10 @@ class DeveloperPolicyV2Review(unittest.TestCase):
                 current=p.read_bytes()
                 if name=='wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php':
                     current=original_bootstrap_bytes(current)
-                self.assertEqual(SHA(current),digest)
+                if name.endswith('/class-mad4b-scp-operator-grant-convergence.php'):
+                    self.assertTrue(assert_operator_historical_and_exact_successor(digest,current))
+                else:
+                    self.assertEqual(SHA(current),digest)
         for name,digest in d['prior_source_sha256'].items():
             self.assertRegex(digest,r'^[a-f0-9]{64}$')
 
