@@ -78,7 +78,12 @@ if($wayfa){
         $rateCount+=(int)$view['linked_rate_count'];
     }
     $check($cruise===7,'cruise section shown for actual recorded stages only');
-    $check($rateCount===32,'native related_tour_id Tour Rate population');
+    // Historic Draft EN/ES rates were archived into WordPress Trash.
+    // Two order-referenced EN drafts must survive; newly generated drafts may
+    // increase the count later. The old 32-rate assertion is obsolete.
+    $check($rateCount>=2 && get_post_status(60830)==='draft' &&
+        get_post_status(61060)==='draft',
+        'order-linked draft Tour Rates preserved after selective archive');
     $check($class::inspect(60627)['cruise']['show']===false,
         'no cruise tab on non-cruise package');
     $view=$class::inspect(60661);
