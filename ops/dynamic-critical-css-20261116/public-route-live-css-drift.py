@@ -14,6 +14,7 @@ import json
 import importlib.util
 import pathlib
 import re
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -149,16 +150,36 @@ def eligible(site,cat,state,ledger,wp,families):
             rows.append((route,cert))
     return sorted(rows,key=lambda pair:(pair[0]['path'],pair[0]['language']))
 
-def scan(site,cat,state,ledger,wp,families,cursor_file,*,count=4,force_path=None,fetch=original_request,v2_fetch=None):
+def scan(site,cat,state,ledger,wp,families,cursor_file,*,count=4,
+         force_path=None,fetch=original_request,v2_fetch=None,now=None):
     rows=eligible(site,cat,state,ledger,wp,families)
     if not rows:return None
+    observed_at=int(time.time()) if now is None else int(now)
     cursor=0
-    if cursor_file.is_file() and not cursor_file.is_symlink() and cursor_file.stat().st_size<2000:
+    # Conditional Elementor output can alternate even without a source edit.
+    # Require two independent Cron observations, separated in time, before
+    # expensive QA. The current 422 consumer still uses native CSS for any
+    # document variant not covered by its exact certified fingerprint.
+    pending={}
+    if (cursor_file.is_file() and not cursor_file.is_symlink()
+        and cursor_file.stat().st_size<7000
+        and cursor_file.stat().st_uid==0
+        and not cursor_file.stat().st_mode&0o022):
         try:
             old=json.loads(cursor_file.read_text())
             if old.get('contract')==CONTRACT and old.get('site')==site:
                 cursor=max(0,int(old.get('cursor',0)))
-        except (ValueError,TypeError,json.JSONDecodeError):pass
+                existing=old.get('pending_doc_graph',{})
+                if not isinstance(existing,dict):existing={}
+                for routekey,proof in existing.items():
+                    if (isinstance(routekey,str) and SHA_RE.fullmatch(routekey)
+                        and isinstance(proof,dict)
+                        and SHA_RE.fullmatch(str(proof.get('expected','')))
+                        and SHA_RE.fullmatch(str(proof.get('observed','')))
+                        and type(proof.get('first')) is int
+                        and observed_at-21600<=proof['first']<=observed_at):
+                        pending[routekey]=proof
+        except (ValueError,TypeError,AttributeError,json.JSONDecodeError):pass
     if force_path is not None:
         batch=[item for item in rows if item[0]['path']==force_path]
         if len(batch)!=1:raise ValueError('manual-audit-route-not-source-certified')
@@ -182,6 +203,25 @@ def scan(site,cat,state,ledger,wp,families,cursor_file,*,count=4,force_path=None
                 response=fetch(HOSTS[site],route['path'])
                 if response is None:continue
                 drift=compare(cert,*response,wp,HOSTS[site])
+            key=route['route_key']
+            if (drift and drift.get('drift_kind')=='elementor_doc_fingerprint'
+                and force_path is None):
+                prior=pending.get(key,{})
+                if (prior.get('expected')==drift['expected_doc_sha']
+                    and prior.get('observed')==drift['observed_doc_sha']
+                    and observed_at-int(prior.get('first',observed_at))>=900):
+                    pending.pop(key,None)
+                else:
+                    if (not prior
+                        or prior.get('expected')!=drift['expected_doc_sha']
+                        or prior.get('observed')!=drift['observed_doc_sha']):
+                        pending[key]={'expected':drift['expected_doc_sha'],
+                                      'observed':drift['observed_doc_sha'],
+                                      'first':observed_at}
+                    drift=None
+            elif not drift:
+                # A returned approved graph cancels the tentative mismatch.
+                pending.pop(key,None)
             if drift:
                 result={'contract':CONTRACT,'site':site,
                         'route_key':route['route_key'],'path':route['path'],
@@ -191,10 +231,13 @@ def scan(site,cat,state,ledger,wp,families,cursor_file,*,count=4,force_path=None
         except (OSError,TimeoutError,urllib.error.URLError,ValueError,KeyError):
             continue
     if force_path is None:
+        limited=dict(sorted(pending.items(),
+                     key=lambda item:(item[1]['first'],item[0]))[-8:])
         families.queue.atom(cursor_file,{'contract':CONTRACT,'site':site,
                                       'cursor':(cursor+len(batch))%len(rows),
                                       'last_count':len(batch),
-                                      'found_drift':result is not None})
+                                      'found_drift':result is not None,
+                                      'pending_doc_graph':limited})
     return result
 
 def select_verified_repair(ledger,drift):
