@@ -575,15 +575,16 @@ final class MAD4B_Transport_Distance_Time_V1 {
    }
   }
   $slugs=array_values(array_unique($slugs));
-  $terms=[];
+  $terms=[];$missingRouteTerms=[];
   foreach($slugs as $slug){
    $t=get_term_by('slug',$slug,'destinations');
-   if(!$t)continue;
+   if(!$t){$missingRouteTerms[]=$slug;continue;}
    $terms[]=['id'=>(int)$t->term_id,'name'=>$t->name,
     'slug'=>$slug,'has_coordinates'=>self::coords((int)$t->term_id)!==null];
   }
   return ['policy'=>self::current(),
    'calibration'=>self::calibrate(),'terms'=>$terms,
+   'unresolved_route_destination_terms'=>$missingRouteTerms,
    'languages'=>array_keys((array)apply_filters('wpml_active_languages',null,['skip_missing'=>0])),
    'native_context'=>class_exists('MAD4B_Transport_Native_Cost_Inheritance_V1')?
     MAD4B_Transport_Native_Cost_Inheritance_V1::catalog_options():[],

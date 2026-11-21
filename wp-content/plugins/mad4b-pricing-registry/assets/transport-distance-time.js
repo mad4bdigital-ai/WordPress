@@ -22,7 +22,7 @@ const profileFields=[
 ];
 let policy=null,saved=null,calibration=null,revision=0,terms=[];
 let nativeSources=[],nativeRates=[];
-let eligibleResults=null;
+let eligibleResults=null,missingRouteDestinations=[];
 let packageLines=[];
 const display=s=>String(s).replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
 const num=v=>Number(v).toLocaleString('en-US',{maximumFractionDigits:2});
@@ -251,11 +251,12 @@ function hydrate(d){
  select(q('quote-road'),roads.map(k=>[k,display(k)]));
  const originTerms=terms.filter(t=>['cairo','aswan-gov','luxor'].includes(t.slug));
  select(q('eligible-from'),originTerms.map(t=>[t.id,t.name]),'Choose PDF origin city');
- select(q('eligible-to'),terms.map(t=>[t.id,t.name]),'Choose destination');
+ select(q('eligible-to'),terms.map(t=>[t.id,t.name]),'Destination optional for local service review');
  select(q('eligible-lang'),(d.languages||['en']).map(lang=>[lang,lang.toUpperCase()]),'Choose language');
  if((d.languages||[]).includes('en'))q('eligible-lang').value='en';
- eligibleResults=null;
- q('eligibility-result').textContent='Select origin, destination and language to evaluate routes.';
+ eligibleResults=null;missingRouteDestinations=d.unresolved_route_destination_terms||[];
+ q('eligibility-result').textContent='Choose an origin, optional destination and language.'+
+  (missingRouteDestinations.length?' Unresolved source route targets: '+missingRouteDestinations.join(', '):'');
  const destinations=terms.map(t=>[t.id,t.name+
   (t.has_coordinates?'':' · location needs confirmation')]);
  select(q('from'),destinations,'Choose origin');
@@ -274,7 +275,9 @@ function showEligibilityResult(result){
  heading.textContent='Draft candidates: '+result.draft_eligible.length+
   ' · Needs route/data review: '+result.needs_route_review.length+
   ' · Excluded operations: '+result.excluded_count+
-  ' · None is approved for checkout.';host.append(heading);
+  ' · None is approved for checkout.'+
+  (missingRouteDestinations.length?' · Missing destination terms: '+missingRouteDestinations.join(', '):'');
+ host.append(heading);
  for(const [title,items,selectable] of [
    ['Draft candidates (not yet commercially approved)',result.draft_eligible,true],
    ['Needs route or source review',result.needs_route_review,false]
@@ -543,7 +546,7 @@ function bind(){
   button.disabled=true;host.textContent='Checking live Tour Component and route qualification…';
   try{
    const origin=Number(q('eligible-from').value||0),destination=Number(q('eligible-to').value||0);
-   if(!origin||!destination)throw Error('Choose origin and destination');
+   if(!origin)throw Error('Choose an origin city');
    const stage={key:'package-preview',label:'Package transport selection',
     day_offset:0,origin_term_id:origin,destination_term_id:destination,
     service_kind:q('eligible-kind').value,join:'OR',required:true,

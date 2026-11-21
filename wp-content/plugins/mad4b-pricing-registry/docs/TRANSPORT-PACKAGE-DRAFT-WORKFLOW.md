@@ -21,6 +21,16 @@ Changes are written only to an **existing Draft Tour Rate** by an authorized use
 - Only explicitly selected OR alternatives are costed; AND components require distinct selection. Duplicate stages are rejected.
 - Cross-language selection requires a matching source in the Tour Rate's WPML language.
 
+## Source destination coverage
+
+The verified PDF route-evidence register contains 22 target slugs. At this
+checkpoint, 19 have matching native `destinations` taxonomy terms; Ismailia,
+Safaga, and Dendera are unresolved. They are reported as review blockers,
+**not** silently created or mapped to another place. A blank destination is
+allowed in the planner for local or unspecified routes, but these results
+remain in the route-review group rather than being treated as a verified
+point-to-point draft component.
+
 ## Cost presentation
 
 - Original PDF SELF company-cost reference (EGP) is presented separately from the calibrated distance/time operating estimate.
