@@ -8,6 +8,9 @@ import subprocess
 ROOT=Path(__file__).resolve().parents[1]
 META=ROOT/'ops/site-company-overlays/wayfatours/adaptive-runtime/source-parity-20261116.json'
 SUCCESSOR=ROOT/'ops/site-company-overlays/wayfatours/adaptive-runtime/source-forward-port-20261116.json'
+FOLLOWUP=ROOT/'ops/site-company-overlays/wayfatours/adaptive-runtime/source-followup-20261121.json'
+TOKEN_BRIDGE=ROOT/'ops/site-company-overlays/wayfatours/adaptive-runtime/source-token-bridge-20261121.json'
+SOURCE_IMPACT=ROOT/'ops/site-company-overlays/wayfatours/adaptive-runtime/source-impact-forward-20261121.json'
 ADAPTIVE='wp-content/plugins/mad4b-adaptive-asset-intelligence/includes/class-mad4b-scp-adaptive-asset-intelligence.php'
 QUEUE_TEST=ROOT/'ops/adaptive-queue-self-heal-20261116/tests/test-adaptive-queue-self-healing.php'
 
@@ -41,8 +44,36 @@ class AdaptiveSourceOwnership(unittest.TestCase):
    if row['relative_path'] in successor['candidate_files']:
     candidate=successor['candidate_files'][row['relative_path']]
     self.assertEqual(candidate['observed_live_master_sha256_at_capture'],expected_baseline)
-    self.assertEqual(hashlib.sha256(actual).hexdigest(),candidate['git_candidate_source_sha256'])
-    self.assertEqual(git_blob_sha1(actual),candidate['git_candidate_blob_sha1'])
+    # Keep the 2026-11-16 source candidate immutable: newer reviewed source
+    # must have its own explicit predecessor SHA/blob and current file pins.
+    new=json.loads(FOLLOWUP.read_text())
+    self.assertEqual(new['contract'],'mad4b.adaptive-asset-source-followup.v1')
+    self.assertEqual(new['prior_candidate_sha256'],candidate['git_candidate_source_sha256'])
+    self.assertEqual(new['prior_candidate_git_blob_sha1'],candidate['git_candidate_blob_sha1'])
+    self.assertEqual(new['updated_source_file'],row['relative_path'])
+    self.assertTrue(new['previous_historical_receipt_unchanged'])
+    self.assertTrue(new['no_parallel_worker'] and new['no_parallel_queue'])
+    self.assertTrue(new['no_css_certification_from_worker_ack'])
+    self.assertTrue(new['no_auto_promotion'])
+    bridge=json.loads(TOKEN_BRIDGE.read_text())
+    self.assertEqual(bridge['contract'],'mad4b.adaptive-asset-worker-source-token-bridge.v1')
+    self.assertEqual(bridge['prior_source_sha256'],new['updated_source_sha256'])
+    self.assertEqual(bridge['prior_source_git_blob_sha1'],new['updated_source_git_blob_sha1'])
+    self.assertEqual(bridge['current_source_file'],row['relative_path'])
+    self.assertTrue(bridge['stale_revision_rejected'])
+    self.assertTrue(bridge['no_parallel_scheduler'] and bridge['no_new_queue'])
+    self.assertFalse(bridge['automatic_css_certification_from_ack'])
+    self.assertFalse(bridge['production_release_authorized_by_this_receipt'])
+    later=json.loads(SOURCE_IMPACT.read_text())
+    self.assertEqual(later['contract'],'mad4b.existing-cache-source-relation-forward.v1')
+    self.assertEqual(later['predecessor_manager_sha256'],bridge['current_source_sha256'])
+    self.assertEqual(later['predecessor_manager_git_blob_sha1'],bridge['current_source_git_blob_sha1'])
+    self.assertTrue(later['original_home_fallback_preserved'])
+    self.assertFalse(later['historical_tickets_deleted'])
+    self.assertFalse(later['negative_dependency_certified'])
+    self.assertFalse(later['standalone_property_service_activated'])
+    self.assertEqual(hashlib.sha256(actual).hexdigest(),later['current_manager_sha256'])
+    self.assertEqual(git_blob_sha1(actual),later['current_manager_git_blob_sha1'])
     self.assertFalse(candidate['production_authorized'])
     self.assertFalse(candidate['certified_for_target'])
    else:
@@ -71,5 +102,9 @@ class AdaptiveSourceOwnership(unittest.TestCase):
       cwd=ROOT,capture_output=True,text=True,timeout=45,check=False)
   self.assertEqual(result.returncode,0,result.stdout+'\n'+result.stderr)
   self.assertIn('PASS 20/20 adaptive queue/source reconciliation assertions',result.stdout)
+  readback=subprocess.run(['php',str(ROOT/'tests/test_css_native_worker_status.php')],
+      cwd=ROOT,capture_output=True,text=True,timeout=30,check=False)
+  self.assertEqual(readback.returncode,0,readback.stdout+'\n'+readback.stderr)
+  self.assertIn('CSS_NATIVE_WORKER_STATUS_CONTRACT_PASS',readback.stdout)
 
 if __name__=='__main__':unittest.main()

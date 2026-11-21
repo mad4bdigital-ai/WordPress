@@ -1,0 +1,19 @@
+{
+  "contract": "mad4b.adaptive-asset-worker-source-token-bridge.v1",
+  "prior_lineage": "ops/site-company-overlays/wayfatours/adaptive-runtime/source-followup-20261121.json",
+  "prior_source_sha256": "1ff027d07dea9131f6b2df82c77cc98566679b5c98d6190dc086f7b69af779ba",
+  "prior_source_git_blob_sha1": "8f3d0fde0914bceb4a1681fc0228480157571551",
+  "current_source_file": "wp-content/plugins/mad4b-adaptive-asset-intelligence/includes/class-mad4b-scp-adaptive-asset-intelligence.php",
+  "current_source_sha256": "78a2bdfc3342a3da80162e4726d6456ede9aa8b450b0fd108a7466b9b133a138",
+  "current_source_git_blob_sha1": "b9d898c225453caaa1609f8c299f99a813917487",
+  "original_worker": "ops/dynamic-critical-css-20261116/run-public-route.py",
+  "ack_scope": "exact_original_route_source_revision_and_qualified_certificate_only",
+  "no_parallel_scheduler": true,
+  "no_new_queue": true,
+  "stale_revision_rejected": true,
+  "legacy_source_revision_derived_not_assumed": true,
+  "automatic_css_certification_from_ack": false,
+  "historical_receipts_unchanged": true,
+  "production_release_authorized_by_this_receipt": false,
+  "no_auto_promotion": true
+}
