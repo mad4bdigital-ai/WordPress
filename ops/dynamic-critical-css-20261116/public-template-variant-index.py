@@ -18,6 +18,7 @@ def load(name,filename):
 queue=load('mad4b_template_index_queue','public-route-queue.py')
 drift=load('mad4b_template_index_drift','public-route-live-css-drift.py')
 ordered=load('mad4b_template_index_native_ordered_css','public-css-dependency-manifest.py')
+origin=load('mad4b_template_index_uncached_wordpress_source','public-css-manifest-observer.py')
 
 CONTRACT='mad4b.public-css.template-variant-index.v1'
 HOSTS={'source':'tours.dev.mad4b.com','wayfa':'wayfatours.com'}
@@ -137,6 +138,24 @@ def extract(site,route,response,root):
             'first_image_sha':digest('\n'.join(html.unescape(x) for x in images)),
             'has_h1':bool(title.strip()),'currency':currency,'market':market}
 
+def fresh_original_source(site,host,path):
+    """Observe Wayfa's uncached WordPress source; never reuse FastCGI HTML.
+
+    Advisory only: no certificate issuance, browser work, or cache mutation.
+    Preserve Source's existing transport until its own source-bound rollout.
+    """
+    if site!='wayfa':
+        return drift.original_request(host,path)
+    if host!=HOSTS['wayfa']:
+        raise ValueError('wrong-company-original-html-observer')
+    html,headers=origin.public_fetch(host,path)
+    if (headers.get('X-Wayfa-Origin-Cache')!='BYPASS'
+        or 'no-store' not in headers.get('Cache-Control','').lower()
+        or headers.get('X-MAD4B-Public-CCSS-Ready')=='1'):
+        return None
+    return (html,headers.get('X-MAD4B-Public-CCSS-Currency',''),
+            headers.get('X-MAD4B-Public-CCSS-Market',''))
+
 def refresh(site,cat,state,ledger,root,report,index,*,budget=4,fetch=None,now=None):
     """Bounded, cheap, repeatable source observations (no Chromium)."""
     if (site not in HOSTS or cat.get('host')!=HOSTS[site]
@@ -146,7 +165,7 @@ def refresh(site,cat,state,ledger,root,report,index,*,budget=4,fetch=None,now=No
     if (index.get('contract')!=CONTRACT or index.get('site')!=site
         or index.get('host')!=HOSTS[site]):raise ValueError('foreign-template-index')
     if not isinstance(budget,int) or not 1<=budget<=8:raise ValueError('unbounded-template-scan')
-    fetch=fetch or drift.original_request
+    fetch=fetch or (lambda host,path:fresh_original_source(site,host,path))
     now=int(time.time()) if now is None else int(now)
     rows=queue.safe_catalog(cat,site)
     # Scan divergent cohorts first, but also discover unseen variants in
@@ -180,7 +199,14 @@ def refresh(site,cat,state,ledger,root,report,index,*,budget=4,fetch=None,now=No
     ordered=(candidates[start:]+candidates[:start])
     pending=[r for r in ordered if current_observation(
         {**index,'observations':records},cat,r,state,ledger,now) is None]
-    selected=pending[:budget]
+    # Prefer revalidating an observed page after a source-key change, rather
+    # than repeatedly scanning unreachable, never-observed 404 siblings.
+    # Still reserve every fourth selection for unseen routes; a broken stale
+    # route may not starve new templates. Budget remains 1 for WP-CLI holds.
+    stale=[r for r in pending if r['route_key'] in records]
+    unseen=[r for r in pending if r['route_key'] not in records]
+    unseen_turn=bool(stale and unseen and index.get('cursor',0)%4==3)
+    selected=(unseen+stale if unseen_turn else stale+unseen)[:budget]
     attempted=0;updated=0
     for route in selected:
         attempted+=1
