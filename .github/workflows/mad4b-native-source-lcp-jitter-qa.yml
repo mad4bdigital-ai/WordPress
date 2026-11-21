@@ -1,0 +1,38 @@
+name: MAD4B Native Source 320px LCP QA
+on:
+  push:
+    paths:
+      - "ops/dynamic-critical-css-20261116/tools/verify-native-ordered-critical.js"
+      - "ops/dynamic-critical-css-20261116/tools/lcp-observation-window.js"
+      - "ops/dynamic-critical-css-20261116/tests/test-lcp-network-jitter-replay.js"
+      - ".github/workflows/mad4b-native-source-lcp-jitter-qa.yml"
+  pull_request:
+    paths:
+      - "ops/dynamic-critical-css-20261116/tools/verify-native-ordered-critical.js"
+      - "ops/dynamic-critical-css-20261116/tools/lcp-observation-window.js"
+      - "ops/dynamic-critical-css-20261116/tests/test-lcp-network-jitter-replay.js"
+      - ".github/workflows/mad4b-native-source-lcp-jitter-qa.yml"
+concurrency:
+  group: mad4b-native-source-lcp-jitter-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  native-source-320-lcp-qa:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Original source QA boundaries and native LCP replay
+        run: |
+          set -euo pipefail
+          node --check ops/dynamic-critical-css-20261116/tools/verify-native-ordered-critical.js
+          node --check ops/dynamic-critical-css-20261116/tools/lcp-observation-window.js
+          node ops/dynamic-critical-css-20261116/tests/test-lcp-network-jitter-replay.js
