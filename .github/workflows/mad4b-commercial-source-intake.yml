@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'tests/test_package_commercial_source_intake_non_regression.py'
+      - 'tests/rate-season-effective-window-hermetic.php'
       - '.github/workflows/mad4b-commercial-source-intake.yml'
       - 'wp-content/plugins/mad4b-pricing-registry/**'
       - 'wp-content/plugins/mad4b-commerce/**'
@@ -32,3 +33,5 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: python3 tests/test_package_commercial_source_intake_non_regression.py
+      - name: Verify single effective Season covers entire booking window
+        run: php tests/rate-season-effective-window-hermetic.php
