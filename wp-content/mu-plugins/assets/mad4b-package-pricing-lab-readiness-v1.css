@@ -76,3 +76,17 @@
  .mad4b-pcl-stage-scope{overflow-wrap:anywhere}
  .mad4b-pcl-stage h4{line-height:1.45}
 }
+
+/* Source-native Rate generation admission: informational, never a Rate submit. */
+.mad4b-pcl-native-admission{margin:12px 0;padding:10px 12px;
+  background:#f6f7f7;border:1px solid #dcdcde;border-radius:4px}
+.mad4b-pcl-native-admission>p:first-child{margin:0 0 6px;
+  padding:7px 10px;display:block}
+.mad4b-pcl-native-admission .mad4b-pcl-note{margin:8px 0 0}
+.mad4b-pcl-native-findings{margin:5px 0}
+.mad4b-pcl-native-findings>summary{cursor:pointer;font-weight:600}
+.mad4b-pcl-native-findings>summary:focus-visible{outline:2px solid #2271b1;outline-offset:2px}
+.mad4b-pcl-native-findings ul{list-style:disc;padding-inline-start:21px;
+  columns:2;column-gap:22px;line-height:1.65;margin:10px 0}
+.mad4b-pcl-native-findings li{overflow-wrap:anywhere;break-inside:avoid}
+@media(max-width:782px){.mad4b-pcl-native-findings ul{columns:1}}
