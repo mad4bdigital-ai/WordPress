@@ -42,7 +42,7 @@ class WordPressUserLocaleContractTests(unittest.TestCase):
         translated=catalog(script_source(output["html"]))
         self.assertEqual(set(translated),set(HEADINGS))
         keys=set(translated["en"])
-        self.assertGreaterEqual(len(keys),49)
+        self.assertGreaterEqual(len(keys),53)
         for locale,messages in translated.items():
             self.assertEqual(set(messages),keys,locale)
             self.assertTrue(all(isinstance(x,str) and x.strip()
