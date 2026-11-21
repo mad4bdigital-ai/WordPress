@@ -45,6 +45,50 @@ final class MAD4B_Package_Supplier_Admission_V1 {
             hash('sha256',wp_json_encode($unsigned)));
     }
 
+    /**
+     * Live native Tour Rate CPT is the sole transport-stage owner.
+     * related_tour_id is already the authoritative scalar postmeta link.
+     * The Tour's tour_queried_rates query field is inventory UI only; never
+     * read or write it as a competing relation or a selected Rate list.
+     */
+    public static function linkedRateRoutes(int $tour):array {
+        $ids=get_posts([
+            'post_type'=>'tour-rates','post_status'=>['publish','draft','pending'],
+            'posts_per_page'=>300,'fields'=>'ids','suppress_filters'=>true,
+            'meta_key'=>'related_tour_id','meta_value'=>(string)$tour,
+            'orderby'=>'ID','order'=>'ASC',
+        ]);
+        $rows=[];$total=0;
+        foreach((array)$ids as $rawId){
+            $rate=(int)$rawId;
+            if($rate<=0||get_post_type($rate)!=='tour-rates'||
+                (int)get_post_meta($rate,'related_tour_id',true)!==$tour)
+                continue;
+            $stored=get_post_meta($rate,'_mad4b_transport_stages_v1',true);
+            // JetEngine saves the Repeater as an array of native stage rows,
+            // not as a virtual "stages" wrapper. Accept an older wrapper only
+            // for source-compatible previews; never normalize by writing meta.
+            if(is_array($stored) && is_array($stored['stages']??null))
+                $stored=$stored['stages'];
+            $count=0;
+            foreach(is_array($stored)?$stored:[] as $stage)
+                if(is_array($stage) &&
+                   trim((string)($stage['key']??''))!=='')$count++;
+            $total+=$count;
+            $rows[]=[
+                'rate_id'=>$rate,'status'=>(string)get_post_status($rate),
+                'native_route_stage_count'=>$count,
+            ];
+        }
+        return [
+            'linked_rate_count'=>count($rows),
+            'native_route_stage_count'=>$total,
+            'rate_stage_inventory'=>$rows,
+            'source_relation'=>'related_tour_id',
+            'tour_query_is_inventory_only'=>true,
+        ];
+    }
+
     public static function ajax():void {
         if(!current_user_can('commerce_manage_pricing') ||
            !current_user_can('manage_woocommerce'))
@@ -177,13 +221,12 @@ final class MAD4B_Package_Supplier_Admission_V1 {
         $component=null;
         if($role!=='self_cost')$add('transport_supplier_cost_role_missing');
         if(!$source)$add('transport_original_source_missing');
-        // The native Tour Rate routing editor owns explicit stage identity.
-        // Never infer an itinerary leg from a post title or a PDF city name.
-        $transportStages=get_post_meta($tour,'_mad4b_transport_stages_v1',true);
-        $stageRows=is_array($transportStages) &&
-            is_array($transportStages['stages']??null)
-            ?$transportStages['stages']:[];
-        if(!$stageRows)$add('transport_route_stage_binding_missing');
+        // The native Tour Rate routing editor owns stage identity. Resolve
+        // its scalar related_tour_id postmeta; never invent a second Relation.
+        $linked=self::linkedRateRoutes($tour);
+        if(!$linked['linked_rate_count'])$add('transport_linked_tour_rates_missing');
+        if(!$linked['native_route_stage_count'])
+            $add('transport_route_stage_binding_missing');
         $model=class_exists('MAD4B_Transport_Distance_Time_V1',false)
             ?MAD4B_Transport_Distance_Time_V1::current():[];
         $profiles=is_array($model['profiles']??null)?$model['profiles']:[];
@@ -211,10 +254,15 @@ final class MAD4B_Package_Supplier_Admission_V1 {
             'vehicle_profile_owner'=>(string)($model['vehicle_profile_owner']??''),
             'model_candidate_vehicle_keys'=>$proposals,
             'vehicle_profiles_needing_review'=>$unconfigured,
-            'explicit_route_stage_count'=>count($stageRows),
-            'route_component_status'=>$stageRows
-                ?'stage_selected_cost_and_provider_review_required'
-                :'route_stages_not_assigned',
+            'explicit_route_stage_count'=>$linked['native_route_stage_count'],
+            'linked_tour_rate_count'=>$linked['linked_rate_count'],
+            'linked_rate_stage_inventory'=>$linked['rate_stage_inventory'],
+            'stage_meta_owner'=>'tour-rates',
+            'relation_source'=>'related_tour_id',
+            'tour_queried_rates_inventory_only'=>true,
+            'route_component_status'=>$linked['native_route_stage_count']
+                ?'rate_stage_selected_cost_and_provider_review_required'
+                :'route_stages_not_assigned_in_tour_rates',
             'approved_route_component_id'=>$component,
             'source_cost_estimate_egp'=>null,
             'cost_qualified'=>false,
