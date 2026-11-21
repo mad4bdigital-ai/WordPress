@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: MAD4B Verified Public Page Critical CSS
- * Version: 1.0.0
+ * Version: 1.1.0
  * Description: Apply certified, content-addressed first-paint CSS on exactly matching anonymous public WPML routes.
  */
 defined('ABSPATH') || exit;
@@ -13,6 +13,18 @@ final class MAD4B_Public_Critical_CSS_Runtime_V1 {
     private static bool $verified_request = false;
     private static bool $verified_multi_request = false;
     private static ?string $multi_original_html = null;
+    /**
+     * Percent escape HEX casing has no URI semantic meaning. WordPress
+     * catalogs can store %d8... while browsers/origin URI serializers send
+     * %D8... for the same native WPML Arabic route. Normalize only those
+     * escape hex digits, not the actual slug/case/market or URL decoded
+     * bytes. Every signed cert still requires exact object, currency,
+     * trusted market, CSS SHA, Elementor graph and five original QA views.
+     */
+    public static function normalized_escaped_path(string $path): string {
+        return (string)preg_replace_callback('/%[A-Fa-f0-9]{2}/',
+            static fn(array $m): string => strtolower($m[0]),$path);
+    }
     private static function diagnostic(string $code): void {
         if (function_exists('wp_get_environment_type')
             && wp_get_environment_type()==='staging'
@@ -85,7 +97,8 @@ final class MAD4B_Public_Critical_CSS_Runtime_V1 {
         $host=strtolower((string)wp_parse_url((string)get_option('home',''),PHP_URL_HOST));
         $site=['tours.dev.mad4b.com','wayfatours.com'];
         if (!in_array($host,$site,true)) return null;
-        $path=(string)wp_parse_url((string)($_SERVER['REQUEST_URI']??''),PHP_URL_PATH);
+        $path=self::normalized_escaped_path((string)wp_parse_url(
+            (string)($_SERVER['REQUEST_URI']??''),PHP_URL_PATH));
         if ($path==='' || !MAD4B_Public_Critical_CSS_Coverage_V1::allowed_path($path)) return null;
         $language=(string)apply_filters('wpml_current_language',null);
         if (!preg_match('/^[a-z]{2}$/D',$language)) return null;
