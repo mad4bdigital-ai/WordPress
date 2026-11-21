@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """No QA approval can veto policy activation or cause sibling CSS inheritance."""
-import hashlib,importlib.util,json,pathlib,tempfile,time,sys
+import hashlib,importlib.util,json,pathlib,tempfile,time,sys,urllib.error
 from pathlib import Path
 D=Path(sys.argv[1])
 def load(name,file):
@@ -197,4 +197,41 @@ with tempfile.TemporaryDirectory(prefix='mad4b-css-template-policy-test-') as tm
            'already transformed CSS HTML cannot be indexed as native CSS')
  finally:
      v.origin.public_fetch=original
+ # A verified uncached WordPress 404 is a temporary negative observation,
+ # never a source sample. The page must be retried on expiry/source change.
+ four=v.empty('wayfa');calls=[]
+ def missing_origin(host,path):
+     calls.append(path)
+     raise urllib.error.HTTPError('https://wayfatours.com'+path,404,'Not Found',
+          {'X-Wayfa-Origin-Cache':'BYPASS',
+           'Cache-Control':'private, no-store'},None)
+ first=v.refresh('wayfa',cat,state,ledger,root,report,four,
+                 budget=1,fetch=missing_origin,now=12000)
+ check(first['last_http_404_holds_added']==1
+       and first['last_updated']==0 and len(first['observations'])==0
+       and first['source_http_holds_total']==1,
+       'uncached 404 records negative source hold, never CSS evidence')
+ check(v.current_observation(first,cat,routes[0],state,ledger,12001) is None,
+       '404 hold never qualifies a source template variant')
+ check(v.current_http_404_hold(first,cat,routes[0],state,ledger,12001),
+       'exact route and source-key 404 hold suspends repeated origin fetch')
+ second_calls=[]
+ def second_fetch(host,path):
+     second_calls.append(path);return None
+ second=v.refresh('wayfa',cat,state,ledger,root,report,first,
+                  budget=1,fetch=second_fetch,now=12001)
+ check(second_calls==[routes[1]['path']],
+       '404 cooldown skips rejected route and advances to next sample')
+ check(not v.current_http_404_hold(first,cat,routes[0],state,ledger,15601),
+       '404 hold expires automatically after one hour')
+ changed_source={**cat,'global_generation':cat['global_generation']+1}
+ check(not v.current_http_404_hold(first,changed_source,routes[0],state,ledger,12001),
+       'changed WordPress source key immediately reopens 404 observation')
+ def cached_404(host,path):
+     raise urllib.error.HTTPError('https://wayfatours.com'+path,404,'Not Found',
+          {'X-Wayfa-Origin-Cache':'HIT','Cache-Control':'public, max-age=1800'},None)
+ cached=v.refresh('wayfa',cat,state,ledger,root,report,v.empty('wayfa'),
+                  budget=1,fetch=cached_404,now=12000)
+ check(cached['source_http_holds_total']==0,
+       'FastCGI cached 404 cannot suppress a public route')
  print('TEMPLATE_VARIANT_POLICY_REGRESSIONS',count)

@@ -7,7 +7,7 @@ Elementor DOM document fingerprints it otherwise learns only after Chromium.
 Only authenticated WordPress catalog routes, first-party anonymous HTTP 200,
 server-resolved currency/market, and matching WP object body class are admitted.
 """
-import fcntl,hashlib,html,importlib.util,json,pathlib,re,time
+import fcntl,hashlib,html,importlib.util,json,pathlib,re,time,urllib.error
 from pathlib import Path
 
 BASE=Path(__file__).resolve().parent
@@ -32,6 +32,7 @@ TAG_RE=re.compile(r'<[^>]*>')
 SHA_RE=re.compile(r'[a-f0-9]{64}\Z')
 MAX_OBSERVATIONS=5000
 MAX_AGE_S=4*86400  # Enough scan cycles for 1,022 public routes at 8 / 30 minutes
+HTTP_404_HOLD_S=3600  # Only verified fresh origin 404, never a CSS qualification
 
 def digest(value):
     return hashlib.sha256(value.encode('utf8')).hexdigest()
@@ -58,7 +59,7 @@ def refresh_file(site,cat,state,ledger,root,families,path,*,budget=4):
 def empty(site):
     if site not in HOSTS:raise ValueError('unknown-public-company')
     return {'contract':CONTRACT,'site':site,'host':HOSTS[site],
-            'cursor':0,'observations':{}}
+            'cursor':0,'observations':{},'source_http_holds':{}}
 
 def read(path,site):
     if not path.exists():return empty(site)
@@ -68,6 +69,8 @@ def read(path,site):
     if (data.get('contract')!=CONTRACT or data.get('site')!=site
         or data.get('host')!=HOSTS[site] or not isinstance(data.get('observations'),dict)
         or len(data['observations'])>MAX_OBSERVATIONS
+        or not isinstance(data.get('source_http_holds',{}),dict)
+        or len(data.get('source_http_holds',{}))>MAX_OBSERVATIONS
         or not isinstance(data.get('cursor'),int) or data['cursor']<0):
         raise ValueError('untrusted-template-index')
     return data
@@ -138,6 +141,19 @@ def extract(site,route,response,root):
             'first_image_sha':digest('\n'.join(html.unescape(x) for x in images)),
             'has_h1':bool(title.strip()),'currency':currency,'market':market}
 
+def current_http_404_hold(index,cat,route,state,ledger,now):
+    """Negative HTTP source evidence only; NEVER a CSS source/route cert."""
+    rows=index.get('source_http_holds',{})
+    if not isinstance(rows,dict):return False
+    rec=rows.get(route['route_key'])
+    if not isinstance(rec,dict):return False
+    at=rec.get('observed_at');expiry=rec.get('retry_after')
+    return (rec.get('status')==404 and rec.get('origin')=='BYPASS'
+        and rec.get('path')==route['path']
+        and rec.get('source_key')==exact_source_key(cat,route,state,ledger)
+        and type(at) is int and type(expiry) is int
+        and at<=now<expiry<=at+HTTP_404_HOLD_S)
+
 def fresh_original_source(site,host,path):
     """Observe Wayfa's uncached WordPress source; never reuse FastCGI HTML.
 
@@ -190,6 +206,15 @@ def refresh(site,cat,state,ledger,root,report,index,*,budget=4,fetch=None,now=No
                       key=lambda r:(r['type'],r['language'],r['path']))
     known_keys={r['route_key'] for r in rows}
     records={key:val for key,val in index['observations'].items() if key in known_keys}
+    # A 404 is a negative *source observation*, never route admission.
+    # Keep it separate so observation totals and qualified CSS remain exact.
+    prior_holds=index.get('source_http_holds',{})
+    if not isinstance(prior_holds,dict) or len(prior_holds)>MAX_OBSERVATIONS:
+        raise ValueError('untrusted-private-http-source-holds')
+    holds={k:v for k,v in prior_holds.items()
+           if k in known_keys and isinstance(v,dict)
+           and isinstance(v.get('retry_after'),int)
+           and v['retry_after']>now}
     # When all candidate routes have fresh observations, recheck a small
     # round-robin sample at most once per TTL; no periodic Chrome tests.
     # Rotate over the *full* stable catalog order, not only pending
@@ -198,7 +223,9 @@ def refresh(site,cat,state,ledger,root,report,index,*,budget=4,fetch=None,now=No
     start=index.get('cursor',0)%len(candidates) if candidates else 0
     ordered=(candidates[start:]+candidates[:start])
     pending=[r for r in ordered if current_observation(
-        {**index,'observations':records},cat,r,state,ledger,now) is None]
+        {**index,'observations':records},cat,r,state,ledger,now) is None
+        and not current_http_404_hold(
+            {**index,'source_http_holds':holds},cat,r,state,ledger,now)]
     # Prefer revalidating an observed page after a source-key change, rather
     # than repeatedly scanning unreachable, never-observed 404 siblings.
     # Still reserve every fourth selection for unseen routes; a broken stale
@@ -207,15 +234,27 @@ def refresh(site,cat,state,ledger,root,report,index,*,budget=4,fetch=None,now=No
     unseen=[r for r in pending if r['route_key'] not in records]
     unseen_turn=bool(stale and unseen and index.get('cursor',0)%4==3)
     selected=(unseen+stale if unseen_turn else stale+unseen)[:budget]
-    attempted=0;updated=0
+    attempted=0;updated=0;new_404_holds=0
     for route in selected:
         attempted+=1
         try:
             result=fetch(HOSTS[site],route['path'])
             fact=extract(site,route,result,root)
+        except urllib.error.HTTPError as exc:
+            headers=exc.headers
+            if (site=='wayfa' and exc.code==404 and headers is not None
+                and headers.get('X-Wayfa-Origin-Cache')=='BYPASS'
+                and 'no-store' in headers.get('Cache-Control','').lower()):
+                holds[route['route_key']]={
+                    'status':404,'origin':'BYPASS','path':route['path'],
+                    'source_key':exact_source_key(cat,route,state,ledger),
+                    'observed_at':now,'retry_after':now+HTTP_404_HOLD_S}
+                new_404_holds+=1
+            fact=None
         except (OSError,ValueError,TimeoutError,KeyError):
             fact=None
         if fact is None:continue
+        holds.pop(route['route_key'],None)
         records[route['route_key']]={**fact,
            'source_key':exact_source_key(cat,route,state,ledger),
            'object_id':route['id'],'path':route['path'],
@@ -226,5 +265,7 @@ def refresh(site,cat,state,ledger,root,report,index,*,budget=4,fetch=None,now=No
         for key,_ in sorted(records.items(),key=lambda t:t[1].get('observed_at',0))[:len(records)-MAX_OBSERVATIONS]:
             records.pop(key,None)
     cursor=((start+max(1,attempted))%len(candidates)) if candidates else 0
-    return {**index,'observations':records,'cursor':cursor,
-            'last_scanned':attempted,'last_updated':updated,'last_run_at':now}
+    return {**index,'observations':records,'source_http_holds':holds,
+            'cursor':cursor,'last_scanned':attempted,'last_updated':updated,
+            'last_http_404_holds_added':new_404_holds,
+            'source_http_holds_total':len(holds),'last_run_at':now}
