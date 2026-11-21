@@ -390,12 +390,95 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
                 $stats['unpriced_stages']++;
             $stats['candidate_mentions']+=count($candidates);
             $program=$b['cruise_program']??null;
+            // Source-only review belongs to the ORIGINAL Stage binding, never
+            // the rate generator. A Draft Property or Unit is never eligible
+            // for selection, confirmed inventory or an approved supplier cost.
+            $editorialSourceReview=[
+                'draft_property_alternatives'=>[],
+                'draft_units'=>[],
+                'content_review'=>null,
+                'brand_review'=>null,
+                'commercially_ready'=>false
+            ];
+            $sourceNotes=(array)($b['editorial_tier_source_review']??[]);
+            $addDraft=function(int $property,array $unitIds,string $sourceUrl='',string $label='') use (&$editorialSourceReview):void {
+                if($property<1 || get_post_type($property)!=='properties'||
+                    get_post_status($property)!=='draft')return;
+                $roomRows=[];
+                foreach(array_slice($unitIds,0,16) as $uid) {
+                    $uid=(int)$uid;
+                    if($uid<1||get_post_type($uid)!=='units'||get_post_status($uid)!=='draft')continue;
+                    $receipt=get_post_meta($uid,'_mad4b_room_source_receipt_v1',true);
+                    if(!is_array($receipt)||(int)($receipt['property_id']??0)!==$property)continue;
+                    $roomRows[]=[
+                        'id'=>$uid,'title'=>get_the_title($uid),
+                        'edit_url'=>current_user_can('edit_post',$uid)?get_edit_post_link($uid,''):null,
+                        'approved_for_sale'=>false
+                    ];
+                }
+                $editorialSourceReview['draft_property_alternatives'][]=[
+                    'id'=>$property,'title'=>get_the_title($property),
+                    'status'=>'draft','edit_url'=>current_user_can('edit_post',$property)
+                        ?get_edit_post_link($property,''):null,
+                    'official_url'=>esc_url_raw($sourceUrl),
+                    'role'=>$label,'draft_units'=>$roomRows,
+                    'approved_for_sale'=>false
+                ];
+            };
+            $first=$sourceNotes['external_draft_property_source_review_v1']??null;
+            if(is_array($first))
+                $addDraft((int)($first['property_id']??0),
+                    (array)($first['unit_draft_ids']??[]),
+                    (string)($first['official_source_url']??''),
+                    'Official source · package tier assignment pending');
+            foreach(array_slice((array)($sourceNotes['additional_external_draft_candidates_v1']??[]),0,8) as $draft){
+                if(!is_array($draft))continue;
+                $addDraft((int)($draft['draft_property_id']??0),
+                    (array)($draft['draft_unit_ids']??[]),
+                    (string)($draft['source_url']??''),
+                    'Alternative under original source and transfer review');
+            }
+            $marina=$sourceNotes['official_marina_draft_room_categories_v1']??null;
+            if(is_array($marina)){
+                $parent=(int)($marina['source_property_id']??0);
+                if($parent>0 && get_post_type($parent)==='properties'){
+                    $draftUnits=[];
+                    foreach(array_slice((array)($marina['all_draft_unit_ids']??[]),0,16) as $uid){
+                        $uid=(int)$uid;
+                        if(get_post_type($uid)!=='units'||get_post_status($uid)!=='draft')continue;
+                        $receipt=get_post_meta($uid,'_mad4b_room_source_receipt_v1',true);
+                        if(!is_array($receipt)||(int)($receipt['property_id']??0)!==$parent)continue;
+                        $draftUnits[]=[
+                            'id'=>$uid,'title'=>get_the_title($uid),
+                            'edit_url'=>current_user_can('edit_post',$uid)?get_edit_post_link($uid,''):null,
+                            'approved_for_sale'=>false
+                        ];
+                    }
+                    $editorialSourceReview['draft_units']=$draftUnits;
+                    $editorialSourceReview['brand_review']='Existing Property: official room source identified; operator/contract identity still requires confirmation';
+                }
+            }
+            $content=$sourceNotes['source_content_qa_v1']??null;
+            if(is_array($content)&&($content['status']??'')==='resolved_source_geography_pending_supplier_operations'){
+                $editorialSourceReview['content_review']='Original itinerary destination and overnight evidence reconciled; supplier transport, dated hotel availability and signed rates still require approval';
+                $editorialSourceReview['content_review_state']='resolved_source_only';
+            } elseif(is_array($content)&&($content['status']??'')==='open_editorial_review'){
+                $reason=(string)($content['finding']??'');
+                $editorialSourceReview['content_review']=match($reason){
+                    'explicit_hotel_stay_and_aswan_arrival_not_recognized_by_current_night_grammar'=>
+                       'Aswan hotel overnight wording needs original itinerary evidence review',
+                    'sharm_resort_overnights_but_hurghada_activities_mentioned'=>
+                       'Sharm itinerary mentions Giftun / Orange Bay near Hurghada; route editor review required',
+                    default=>'Original itinerary content needs editorial review before commercial assignment'
+                };
+            }
             $stages[]=[
                 'key'=>$key,'kind'=>$kind,'day_start'=>(int)($p['source_day_start']??0),
                 'nights'=>max(0,(int)($p['nights']??0)),
                 'destination'=>sanitize_key((string)($p['destination_key']??'')),
                 'destination_scope'=>$destinationScope,
                 'itinerary_evidence'=>$itineraryEvidence,
+                'editorial_source_review'=>$editorialSourceReview,
                 'stage_instance_key'=>hash('sha256',wp_json_encode([$tour,$tierId,$key,
                     (int)($p['source_day_start']??0),(int)($p['nights']??0),
                     sanitize_key((string)($p['destination_key']??''))])),

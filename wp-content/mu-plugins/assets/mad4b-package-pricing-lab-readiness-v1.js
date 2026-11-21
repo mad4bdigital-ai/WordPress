@@ -84,7 +84,10 @@ state.setAttribute('role','status');
 const result=el('div','mad4b-pcl-result');
 inner.replaceChildren(form,responsibilities,note,state,result);
 if(!packages.length||!tiers.length){
-  b.disabled=true;state.textContent='No package source plans and levels are available for review on this company.';
+  b.disabled=true;
+  state.textContent=!packages.length
+    ? 'No editable Package tours with saved stage plans are available to this signed-in WordPress user. Check Package tour type, source plan and edit permissions; do not interpret this as an empty company catalog.'
+    : 'Package Level terms are missing. Check the original Silver, Gold and Diamond taxonomy terms.';
   return;
 }
 let requestToken=0;
@@ -340,6 +343,58 @@ function renderReport(data){
         details.append(list);section.append(details);
       }
     }
+    // Show original-source research Drafts without creating a second editor.
+    // Research-only Unit references NEVER grant tier selection, rates or checkout.
+    const er=stage.editorial_source_review||{};
+    const draftProps=Array.isArray(er.draft_property_alternatives)?er.draft_property_alternatives:[];
+    const draftUnits=Array.isArray(er.draft_units)?er.draft_units:[];
+    if(draftProps.length || draftUnits.length || er.content_review || er.brand_review){
+      const review=el('details','mad4b-pcl-source-scout');
+      if(!stage.candidates || !stage.candidates.length)review.open=true;
+      const summary=el('summary','',
+        'Editorial source review · '+draftProps.length+' Draft hotel alternatives · '+draftUnits.length+' linked Draft rooms');
+      review.append(summary);
+      review.append(row('p',[
+        el('strong','','Responsibilities'),
+        help('Source review responsibilities',
+          'Content & Property Editors verify hotel identity, room labels, itinerary and media rights. Operations & Contracting verify supplier agreements, island/ferry access, dated availability and children policies. Pricing only generates rates after original signed cost receipts.'),
+      ],'mad4b-pcl-source-line'));
+      review.append(el('p','mad4b-pcl-warning',
+        'Research-only records. Draft Properties and Draft Units are not bookable, published stock, or an approved supplier cost, even when their room category appears on the official website.'));
+      if(er.content_review)review.append(el('p',er.content_review_state==='resolved_source_only'?'mad4b-pcl-info':'mad4b-pcl-warning',String(er.content_review)));
+      if(er.brand_review)review.append(el('p','mad4b-pcl-warning',String(er.brand_review)));
+      for(const prop of draftProps){
+        const item=el('div','mad4b-pcl-source-review-property');
+        item.append(row('p',[
+          link(prop.edit_url,prop.title || ('Property #'+prop.id)),
+          el('span','',' · Draft · '+String(prop.role||'review pending'))
+        ]));
+        const roomList=Array.isArray(prop.draft_units)?prop.draft_units:[];
+        if(prop.official_url)item.append(row('p',[link(prop.official_url,'Official room evidence')]));
+        if(roomList.length){
+          const more=el('details','mad4b-pcl-source-unit-drafts');
+          more.append(el('summary','','Review '+roomList.length+' original Draft Units'));
+          const ul=el('ul','');
+          for(const u of roomList)ul.append(row('li',[
+             link(u.edit_url,u.title||('Unit #'+u.id)),
+             el('small','',' · occupancy, inventory and cost unapproved')
+          ]));
+          more.append(ul);item.append(more);
+        }
+        review.append(item);
+      }
+      if(draftUnits.length){
+        const more=el('details','mad4b-pcl-source-unit-drafts');
+        more.append(el('summary','','Review '+draftUnits.length+' Draft Units at the existing hotel'));
+        const ul=el('ul','');
+        for(const u of draftUnits)ul.append(row('li',[
+          link(u.edit_url,u.title||('Unit #'+u.id)),
+          el('small','',' · not bookable, supplier contract pending')
+        ]));
+        more.append(ul);review.append(more);
+      }
+      section.append(review);
+    }
     const excluded=Array.isArray(stage.excluded_candidates)?stage.excluded_candidates:[];
     if(excluded.length){
       section.append(el('p','mad4b-pcl-warning',
@@ -551,4 +606,3 @@ p.addEventListener('change',load);
 t.addEventListener('change',load);
 load();
 })();
-
