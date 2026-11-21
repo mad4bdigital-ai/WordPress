@@ -176,6 +176,11 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
             $abu=get_term_by('slug','abu-simbel-temples','destinations');
             if($abu instanceof WP_Term && in_array((int)$abu->term_id,$actual,true))
                 return ['eligible'=>false,'reason'=>'property_in_abu_simbel_not_aswan_city'];
+            // Aswan governorate is broader than the actual stay city.
+            $city=get_term_by('slug','aswan-city','destinations');
+            if(!$city instanceof WP_Term ||
+                !in_array((int)$city->term_id,$actual,true))
+                return ['eligible'=>false,'reason'=>'aswan_city_location_unverified'];
         }
         if(!array_intersect($actual,array_map('intval',$scope['accepted_term_ids'])))
             return ['eligible'=>false,'reason'=>'property_destination_mismatch'];
