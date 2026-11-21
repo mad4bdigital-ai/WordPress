@@ -30,6 +30,7 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
             'properties'=>[],'source_property_count'=>0,
             'tier_matched_count'=>0,'tier_unclassified_count'=>0,
             'missing_native_units_count'=>0,'excluded_wrong_locality'=>0,
+            'city_location_unverified_count'=>0,
             'supplier_cost_total'=>null,'ready'=>false,'writes'=>false];
         $terms=array_map('absint',(array)($scope['accepted_term_ids']??[]));
         if(($scope['status']??'unmapped')!=='mapped'||!$terms)
@@ -61,7 +62,10 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
                     (string)($stage['lodging_kind']??'hotel'))
                 : ['eligible'=>false,'reason'=>'generator_guard_unavailable'];
             $unitCount=self::relationCount($id);
+            $cityVerified=($scope['destination']??'')!=='aswan' ||
+                in_array('aswan-city',(array)$dest,true);
             $out['source_property_count']++;
+            if(!$cityVerified)$out['city_location_unverified_count']++;
             if($eligible['eligible'])$out['tier_matched_count']++;
             elseif(!$levels)$out['tier_unclassified_count']++;
             if(!$unitCount)$out['missing_native_units_count']++;
@@ -71,6 +75,7 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
                 'stars'=>array_values((array)$stars),
                 'native_tiers'=>array_values(array_map('intval',(array)$levels)),
                 'native_unit_count'=>$unitCount,
+                'stage_city_location_verified'=>$cityVerified,
                 'tier_eligible'=>$eligible['eligible'],
                 'tier_status'=>$eligible['eligible']?'tier_matched':
                     (!$levels?'tier_unclassified':$eligible['reason']),
