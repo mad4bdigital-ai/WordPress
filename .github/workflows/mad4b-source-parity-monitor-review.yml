@@ -1,0 +1,34 @@
+name: MAD4B Source Parity Monitor Source Review
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mad4b-source-parity-monitor-review.yml'
+      - 'ops/source-parity-monitor/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-source-parity-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  hermetic-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11','3.12']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Verify no live source writes or misclassification
+        run: |
+          set -euo pipefail
+          PYTHONDONTWRITEBYTECODE=1 python3 ops/source-parity-monitor/source_parity_monitor.py --selftest
+          python3 -m py_compile ops/source-parity-monitor/source_parity_monitor.py
