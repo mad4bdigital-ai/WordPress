@@ -131,9 +131,12 @@ final class MAD4B_Rate_Planner {
        }
      }
      $c['reasons']=array_values(array_unique($c['reasons']));
-     $c['evidence_digest']=hash('sha256',wp_json_encode([
-       $c['identity'],$source,$policy,$c['assignment'],$c['existing_ids'],$c['overlap_ids'],
-       $c['package_stage_review']??null]));
+     // Preserve the historical semantic digest byte-for-byte for ordinary
+     // Tour Rates. Append source-specific evidence only for Package variants.
+     $digestInput=[$c['identity'],$source,$policy,$c['assignment'],
+        $c['existing_ids'],$c['overlap_ids']];
+     if(isset($c['package_stage_review']))$digestInput[]=$c['package_stage_review'];
+     $c['evidence_digest']=hash('sha256',wp_json_encode($digestInput));
      $p['candidates'][]=$c;
     }
    }
