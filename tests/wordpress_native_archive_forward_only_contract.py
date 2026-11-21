@@ -58,4 +58,5 @@ assert all(not allows_source(p) for p in tests.values()),'source mutation was no
 result={'contract':'mad4b.wordpress-native-archive-forward-only.source-contract.v1',
         'state':'PASS','negative_source_mutations':len(tests),
         'sha_pins_changed':False,'write_performed':False}
+print('PASS native_forward_only_source_mutation_denials 6')
 print(json.dumps(result,sort_keys=True))
