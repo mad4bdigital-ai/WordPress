@@ -7,7 +7,8 @@ def test(name,ok):
 test('separate read-only source coordinator',
      ("for site in ('source','wayfa')" in py or
       "for site in selected_sites(sys.argv[1:])" in py)
-     and 'public-source-families.py' in py)
+     and 'public-source-families.py' in py
+     and 'def selected_sites(argv)' in py)
 test('budget guard before any site WPCLI',py.index("'public-route-cpu-guard.py'")<py.index('runner.obs(php,host,env)'))
 test('original source and runtime code parity both verified',
      'runner.approved_native_runtime_sha(site,wp)' in py

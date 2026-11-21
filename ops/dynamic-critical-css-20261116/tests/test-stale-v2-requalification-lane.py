@@ -26,10 +26,16 @@ cert={'contract':m.v2.CONTRACT,'status':'certified','host':cat['host'],
       'type':a['type'],'object_id':a['id'],'path':a['path'],
       'language':a['language'],'market_country':'base','currency':'USD',
       'runtime_sha':state['runtime_sha'],'consumer_sha':state['consumer_v2_sha'],
-      'css_epoch':12,'dependencies':{'global_generation':6,'route_generation':0,
+      'css_epoch':12,'native_mobile_breakpoint':767,'critical_cap_px':767,
+      'evidence':{'decision':'passed_evidence','tested':5,
+                  'viewports':[320,390,414,767,768],
+                  'performance_source':'real-original-css-urls',
+                  'qa_sha256':'c'*64},
+      'dependencies':{'global_generation':6,'route_generation':0,
                 'listing_generation':106,'contains_dynamic_listing':True}}
 published={('en',a['path'],'base','USD'):cert}
-ledger={'routes':{a['route_key']:{'status':'certified','source_key':'f'*64,
+original_source_key=m.queue.source_key({**cat,'listing_generation':106},a,state,True)
+ledger={'routes':{a['route_key']:{'status':'certified','source_key':original_source_key,
                     'depends_on_listings':True,'attempted_at':100000}}}
 eligible=lambda c=cat,s=state,l=ledger,p=published,rows=[a]:m.recoverable_listing_generation_keys('wayfa',c,s,l,p,rows)
 check('only old certified exact route with listing-generation drift nominated',
@@ -48,6 +54,12 @@ check('current exact queue key not repeated',eligible(l={'routes':{a['route_key'
 check('broken market currency not nominated',eligible(s={**state,'enabled_currencies':['EUR']})==[])
 check('generation changes over 100 require normal original lane',eligible(c={**cat,'listing_generation':207})==[])
 check('bad certificate contract not trusted',eligible(p={('en',a['path'],'base','USD'):{**cert,'contract':'foreign'}})==[])
+check('prior evidence must contain real five-viewport QA',
+      eligible(p={('en',a['path'],'base','USD'):{**cert,'evidence':{**cert['evidence'],'qa_sha256':'bad'}}})==[])
+check('no previous original source key means no restoration priority',
+      eligible(l={'routes':{a['route_key']:{**ledger['routes'][a['route_key']],'source_key':'f'*64}}})==[])
+check('mobile breakpoint mismatch cannot be nominated',
+      eligible(p={('en',a['path'],'base','USD'):{**cert,'critical_cap_px':768}})==[])
 try:m.recoverable_listing_generation_keys('source',cat,state,ledger,published,[a])
 except ValueError:check('cross-company source boundary fails closed',True)
 else:raise AssertionError('cross-company boundary allowed')

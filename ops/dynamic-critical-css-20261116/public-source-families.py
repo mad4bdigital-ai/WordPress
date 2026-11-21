@@ -274,9 +274,12 @@ def recoverable_listing_generation_keys(site,catalog,state,ledger,published,rows
                 or cert.get('currency')!=currency
                 or currency not in allowed
                 or not MARKET_RE.fullmatch(market+'|'+currency)
+                or not v2.exact_market_is_supported(route,cert,state)
                 or cert.get('runtime_sha')!=state.get('runtime_sha')
                 or cert.get('consumer_sha')!=state.get('consumer_v2_sha')
-                or cert.get('css_epoch')!=state.get('css_epoch')):
+                or cert.get('css_epoch')!=state.get('css_epoch')
+                or cert.get('native_mobile_breakpoint')!=767
+                or cert.get('critical_cap_px')!=767):
                 continue
             deps=cert.get('dependencies')
             if (not isinstance(deps,dict)
@@ -286,6 +289,20 @@ def recoverable_listing_generation_keys(site,catalog,state,ledger,published,rows
                 continue
             old=deps.get('listing_generation')
             if type(old) is not int or not 0<nowlisting-old<=100:continue
+            # A prior certificate only receives a NEW browser requalification
+            # scheduling turn if the exact original Chrome and WordPress
+            # source lineage were genuinely valid on its old generation.
+            evidence=cert.get('evidence')
+            if (not isinstance(evidence,dict)
+                or evidence.get('decision')!='passed_evidence'
+                or evidence.get('tested')!=5
+                or evidence.get('viewports')!=[320,390,414,767,768]
+                or evidence.get('performance_source')!='real-original-css-urls'
+                or not v2.SHA.fullmatch(str(evidence.get('qa_sha256','')))):
+                continue
+            earlier=dict(catalog,listing_generation=old)
+            if record.get('source_key')!=queue.source_key(earlier,route,state,True):
+                continue
             attempted=record.get('attempted_at')
             if type(attempted) is not int or attempted<=0:continue
             candidates.append((-attempted,route['path'],route['route_key']))

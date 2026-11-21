@@ -9,13 +9,53 @@ def load(name,file):
     mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod);return mod
 
 
+
+def bind_original_approved_v2_consumer(runner,site,wp,state):
+    """Mirror only the exact already-attested original public-route state.
+
+    An unapproved WordPress consumer never contributes a source-family
+    recovery proposal. This helper is read-only and does not issue CSS or
+    add browser work; the original runner remains the approval authority.
+    """
+    if not isinstance(state,dict):
+        raise ValueError('source-family-consumer-state-invalid')
+    runtime=state.get('runtime_sha')
+    if (not isinstance(runtime,str) or len(runtime)!=64 or
+        any(ch not in '0123456789abcdef' for ch in runtime)):
+        raise ValueError('source-family-runtime-not-attested')
+    sha=runner.approved_v2_consumer_sha(site,wp,runtime)
+    if sha is not None:
+        if (not isinstance(sha,str) or len(sha)!=64
+            or any(ch not in '0123456789abcdef' for ch in sha)):
+            raise ValueError('source-family-consumer-hash-untrusted')
+        state['consumer_v2_sha']=sha
+    else:
+        state.pop('consumer_v2_sha',None)
+    return state
+
+def selected_sites(argv):
+    if not argv:return ('source','wayfa')
+    if len(argv)!=1 or argv[0] not in ('source','wayfa'):
+        raise ValueError('css_site_scope_invalid')
+    return (argv[0],)
+
 def main():
     # A fresh first-party CPU budget is required before both WordPress CLI
     # source-catalog reads. On pressure, preserve the last certs and retry.
     guard=subprocess.run(['python3',str(D/'public-route-cpu-guard.py')],
                          capture_output=True,text=True,timeout=8)
     if guard.returncode:
-        print('DEFER_SOURCE_FAMILY_REFRESH',guard.stdout.strip()[:100]);return
+        print('DEFER_SOURCE_FAMILY_REFRESH',guard.stdout.strip()[:100])
+        # A reserved WP-CLI slot is not CPU pressure: keep cheap first-party
+        # Variant observations moving from recently pinned source snapshots.
+        # No cached identity may grant a new CSS certificate or HTML cache.
+        if guard.stdout.strip().endswith('central_wpcli_slots_reserved'):
+            try:
+                cached=load('cached_wp_template_variants','cached-variant-refresh.py')
+                cached.refresh()
+            except (OSError,ValueError,TypeError,KeyError) as exc:
+                print('DEFER_LIGHT_VARIANTS_NOT_POLICY_GATE',str(exc)[:120])
+        return
     lock=Path('/run/lock/mad4b-public-source-family-refresh.lock')
     with lock.open('a+') as file:
         try:fcntl.flock(file,fcntl.LOCK_EX|fcntl.LOCK_NB)
@@ -24,7 +64,7 @@ def main():
         runner=load('ccss_source_refresh_runner','run-public-route.py')
         families=load('ccss_source_refresh_families','public-source-families.py')
         variants=load('ccss_source_refresh_variants','public-template-variant-index.py')
-        for site in ('source','wayfa'):
+        for site in selected_sites(sys.argv[1:]):
             host,php,wp,env=runner.CONFIG[site]
             # Do not ingest arbitrary URLs; WP-CLI and original site-profile
             # runtime provide the only identities. This is a pure report.
@@ -33,6 +73,7 @@ def main():
             # Source Staging 422 v1.0.1 is an approved separate release,
             # while Wayfa Production retains original 421/422 byte parity.
             state['runtime_sha']=runner.approved_native_runtime_sha(site,wp)
+            state=bind_original_approved_v2_consumer(runner,site,wp,state)
             try:state['qa_policy_sha']=runner.qa_policy_sha()
             except (OSError,ValueError) as exc:
                 state['qa_policy_sha']='unavailable'
