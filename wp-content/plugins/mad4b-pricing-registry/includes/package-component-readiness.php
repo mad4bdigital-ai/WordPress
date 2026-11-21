@@ -200,6 +200,13 @@ final class MAD4B_Package_Component_Readiness_V1 {
       'season_excluded_property_ids'=>array_values((array)($s['season_rejected_property_ids']??[])),
       'selected_property_id'=>(int)($s['selected_property_id']??0),
       'selected_units_count'=>count((array)($s['selected_unit_ids']??[])),
+      'cost_source_priority'=>(array)($s['cost_source_priority']??(
+         in_array((string)($s['kind']??''),['hotel','resort'],true)
+          ?['unit_rate','property_rate']:[])),
+      'cost_rate_scope'=>$s['cost_rate_scope']??null,
+      'cost_rate_id'=>$s['cost_rate_id']??null,
+      'cost_reference_status'=>$s['cost_reference_status']??'not_approved',
+      'cost_reference_checkout_authorized'=>false,
       'issues'=>array_values((array)($s['blocked']??[]))];
     }
     $ready=!empty($review['ready'])&&empty($blockers);

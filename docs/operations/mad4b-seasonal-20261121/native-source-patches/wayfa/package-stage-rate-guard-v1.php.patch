@@ -1,0 +1,100 @@
+--- a/wp-content/mu-plugins/shared-product-core/pricing/package-stage-rate-guard-v1.php
++++ b/wp-content/mu-plugins/shared-product-core/pricing/package-stage-rate-guard-v1.php
+@@ -17,6 +17,33 @@
+     public const BINDINGS = '_mad4b_package_stay_verified_room_program_links_v1';
+     public const CONTRACT = 'mad4b.package-rate-stage-guard.v1';
+ 
++    /**
++     * Cost SOURCE scope, not a selling quote. The original Property Rate CPT
++     * supports both Unit-specific and Property-wide rows, distinguished by
++     * the native explicit scope and related Unit relation.
++     */
++    public static function costRateScope(int $rate,array $receipt,array $selectedUnits):array {
++        if(get_post_type($rate)!=='property-rates')
++            return ['valid'=>false,'scope'=>null,'reason'=>'rate_post_type_invalid'];
++        $linked=(int)get_post_meta($rate,'prop_related_unit_id',true);
++        $kind=(string)get_post_meta($rate,'mad4b_rate_scope_v1',true);
++        $receiptUnit=(int)($receipt['unit_id']??0);
++        $selected=array_values(array_unique(array_map('absint',$selectedUnits)));
++        if($linked>0){
++            if(!in_array($kind,['','unit'],true)||
++                $receiptUnit!==$linked||!in_array($linked,$selected,true))
++                return ['valid'=>false,'scope'=>'unit_rate',
++                    'reason'=>'unit_cost_rate_relation_or_scope_invalid'];
++            return ['valid'=>true,'scope'=>'unit_rate',
++                'reason'=>'unit_cost_reference_selected'];
++        }
++        if($kind==='property'&&$receiptUnit===0)
++            return ['valid'=>true,'scope'=>'property_rate',
++                'reason'=>'property_cost_reference_selected',
++                'requires_native_unit_allocation'=>true];
++        return ['valid'=>false,'scope'=>null,
++            'reason'=>'property_cost_rate_scope_not_explicit'];
++    }
+     public static function canonicalTour(int $tour): int {
+         if (get_post_type($tour) !== 'tours-and-activities') return 0;
+         $en = (int) apply_filters('wpml_object_id', $tour, 'tours-and-activities', false, 'en');
+@@ -350,22 +377,38 @@
+                             $flag('stage_unit_not_available');
+                     }
+                 }
++                $stage['cost_source_priority']=['unit_rate','property_rate'];
++                $stage['cost_rate_scope']=null;
++                $stage['cost_reference_checkout_authorized']=false;
+                 $receipt=$saved['supplier_cost_receipt']??null;
+                 if(!is_array($receipt)||($receipt['status']??'')!=='approved')
+                     $flag('stage_supplier_cost_receipt_missing');
+                 else{
+                     $rate=(int)($receipt['rate_id']??0);
+-                    $unit=(int)($receipt['unit_id']??0);
+-                    if(!$rate||get_post_type($rate)!=='property-rates'||
+-                        get_post_status($rate)!=='publish'||
+-                        (int)get_post_meta($rate,'prop_related_property_id',true)!==$selected||
+-                        !in_array($unit,$units,true)||
+-                        (int)get_post_meta($rate,'prop_related_unit_id',true)!==$unit||
+-                        get_post_meta($rate,'_booking_experience_qa_pricing_fixture',true)||
+-                        get_post_meta($rate,'_qa_disallow_public_checkout',true)||
+-                        (string)get_post_meta($rate,'mad4b_rate_price_kind_v1',true)!=='cost'||
+-                        !is_numeric(get_post_meta($rate,'base_amount',true))||
+-                        (float)get_post_meta($rate,'base_amount',true)<=0)
++                    $scope=self::costRateScope($rate,$receipt,$units);
++                    $stage['cost_rate_scope']=$scope['scope']??null;
++                    $stage['cost_rate_id']=$rate?:null;
++                    $currency=(string)get_post_meta($rate,'currency',true);
++                    $basis=(string)get_post_meta($rate,'prop_price_unit',true);
++                    $board=(int)get_post_meta($rate,'prop_board_type',true);
++                    $stop=(string)get_post_meta($rate,'stop_sale',true);
++                    $qa=(string)get_post_meta($rate,'_mad4b_is_test_data',true);
++                    $amount=get_post_meta($rate,'base_amount',true);
++                    $verified=$rate>0&&($scope['valid']??false)===true&&
++                        get_post_status($rate)==='publish'&&
++                        (int)get_post_meta($rate,'prop_related_property_id',true)===$selected&&
++                        !get_post_meta($rate,'_booking_experience_qa_pricing_fixture',true)&&
++                        !get_post_meta($rate,'_qa_disallow_public_checkout',true)&&
++                        !in_array(strtolower($qa),['1','true','yes','on'],true)&&
++                        !preg_match('/\\bQA\\s+ONLY\\b/i',(string)get_the_title($rate))&&
++                        (string)get_post_meta($rate,'mad4b_rate_price_kind_v1',true)==='cost'&&
++                        is_numeric($amount)&&(float)$amount>0&&
++                        preg_match('/^[A-Z]{3}$/D',$currency)&&
++                        in_array($basis,['per_person','per_room_night','per_cabin_night',
++                            'per_person_night','per_stay'],true)&&
++                        $board>0&&get_term($board,'board-type') instanceof WP_Term&&
++                        $stop==='0';
++                    if(!$verified)
+                         $flag('stage_supplier_rate_not_verified');
+                     elseif($datesOK){
+                         $offset=$begin-1;
+@@ -375,6 +418,13 @@
+                            (string)get_post_meta($rate,'valid_to',true)<$last)
+                             $flag('stage_supplier_rate_period_uncovered');
+                     }
++                    // Property-wide quoted costs are reference evidence until
++                    // a selected Unit and certified occupancy/allocation provider
++                    // can price a real booking. Never pass as ABK Unit Rate.
++                    if(($scope['scope']??null)==='property_rate' && $verified){
++                        $stage['cost_reference_status']='property_wide_approved_cost_reference_only';
++                        $flag('stage_property_cost_native_unit_allocation_unverified');
++                    }
+                 }
+             }elseif($kind==='cruise'){
+                 if((int)($saved['selected_property_id']??0)>0)

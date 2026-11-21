@@ -580,6 +580,11 @@ function renderPackageReadinessBoard(value){
       (s.season_excluded_properties?' · season excluded #'+s.season_excluded_property_ids.join(', #'):'')+
       (['hotel','resort'].includes(s.kind)?' · sheet period: '+
         (s.sheet_quote_period||'none · mixed/outside quoted year'):'')+
+      (['hotel','resort'].includes(s.kind)?
+        ' · Cost source order: '+(s.cost_source_priority||['unit_rate','property_rate']).join(' > ')+
+        ' · applied: '+(s.cost_rate_scope||'none verified')+
+        (s.cost_rate_id?' #'+s.cost_rate_id:'')+
+        ' · cost reference not a native checkout quote':'')+
       (s.unassigned_property_diagnostics?
         ' · CATALOGUE REVIEW ONLY ('+s.unassigned_property_diagnostics.total+
         ' not assigned; none qualified): '+

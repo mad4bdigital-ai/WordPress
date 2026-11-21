@@ -1,0 +1,110 @@
+{
+  "contract": "mad4b.stay-source-precedence-release-patches.v1",
+  "created_utc": "2026-11-21T15:46:31.963288+00:00",
+  "tenant_patch_metadata": {
+    "source": {
+      "006-mad4b-accommodation-layered-pricing.php": {
+        "relative_live_path": "wp-content/mu-plugins/006-mad4b-accommodation-layered-pricing.php",
+        "before_sha256": "7aa137e6af5e37fdf07507f58ea14c3f44e92efc7ad6498aa17d567a9734190c",
+        "after_sha256": "84861601b175a04381a5f8c62d40a38e630443dc7c20938b4628373dc04036ee",
+        "patch_sha256": "6aa07ff3c0cf33cd05423aa3264e7555d5741f3e66549aaa911e1f6ab29ebd1f"
+      },
+      "008-mad4b-stay-pricing-controls-panel.php": {
+        "relative_live_path": "wp-content/mu-plugins/008-mad4b-stay-pricing-controls-panel.php",
+        "before_sha256": "6a3136e0bdb5c79c9cee43a186d2764908889fefe46ec0ab558f2f1a585c27f0",
+        "after_sha256": "f9e3b98bb4343e7d7ae99b07be1f847e087d0573414bf0d18ea235a2a6a401af",
+        "patch_sha256": "c7eee92f191da6009f5efaa04d6b5cf462fd9c34a638f2134d69164e331be517"
+      },
+      "panel.html": {
+        "relative_live_path": "wp-content/mu-plugins/mad4b-stay-pricing-admin/panel.html",
+        "before_sha256": "34bd906daeec90e3bd563dcfc4632c8bfafd013f5512f572751e1414e990416d",
+        "after_sha256": "6bf1629808d1306f680fbdb290059697c7613e1029a8dc11436b981de1ba6c0b",
+        "patch_sha256": "650d59ae71880e1e9e426f8be6fdd9cfffa8bff7a1b4d453916bd2e3caaf617d"
+      },
+      "ui.js": {
+        "relative_live_path": "wp-content/mu-plugins/mad4b-stay-pricing-admin/ui.js",
+        "before_sha256": "a17c19176464ebe86a49f864fe85546466aef87f5db448185fcb909979294a7e",
+        "after_sha256": "9d99f39a55135e6033107be2db0d3cf82e6d666bf8a2f50df72bac6e802b5fa9",
+        "patch_sha256": "3cdafa0fe2ad394489d722ec467ec405bd11bf2bed27fd5683fe4006bd76ab1b"
+      },
+      "package-stage-rate-guard-v1.php": {
+        "relative_live_path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/package-stage-rate-guard-v1.php",
+        "before_sha256": "e7c7fe7c48ea23d70bf71506a63f2a20dda8ec6ffd19cbd5c5a16dd65d24cfa9",
+        "after_sha256": "f9d3407b28a2411aca193df27cca56672d64abf14867f1889bd2fb83afcd25de",
+        "patch_sha256": "bbfc8bb740e1e815fc9fecfac2edf90495e848f85759d7e940f4fde339bc54a1"
+      },
+      "package-component-readiness.php": {
+        "relative_live_path": "wp-content/plugins/mad4b-pricing-registry/includes/package-component-readiness.php",
+        "before_sha256": "f5cebfd4805884a8c782b17872d94fb40c505fe28d9cfd1c0faace210312a8d5",
+        "after_sha256": "122858377558d964cfd736e500bcf0fa073dab2db727f74b5448019aa98be30f",
+        "patch_sha256": "3a631662bf638e5c34bf3f114427c5d47418c694248c49dcbf7d17883aa3bc84"
+      },
+      "transport-distance-time.js": {
+        "relative_live_path": "wp-content/plugins/mad4b-pricing-registry/assets/transport-distance-time.js",
+        "before_sha256": "ac5dd6b62dc79887296358ff99c418b998e9b70a7743bda15019a1e6a6de1ace",
+        "after_sha256": "13bb483ffd7d7823dc717c23785d702e3942c1e454488585720e94cf95b2d448",
+        "patch_sha256": "ca05fdc630573395673cc40f595ece13a0d9100ad761f0d049ca463fc353a8aa"
+      }
+    },
+    "wayfa": {
+      "006-mad4b-accommodation-layered-pricing.php": {
+        "relative_live_path": "wp-content/mu-plugins/006-mad4b-accommodation-layered-pricing.php",
+        "before_sha256": "7aa137e6af5e37fdf07507f58ea14c3f44e92efc7ad6498aa17d567a9734190c",
+        "after_sha256": "84861601b175a04381a5f8c62d40a38e630443dc7c20938b4628373dc04036ee",
+        "patch_sha256": "6aa07ff3c0cf33cd05423aa3264e7555d5741f3e66549aaa911e1f6ab29ebd1f"
+      },
+      "008-mad4b-stay-pricing-controls-panel.php": {
+        "relative_live_path": "wp-content/mu-plugins/008-mad4b-stay-pricing-controls-panel.php",
+        "before_sha256": "6a3136e0bdb5c79c9cee43a186d2764908889fefe46ec0ab558f2f1a585c27f0",
+        "after_sha256": "f9e3b98bb4343e7d7ae99b07be1f847e087d0573414bf0d18ea235a2a6a401af",
+        "patch_sha256": "c7eee92f191da6009f5efaa04d6b5cf462fd9c34a638f2134d69164e331be517"
+      },
+      "panel.html": {
+        "relative_live_path": "wp-content/mu-plugins/mad4b-stay-pricing-admin/panel.html",
+        "before_sha256": "8020dec1211ea22c6338600769f5738ec08ef5687e3db10a9d316c153b829f5a",
+        "after_sha256": "9244fe46c008fd0fda1c8fca54f6b7f6f81b34462a408720f95bc66c7265687e",
+        "patch_sha256": "650d59ae71880e1e9e426f8be6fdd9cfffa8bff7a1b4d453916bd2e3caaf617d"
+      },
+      "ui.js": {
+        "relative_live_path": "wp-content/mu-plugins/mad4b-stay-pricing-admin/ui.js",
+        "before_sha256": "a17c19176464ebe86a49f864fe85546466aef87f5db448185fcb909979294a7e",
+        "after_sha256": "9d99f39a55135e6033107be2db0d3cf82e6d666bf8a2f50df72bac6e802b5fa9",
+        "patch_sha256": "3cdafa0fe2ad394489d722ec467ec405bd11bf2bed27fd5683fe4006bd76ab1b"
+      },
+      "package-stage-rate-guard-v1.php": {
+        "relative_live_path": "wp-content/mu-plugins/shared-product-core/pricing/package-stage-rate-guard-v1.php",
+        "before_sha256": "e7c7fe7c48ea23d70bf71506a63f2a20dda8ec6ffd19cbd5c5a16dd65d24cfa9",
+        "after_sha256": "f9d3407b28a2411aca193df27cca56672d64abf14867f1889bd2fb83afcd25de",
+        "patch_sha256": "f66355e4b3399b0c3d3d0a033736c970d767225a1518e05749f1e945fd6d768c"
+      },
+      "package-component-readiness.php": {
+        "relative_live_path": "wp-content/plugins/mad4b-pricing-registry/includes/package-component-readiness.php",
+        "before_sha256": "f5cebfd4805884a8c782b17872d94fb40c505fe28d9cfd1c0faace210312a8d5",
+        "after_sha256": "122858377558d964cfd736e500bcf0fa073dab2db727f74b5448019aa98be30f",
+        "patch_sha256": "3a631662bf638e5c34bf3f114427c5d47418c694248c49dcbf7d17883aa3bc84"
+      },
+      "transport-distance-time.js": {
+        "relative_live_path": "wp-content/plugins/mad4b-pricing-registry/assets/transport-distance-time.js",
+        "before_sha256": "ac5dd6b62dc79887296358ff99c418b998e9b70a7743bda15019a1e6a6de1ace",
+        "after_sha256": "13bb483ffd7d7823dc717c23785d702e3942c1e454488585720e94cf95b2d448",
+        "patch_sha256": "ca05fdc630573395673cc40f595ece13a0d9100ad761f0d049ca463fc353a8aa"
+      }
+    }
+  },
+  "commercial_runtime_promotion_ready": false,
+  "unit_vs_property_cost_policy": [
+    "unit_rate",
+    "property_rate"
+  ],
+  "sell_preview_order": [
+    "unit_rate",
+    "property_rate",
+    "unit_direct",
+    "property_direct"
+  ],
+  "weights_source": "native_global_type_destination_property_unit",
+  "explicit_rate_reweighted": false,
+  "rate_post_publication_performed": false,
+  "checkout_authorized": false,
+  "source_git_local_commit": "487b17037c39f3579cc950bcd4f107a676af6ee5"
+}
