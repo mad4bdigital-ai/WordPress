@@ -41,7 +41,7 @@ class Central318BindingTests(unittest.TestCase):
             "313pub":base64.b64encode(b"\x20"*32).decode(),
             "central_digest":BINDING,"company":"mad4b-central",
             "environment":"staging", "origin":ORIGIN,
-            "company_target":None,
+            "company_target":None,"trust_collision":False,
         }
 
     def outcome(self):
@@ -70,6 +70,7 @@ define('MAD4B_HOST_V3_PINNED_BINDINGS',$d['pins']);
 define('MAD4B_HOST_V3_ORIGINAL312_PUBLIC_B64',$d['312pub']);
 define('MAD4B_HOST_V3_ORIGINAL313_PUBLIC_B64',$d['313pub']);
 define('MAD4B_HOST_V3_CENTRAL_DEPLOYMENT_BINDING_SHA256',$d['central_digest']);
+if ($d['trust_collision']===true) define('MAD4B_HOST_V3_ROOT_TRUST_COLLISION',true);
 function home_url($path){global $d;return $d['origin'].'/';}
 function untrailingslashit($value){return rtrim($value,'/');}
 function get_option($name,$default=false){global $d;return $name==='mad4b_scp_site_profile_v2'?$d['profile']:$default;}
@@ -89,6 +90,10 @@ echo json_encode(MAD4B_Original318_Host_V3_Readback::current($d['company'],$d['e
         self.assertNotIn("reason",proof)
         self.assertFalse(proof["write_authorized"])
         self.assertFalse(proof["readback_verified"])
+
+    def test_root_trust_predefinition_collision_denied(self):
+        self.payload["trust_collision"]=True
+        self.assertEqual(self.outcome()["reason"],"ROOT_TRUST_DEFINITION_COLLISION")
 
     def test_central_profile_uuid_mismatch_rejected(self):
         self.payload["profile"]["site_uuid"]="22222222-2222-4222-8222-222222222222"

@@ -40,6 +40,12 @@ final class MAD4B_Original318_Host_V3_Readback {
         if (!preg_match('/^[a-z][a-z0-9-]{2,47}$/D',$company)
             || !in_array($environment,array('staging','production'),true))
             return self::denied($company,$environment,'SITE_SCOPE_INVALID');
+        // A preloaded MU module cannot replace Root's pinned trust anchor.
+        // The Root public verifier loader records any predefinition collision
+        // and Origin318 must fail closed rather than trust its replacement.
+        if (defined('MAD4B_HOST_V3_ROOT_TRUST_COLLISION')
+            && constant('MAD4B_HOST_V3_ROOT_TRUST_COLLISION')===true)
+            return self::denied($company,$environment,'ROOT_TRUST_DEFINITION_COLLISION');
         // Only Root-deployed trusted PHP constants, never an admin option or
         // a remote CLI supplied key. No private keys are available to WP.
         if (!defined('MAD4B_HOST_V3_PINNED_BINDINGS')
