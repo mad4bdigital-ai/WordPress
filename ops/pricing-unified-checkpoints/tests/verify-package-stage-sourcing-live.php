@@ -51,8 +51,24 @@ if($wayfa){
                 $x['tier_unclassified_count']===$x['source_property_count'],
                 'native tier contract has not been invented');
             foreach($x['properties'] as $property){
-                $test($property['native_unit_count']===0,
-                    'missing authentic Unit relation reported, not assumed');
+                $test($property['native_published_unit_count']===0,
+                    'draft Room Unit templates are not live published stock');
+                $test($property['native_unit_count']===
+                    $property['native_published_unit_count']+
+                    $property['native_draft_unit_count'],
+                    'native relation count excludes unrelated or trashed posts');
+                $drafts=(array)($property['source_unit_draft_editors']??[]);
+                $test(count($drafts)===$property['native_draft_unit_count'],
+                    'all draft Unit editors are discoverable at original CPT');
+                foreach($drafts as $draft){
+                    $uid=(int)($draft['id']??0);
+                    $test(get_post_type($uid)==='units' &&
+                          get_post_status($uid)==='draft' &&
+                          get_post_meta($uid,'unit_start_price',true)==='' &&
+                          get_post_meta($uid,'unit_available',true)!=='true' &&
+                          empty($draft['supplier_cost_verified']),
+                          'original linked room draft is unpriced and unbookable '.$uid);
+                }
                 $test(!$property['tier_eligible']&&
                     $property['supplier_cost_verified']===false,
                     'not a supplier-priced candidate');

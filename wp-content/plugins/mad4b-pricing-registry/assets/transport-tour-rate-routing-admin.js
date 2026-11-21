@@ -33,6 +33,206 @@ function ready(){
       (cfg.terms||[]).filter(t=>['cairo','aswan-gov','luxor'].includes(t.slug))
         .map(t=>[String(t.term_id),t.name])
     );
+
+    const costForm=root.querySelector('[data-tr="cost-form"]');
+    const costSelected=root.querySelector('[data-tr="cost-selected"]');
+    const costResults=root.querySelector('[data-tr="cost-results"]');
+    const costAdd=root.querySelector('[data-tr="cost-add"]');
+    const costPreview=root.querySelector('[data-tr="cost-preview"]');
+    const costClear=root.querySelector('[data-tr="cost-clear"]');
+    const costSave=root.querySelector('[data-tr="cost-save"]');
+    let costAvailable=[],costLines=Array.isArray(cfg.savedSelection?.cost_inputs)?cfg.savedSelection.cost_inputs:[];
+    costSave.disabled=cfg.savedSelection?.writable!==true;
+    costSave.title=costSave.disabled?'Only unpublished Draft Tour Rates can be updated':'Save selection with stale-tab protection';
+    const costGrid=document.createElement('div');costGrid.className='mad4b-tr-field-grid';
+    const [costSourceLabel,costSource]=select('Matched Transportation source',[['','Run route candidates first']]);
+    const [costVehicleLabel,costVehicle]=select('Vehicle profile',[
+      ['limousine','Limousine'],['luxury_7_seats','Luxury 7 Seats'],['h1','H1'],
+      ['hiace','Hiace'],['coaster','Coaster'],['bus','Bus']]);
+    const [costRoadLabel,costRoad]=select('Road category',[
+      ['highway','Highway'],['city','City'],['desert','Desert']]);
+    const [costServiceLabel,costService]=select('Service',[
+      ['transfer','Transfer'],['half_day','Half day'],['full_day','Full day'],
+      ['sightseeing','Sightseeing'],['overnight','Overnight']]);
+    const [kmLabel,costKm]=control('Route distance (km · operator estimate)','number','');
+    costKm.step='.1';costKm.min='.5';costKm.max='5000';
+    const [minutesLabel,costMinutes]=control('Driving minutes (operator estimate)','number','');
+    costMinutes.min='1';costMinutes.max='20000';costMinutes.step='1';
+    const [quantityLabel,costQty]=control('Number of vehicles','number',1);
+    costQty.min='1';costQty.max='20';costQty.step='1';
+    const [costModeLabel,costMode]=select('Link verification',[
+      ['planning','Planning · not yet saved'],
+      ['package','Verify existing saved Tour Rate link']],'planning');
+    const [dateLabel,costDate]=control('Travel date (context only)','date','');
+    const [waitLabel,costWait]=control('Waiting minutes','number',0);
+    costWait.min='0';costWait.max='10080';
+    const [tollsLabel,costTolls]=control('Tolls / parking (EGP)','number',0);
+    costTolls.min='0';costTolls.max='200000';
+    [costSourceLabel,costVehicleLabel,costRoadLabel,costServiceLabel,kmLabel,
+      minutesLabel,quantityLabel,costModeLabel,dateLabel,waitLabel,tollsLabel]
+      .forEach(x=>costGrid.append(x));
+    costForm.append(costGrid);
+    costSource.addEventListener('change',()=>{
+      const chosen=costAvailable.find(x=>String(x.id)===costSource.value);
+      if(!chosen)return;
+      const vehicles=Object.keys(chosen.vehicleCosts||{});
+      const previous=costVehicle.value;
+      costVehicle.replaceChildren();
+      const names={limousine:'Limousine',luxury_7_seats:'Luxury 7 Seats',
+        h1:'H1',hiace:'Hiace',coaster:'Coaster',bus:'Bus'};
+      vehicles.forEach(v=>costVehicle.add(new Option(
+        (names[v]||v)+' · PDF cost '+Number(chosen.vehicleCosts[v]).toLocaleString('en-US')+' EGP',v)));
+      if(vehicles.includes(previous))costVehicle.value=previous;
+    });
+    async function workflowApi(body){
+      if(!cfg.workflow||!cfg.nonce)throw Error('Workflow endpoint unavailable');
+      const resp=await fetch(cfg.workflow,{method:'POST',credentials:'same-origin',
+        headers:{'Content-Type':'application/json','X-WP-Nonce':cfg.nonce},
+        body:JSON.stringify(body)});
+      const parsed=await resp.json();
+      if(!resp.ok||parsed?.code)throw Error(parsed?.code||'workflow_request_failed');
+      return parsed;
+    }
+    function refreshCostSource(){
+      costSource.replaceChildren(new Option(
+        costAvailable.length?'Choose one stage/candidate':'No city-matched candidate yet',''));
+      costAvailable.forEach(item=>costSource.add(new Option(
+        item.stageLabel+' · '+item.sourceKey+' · #'+item.sourceId,
+        String(item.id))));
+      costAdd.disabled=costAvailable.length===0;
+    }
+    function renderCostSelected(){
+      costSelected.replaceChildren();
+      if(!costLines.length){costSelected.textContent='No selected components.';return;}
+      const table=document.createElement('table');table.className='widefat striped';
+      const heading=document.createElement('tr');
+      for(const title of ['Stage','Transportation','Vehicle','Qty','']){
+        const th=h('th',title);heading.append(th);
+      }
+      table.append(heading);
+      costLines.forEach((item,index)=>{
+        const tr=document.createElement('tr');
+        for(const v of [item.stage_key,'#'+item.transportation_id,item.vehicle,item.quantity]){
+          tr.append(h('td',v));
+        }
+        const action=h('td',''),btn=h('button','Remove');
+        btn.type='button';btn.className='button';
+        btn.addEventListener('click',()=>{
+          costLines.splice(index,1);renderCostSelected();costResults.replaceChildren();
+        });
+        action.append(btn);tr.append(action);table.append(tr);
+      });
+      costSelected.append(table);
+    }
+    costAdd.addEventListener('click',()=>{
+      try{
+        if(costLines.length>=30)throw Error('Maximum 30 selected journeys');
+        const found=costAvailable.find(x=>String(x.id)===costSource.value);
+        if(!found)throw Error('Choose a candidate from the current route match');
+        const kms=Number(costKm.value),mins=Number(costMinutes.value);
+        const qty=Number(costQty.value);
+        if(!Number.isFinite(kms)||kms<.5||kms>5000||
+          !Number.isFinite(mins)||mins<1||mins>20000||
+          !Number.isInteger(qty)||qty<1||qty>20)
+          throw Error('Enter valid km, driving minutes and whole vehicle count');
+        const key=found.join==='AND'?
+          found.stageKey+'_'+found.sourceId:found.stageKey;
+        if(costLines.some(x=>x.stage_key===key))
+          throw Error('This OR stage already has a selected alternative, or this AND component is repeated');
+        const wait=Number(costWait.value),tolls=Number(costTolls.value);
+        if(!Number.isFinite(wait)||wait<0||wait>10080||!Number.isFinite(tolls)||tolls<0||tolls>200000)
+          throw Error('Waiting minutes and expenses must be within allowed ranges');
+        costLines.push({
+          stage_key:key,transportation_id:found.sourceId,
+          vehicle:costVehicle.value,service:costService.value,
+          road:costRoad.value,km:kms,drive_min:mins,
+          from_term_id:found.originId,to_term_id:found.destinationId,
+          wait_min:wait,tolls:tolls,quantity:qty,night:false,peak:false
+        });
+        renderCostSelected();costResults.replaceChildren(
+          h('p','Selected journey added. Nothing has been saved or approved.'));
+      }catch(e){costResults.replaceChildren(h('p','Cannot add: '+e.message));}
+    });
+    costClear.addEventListener('click',()=>{
+      costLines=[];renderCostSelected();costResults.replaceChildren();
+    });
+    costSave.addEventListener('click',async()=>{
+      costSave.disabled=true;
+      costResults.replaceChildren(h('p','Validating selected components and saving native JetEngine Draft…'));
+      try{
+        if(!costLines.length)throw Error('Choose and cost at least one route first');
+        if(cfg.savedSelection?.writable!==true)
+          throw Error('Published Rates are read-only; use an unpublished Draft Tour Rate');
+        const rows=collect().map(stage=>{
+          const chosen=costLines.filter(line=>line.stage_key===stage.key||
+            line.stage_key.startsWith(stage.key+'_'));
+          const ids=[...new Set(chosen.map(line=>line.transportation_id))];
+          if(!ids.length)throw Error('Choose a route for stage '+stage.key);
+          if(stage.join==='OR'&&ids.length>1)
+            throw Error('OR stage may select only one source per saved package');
+          return {...stage,transport_ids:ids};
+        });
+        const saved=await workflowApi({
+          action:'save',tour_rate_id:cfg.postId,
+          expected_hash:cfg.savedSelection?.hash,mode:mode.value,
+          stages:rows,cost_lines:costLines
+        });
+        cfg.savedSelection=saved;
+        costMode.value='package';
+        costResults.replaceChildren(h('h4','Saved to native JetEngine Draft · '+saved.cost_inputs_saved_count+' selected journey(s)'),
+          h('p','Readback verified · updated revision fingerprint '+saved.hash+
+            ' · no Transport Rate or commercial price created.'));
+      }catch(e){costResults.replaceChildren(h('p','Save blocked: '+e.message));}
+      finally{costSave.disabled=cfg.savedSelection?.writable!==true;}
+    });
+    costPreview.addEventListener('click',async()=>{
+      costPreview.disabled=true;
+      costResults.replaceChildren(h('p','Calculating explicitly selected journeys…'));
+      try{
+        if(!costLines.length)throw Error('No selected Transportations');
+        if(!cfg.costAjax||!cfg.costNonce||!cfg.costAction)
+          throw Error('Cost bridge is unavailable');
+        const payload={
+          context:costMode.value,tour_rate_id:cfg.postId,
+          travel_date:costDate.value,lines:costLines
+        };
+        const data=new URLSearchParams({action:cfg.costAction,mode:'bridge',
+          nonce:cfg.costNonce,payload:JSON.stringify(payload)});
+        const response=await fetch(cfg.costAjax,{
+          method:'POST',credentials:'same-origin',
+          headers:{'Content-Type':'application/x-www-form-urlencoded'},body:data.toString()});
+        const parsed=await response.json();
+        if(!response.ok||!parsed?.success)
+          throw Error(parsed?.data?.code||'cost_bridge_failed');
+        const value=parsed.data;
+        costResults.replaceChildren(h('h4',
+          'Original PDF SELF cost reference: '+Number(value.total_pdf_reference_company_cost_egp).toFixed(2)+' EGP'));
+        const warning=h('p','Indicative scenario: '+Number(value.total_indicative_scenario_egp).toFixed(2)+
+          ' EGP · Modeled distance/time cost: '+Number(value.total_modeled_operating_cost_egp).toFixed(2)+
+          ' EGP · Not a travel-date-confirmed supplier cost, approved selling price or reservation.');
+        warning.className='mad4b-tr-warning';costResults.append(warning);
+        costResults.append(h('p',value.package_relation_verified?
+          'Saved Tour Rate linkage verified. Native cost and markup inheritance applied.':
+          'Planning only. Save native Transportation assignments before using verified mode.'));
+        const table=document.createElement('table');table.className='widefat striped';
+        const head=document.createElement('tr');
+        for(const title of ['Stage','PDF SELF cost EGP','Modeled EGP','Indicative EGP','Markup / source'])
+          head.append(h('th',title));
+        table.append(head);
+        for(const line of value.lines){
+          const tr=document.createElement('tr');
+          for(const cell of [line.stage_key,line.pdf_reference_line_cost_egp,
+            line.modeled_line_cost_egp,line.indicative_line_scenario_egp,
+            line.markup_pct+'% · '+line.markup_rule])tr.append(h('td',cell));
+          table.append(tr);
+        }
+        costResults.append(table);
+        costResults.append(h('small','Read-only receipt '+value.receipt_sha256+
+          ' · Currency EGP · no Transport Rate automatically created · no checkout.'));
+      }catch(e){costResults.replaceChildren(h('p','Cost calculation blocked: '+e.message));}
+      finally{costPreview.disabled=false;}
+    });
+
     const header=document.createElement('div');
     header.className='mad4b-tr-toolbar';
     const [modeLabel,mode]=select('Selection mode',[
@@ -104,6 +304,7 @@ function ready(){
       if(saved.length>1)mode.value='stages';
     }else stageRow();
     updateMode();
+    renderCostSelected();
     function collect(){
       return stages.filter((v,i)=>mode.value==='stages'||i===0)
         .map(({widgets:w})=>({
@@ -126,6 +327,10 @@ function ready(){
         line.append(h('span',item.origin_city+' · '+item.route_shape+
           ' · '+(item.post_status==='draft'?'Draft':'Published')));
         line.append(h('small',item.blocking_reasons.join(' · ')));
+        if(item.available_vehicle_pdf_costs_egp){
+          line.append(h('small','Reference SELF costs (EGP): '+Object.entries(item.available_vehicle_pdf_costs_egp)
+            .map(([v,amount])=>v+': '+Number(amount).toLocaleString('en-US')).join(' · ')));
+        }
         if(item.edit_url){
           try{
             const u=new URL(item.edit_url,location.origin);
@@ -142,18 +347,30 @@ function ready(){
       if(preview.disabled)return;
       preview.disabled=true;
       result.replaceChildren(h('p','Checking selected destinations and Yes status…'));
+      costAvailable=[];refreshCostSource();renderCostSelected();
+      costResults.replaceChildren(h('p','Recheck complete route candidates before estimating.'));
       try{
-        const body={
-          tour_rate_id:cfg.postId,lang:cfg.lang,
+        const data=await workflowApi({
+          action:'composition',tour_rate_id:cfg.postId,lang:cfg.lang,
           mode:mode.value,stages:collect()
-        };
-        const response=await fetch(cfg.route,{
-          method:'POST',credentials:'same-origin',
-          headers:{'Content-Type':'application/json','X-WP-Nonce':cfg.nonce},
-          body:JSON.stringify(body)
         });
-        const data=await response.json();
-        if(!response.ok||data?.code)throw Error(data?.code||'route_request_failed');
+        costAvailable=[];
+        for(const row of data.stages||[]){
+          for(const candidate of row.alternatives||[]){
+            costAvailable.push({
+              id:costAvailable.length+1,sourceId:Number(candidate.post_id),
+              sourceKey:candidate.source_key,stageKey:row.stage.key,
+              stageLabel:row.stage.label,join:row.join_operator,
+              originId:Number(row.stage.origin_term_id||0),
+              destinationId:Number(row.stage.destination_term_id||0),
+              vehicleCosts:candidate.available_vehicle_pdf_costs_egp||{}
+            });
+          }
+        }
+        refreshCostSource();renderCostSelected();costResults.replaceChildren(
+          h('p',costAvailable.length?
+            'Choose one matched source per OR stage, then enter distance and duration.':
+            'No city-matched sources found for costing.'));
         result.replaceChildren(h('h4',
           data.mode==='simple'?'Simple OR alternatives preview':
           'Multi-stage AND / OR preview'));
