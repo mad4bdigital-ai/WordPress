@@ -164,8 +164,17 @@ async function calculate(){
     ' '+(data.occupancy_weight_percent>=0?'+':'')+data.occupancy_weight_percent+
     '% · '+data.room_grade+' '+(data.room_weight_percent>=0?'+':'')+
     data.room_weight_percent+'%'));
-  output.append(make('p','','Applied scopes: '+
-    (data.effective_policy?.applied_scopes||[]).join(' → ') ||'neutral inherited'));
+  const scopes=(data.effective_policy?.applied_scopes||[]);
+  output.append(make('p','','Applied scopes: '+(scopes.length?scopes.join(' → '):'neutral inherited')));
+  if(data.unit_id){
+    const evidence=data.room_grade_evidence||{};
+    output.append(make('p','',
+      'Original Unit grade: '+(evidence.source_category||'unclassified')+
+      ' · '+(evidence.verified?'source category matched':'category unverified')+
+      ' · capacity '+(data.unit_capacity||'not verified')));
+  }else{
+    output.append(make('p','','No Unit selected: room-grade weight is a scenario, not a room assignment.'));
+  }
   output.append(make('p','mad4b-aw-important',
     'ESTIMATE ONLY. Supplier cost, room capacity, period, meal board, inventory, published Rates and checkout have not been approved.'));
  }catch(err){output.textContent='Cannot calculate: '+err.message}
