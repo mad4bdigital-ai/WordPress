@@ -114,6 +114,26 @@
    </div>
    <button type="button" class="button" data-id="readiness-run">Review package readiness</button>
    <div data-id="readiness-result" class="mad4b-kinetic-results" role="status" aria-live="polite">Select a date window and run the review. No changes will be saved.</div>
+   <h4>Hotel Property Rate · internal cost scenario (not a customer quote)</h4>
+   <p class="mad4b-kinetic-muted">Select a hotel already eligible in a package stage. The source amount is explicitly <strong>per person</strong>; the sheet does not prove the per-night basis. Calculating a conditional scenario never approves this cost or inventory.</p>
+   <div class="mad4b-kinetic-grid">
+    <label>Package<select data-id="stay-scenario-tour"><option value="">Run package readiness first</option></select></label>
+    <label>Package level<select data-id="stay-scenario-tier"><option value="">Choose package first</option></select></label>
+    <label>Hotel stage<select data-id="stay-scenario-stage"><option value="">Choose level first</option></select></label>
+    <label>Eligible Property<select data-id="stay-scenario-property"><option value="">Choose stage first</option></select></label>
+    <label>Trip start date<input data-id="stay-scenario-date" type="date"></label>
+    <label>Occupancy<select data-id="stay-scenario-adults">
+     <option value="2">Double · 2 adults</option>
+     <option value="3">Triple · 3 adults</option>
+    </select></label>
+   </div>
+   <label><input data-id="stay-scenario-assume" type="checkbox"> Show mathematical what-if assuming the sheet's per-person figure is also per night — NOT verified</label>
+   <button type="button" class="button" data-id="stay-scenario-run">Inspect Property Rate &amp; provisional scenario</button>
+   <div data-id="stay-scenario-result" class="mad4b-kinetic-results" role="status" aria-live="polite">The internal preview has no customer pricing, supplier approval, booking, or WooCommerce side effects.</div>
+   <h4>Supplier evidence queue · native Property Rates</h4>
+   <p class="mad4b-kinetic-muted">One grouped review per original hotel. Missing contracts, night basis, Peak, allotments and Cost Receipts stay blocked.</p>
+   <button type="button" class="button" data-id="supplier-evidence-run">Inspect outstanding supplier proof</button>
+   <div data-id="supplier-evidence-result" class="mad4b-kinetic-results" role="status" aria-live="polite">Read-only source review. No prices are approved or changed.</div>
    <h4>Seasonal hotel assignment · stage-level exceptions</h4>
    <p class="mad4b-kinetic-muted">The base Property + Package Level selection stays intact. Set Inherit to use it unchanged, Eligible to explicitly keep a choice, or Excluded to remove the candidate for the selected Season. These are assignment rules, not room availability. Seasons inherit their calendar from live Term Meta.</p>
    <div class="mad4b-kinetic-grid">

@@ -636,6 +636,17 @@ final class MAD4B_Transport_Distance_Time_V1 {
     MAD4B_Package_Seasonal_Assignment_V1::save(
      absint($_POST['tour_id']??0),$rules,(int)$rev):
     new WP_Error('seasonal_assignment_save_invalid');
+  }elseif($mode==='supplier-evidence-queue'){
+   $result=class_exists('MAD4B_Package_Component_Readiness_V1')?
+    MAD4B_Package_Component_Readiness_V1::supplierEvidenceQueue():
+    new WP_Error('supplier_evidence_queue_provider_missing');
+  }elseif($mode==='package-stay-scenario'){
+   $payload=is_string($_POST['payload']??null)?wp_unslash($_POST['payload']):'';
+   if(strlen($payload)>4000)wp_send_json_error(['code'=>'package_scenario_payload_too_long'],400);
+   $input=json_decode($payload,true);
+   $result=is_array($input)&&class_exists('MAD4B_Package_Component_Readiness_V1')?
+    MAD4B_Package_Component_Readiness_V1::scenario($input):
+    new WP_Error('package_scenario_payload_invalid');
   }elseif($mode==='package-readiness'){
    $result=class_exists('MAD4B_Package_Component_Readiness_V1')?
     MAD4B_Package_Component_Readiness_V1::report(

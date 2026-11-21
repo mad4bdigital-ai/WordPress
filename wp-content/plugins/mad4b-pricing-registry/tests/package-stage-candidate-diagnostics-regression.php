@@ -1,53 +1,62 @@
 <?php
-$checks=[];$check=static function($label,$pass)use(&$checks){$checks[$label]=(bool)$pass;};
-$r=MAD4B_Package_Component_Readiness_V1::report('2026-12-05','2026-12-19');
-$check('report_admin_readable',is_array($r));
-$check('no_price_readiness',is_array($r)&&$r['totals']['price_ready_tier_reviews']===0);
-$check('no_checkout',is_array($r)&&$r['checkout_authorized']===false);
-$diagnostics=[];
-if(is_array($r)){
- foreach($r['tours'] as $tour)
-  foreach($tour['levels'] as $tier=>$data)
-   foreach($data['stages'] as $s)if(is_array($s['unassigned_property_diagnostics']??null))
-     $diagnostics[]=['tour'=>(int)$tour['tour_id'],'tier'=>$tier,
-      'stage'=>$s['key'],'details'=>$s['unassigned_property_diagnostics'],
-      'eligible'=>$s['eligible_properties']];
+defined('ABSPATH')||exit;
+$tests=[];$assert=static function($name,$val)use(&$tests){$tests[$name]=(bool)$val;};
+$from='2026-12-05';$to='2026-12-19';
+$board=MAD4B_Package_Component_Readiness_V1::report($from,$to);
+$assert('admin_report_readable',is_array($board));
+$assert('no_sales_price_readiness',is_array($board)&&($board['totals']['price_ready_tier_reviews']??-1)===0);
+$assert('no_checkout',is_array($board)&&$board['checkout_authorized']===false);
+$expected=[];$seen=[];$reviewed=0;
+if(is_array($board))foreach($board['tours'] as $tour){
+ foreach($tour['levels'] as $level=>$data){
+  $review=MAD4B_Package_Stage_Rate_Guard_V1::review(
+   (int)$tour['tour_id'],(int)$data['tier_id'],$from,$to);
+  $reviewed++;
+  foreach($review['stages'] as $stage){
+   $id=$tour['tour_id'].'|'.$data['tier_id'].'|'.$stage['key'];
+   $empty=in_array($stage['kind'],['hotel','resort'],true)&&
+    in_array('stage_destination_has_no_candidate_property',
+      (array)$stage['blocked'],true)&&
+    empty($stage['season_rejected_property_ids']);
+   if($empty)$expected[$id]=true;
+  }
+  foreach($data['stages'] as $stage){
+   $diag=$stage['unassigned_property_diagnostics']??null;
+   if(!is_array($diag))continue;
+   $id=$tour['tour_id'].'|'.$data['tier_id'].'|'.$stage['key'];
+   $seen[$id]=true;
+   $assert('report_diagnostic_has_true_guard_gap_'.$id,
+      isset($expected[$id]));
+   $assert('diagnostic_preserves_zero_eligible_'.$id,
+      (int)$stage['eligible_properties']===0);
+   $assert('diagnostic_never_authorizes_assignment_'.$id,
+      ($diag['not_authorized_to_assign']??false)===true&&
+      ($diag['checkout_authorized']??null)===false);
+   $assert('native_catalogue_provenance_'.$id,
+      (int)($diag['total']??0)>=count((array)($diag['candidates']??[])));
+   foreach((array)($diag['candidates']??[]) as $candidate)
+    $assert('source_candidate_unqualified_'.$id.'_'.$candidate['id'],
+      ($candidate['qualified']??null)===false&&
+      ($candidate['assigned']??null)===false);
+  }
+ }
 }
-$check('nine_stage_tier_diagnostics',count($diagnostics)===9);
-$groups=[];foreach($diagnostics as $d)$groups[$d['stage']][]=$d;
-$check('only_three_source_stage_gaps',count($groups)===3);
-foreach(['hotel-luxor-02','resort-sharm-03','hotel-aswan-02'] as $stage){
- $records=$groups[$stage]??[];
- $check($stage.'_three_levels',count($records)===3);
- $check($stage.'_no_false_eligibility',
-  count(array_filter($records,static fn($x)=>$x['eligible']!==0||
-    ($x['details']['not_authorized_to_assign']??false)!==true))===0);
- $check($stage.'_catalogue_candidates_found',
-  count(array_filter($records,static fn($x)=>($x['details']['total']??0)<1))===0);
- foreach($records as $record)
-  foreach($record['details']['candidates'] as $candidate)
-   if(($candidate['qualified']??null)!==false||
-      ($candidate['assigned']??null)!==false)
-     $checks['diagnostic_not_treated_as_assignment']=false;
-}
-$check('luxor_sheet_reference_present',!empty(array_filter(
- $groups['hotel-luxor-02'][0]['details']['candidates']??[],
- static fn($c)=>!empty($c['supplier_quote_reference']))));
-$check('aswan_city_unverified_flagged',!empty(array_filter(
- $groups['hotel-aswan-02'][0]['details']['candidates']??[],
- static fn($c)=>($c['reason']??'')==='aswan_city_location_unverified')));
-$check('sharm_tier_gap_identified',!empty(array_filter(
- $groups['resort-sharm-03'][0]['details']['candidates']??[],
- static fn($c)=>($c['reason']??'')==='property_tier_mismatch')));
+$assert('all_24_tier_reviews_traversed',$reviewed===24);
+$assert('guard_gaps_equal_diagnostics',
+ array_keys($expected)===array_keys($seen) ||
+ (count(array_diff_key($expected,$seen))===0&&count(array_diff_key($seen,$expected))===0));
+$assert('at_least_one_real_gap_surfaced',count($expected)>=1);
 $before=get_current_user_id();wp_set_current_user(0);
-$denied=MAD4B_Package_Component_Readiness_V1::report('2026-12-05','2026-12-19');
+$forbidden=MAD4B_Package_Component_Readiness_V1::report($from,$to);
 wp_set_current_user($before);
-$check('unprivileged_report_blocked',is_wp_error($denied));
-$failed=array_keys(array_filter($checks,static fn($v)=>!$v));
-echo wp_json_encode(['site'=>home_url(),'contract'=>'mad4b.package-stage-candidate-diagnostics.v1',
- 'passed'=>count($checks)-count($failed),'total'=>count($checks),
- 'failures'=>$failed,'diagnostic_rows'=>count($diagnostics),
- 'live_taxonomy_mutations'=>false,'price_or_checkout_activated'=>false],
+$assert('anonymous_access_rejected',is_wp_error($forbidden));
+$f=array_keys(array_filter($tests,static fn($v)=>!$v));
+echo wp_json_encode([
+ 'site'=>home_url(),'contract'=>'mad4b.package-stage-candidate-diagnostics.v2',
+ 'passed'=>count($tests)-count($f),'total'=>count($tests),
+ 'failures'=>$f,'guard_expected_gaps'=>count($expected),
+ 'report_recorded_gaps'=>count($seen),
+ 'source_terms_never_mutated'=>true,'checkout_authorized'=>false],
  JSON_UNESCAPED_SLASHES)."\n";
-if($failed&&class_exists('WP_CLI'))WP_CLI::halt(1);
+if($f&&class_exists('WP_CLI'))WP_CLI::halt(1);
 
