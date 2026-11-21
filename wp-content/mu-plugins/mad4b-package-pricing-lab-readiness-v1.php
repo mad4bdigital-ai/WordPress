@@ -168,6 +168,14 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
         if(is_wp_error($actual)||!is_array($actual)||!$actual)
             return ['eligible'=>false,'reason'=>'property_destination_missing'];
         $actual=array_map('intval',$actual);
+        if(($scope['destination']??'')==='aswan'){
+            // A governorate-wide tag does NOT make an Abu Simbel hotel
+            // an eligible Aswan-city overnight. Enforce the specific
+            // excluded locality, even when the parent governorate matches.
+            $abu=get_term_by('slug','abu-simbel-temples','destinations');
+            if($abu instanceof WP_Term && in_array((int)$abu->term_id,$actual,true))
+                return ['eligible'=>false,'reason'=>'property_in_abu_simbel_not_aswan_city'];
+        }
         if(!array_intersect($actual,array_map('intval',$scope['accepted_term_ids'])))
             return ['eligible'=>false,'reason'=>'property_destination_mismatch'];
         $tiers=wp_get_object_terms($property,'package_levels',['fields'=>'ids']);
