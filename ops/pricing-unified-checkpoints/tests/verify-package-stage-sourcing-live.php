@@ -128,8 +128,22 @@ if($wayfa){
             'Pricer view references source-matched native train');
     }
 }else{
-    $test(MAD4B_Package_Pricing_Lab_Readiness_V1::packages()===[],
-        'source does not hallucinate missing package plans');
+    // The source may be receiving native Package plans from independently
+    // reconciled content jobs; absence is NOT a permanent invariant.
+    $plans=MAD4B_Package_Pricing_Lab_Readiness_V1::packages();
+    $test(is_array($plans),'source Package catalog is readable');
+    $observed['source_saved_plan_count']=count($plans);
+    foreach($plans as $plan){
+        $t=(int)($plan['id']??0);
+        $v=MAD4B_Package_Stage_Rate_Guard_V1::review(
+            $t,2354,'2027-02-01','2027-02-28');
+        $test(!empty($v['applies']) && !$v['ready'] &&
+            !empty($v['blockers']) && $v['cost_total']===null,
+            'newly saved source plan is not falsely commercially approved');
+        $observed['source_saved_plans'][]=[
+            'tour_id'=>$t,'stage_count'=>count($v['stages']),
+            'blocker_count'=>count($v['blockers'])];
+    }
 }
 $ratesAfter=count(get_posts(['post_type'=>'tour-rates','post_status'=>'any',
     'fields'=>'ids','posts_per_page'=>-1,'suppress_filters'=>true]));
