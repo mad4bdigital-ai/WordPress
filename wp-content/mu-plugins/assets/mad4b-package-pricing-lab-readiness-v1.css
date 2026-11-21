@@ -158,3 +158,10 @@
 .mad4b-pcl-source-scout .mad4b-pcl-table{min-width:550px}
 }
 
+
+/* Source Unit links stay in the original JetEngine editors, not a second form. */
+.mad4b-pcl-source-unit-drafts{margin-top:5px;max-width:320px}
+.mad4b-pcl-source-unit-drafts summary{font-size:12px;cursor:pointer;color:#2271b1}
+.mad4b-pcl-source-unit-drafts ul{margin:7px 0 2px;padding-inline-start:17px}
+.mad4b-pcl-source-unit-drafts li{margin:5px 0;overflow-wrap:anywhere}
+.mad4b-pcl-source-unit-drafts small{font-size:11px;color:#646970}
