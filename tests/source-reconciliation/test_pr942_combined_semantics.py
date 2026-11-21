@@ -19,6 +19,7 @@ class CompositeReviewNegativeTests(TestCase):
             *m.REVIEW,
             'wp-content/plugins/mad4b-site-control-plane/includes/class-external-skill-sources.php',
             'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-ollama-ability.php',
+            *(path for path, _sha in m.CP4_EXACT_SOURCE_REVIEW),
         ]}
         self.source = lambda p: self.sources[p]
 
@@ -109,6 +110,35 @@ class CompositeReviewNegativeTests(TestCase):
         self.sources[key]=json.dumps(x)
         with self.assertRaises(AssertionError):
             m.validate(self.supplement,self.source)
+
+    def test_cp4_native_scanning_review_cannot_disappear(self):
+        key=m.GOVERNANCE_PATH
+        x=json.loads(self.sources[key])
+        sha=m.CP4_EXACT_SOURCE_REVIEW[0][1]
+        x['reviewed_changes']=[r for r in x['reviewed_changes']
+                              if r.get('source_blob_sha')!=sha]
+        self.sources[key]=json.dumps(x)
+        with self.assertRaises(AssertionError):
+            m.validate(self.supplement,self.source)
+
+    def test_cp4_original_reconciliation_cannot_gain_release_authority(self):
+        key=m.GOVERNANCE_PATH
+        x=json.loads(self.sources[key])
+        sha=m.CP4_EXACT_SOURCE_REVIEW[1][1]
+        for r in x['reviewed_changes']:
+            if r.get('source_blob_sha')==sha:
+                r['production_authorized']=True
+        self.sources[key]=json.dumps(x)
+        with self.assertRaises(AssertionError):
+            m.validate(self.supplement,self.source)
+
+    def test_cp4_exact_source_blob_mismatch_denied(self):
+        path=m.CP4_EXACT_SOURCE_REVIEW[0][0]
+        original=m.current_blob
+        with patch.object(m,'current_blob',
+                          lambda value: '0'*40 if value==path else original(value)):
+            with self.assertRaises(AssertionError):
+                m.validate(self.supplement,self.source)
 
     def test_fails_on_collision_sha_change(self):
         with patch.object(m, 'current_blob', lambda _p: '0' * 40):

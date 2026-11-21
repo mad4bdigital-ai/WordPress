@@ -834,6 +834,56 @@ def reviewed_cwv_site_admission_bootstrap_successor(repo:Path,path:str,contents:
         return None
 
 
+def reviewed_cp4_workflow_options_exact_successor(repo:Path,path:str,contents:bytes):
+    """Single original-source CP4 owner-router successor; never release authority.
+
+    Historical 65-path QA31 manifest stays frozen and unmodified. The only
+    extra acceptable source is the independently reviewed signed-cost CP4
+    owner router, with its exact source Git blob and exact Governance blob.
+    """
+    rel='includes/class-mad4b-scp-readiness-workflow-options.php'
+    expected='2b0b20927811e097b6dc19a3d84134205a8eb423'
+    old='b790da33c16496013ea408d5a142299ec5fd8724'
+    governance='2ad267654e478457dd7c61acb58950e16177a806'
+    test='tests/cp4_content_readiness_source_regression.py'
+    if path!=rel:return None
+    hash_git=lambda b:hashlib.sha1(
+        b'blob '+str(len(b)).encode('ascii')+b'\0'+b).hexdigest()
+    if hash_git(contents)!=expected:return None
+    try:
+        orig=json.loads((repo/'governance/release-parity/qa31-rc129-reviewed-successors-20261118.json').read_text())
+        prior=[x for x in orig.get('reviewed_entries',[]) if x.get('path')==rel]
+        reg_file=repo/'governance/production-readiness/capability-coverage.json'
+        if hash_git(reg_file.read_bytes())!=governance:return None
+        reg=json.loads(reg_file.read_text())
+        fn=repo/test
+        if not fn.is_file() or fn.is_symlink():return None
+        source=contents.decode('utf-8')
+    except (OSError,UnicodeDecodeError,ValueError,TypeError,KeyError):
+        return None
+    if (orig.get('authorizing') is not False or orig.get('production_authorized') is not False
+        or orig.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+        or len(prior)!=1 or prior[0].get('current_git_blob_sha')!=old
+        or reg.get('authorizing') is not False
+        or reg.get('production_promotion_from_ci') is not False):
+        return None
+    exact=[x for x in reg.get('reviewed_changes',[])
+           if x.get('path')=='wp-content/plugins/mad4b-site-control-plane/'+rel
+           and x.get('source_blob_sha')==expected
+           and x.get('status')=='reviewed_for_ci_only'
+           and x.get('production_authorized') is False
+           and x.get('live_evidence_required') is True
+           and test in x.get('regression_tests',[])
+           and len(x.get('control_ids',[]))>=2]
+    if len(exact)!=1:return None
+    for marker in ("($issue['source']??'')==='mad4b-package-cost-readiness'",
+                   "preg_match('/^cp4_cost_[a-f0-9]{12}$/D',$code)",
+                   "($issue['source_evidence']['contract']??'')==='mad4b.cp4-cost-readiness-alert.v1'",
+                   "return 'pricing';","return 'general';"):
+        if marker not in source:return None
+    return test
+
+
 def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     """Accept exact, reviewed Git blobs for CI inventory only; never parity.
     Static legacy entries remain valid; rc129 successors are independently
@@ -867,6 +917,8 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
         requested=reviewed_rc129_context_media_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_rc129_host_integration_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_cp4_workflow_options_exact_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_rc129_pinned_successor(repo,path,contents)
     if requested is None:

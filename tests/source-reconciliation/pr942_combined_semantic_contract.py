@@ -42,6 +42,16 @@ def current_blob(path):
 GOVERNANCE_REVIEWED_SUCCESSOR = '0f4930fe976ff604f30c600c044812fdb7de3fa7'
 GOVERNANCE_CWV_REVIEWED_SUCCESSOR = '18df447206263ee9bd79772068376dc24ebf9400'
 GOVERNANCE_CWV_BRAND_REVIEWED_SUCCESSOR = 'b9c72b2fe98f20ba990247c8d701202835609246'
+GOVERNANCE_CWV_BRAND_CP4_REVIEWED_SUCCESSOR = '2ad267654e478457dd7c61acb58950e16177a806'
+CP4_EXACT_SOURCE_REVIEW = (
+    (P+'includes/trait-mad4b-scp-content-readiness-scanning.php',
+     '394d354309757e261345679a305b1717a787ecdc'),
+    (P+'includes/trait-mad4b-scp-content-readiness-reconciliation.php',
+     '39ab0b9c97cdfea300dbeadfc069353072347a56'),
+    (P+'includes/class-mad4b-scp-readiness-workflow-options.php',
+     '2b0b20927811e097b6dc19a3d84134205a8eb423'),
+)
+CP4_SOURCE_REVIEW_TEST = 'tests/cp4_content_readiness_source_regression.py'
 BRAND_TRAIT_REVIEWED_FACADE = '188c7c00411834785f3d00fcd05541d10037f12a'
 BRAND_TRAIT_REVIEWED_HELPER = 'dedbbb99e50d819009e994ad245a412c738d5f28'
 CWV_REVIEWED_BOOTSTRAP = '97887a449a3abf473a043d2da0737a3c2f2ab7ae'
@@ -99,6 +109,32 @@ def require_brand_trait_review(coverage):
                  and r.get('live_evidence_required') is True
                  and test in r.get('regression_tests',[])]
         check(len(matches)==1,'Brand Trait exact source review missing: '+path)
+
+
+def require_cp4_source_review(coverage, source_text):
+    """Only three exact original-Content-Readiness source successors,
+    each independently tested and never commercially authorizing."""
+    reviewed=coverage.get('reviewed_changes',[])
+    for path,sha in CP4_EXACT_SOURCE_REVIEW:
+        check(current_blob(path)==sha,'Unreviewed CP4 native source SHA: '+path)
+        items=[x for x in reviewed
+               if x.get('path')==path and x.get('source_blob_sha')==sha
+               and x.get('status')=='reviewed_for_ci_only'
+               and x.get('production_authorized') is False
+               and x.get('live_evidence_required') is True
+               and CP4_SOURCE_REVIEW_TEST in x.get('regression_tests',[])]
+        check(len(items)==1,'Missing signed-only CP4 CI review: '+path)
+    scan=source_text(CP4_EXACT_SOURCE_REVIEW[0][0])
+    reconciliation=source_text(CP4_EXACT_SOURCE_REVIEW[1][0])
+    workflow=source_text(CP4_EXACT_SOURCE_REVIEW[2][0])
+    check("MAD4B_CP4_Cost_Alerts_V1::admissible((array)$row)" in scan
+          and "$source==='mad4b-package-cost-readiness'" in scan,
+          'Original native scanner does not independently recompute CP4 alerts')
+    check("MAD4B_CP4_Cost_Alerts_V1::can_resolve((array)$issue)" in reconciliation,
+          'Original source resolution may bypass exact signed CP4 gate')
+    check("'mad4b-package-cost-readiness'" in workflow and
+          "return 'pricing';" in workflow,
+          'Exact CP4 owner-group routing missing')
 
 
 def validate_governance_successor(coverage):
@@ -165,15 +201,20 @@ def validate(supplement, source_text):
         if path == GOVERNANCE_PATH and current != r['followup_964']:
             check(current in (GOVERNANCE_REVIEWED_SUCCESSOR,
                               GOVERNANCE_CWV_REVIEWED_SUCCESSOR,
-                              GOVERNANCE_CWV_BRAND_REVIEWED_SUCCESSOR),
+                              GOVERNANCE_CWV_BRAND_REVIEWED_SUCCESSOR,
+                              GOVERNANCE_CWV_BRAND_CP4_REVIEWED_SUCCESSOR),
                   'Unreviewed Governance successor SHA: ' + current)
             coverage = json.loads(source_text(path))
             validate_governance_successor(coverage)
             if current in (GOVERNANCE_CWV_REVIEWED_SUCCESSOR,
-                           GOVERNANCE_CWV_BRAND_REVIEWED_SUCCESSOR):
+                           GOVERNANCE_CWV_BRAND_REVIEWED_SUCCESSOR,
+                           GOVERNANCE_CWV_BRAND_CP4_REVIEWED_SUCCESSOR):
                 require_cwv_review(coverage)
-            if current == GOVERNANCE_CWV_BRAND_REVIEWED_SUCCESSOR:
+            if current in (GOVERNANCE_CWV_BRAND_REVIEWED_SUCCESSOR,
+                           GOVERNANCE_CWV_BRAND_CP4_REVIEWED_SUCCESSOR):
                 require_brand_trait_review(coverage)
+            if current == GOVERNANCE_CWV_BRAND_CP4_REVIEWED_SUCCESSOR:
+                require_cp4_source_review(coverage, source_text)
         elif path == 'tools/readiness_test_execution.py' and current != r['followup_964']:
             check(current == RUNNER_CWV_REVIEWED_SUCCESSOR,
                   'Unreviewed CI runner successor SHA: ' + current)
