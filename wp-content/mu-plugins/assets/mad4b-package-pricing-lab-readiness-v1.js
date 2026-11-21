@@ -374,12 +374,17 @@ function renderReport(data){
           String(source.city_location_unverified_count)+
           ' Aswan governorate candidate(s) still lack native Aswan-city destination proof. Assigning a tier alone will not make them eligible.'));
       }
+      if(source.draft_native_units_discovered){
+        scout.append(el('p','mad4b-pcl-info',
+          String(source.draft_native_units_discovered)+
+          ' official-source Unit category draft(s) are linked to these Properties. Drafts are not available stock, occupancy approval or supplier costs.'));
+      }
       const properties=Array.isArray(source.properties)?source.properties:[];
       if(properties.length){
         const table=el('table','widefat striped mad4b-pcl-table');
         table.append(row('thead',[row('tr',[
           el('th','','Published Property'),el('th','','Native stars'),
-          el('th','','Package Level'),el('th','','Linked Units')
+          el('th','','Package Level'),el('th','','Units: published / draft')
         ])]));
         const tbody=el('tbody');
         for(const prop of properties){
@@ -389,7 +394,8 @@ function renderReport(data){
             el('td','',prop.tier_eligible?'Matches selected tier':
               (prop.tier_status==='tier_unclassified'?'Not assigned to any package tier':
                'Not eligible for selected tier')),
-            el('td','',String(prop.native_unit_count||0))
+            el('td','',String(prop.native_published_unit_count||0)+' / '+
+              String(prop.native_draft_unit_count||0))
           ]));
         }
         table.append(tbody);scout.append(table);
