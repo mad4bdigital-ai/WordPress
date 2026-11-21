@@ -20,6 +20,45 @@ final class MAD4B_Package_Component_Readiness_V1 {
    return new WP_Error('package_readiness_date_window_invalid');
   return [$from,$to];
  }
+
+ /** Diagnostic only: locate published catalogue Properties with correct
+  * geography/type but without approved level or exact city. Do not assign. */
+ private static function unassignedCandidates(int $tour,int $tier,array $sourceStage,
+   array $quotePolicies):array {
+  $scope=MAD4B_Package_Stage_Rate_Guard_V1::stageScope($tour,$sourceStage);
+  if(($scope['status']??'')!=='mapped'||empty($scope['accepted_term_ids']))
+   return ['status'=>'stage_destination_unmapped','candidates'=>[],'total'=>0];
+  $all=get_posts(['post_type'=>'properties','post_status'=>'publish',
+   'fields'=>'ids','posts_per_page'=>150,'suppress_filters'=>true,
+   'orderby'=>'title','order'=>'ASC','no_found_rows'=>true,
+   'tax_query'=>['relation'=>'AND',
+      ['taxonomy'=>'destinations','field'=>'term_id','terms'=>$scope['accepted_term_ids']],
+      ['taxonomy'=>'property-types','field'=>'slug','terms'=>['hotel','resort']]]]);
+  $default=apply_filters('wpml_default_language',null);
+  $found=[];
+  foreach($all as $pid){
+   $pid=(int)$pid;
+   $language=apply_filters('wpml_element_language_code',null,
+      ['element_id'=>$pid,'element_type'=>'post_properties']);
+   if(is_string($default)&&is_string($language)&&$language!==$default)continue;
+   $status=MAD4B_Package_Stage_Rate_Guard_V1::propertyEligibility($pid,$tier,$scope,
+      (string)($sourceStage['lodging_kind']??''));
+   if(!in_array((string)($status['reason']??''),
+        ['property_tier_mismatch','aswan_city_location_unverified'],true))continue;
+   $quoted=false;
+   foreach($quotePolicies as $p)
+    if(array_key_exists($pid,(array)($p['index']??[])))$quoted=true;
+   $found[]=['id'=>$pid,'name'=>wp_strip_all_tags(get_the_title($pid)),
+    'reason'=>$status['reason'],'supplier_quote_reference'=>$quoted,
+    'qualified'=>false,'assigned'=>false];
+  }
+  usort($found,static fn($a,$b)=>
+   ((int)$b['supplier_quote_reference']<=>(int)$a['supplier_quote_reference'])?:
+   strcasecmp($a['name'],$b['name']));
+  return ['status'=>'source_catalogue_review_only',
+   'total'=>count($found),'candidates'=>array_slice($found,0,8),
+   'not_authorized_to_assign'=>true,'checkout_authorized'=>false];
+ }
  public static function report($from,$to){
   if(!class_exists('MAD4B_Package_Stage_Rate_Guard_V1'))
    return new WP_Error('package_readiness_source_guard_unavailable');
@@ -28,9 +67,23 @@ final class MAD4B_Package_Component_Readiness_V1 {
   $window=self::window($from,$to);
   if(is_wp_error($window))return $window;
   [$from,$to]=$window;
-  $quoteIndex=class_exists('MAD4B_Supplier_Sheet_Reference_V1')?
-   MAD4B_Supplier_Sheet_Reference_V1::countsByProperty('winter_2026_27'):[];
-  if(is_wp_error($quoteIndex))return $quoteIndex;
+  // Never use Winter supplier quotes for a Summer or mixed-season stage.
+  // Quoted validity is still unapproved; this is scope matching only.
+  $quotePolicies=[];
+  if(class_exists('MAD4B_Supplier_Sheet_Reference_V1')){
+   foreach(['summer','winter_2026_27'] as $season){
+    $index=MAD4B_Supplier_Sheet_Reference_V1::countsByProperty($season);
+    $catalog=MAD4B_Supplier_Sheet_Reference_V1::catalog('hotels',$season);
+    if(is_wp_error($index))return $index;
+    if(is_wp_error($catalog))return $catalog;
+    $base=$catalog['base_season']??[];
+    if(!is_string($base['window_start']??null)||
+       !is_string($base['window_end']??null))
+     return new WP_Error('package_readiness_supplier_season_missing');
+    $quotePolicies[$season]=['index'=>$index,
+      'start'=>$base['window_start'],'end'=>$base['window_end']];
+   }
+  }
   $out=['contract'=>self::CONTRACT,'site'=>home_url('/'),
    'travel_from'=>$from,'travel_to'=>$to,
    'levels'=>self::TIERS,'tour_count'=>count(self::TOURS),
@@ -70,6 +123,10 @@ final class MAD4B_Package_Component_Readiness_V1 {
    }
    $out['totals']['tour_rates_active']+=count($rates);
    $out['totals']['transport_assignments']+=$assigned;
+   $bySourceStage=[];
+   foreach($stages as $original)
+    if(is_array($original)&&!empty($original['stage_key']))
+     $bySourceStage[(string)$original['stage_key']]=$original;
    $byStage=[];
    foreach((array)($bindings['bindings']??[]) as $stageBinding)
     if(is_array($stageBinding)&&!empty($stageBinding['stage_key']))
@@ -95,18 +152,52 @@ final class MAD4B_Package_Component_Readiness_V1 {
         $unitCandidatePublished++;
       }
      }
-     $sheetQuoteMatches=0;$sheetQuoteProperties=0;
-     foreach((array)($s['eligible_property_ids']??[]) as $property){
-      $qCount=(int)($quoteIndex[(int)$property]['quotation_count']??0);
-      if($qCount>0){$sheetQuoteMatches+=$qCount;$sheetQuoteProperties++;}
+     $sheetQuoteMatches=0;$sheetQuoteProperties=0;$quotePeriod=null;
+     $scope='not_hotel_or_resort';
+     if(in_array((string)$s['kind'],['hotel','resort'],true)){
+      $scope='out_of_sheet_season_or_cross_season';
+      $offset=max(0,(int)($s['day_start']??0)-1);
+      $nightCount=(int)($s['nights']??0);
+      $baseFrom=DateTimeImmutable::createFromFormat('!Y-m-d',$from,new DateTimeZone('UTC'));
+      $baseTo=DateTimeImmutable::createFromFormat('!Y-m-d',$to,new DateTimeZone('UTC'));
+      if($baseFrom&&$baseTo&&$nightCount>=1&&$nightCount<=40){
+       $stageFirst=$baseFrom->modify('+'.$offset.' days')->format('Y-m-d');
+       $stageLast=$baseTo->modify('+'.($offset+$nightCount-1).' days')->format('Y-m-d');
+       foreach($quotePolicies as $season=>$period){
+        if($period['start']<=$stageFirst&&$stageLast<=$period['end']){
+         $quotePeriod=$season;$scope='base_sheet_period_match_unapproved';break;
+        }
+       }
+      }
      }
+     if($quotePeriod!==null){
+      $index=$quotePolicies[$quotePeriod]['index'];
+      foreach((array)($s['eligible_property_ids']??[]) as $property){
+       $qCount=(int)($index[(int)$property]['quotation_count']??0);
+       if($qCount>0){$sheetQuoteMatches+=$qCount;$sheetQuoteProperties++;}
+      }
+     }
+     $missingCandidate=in_array('stage_destination_has_no_candidate_property',
+       (array)($s['blocked']??[]),true)&&
+       in_array((string)($s['kind']??''),['hotel','resort'],true)&&
+       empty($s['season_rejected_property_ids']);
+     $candidateDiagnostics=$missingCandidate?
+       self::unassignedCandidates($tour,(int)$tier,
+         (array)($bySourceStage[(string)$s['key']]??[]),$quotePolicies):null;
      $rows[]=['key'=>$s['key'],'kind'=>$s['kind'],'destination'=>$s['destination'],
-      'sheet_winter_quote_properties'=>$sheetQuoteProperties,
-      'sheet_winter_quote_values'=>$sheetQuoteMatches,
+      'unassigned_property_diagnostics'=>$candidateDiagnostics,
+      'sheet_quote_period'=>$quotePeriod,'sheet_quote_scope'=>$scope,
+      'sheet_quote_properties'=>$sheetQuoteProperties,
+      'sheet_quote_values'=>$sheetQuoteMatches,
+      // Deprecated aliases remain truthful and only represent Winter.
+      'sheet_winter_quote_properties'=>$quotePeriod==='winter_2026_27'?$sheetQuoteProperties:0,
+      'sheet_winter_quote_values'=>$quotePeriod==='winter_2026_27'?$sheetQuoteMatches:0,
       'sheet_price_valid_for_dates'=>false,
       'unbookable_draft_unit_candidates'=>$unitCandidateDraft,
       'published_but_unavailable_unit_candidates'=>$unitCandidatePublished,
       'nights'=>(int)$s['nights'],'eligible_properties'=>count((array)($s['eligible_property_ids']??[])),
+      'season_excluded_properties'=>count((array)($s['season_rejected_property_ids']??[])),
+      'season_excluded_property_ids'=>array_values((array)($s['season_rejected_property_ids']??[])),
       'selected_property_id'=>(int)($s['selected_property_id']??0),
       'selected_units_count'=>count((array)($s['selected_unit_ids']??[])),
       'issues'=>array_values((array)($s['blocked']??[]))];

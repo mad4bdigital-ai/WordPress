@@ -1,0 +1,39 @@
+name: MAD4B Commercial Live Forward Nonregression
+on:
+  pull_request:
+    paths:
+      - 'docs/source-reconciliation/PR1019-LIVE-FORWARD-20261121.json'
+      - 'tests/test_pr1019_live_forward_nonregression.py'
+      - 'wp-content/mu-plugins/mad4b-accommodation-weight-policies-v1.php'
+      - 'wp-content/mu-plugins/assets/mad4b-accommodation-weights-v1.*'
+      - 'wp-content/plugins/mad4b-pricing-registry/includes/package-component-readiness.php'
+      - 'wp-content/plugins/mad4b-pricing-registry/includes/package-seasonal-assignment.php'
+      - 'wp-content/plugins/mad4b-pricing-registry/includes/supplier-sheet-reference.php'
+      - 'wp-content/plugins/mad4b-pricing-registry/includes/transport-distance-time-pricing.php'
+      - '.github/workflows/mad4b-commercial-live-forward-review.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-commercial-live-forward-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Review exact immutable source and unauthorized behavior denial
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests/test_pr1019_live_forward_nonregression.py -v
+      - name: Lint native PHP and JS source files
+        run: |
+          set -euo pipefail
+          for f in             wp-content/mu-plugins/mad4b-accommodation-weight-policies-v1.php             wp-content/plugins/mad4b-pricing-registry/includes/package-component-readiness.php             wp-content/plugins/mad4b-pricing-registry/includes/package-seasonal-assignment.php             wp-content/plugins/mad4b-pricing-registry/includes/supplier-sheet-reference.php             wp-content/plugins/mad4b-pricing-registry/includes/transport-distance-time-pricing.php; do php -l "$f"; done
+          node --check wp-content/mu-plugins/assets/mad4b-accommodation-weights-v1.js
