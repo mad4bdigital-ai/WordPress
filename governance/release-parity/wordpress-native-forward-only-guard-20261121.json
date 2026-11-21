@@ -1,0 +1,30 @@
+{
+  "contract": "mad4b.reviewed-native-control-plane-forward-only-source.v1",
+  "date": "2026-11-21",
+  "parent_pr": 1000,
+  "parent_head_sha": "29fe79e3ae87bd10507186ae24704d2b331c5c3c",
+  "source_file": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+  "source_pre_change_sha256": "1b8d2311268ee3b52d676339138a0ff08b57d5ae6ad80dd5d6bebcaaded00e6a",
+  "source_post_change_sha256": "7a2691b1af6f2459bfed796fc56b325eff1276fa61276b010e2106b78ecb2546",
+  "live_original_before_manual_admission_sha256": "b7faa48febb9628973d8b9d763daa37c06ad65855899424b73c1f976689b6791",
+  "live_deployed_after_manual_admission_sha256": "22a285af135487234d4691d2f7f6f71fcbd32975ed43729af434e0fa17967d38",
+  "protected_runtime_artifacts": [
+    "mad4b-site-control-plane/includes/class-mad4b-scp-addon-registry.php",
+    "mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php"
+  ],
+  "activation_scope": "Shared last admission for already source-verified native/upload/bootstrap/staging recovery/Selected-HEAD Control Plane archives.",
+  "candidate_required": "Exact ZIP entries once each; bounded read and original live security witnesses retained.",
+  "negative_case_policy": [
+    "old dynamic Addon release ring",
+    "missing or duplicate protected entry",
+    "oversized protected PHP",
+    "staging recovery policy lost",
+    "signed Host source admission or continuation lost"
+  ],
+  "not_a_release_verdict": true,
+  "production_authorized": false,
+  "grant_issued": false,
+  "archive_installed_by_source_review": false,
+  "wp_version_promoted": false,
+  "no_historical_hash_rewritten": true
+}

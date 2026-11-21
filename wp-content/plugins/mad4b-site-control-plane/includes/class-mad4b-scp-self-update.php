@@ -2197,6 +2197,71 @@ final class MAD4B_SCP_Self_Update {
 		return $out;
 	}
 
+    /**
+     * Fail closed before a managed package replacement can restore an older
+     * Addon Registry or remove the enrolled Staging-only bootstrap guard.
+     * This is a structural monotonicity check, not a source/release approval.
+     * Whole-archive provenance and independent Host admission still apply.
+     */
+    private static function reviewed_archive_no_regression( $path ) {
+        if ( ! class_exists( 'ZipArchive' ) )
+            return new WP_Error( 'mad4b_forward_archive_zip_unavailable',
+                'ZipArchive is required for reviewed runtime regression checks.' );
+        $zip = new ZipArchive();
+        if ( true !== $zip->open( $path ) )
+            return new WP_Error( 'mad4b_forward_archive_invalid',
+                'Reviewed Control Plane archive cannot be opened.' );
+        $requires = array(
+            'mad4b-site-control-plane/includes/class-mad4b-scp-addon-registry.php' => array(
+                "'site_bound_certified_pair'",
+                "'unknown_pair_fallback' => 'shadow'",
+                '$certified_pair = 1 === $matching_certificates',
+                "'production_authorized' => false",
+                'site_profile_digest',
+            ),
+            'mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php' => array(
+                "environment_allowed( array( 'staging' ), 'write' )",
+                'MAD4B_SCP_Post_Update_Continuation::prepare',
+                'MAD4B_Release_Source_Admission::require_for_release',
+            ),
+        );
+        $seen = array();
+        try {
+            if ( $zip->numFiles > 10000 )
+                return new WP_Error( 'mad4b_forward_archive_excess_entries',
+                    'Reviewed archive entry count exceeds the existing maximum.' );
+            for ( $i = 0; $i < $zip->numFiles; ++$i ) {
+                $name = (string) $zip->getNameIndex( $i );
+                if ( ! isset( $requires[ $name ] ) ) continue;
+                if ( isset( $seen[ $name ] ) )
+                    return new WP_Error( 'mad4b_forward_archive_duplicate_guarded_file',
+                        'Reviewed archive contains conflicting guarded runtime entries.' );
+                $seen[ $name ] = true;
+                $stat = $zip->statIndex( $i );
+                if ( ! is_array( $stat ) || ! isset( $stat['size'] )
+                    || ! is_numeric( $stat['size'] ) || (float) $stat['size'] > 524288 )
+                    return new WP_Error( 'mad4b_forward_archive_guarded_file_size_invalid',
+                        'Reviewed runtime file exceeds the bounded guard limit.' );
+                $body = $zip->getFromIndex( $i );
+                if ( ! is_string( $body ) || strlen( $body ) > 524288 )
+                    return new WP_Error( 'mad4b_forward_archive_guarded_file_unreadable',
+                        'Reviewed runtime file could not be verified.' );
+                foreach ( $requires[ $name ] as $witness )
+                    if ( false === strpos( $body, $witness ) )
+                        return new WP_Error( 'mad4b_forward_archive_regression_denied',
+                            'Candidate would remove a reviewed live runtime safeguard.',
+                            array( 'path' => $name, 'mutation_performed' => false ) );
+            }
+            if ( count( $seen ) !== count( $requires ) )
+                return new WP_Error( 'mad4b_forward_archive_guarded_file_missing',
+                    'Candidate archive does not contain the reviewed protected runtime files.',
+                    array( 'mutation_performed' => false ) );
+            return true;
+        } finally {
+            $zip->close();
+        }
+    }
+
 	private static function apply_verified_archive( $path, array $target, $channel, $plan_sha256, array $verified_archive, $bootstrap_candidate_drift = false ) {
         // This is the shared last admission point across native, uploaded,
         // bootstrap and Selected-HEAD update paths. No unsigned exception.
@@ -2205,6 +2270,10 @@ final class MAD4B_SCP_Self_Update {
             ? MAD4B_Release_Source_Admission::require_for_release( $source_sha )
             : new WP_Error( 'mad4b_release_preflight_verifier_missing', 'Signed Host source preflight is required.' );
         if ( is_wp_error( $host_admission ) ) return $host_admission;
+        // The same fail-closed check applies to Native, upload, bootstrap,
+        // cron recovery and Selected-HEAD: never silently replace new guards.
+        $monotonic_archive = self::reviewed_archive_no_regression( $path );
+        if ( is_wp_error( $monotonic_archive ) ) return $monotonic_archive;
 		$runtime_php_files = isset( $verified_archive['runtime_php_files'] ) && is_array( $verified_archive['runtime_php_files'] )
 			? array_values( array_filter( array_map( 'strval', $verified_archive['runtime_php_files'] ) ) )
 			: array();
