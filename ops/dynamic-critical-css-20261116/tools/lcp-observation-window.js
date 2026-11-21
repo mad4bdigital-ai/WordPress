@@ -27,8 +27,13 @@ function needsImageNetworkReplay(source,candidate){
  const c=candidate?.lcp_image_resource_timing;
  if(!s||!c||s.requests!==1||c.requests!==1)return false;
  const lastS=s.last_response_end_ms,lastC=c.last_response_end_ms;
+ const startS=s.first_start_ms,startC=c.first_start_ms;
  const lcpS=source?.lcp,lcpC=candidate?.lcp;
- if(![lastS,lastC,lcpS,lcpC].every(x=>Number.isFinite(x)&&x>0))return false;
+ if(![lastS,lastC,startS,startC,lcpS,lcpC]
+      .every(x=>Number.isFinite(x)&&x>0))return false;
+ // Candidate that STARTS fetching the hero significantly later can be
+ // a real CSS discovery/prioritization regression, not network jitter.
+ if(startC>startS+250)return false;
  const networkLag=lastC-lastS,regression=lcpC-lcpS;
  return networkLag>=650 && regression>400
    && Math.abs(networkLag-regression)<=500;

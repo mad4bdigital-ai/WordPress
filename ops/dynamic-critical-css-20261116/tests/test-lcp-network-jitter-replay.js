@@ -8,9 +8,9 @@ const {needsReobservation,needsImageNetworkReplay}=require('../tools/lcp-observa
 // Representative values from original 21 Nov source QA, no private HTML.
 const original={width:320,pass:false,lcp_reg_ms:4012,
  source:{lcp:5464,lcpTrace:[{resource:'same-tour-hero.webp'}],
-   lcp_image_resource_timing:{requests:1,last_response_end_ms:5254}},
+   lcp_image_resource_timing:{requests:1,first_start_ms:3347,last_response_end_ms:5254}},
  critical:{lcp:9476,lcpTrace:[{resource:'same-tour-hero.webp'}],
-   lcp_image_resource_timing:{requests:1,last_response_end_ms:9357}}};
+   lcp_image_resource_timing:{requests:1,first_start_ms:1037,last_response_end_ms:9357}}};
 const a=original.source,b=original.critical;
 assert.equal(original.width,320);
 assert.equal(original.pass,false);
@@ -20,11 +20,13 @@ console.log('PASS actual 320px failed LCP receives bounded retest eligibility');
 assert.equal(needsImageNetworkReplay(b,a),false);
 assert.equal(needsImageNetworkReplay(a,{...b,lcpTrace:[{resource:'another-lcp.jpg'}]}),false);
 assert.equal(needsImageNetworkReplay(a,{...b,lcp_image_resource_timing:{
- requests:2,last_response_end_ms:9357}}),false);
+ requests:2,first_start_ms:1037,last_response_end_ms:9357}}),false);
 assert.equal(needsImageNetworkReplay(a,{...b,lcp:6010,
- lcp_image_resource_timing:{requests:1,last_response_end_ms:9357}}),false);
+ lcp_image_resource_timing:{requests:1,first_start_ms:1037,last_response_end_ms:9357}}),false);
+assert.equal(needsImageNetworkReplay(a,{...b,lcp_image_resource_timing:{
+ requests:1,first_start_ms:4500,last_response_end_ms:9357}}),false);
 assert.equal(needsImageNetworkReplay({...a,lcp_image_resource_timing:{
- requests:1,last_response_end_ms:null}},b),false);
+ requests:1,first_start_ms:3347,last_response_end_ms:null}},b),false);
 console.log('PASS changed/ambiguous/uncorrelated LCP images and reverse lag cannot be replayed');
 assert.equal(needsReobservation({observedUntilMs:1000},
  {observedUntilMs:4000,lcpTrace:[{t:2700}]}),true);
