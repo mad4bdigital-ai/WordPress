@@ -11,6 +11,8 @@ from cryptography.hazmat.primitives.serialization import (
     Encoding, PublicFormat, PrivateFormat, NoEncryption
 )
 import base64
+import uuid
+from datetime import datetime, timedelta, timezone
 
 ROOT=Path(__file__).resolve().parents[2]
 spec=importlib.util.spec_from_file_location(
@@ -196,6 +198,75 @@ class HostRunnerSignedCurrentTests(TestCase):
         self.write_profile()
         with self.assertRaisesRegex(ValueError,"executable identity"):
             runner.load_profile(self.profile_file)
+
+    def test_authenticated_full_host_runner_job_receipt_is_signed_and_read_only(self):
+        now=datetime.now(timezone.utc)
+        input_data=self.job["input"]
+        job={
+            "contract":runner.JOB_CONTRACT,
+            "job_id":str(uuid.uuid4()),
+            "profile_id":self.profile["profile_id"],
+            "site_uuid":self.profile["site_uuid"],
+            "environment":self.profile["environment"],
+            "target_fingerprint":self.profile["target_fingerprint"],
+            "executor_fingerprint":self.profile["executor_fingerprint"],
+            "operation_id":"site.code.current.read",
+            "operation_version":runner.OPERATIONS["site.code.current.read"]["version"],
+            "operation_fingerprint":runner.operation_fingerprint("site.code.current.read"),
+            "created_at":(now-timedelta(seconds=1)).isoformat(),
+            "expires_at":(now+timedelta(minutes=2)).isoformat(),
+            "input":input_data,
+            "input_sha256":runner.sha256_bytes(runner.canonical_json(input_data)),
+            "idempotency_key":"lab-readonly-v129-"+uuid.uuid4().hex,
+            "actor_ref":"lab:verified-reader",
+            "authority_ref":"lab:read-only",
+            "submission_location":"contract_test",
+        }
+        job["mac_sha256"]=runner.job_mac(job,self.profile["_integrity_key"])
+        job_path=self.base/"signed-current-job.json"
+        job_path.write_text(json.dumps(job))
+        receipt=runner.run_job(self.profile_file,job_path)
+        self.assertEqual(receipt["operation_id"],"site.code.current.read")
+        self.assertFalse(receipt["mutation_performed"])
+        self.assertEqual(receipt["readback_verdict"],"PASS")
+        self.assertFalse(receipt["result"]["write_authorized"])
+        signed=receipt["result"]["signed_current"]
+        observed=current_contract.verify_current_receipt(
+            signed,self.site,self.pub,ORIGIN,now=signed["observed_epoch"])
+        self.assertEqual(observed.file_map()[MU][1],
+                         runner.sha256_bytes((self.wp/MU).read_bytes()))
+        persisted=(self.wp/"wp-content/mad4b-runner/receipts"/
+                   (job["job_id"]+".json"))
+        self.assertTrue(persisted.is_file())
+        self.assertFalse(json.loads(persisted.read_text())["mutation_performed"])
+        # An identical job ID is idempotent, not a second arbitrary read.
+        again=runner.run_job(self.profile_file,job_path)
+        self.assertTrue(again["replayed"])
+
+    def test_forged_unsigned_job_cannot_produce_current(self):
+        now=datetime.now(timezone.utc)
+        inp=self.job["input"]
+        job={
+            "contract":runner.JOB_CONTRACT,"job_id":str(uuid.uuid4()),
+            "profile_id":self.profile["profile_id"],
+            "site_uuid":self.profile["site_uuid"],
+            "environment":self.profile["environment"],
+            "target_fingerprint":self.profile["target_fingerprint"],
+            "executor_fingerprint":self.profile["executor_fingerprint"],
+            "operation_id":"site.code.current.read",
+            "operation_version":runner.OPERATIONS["site.code.current.read"]["version"],
+            "operation_fingerprint":runner.operation_fingerprint("site.code.current.read"),
+            "created_at":(now-timedelta(seconds=1)).isoformat(),
+            "expires_at":(now+timedelta(minutes=2)).isoformat(),
+            "input":inp,"input_sha256":runner.sha256_bytes(runner.canonical_json(inp)),
+            "idempotency_key":str(uuid.uuid4()),"actor_ref":"lab:read",
+            "authority_ref":"lab:read-only",
+            "mac_sha256":"0"*64,
+        }
+        job_path=self.base/"forged.json"
+        job_path.write_text(json.dumps(job))
+        with self.assertRaisesRegex(ValueError,"MAC mismatch"):
+            runner.run_job(self.profile_file,job_path)
 
     def test_readonly_operation_does_not_gain_approval(self):
         op=runner.OPERATIONS["site.code.current.read"]
