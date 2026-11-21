@@ -88,6 +88,14 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     # WordPress, Cron writes, database, browser or external network access.
     # The bounded PHP runner checks the PASS marker after actual execution.
     "wp-content/plugins/mad4b-site-control-plane/tests/cwv-site-admission-hermetic.php",
+    # PR998 exact source-owned public Kernel fixture triplet. These scripts
+    # define isolated WP doubles, require only reviewed first-party PHP, and
+    # exit nonzero on denial/policy/market-hook assertion failures. The runner
+    # must execute them as standalone CLI PHP and verify positive assertions;
+    # never treat them as PHPUnit files or grant wildcard PHP execution.
+    "wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-hermetic.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-boot-hermetic.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-hook-contract-hermetic.php",
     # Exact site-neutral destination Term Meta preflight fixture: fake identity,
     # fake DB baseline, simulated JetEngine admin POST, WP metadata filter
     # rejection, benign first-party URLs and a no-network WP_Error response.
@@ -660,6 +668,13 @@ def has_assertion_pass(stdout):
         return False
     if re.search(r"(?m)^(?:FAIL(?::|\s)|[^\n]{3,130}: FAIL(?:\s|$))", stdout):
         return False
+    # Only this exact audited PR998 fixture uses a comma/hyphen rich PASS line.
+    # No generic PASS substring, injected second line or arbitrary PHP admitted.
+    if stdout == (
+        "public document kernel isolated runtime: PASS "
+        "site-bound, exact-route, market hooks, policy, and private fallbacks\n"
+    ):
+        return True
     if re.search(r"(?m)^PASS(?::|\s)", stdout):
         return True
     if re.search(r"(?m)^[A-Za-z][A-Za-z0-9 _./:-]{2,110}: PASS(?: [1-9][0-9]*(?: [A-Za-z][A-Za-z ]{0,30})?)?[ \t]*$", stdout):
@@ -742,6 +757,24 @@ def run_tests(impact, head, timeout):
 
 
 def self_test():
+    # Regression: PR998 readiness must actually execute all three reviewed
+    # zero-network public Kernel scripts, not look for PHPUnit or skip tests.
+    kernel_tests = (
+        "public-document-kernel-hermetic.php",
+        "public-document-kernel-boot-hermetic.php",
+        "public-document-kernel-hook-contract-hermetic.php",
+    )
+    for filename in kernel_tests:
+        exact="wp-content/plugins/mad4b-site-control-plane/tests/"+filename
+        assert exact in STANDALONE_PHP_REGRESSIONS
+        assert command_for(exact)==["php", str((ROOT/exact).resolve())]
+    assert has_assertion_pass("public document kernel admission hermetic: PASS 40 cases\n")
+    assert has_assertion_pass("public document kernel isolated runtime: PASS site-bound, exact-route, market hooks, policy, and private fallbacks\n")
+    assert not has_assertion_pass("public document kernel isolated runtime: PASS site-bound, exact-route, market hooks, policy, and private fallbacks\nUNREVIEWED_SUCCESS")
+    assert not has_assertion_pass("public document kernel isolated runtime: PASS site-bound, exact-route, market hooks, policy, and private fallbacks\nFAIL: private request bypass")
+    assert has_assertion_pass("Public document kernel market/commercial hooks: PASS 21 hooks\n")
+    assert not has_assertion_pass("public document kernel admission hermetic: FAIL 1 unsafe cookie request\n")
+    assert not has_assertion_pass("No syntax errors detected in public-document-kernel-hermetic.php\n")
     cwv="wp-content/plugins/mad4b-site-control-plane/tests/cwv-site-admission-hermetic.php"
     assert command_for(cwv) == ["php", str((ROOT / cwv).resolve())]
     assert cwv in STANDALONE_PHP_REGRESSIONS
