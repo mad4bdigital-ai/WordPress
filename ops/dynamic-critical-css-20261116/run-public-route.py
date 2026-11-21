@@ -461,6 +461,21 @@ def run_core(site):
               str(catfile),str(statefile),str(ledger),str(jobfile),result]
         if listing_hint:args.append(listing_hint)
         print(run(args,timeout=25))
+        if result=='certified':
+            try:
+                updated=family.rollup_after_certified_event(
+                    site,listing,state,ledger,wp,route,index,
+                    base/'source-families-latest.json')
+                print('SOURCE_FAMILY_AFTER_CERTIFIED_REFRESH',site,
+                      'families',updated['families'],
+                      'qualified',updated['qualified'],
+                      'current',updated['current'],flush=True)
+            except (OSError,ValueError,TypeError,KeyError) as exc:
+                # The original certificate and WordPress ACK remain governed
+                # independently. A read-only dashboard refresh is never
+                # a reason to roll back an already verified CSS release.
+                print('OBSERVE_FAMILY_POST_CERT_REFRESH_DEFERRED',site,
+                      str(exc)[:130],flush=True)
     supported={'page','post','tours-and-activities','properties','destinations',
          'tour-types','property-types','tour-categories','category',
          'archive:tours-and-activities','archive:properties'}

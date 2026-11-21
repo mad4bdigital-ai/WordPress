@@ -612,6 +612,40 @@ def plan_next_css_issuance(report,sequence,verified_drift_route_key=None):
     return family or individual or retry
 
 
+
+PROGRESS_REPORT_ROOT=Path('/opt/mad4b-company-provisioning/reports/public-critical-css-v1')
+
+def rollup_after_certified_event(site,catalog,state,ledger_path,wp,route,variant_index,output):
+    """Event-driven *report* readback, not CSS certificate issuance.
+
+    The original WordPress V2 consumer, QA, and queue independently issue
+    the certification before this routine runs. A first-party, exact route
+    can then refresh the family progress display from the same verified
+    source snapshots, without another WP-CLI or Chromium admission.
+    """
+    if (site not in ROOTS or Path(wp)!=Path(ROOTS[site][0])
+        or Path(output)!=PROGRESS_REPORT_ROOT/site/'source-families-latest.json'):
+        raise ValueError('cross-site-family-progress-boundary')
+    if route not in queue.safe_catalog(catalog,site):
+        raise ValueError('family-progress-route-not-enrolled')
+    current=queue.read_ledger(Path(ledger_path),site)
+    row=current['routes'].get(route['route_key'],{})
+    if not isinstance(row,dict) or row.get('status')!='certified':
+        raise ValueError('family-progress-requires-original-certified-ledger')
+    dependency=row.get('depends_on_listings')
+    if type(dependency) is not bool:
+        raise ValueError('family-progress-missing-dependency-proof')
+    if row.get('source_key')!=queue.source_key(catalog,route,state,dependency):
+        raise ValueError('family-progress-original-source-key-changed')
+    summary=build(site,catalog,state,current,Path(wp),variant_index=variant_index)
+    summary['refreshed_at_utc']=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime())
+    summary['refresh_trigger']='original_certified_route_event'
+    queue.atom(Path(output),summary)
+    return {'families':summary['source_groups_total'],
+        'qualified':summary['source_canary_qualified_groups'],
+        'current':summary['routes_with_exact_current_certificate']}
+
+
 def main():
     if len(sys.argv)!=5:raise ValueError('usage: site catalog.json state.json ledger.json')
     site,cat,st,ledger=sys.argv[1:]
