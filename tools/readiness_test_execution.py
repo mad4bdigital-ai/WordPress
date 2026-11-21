@@ -780,7 +780,7 @@ def self_test():
     assert not has_assertion_pass("No syntax errors detected in public-document-kernel-hermetic.php\n")
     exact_country="tests/company-country-parent-memo-hermetic.php"
     assert command_for(exact_country)==["php",str((ROOT/exact_country).resolve())]
-    assert has_assertion_pass("COUNTRY_PARENT_REQUEST_MEMO: PASS 26 checks\n")
+    assert has_assertion_pass("COUNTRY_PARENT_REQUEST_MEMO: PASS 34 checks\n")
     assert not has_assertion_pass("COUNTRY_PARENT_REQUEST_MEMO: FAIL missing canonical source\n")
     cwv="wp-content/plugins/mad4b-site-control-plane/tests/cwv-site-admission-hermetic.php"
     assert command_for(cwv) == ["php", str((ROOT / cwv).resolve())]

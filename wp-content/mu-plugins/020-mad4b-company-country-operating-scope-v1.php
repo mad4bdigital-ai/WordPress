@@ -61,7 +61,18 @@ final class MAD4B_Company_Country_Operating_Scope_V1 {
             && !(defined('REST_REQUEST')&&REST_REQUEST)
             && !(defined('DOING_AJAX')&&DOING_AJAX)
             && !(defined('DOING_CRON')&&DOING_CRON)
-            && (empty($_GET)&&empty($_POST)&&empty($_COOKIE))
+            && empty($_GET) && empty($_POST)
+            && empty($_SERVER['QUERY_STRING'])
+            // WPML can synthesize this locale hint *inside* PHP even when
+            // the browser sent no Cookie header. It is not a private session;
+            // a real inbound cookie, unknown synthetic cookie or malformed
+            // locale must still bypass the parent row memo entirely.
+            && (empty($_COOKIE) || (
+                is_array($_COOKIE) && count($_COOKIE)===1
+                && array_key_exists('wp-wpml_current_language',$_COOKIE)
+                && is_string($_COOKIE['wp-wpml_current_language'])
+                && preg_match('/^[a-z]{2}(?:[-_][a-z]{2})?$/iD',$_COOKIE['wp-wpml_current_language'])
+            ))
             && empty($_SERVER['HTTP_COOKIE'])
             && empty($_SERVER['HTTP_AUTHORIZATION'])
             && empty($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])
