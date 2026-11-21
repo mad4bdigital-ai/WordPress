@@ -184,6 +184,19 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
             'source_title'=>mb_substr($title,0,160),
             'status'=>$from&&$to?'itinerary_route_proposal':'route_not_explicitly_resolved'];
     }
+    private static function bashtilStation():int {
+        // JetEngine CPT IDs are site-local. Match the exact published
+        // native Station identity and real Giza location, not a foreign ID.
+        $p=get_page_by_path('upper-egypt-railway-station-bashteel',OBJECT,'stations');
+        if(!$p instanceof WP_Post || $p->post_type!=='stations' ||
+           $p->post_status!=='publish' ||
+           $p->post_title!=='Upper Egypt Railway Station (Bashteel)')
+            return 0;
+        $slugs=wp_get_object_terms((int)$p->ID,'destinations',['fields'=>'slugs']);
+        if(is_wp_error($slugs) || !in_array('giza-city',(array)$slugs,true))
+            return 0;
+        return (int)$p->ID;
+    }
     private static function stationCities(int $station):array {
         $terms=wp_get_object_terms($station,'destinations',['fields'=>'slugs']);
         if(is_wp_error($terms))return [];
@@ -196,10 +209,7 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
         // Bashtil is in Giza, but officially serves as Greater Cairo's
         // Upper Egypt train terminal. The exception is ONE verified station
         // identity, not a general Giza/Cairo destination substitution.
-        if($station===68922 &&
-            get_post_type($station)==='stations' &&
-            in_array('giza-city',(array)$terms,true) &&
-            get_post_status($station)==='publish')
+        if($station>0 && $station===self::bashtilStation())
             $cities['cairo']=true;
         return array_keys($cities);
     }
@@ -212,6 +222,7 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
             'supplier_cabin_rate_verified'=>false,'schedule_verified'=>false,
             'checkout_ready'=>false,'cost_total'=>null,'writes'=>false];
         if($route['status']!=='itinerary_route_proposal')return $out;
+        $bashtil=self::bashtilStation();
         $ids=get_posts(['post_type'=>'transportations','post_status'=>'publish',
             'fields'=>'ids','posts_per_page'=>100,'suppress_filters'=>true,
             'tax_query'=>[
@@ -253,14 +264,15 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
             // an editorial warning, NEVER an operator-approved timetable.
             $staleTerminal=in_array($number,['86','87'],true) &&
                 isset($nativeStationIds[54231]) &&
-                !isset($nativeStationIds[68922]);
+                ($bashtil===0 || !isset($nativeStationIds[$bashtil]));
             $out['train_candidates'][]=[
                 'id'=>$id,'title'=>wp_strip_all_tags(html_entity_decode(get_the_title($id),ENT_QUOTES,'UTF-8')),
                 'number'=>$number,
                 'native_route_order_verified'=>true,
                 'native_terminal_needs_schedule_revalidation'=>$staleTerminal,
                 'native_terminal_source_station_id'=>isset($nativeStationIds[54231])?54231:0,
-                'public_timetable_terminal_station_id'=>68922,
+                'public_timetable_terminal_station_id'=>$bashtil,
+                'native_bashtil_station_in_route'=>$bashtil>0 && isset($nativeStationIds[$bashtil]),
                 'public_timetable_reference'=>'https://egypttrains.com/trains/'.$number.'?lang=en',
                 'official_operator_booking_url'=>'https://abelatrains.com/',
                 'reference_reviewed_on'=>'2026-11-21',
