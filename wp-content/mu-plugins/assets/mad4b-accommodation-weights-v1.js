@@ -213,6 +213,12 @@ function renderInventory(data){
     inventoryView.append(make('p','mad4b-aw-empty','No saved policies. Global neutral default applies until a policy is configured.'));
     return;
   }
+  const inheritOnly=(data.items||[]).filter(item=>item.status==='stored_inherit_only');
+  const inheritDetails=make('details','mad4b-aw-inherit-records');
+  inheritDetails.append(make('summary','',
+    'Show '+inheritOnly.length+' stored inherit-only record(s) — no effective adjustments'));
+  const inheritList=make('div','mad4b-aw-inherit-list');
+  inheritDetails.append(inheritList);
   for(const entry of data.items){
     const row=make('div','mad4b-aw-rule');
     const info=make('div','mad4b-aw-rule-info');
@@ -229,8 +235,11 @@ function renderInventory(data){
     row.append(info);
     const edit=make('button','button','View policy');edit.type='button';
     edit.addEventListener('click',()=>selectEditor(entry));
-    row.append(edit);inventoryView.append(row);
+    row.append(edit);
+    if(entry.status==='stored_inherit_only')inheritList.append(row);
+    else inventoryView.append(row);
   }
+  if(inheritOnly.length)inventoryView.append(inheritDetails);
 }
 async function refreshInventory(){
   inventoryStatus.textContent='Loading saved policies from the original JetEngine taxonomy and post records…';
