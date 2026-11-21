@@ -2,6 +2,7 @@
 /** Non-mutating seasonal assignment regression. */
 $checks=[];
 $checks['module']=class_exists('MAD4B_Package_Seasonal_Assignment_V1',false);
+$checks['guard_release_parity_marker']=defined('MAD4B_PACKAGE_STAGE_SEASONAL_GUARD_V1')&&MAD4B_PACKAGE_STAGE_SEASONAL_GUARD_V1===true;
 $checks['date_helper']=function_exists('shared_product_booking_v2_rate_effective_window');
 $checks['summer_start']=MAD4B_Package_Seasonal_Assignment_V1::seasonOn('2026-05-01')==='summer';
 $checks['summer_end']=MAD4B_Package_Seasonal_Assignment_V1::seasonOn('2026-09-30')==='summer';

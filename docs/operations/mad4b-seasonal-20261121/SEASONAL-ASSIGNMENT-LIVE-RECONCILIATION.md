@@ -76,3 +76,11 @@ train providers. This patch does NOT create Tour Rates or change checkout.
 Source/release checkpoint and rollback journal:
 \`/opt/mad4b-package-checkpoints/2026-11-21-seasonal-assignments/\`.
 
+
+## Shared-core release parity sentinel
+
+The native guard now defines MAD4B_PACKAGE_STAGE_SEASONAL_GUARD_V1.
+The admin catalog rejects edits with seasonal_assignment_runtime_parity_missing
+when a subsequent release provides a stale guard or omits the shared
+effective-date resolver. Reconcile the separately pinned native core patches
+before advancing the production package.

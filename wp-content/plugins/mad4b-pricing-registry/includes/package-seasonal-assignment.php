@@ -80,6 +80,11 @@ final class MAD4B_Package_Seasonal_Assignment_V1 {
   $tour=self::tour($tour);
   if(!$tour||!current_user_can('manage_options')||!current_user_can('edit_post',$tour))
    return new WP_Error('seasonal_assignment_forbidden');
+  // Do not permit editing rules if a subsequent release restored the old
+  // shared-core implementation; stale overrides would be silently ignored.
+  if(!defined('MAD4B_PACKAGE_STAGE_SEASONAL_GUARD_V1')||
+    !function_exists('shared_product_booking_v2_rate_effective_window'))
+   return new WP_Error('seasonal_assignment_runtime_parity_missing');
   if(!MAD4B_Package_Stage_Rate_Guard_V1::applies($tour))
    return new WP_Error('seasonal_assignment_tour_not_package');
   $plan=get_post_meta($tour,MAD4B_Package_Stage_Rate_Guard_V1::SOURCE,true);

@@ -10,7 +10,7 @@
   "paths": {
     "source/guard": {
       "before_sha256": "75c540f725b0adc2c1c84a2131b1b5111bf9bb8dc75aba78d37406ee2dddec0c",
-      "after_sha256": "082d9ee15aaac48988689f2cb52a2547934d6347fb34ec802ce63ce189b1b76c"
+      "after_sha256": "e7c7fe7c48ea23d70bf71506a63f2a20dda8ec6ffd19cbd5c5a16dd65d24cfa9"
     },
     "source/rate-date": {
       "before_sha256": "21428ebc5f7cf83afc00c00c55ce942b7656c9ec8964a98603730a79f4fa643f",
@@ -34,7 +34,7 @@
     },
     "wayfa/guard": {
       "before_sha256": "75c540f725b0adc2c1c84a2131b1b5111bf9bb8dc75aba78d37406ee2dddec0c",
-      "after_sha256": "082d9ee15aaac48988689f2cb52a2547934d6347fb34ec802ce63ce189b1b76c"
+      "after_sha256": "e7c7fe7c48ea23d70bf71506a63f2a20dda8ec6ffd19cbd5c5a16dd65d24cfa9"
     },
     "wayfa/rate-date": {
       "before_sha256": "21428ebc5f7cf83afc00c00c55ce942b7656c9ec8964a98603730a79f4fa643f",
@@ -63,5 +63,7 @@
     "admin_ajax": "source & Wayfa success",
     "published_rate_sample_source": "35 baseline parity",
     "read_only_regression": "13/13 each site"
-  }
+  },
+  "runtime_parity_marker_required": true,
+  "live_runtime_guard_key": "MAD4B_PACKAGE_STAGE_SEASONAL_GUARD_V1"
 }
