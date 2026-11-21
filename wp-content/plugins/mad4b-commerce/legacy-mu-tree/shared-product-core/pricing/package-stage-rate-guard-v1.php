@@ -85,7 +85,13 @@ final class MAD4B_Package_Stage_Rate_Guard_V1 {
         $actual = wp_get_object_terms($property, 'destinations', ['fields'=>'ids']);
         if (is_wp_error($actual) || !is_array($actual) || !$actual)
             return ['eligible'=>false,'reason'=>'property_destination_missing'];
-        if (!array_intersect(array_map('intval', $actual), $scope['accepted_term_ids']))
+        $actual=array_map('intval',$actual);
+        if (($scope['destination'] ?? '') === 'aswan') {
+            $abu = get_term_by('slug', 'abu-simbel-temples', 'destinations');
+            if ($abu instanceof WP_Term && in_array((int) $abu->term_id, $actual, true))
+                return ['eligible'=>false,'reason'=>'property_in_abu_simbel_not_aswan_city'];
+        }
+        if (!array_intersect($actual, $scope['accepted_term_ids']))
             return ['eligible'=>false,'reason'=>'property_destination_mismatch'];
         $levels = wp_get_object_terms($property, 'package_levels', ['fields'=>'ids']);
         if (is_wp_error($levels) || !is_array($levels) ||
