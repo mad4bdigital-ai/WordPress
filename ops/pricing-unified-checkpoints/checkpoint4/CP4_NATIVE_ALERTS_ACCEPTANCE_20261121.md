@@ -59,3 +59,16 @@ Both sites have `email_notifications=false`, and no external email was sent. Boa
 To inspect the original board:
 - https://tours.dev.mad4b.com/wp-admin/admin.php?page=mad4b-content-readiness-alerts
 - https://wayfatours.com/wp-admin/admin.php?page=mad4b-content-readiness-alerts
+
+
+## Follow-up closure review — 21 November 2026, 13:43 UTC
+
+**Production Readiness Matrix corrected without weakening the gate.** The exact-HEAD registry evaluation in the isolated VPS worktree returned `PASS_COVERAGE_ONLY`, zero uncovered changes, for the three original code paths (native scanning, reconciliation, and native owner-routing). Every source blob is SHA-reviewed with non-authorizing, append-only `reviewed_changes` records and the same-PR executed `tests/cp4_content_readiness_source_regression.py`. GitHub PR #1020 remains Draft, and exact new-HEAD workflow checks must complete before any merge.
+
+**Owner classification correction:** all 28 CP4 issues on each tenant now resolve to the original FluentBoards `pricing` group, not `general`, through a narrowly scoped original `MAD4B_SCP_Readiness_Workflow_Options::group_for_issue` condition requiring the exact CP4 source, stage code pattern and contract. This does not grant permissions, assign a person or create a task. Original source `owner_group` retains the Hotel Supplier Contracts / Cruise Contracting / Rail Supplier Contracting operational teams.
+
+**Ownership and external task gates:** Staging Board #2 / Stage #9 is valid; production Board #1 / Stage #6 is valid. A specific named assignee is not configured on either tenant and original `assigned_user()` resolves to no unique valid user. Production `MAD4B_SCP_Policy::can_mutate()` returned false for the inspected WordPress user. Therefore no 28 unassigned FluentBoards tasks were automatically created, no arbitrary personal identity selected, and no email was dispatched. The original dashboard alerts remain the working record; task creation is a separate governed write.
+
+**Supplier evidence check:** Read-only searches of the connected Drive and Gmail for actual Abela, Nile cruise contracted net rates and hotel cost invoices found no independently evidenced source receipt suitable for commercial approval. The only adjacent email was an Egypt rail API/data feed access enquiry to a third-party integration provider, not a supplier cost contract. The original quotation sheet remains an unapproved quote source; source-signed receipt count remains 0 / 28 per site. Do not convert any quote into a signed cost.
+
+**Production source scanner:** Wayfatours real native Content Readiness `discover()` accepted 28 / 28 unique CP4 issues with complete owner group and original stage links, but the last observed persisted CP4 issue count was still zero at 13:43 UTC. The original production scan is eligible but not yet due until 13:47:22 UTC. Only an original due scheduler scan, not a direct ledger insert, can certify persisted Production alerts. No override of the scheduled operation or governance fence has been attempted.
