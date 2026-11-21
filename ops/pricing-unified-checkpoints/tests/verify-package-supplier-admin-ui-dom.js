@@ -85,8 +85,14 @@ const context={
       stage_key:'cairo-hotel',nights:3,price_status:'pending_quote',
       bookable_unit_selection_present:false,supplier_cost_receipt_present:false
      }]},
-     transportation:{source_role:'self_cost',currency:'EGP'},
-     guide:{status:'guide_coverage_not_reviewed'},
+     transportation:{source_role:'self_cost',currency:'EGP',
+      original_source_row_count:51,explicit_route_stage_count:0,
+      model_candidate_vehicle_keys:['limousine','hiace','coaster','bus'],
+      vehicle_profiles_needing_review:['h1','luxury_7_seats'],
+      route_component_status:'route_stages_not_assigned'},
+     guide:{status:'guide_coverage_not_reviewed',
+      source_day_count:8,coverage_review_status:'guide_coverage_not_reviewed',
+      company_self_cost_configured:true,cost_qualified:false,source_cost_egp:null},
      extras:{runtime_status:'DATA_UNVERIFIED'}
     },
     blockers:['stay_unit_not_selected','transport_route_cost_unapproved']
@@ -136,6 +142,15 @@ const context={
  assert.equal(inspect.disabled,false);
  const out=all.find(x=>x.className==='mad4b-supplier-readiness__result');
  assert.ok(out.children.some(x=>x.tag==='a'&&x.href.includes('post=60629')));
+ const previewTexts=walk(out).map(x=>x.textContent).filter(Boolean);
+ assert.ok(previewTexts.some(x=>x.includes('51 operations')&&x.includes('0 assigned')),
+   'Original Self transport route status missing from inspector');
+ assert.ok(previewTexts.some(x=>x.includes('4 cost-model candidates')),
+   'JetEngine Vehicle Term Meta source status missing');
+ assert.ok(previewTexts.some(x=>x.includes('8 itinerary day(s)')),
+   'Native guide-day source scope missing');
+ assert.ok(previewTexts.some(x=>x.includes('guide_coverage_not_reviewed')),
+   'Guide coverage blocker not visible');
  // Changing Preview Tour clears previous supplier receipt immediately.
  root.dataset.mad4bPreviewTourId='60627';
  root.dispatchEvent({type:'mad4b:tour-preview-selection',detail:{tourId:60627,title:'Amazing 5 Days'}});
