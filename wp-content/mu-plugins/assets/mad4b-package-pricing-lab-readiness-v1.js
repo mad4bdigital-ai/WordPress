@@ -219,6 +219,11 @@ function renderReport(data){
         scout.append(el('p','mad4b-pcl-info',
           String(source.excluded_wrong_locality)+' Abu Simbel Property record(s) excluded from an Aswan-city overnight.'));
       }
+      if(stage.destination==='aswan' && source.city_location_unverified_count){
+        scout.append(el('p','mad4b-pcl-warning',
+          String(source.city_location_unverified_count)+
+          ' Aswan governorate candidate(s) still lack the native Aswan-city destination proof. Assigning a tier alone will not make them eligible.'));
+      }
       const properties=Array.isArray(source.properties)?source.properties:[];
       if(properties.length){
         const table=el('table','widefat striped mad4b-pcl-table');
