@@ -300,8 +300,16 @@ def recoverable_listing_generation_keys(site,catalog,state,ledger,published,rows
                 or evidence.get('performance_source')!='real-original-css-urls'
                 or not v2.SHA.fullmatch(str(evidence.get('qa_sha256','')))):
                 continue
-            earlier=dict(catalog,listing_generation=old)
-            if record.get('source_key')!=queue.source_key(earlier,route,state,True):
+            # The queue retains only its latest source key. A later, fully
+            # certified pass at an intermediate listing generation can replace
+            # the original key while the prior published certificate remains.
+            # Recognize only exact same-route WordPress source lineage to
+            # schedule NEW independent QA; never revive prior CSS.
+            prior_key=record.get('source_key')
+            if not isinstance(prior_key,str) or not any(
+                    prior_key==queue.source_key(
+                        dict(catalog,listing_generation=g),route,state,True)
+                    for g in range(old,nowlisting)):
                 continue
             attempted=record.get('attempted_at')
             if type(attempted) is not int or attempted<=0:continue
