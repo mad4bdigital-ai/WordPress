@@ -64,7 +64,7 @@ $error($margin::preview(array_replace($costInput,['cost_basis'=>'per_stay'])),
 $error($margin::preview(array_replace($costInput,['unit_cost_per_night'=>'-20'])),
  'stay_margin_cost_invalid');
 $error($margin::resolve(36181,0,0,366),'stay_margin_nights_invalid');
-$error($margin::resolve(36181,71874,0,2),'accommodation_weight_post_invalid');
+$error($margin::resolve(36181,1,0,2),'accommodation_weight_post_invalid');
 $qa_saved=false;
 try{
  if(!$failed){
