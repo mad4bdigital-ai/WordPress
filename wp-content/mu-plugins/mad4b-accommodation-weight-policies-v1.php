@@ -565,6 +565,12 @@ final class MAD4B_Accommodation_Weight_Policies_V1 {
             $out=self::inventory();
         }elseif(str_starts_with($mode,'margin_')){
             $out=MAD4B_Accommodation_Stay_Margin_V1::dispatch($mode);
+        }elseif($mode==='rate_source'){
+            $fields=['property_id','unit_id','from','to','currency','price_basis'];
+            $data=[];
+            foreach($fields as $field)if(isset($_POST[$field])&&is_scalar($_POST[$field]))
+                $data[$field]=sanitize_text_field(wp_unslash((string)$_POST[$field]));
+            $out=MAD4B_Accommodation_Rate_Source_Preview_V1::inspect($data);
         }elseif($mode==='preview'){
             $fields=['property_id','unit_id','occupancy','room_grade',
                 'price_unit','currency','base_amount','origin'];
@@ -1068,3 +1074,112 @@ final class MAD4B_Accommodation_Stay_Margin_V1 {
     }
 }
 }
+/**
+ * Original accommodation rate-source selector, strictly READ-ONLY.
+ * Candidate precedence is Unit cost Rate -> scoped Property cost Rate.
+ * It never verifies a supplier receipt, changes price, or authorizes checkout.
+ */
+if(!class_exists('MAD4B_Accommodation_Rate_Source_Preview_V1',false)){
+final class MAD4B_Accommodation_Rate_Source_Preview_V1 {
+    public const CONTRACT='mad4b.accommodation-rate-source-preview.v1';
+    private static function positive($value):int {
+        if(!is_scalar($value)||is_bool($value))return 0;
+        $v=filter_var($value,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+        return $v===false?0:(int)$v;
+    }
+    private static function iso($value):?string {
+        if(!is_string($value)||!preg_match('/^20\d{2}-\d{2}-\d{2}$/D',$value))return null;
+        $d=DateTimeImmutable::createFromFormat('!Y-m-d',$value,new DateTimeZone('UTC'));
+        return $d&&$d->format('Y-m-d')===$value?$value:null;
+    }
+    public static function inspect(array $input) {
+        if(!class_exists('MAD4B_Accommodation_Weight_Policies_V1',false)||
+           !MAD4B_Accommodation_Weight_Policies_V1::can())
+            return new WP_Error('accommodation_rate_source_forbidden');
+        $property=self::positive($input['property_id']??0);
+        $unit=self::positive($input['unit_id']??0);
+        if(!$property||!$unit||get_post_type($property)!=='properties'||
+           get_post_type($unit)!=='units'||!current_user_can('edit_post',$property)||
+           !current_user_can('edit_post',$unit))
+            return new WP_Error('accommodation_rate_source_identity_invalid');
+        $from=self::iso($input['from']??null);$to=self::iso($input['to']??null);
+        if(!$from||!$to||$from>$to)
+            return new WP_Error('accommodation_rate_source_window_invalid');
+        $basis=(string)($input['price_basis']??'');
+        if(!in_array($basis,['per_room_night','per_person_night','per_cabin_night'],true))
+            return new WP_Error('accommodation_rate_source_basis_invalid');
+        $currency=strtoupper((string)($input['currency']??''));
+        if(!preg_match('/^[A-Z]{3}$/D',$currency))
+            return new WP_Error('accommodation_rate_source_currency_invalid');
+        $out=['contract'=>self::CONTRACT,'property_id'=>$property,'unit_id'=>$unit,
+            'from'=>$from,'to'=>$to,'currency'=>$currency,'price_basis'=>$basis,
+            'priority'=>['unit_cost_rate','property_cost_rate_fallback'],
+            'status'=>'source_unavailable','source'=>null,'rate_id'=>null,
+            'scope_candidates'=>['unit'=>0,'property'=>0],
+            'supplier_cost_receipt_approved'=>false,
+            'seasonal_property_assignment_verified'=>false,
+            'inventory_verified'=>false,'rate_written'=>false,
+            'commercial_ready'=>false,'checkout_ready'=>false];
+        // A generic Property Rate is not a Unit contract. Unit provenance,
+        // capacity and publication must be independently verified first.
+        if(get_post_status($property)!=='publish'||get_post_status($unit)!=='publish')
+            return array_replace($out,['status'=>'property_or_unit_unpublished']);
+        global $wpdb;
+        if(!isset($wpdb)||!isset($wpdb->prefix))
+            return new WP_Error('accommodation_rate_source_relation_unavailable');
+        $relation=$wpdb->prefix.'jet_rel_default';
+        $count=(int)$wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$relation} WHERE rel_id=%d AND parent_object_id=%d AND child_object_id=%d",
+            223,$property,$unit));
+        $receipt=get_post_meta($unit,'_mad4b_room_source_receipt_v1',true);
+        if($count!==1||!is_array($receipt)||
+           (int)($receipt['property_id']??0)!==$property||
+           (int)get_post_meta($unit,'unit_max_occupancy',true)<1)
+            return array_replace($out,['status'=>'unit_source_relation_or_capacity_unverified']);
+        $rates=get_posts(['post_type'=>'property-rates',
+            'post_status'=>['publish','draft','pending','private'],
+            'posts_per_page'=>201,'fields'=>'ids','no_found_rows'=>true,
+            'suppress_filters'=>true,
+            'meta_query'=>[['key'=>'prop_related_property_id','value'=>(string)$property]]]);
+        if(count($rates)>=201)
+            return array_replace($out,['status'=>'rate_search_truncated_review_required']);
+        $matches=['unit'=>[],'property'=>[]];
+        foreach($rates as $rate){
+            $rate=(int)$rate;
+            $related=(int)get_post_meta($rate,'prop_related_unit_id',true);
+            if($related!==0&&$related!==$unit)continue;
+            $scope=$related===$unit?'unit':'property';
+            $out['scope_candidates'][$scope]++;
+            // Historical retail prices and unapproved Draft quotes cannot
+            // masquerade as a published supplier cost Rate.
+            if(get_post_status($rate)!=='publish'||
+               (string)get_post_meta($rate,'mad4b_rate_price_kind_v1',true)!=='cost'||
+               get_post_meta($rate,'_booking_experience_qa_pricing_fixture',true)||
+               get_post_meta($rate,'_qa_disallow_public_checkout',true))continue;
+            $stop=strtolower((string)get_post_meta($rate,'stop_sale',true));
+            if(!in_array($stop,['0','false','no','off'],true)||
+               (string)get_post_meta($rate,'avilabile_status',true)==='0')continue;
+            if((string)get_post_meta($rate,'currency',true)!==$currency||
+               (string)get_post_meta($rate,'prop_price_unit',true)!==$basis||
+               !is_numeric(get_post_meta($rate,'base_amount',true))||
+               (float)get_post_meta($rate,'base_amount',true)<=0)continue;
+            $start=self::iso(get_post_meta($rate,'valid_from',true));
+            $end=self::iso(get_post_meta($rate,'valid_to',true));
+            // One published rate must cover the ENTIRE period. No guessed
+            // Season inheritance or stitching disjoint supplier periods.
+            if(!$start||!$end||$start>$from||$end<$to)continue;
+            $matches[$scope][]=$rate;
+        }
+        foreach(['unit','property'] as $scope){
+            if(count($matches[$scope])>1)
+                return array_replace($out,['status'=>'ambiguous_'.$scope.'_rates_review_required']);
+            if(count($matches[$scope])===1)
+                return array_replace($out,['status'=>$scope==='unit'
+                    ?'unit_rate_candidate_requires_receipt'
+                    :'property_rate_fallback_candidate_requires_receipt',
+                    'source'=>$scope==='unit'?'unit_cost_rate':'property_cost_rate_fallback',
+                    'rate_id'=>$matches[$scope][0]]);
+        }
+        return array_replace($out,['status'=>'no_published_matching_cost_rate']);
+    }
+}}
