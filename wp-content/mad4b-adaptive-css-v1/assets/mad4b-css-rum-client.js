@@ -15,7 +15,7 @@
     var choice=gate.choice();
     return !!(choice&&choice.a===true);
   }
-  if(!consent())return;
+  // Consent may be granted during this very page view, not just before load.
   if(!Number.isInteger(c.sampleBps)||c.sampleBps<1||c.sampleBps>10000)return;
   var v=new Uint32Array(1);
   w.crypto.getRandomValues(v);
@@ -73,9 +73,28 @@
     w.addEventListener('pagehide',send);
     w.addEventListener('pageshow',function(e){if(e.persisted){sent=false;m={};}});
   }
-  var script=d.createElement('script');
-  script.src=vendor.href;script.async=true;
-  script.onload=observe;
-  script.onerror=function(){};
-  d.head.appendChild(script);
+  var vendorRequested=false;
+  function startAfterConsent(){
+    if(vendorRequested||!consent())return;
+    vendorRequested=true;
+    var script=d.createElement('script');
+    script.src=vendor.href;script.async=true;
+    script.onload=observe;
+    script.onerror=function(){};
+    d.head.appendChild(script);
+  }
+  // The company's consent gateway submits a new visitor choice from a
+  // document click listener. Defer the read to the next event-loop turn so
+  // the consent state is already committed before we check it. No remote
+  // script is fetched before a valid analytics opt-in.
+  d.addEventListener('click',function(event){
+    var button=event&&event.target&&typeof event.target.closest==='function'
+      ?event.target.closest('[data-mad4b-choice="accept"],[data-mad4b-choice="save"]')
+      :null;
+    if(button)w.setTimeout(startAfterConsent,0);
+  });
+  // Supports a separately dispatched company consent-change event without
+  // relying on mutation of dataLayer.push or other Google analytics code.
+  d.addEventListener('mad4b:consentchange',startAfterConsent);
+  startAfterConsent();
 })(window,document);
