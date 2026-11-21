@@ -26,7 +26,7 @@ $assert(class_exists('Shared_Product_Rate_Generation',false),'native Rate genera
 $assert(class_exists('MAD4B_Rate_Planner',false),'native Rate Planner class loaded');
 $assert(current_user_can('commerce_manage_pricing'),'authorized pricing review');
 $wpdb=$GLOBALS['wpdb'];
-$rateCount=static fn():(int)$wpdb->get_var(
+$rateCount=static fn():int => (int)$wpdb->get_var(
     "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type='tour-rates'");
 $before=$rateCount();
 $observed=['package_reviews'=>0,'package_stage_reviews'=>0,
