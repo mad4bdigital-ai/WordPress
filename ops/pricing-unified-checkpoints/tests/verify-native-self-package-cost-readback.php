@@ -7,16 +7,31 @@ define('ABSPATH',__DIR__);
 function add_action($name,$callback,$priority=10,$args=1){}
 function wp_json_encode($v){return json_encode($v,JSON_UNESCAPED_SLASHES);}
 function current_user_can($cap){return !empty($GLOBALS['operator']);}
-function get_post_type($id){return $id===101?'tours-and-activities':null;}
-function get_post_status($id){return $id===101?'publish':null;}
+function get_post_type($id){
+    return $id===101?'tours-and-activities':
+        (in_array($id,[201,202],true)?'tour-rates':null);
+}
+function get_post_status($id){
+    return $id===101?'publish':(in_array($id,[201,202],true)?'draft':null);
+}
+function get_posts($query){
+    if(($query['post_type']??'')==='tour-rates' &&
+       ($query['meta_key']??'')==='related_tour_id' &&
+       ($query['meta_value']??'')==='101')
+        return [201,202];
+    return [];
+}
 function get_post_meta($id,$key,$single=true){
+    if($key==='related_tour_id' && in_array($id,[201,202],true))
+        return '101';
     if($key==='_mad4b_package_stay_verified_room_program_links_v1')
         return ['schema'=>'1','tour_id'=>$id,'checkout_ready'=>false,
             'bindings'=>[['stage_key'=>'hotel-cairo-01','lodging_kind'=>'hotel',
                 'nights'=>2,'bookable_unit_ids'=>[],
                 'selected_property_id'=>0,'price_status'=>'unpriced']]];
     if($key==='_mad4b_transport_stages_v1')
-        return $GLOBALS['transport_stages']??'';
+        return $id===201?($GLOBALS['transport_stages']??''):
+            ($id===101?[['key'=>'bogus-tour-meta-not-authoritative']]:'');
     return '';
 }
 function sanitize_key($s){return strtolower((string)$s);}
@@ -101,6 +116,13 @@ check($a['components']['transportation']['original_source_row_count']===51,'reus
 check(count($a['components']['transportation']['model_candidate_vehicle_keys'])===4,'reuse JetEngine profile candidates');
 check(count($a['components']['transportation']['vehicle_profiles_needing_review'])===2,'empty H1 and 7 seats blocked');
 check(in_array('transport_route_stage_binding_missing',$a['blockers'],true),'no invented route');
+check($a['components']['transportation']['linked_tour_rate_count']===2,
+      'Rate source discovered through related_tour_id, not Tour query');
+check($a['components']['transportation']['explicit_route_stage_count']===0,
+      'ignore unrelated stage meta on Tour itself');
+check($a['components']['transportation']['stage_meta_owner']==='tour-rates' &&
+      $a['components']['transportation']['relation_source']==='related_tour_id',
+      'single original relationship authority');
 $GLOBALS['approved_guide']=true;
 $b=$cls::inspect(101,'2027-01-18','EGP',2,0,0);
 check($b['components']['guide']['cost_qualified']===true,'verified guide costs recognized');
@@ -111,9 +133,13 @@ check($b['components']['guide']['included_in_customer_price']===null &&
 check(!in_array('guide:guide_coverage_not_reviewed',$b['blockers'],true),'no false guide ready blocker');
 check($b['checkout_ready']===false && $b['total_cost_minor']===null &&
       $b['rate_generation_ready']===false,'no selling, checkout or generation authority');
-$GLOBALS['transport_stages']=['stages'=>[['key'=>'airport-cairo']]];
+$GLOBALS['transport_stages']=[['key'=>'airport-cairo']];
 $c=$cls::inspect(101,'2027-01-18','USD',2,1,1);
-check($c['components']['transportation']['explicit_route_stage_count']===1,'native route stage discovered');
+check($c['components']['transportation']['explicit_route_stage_count']===1,'native Tour Rate repeater stage discovered');
+check($c['components']['transportation']['linked_rate_stage_inventory'][0]['rate_id']===201,
+      'linked Rate identity preserved');
+check($c['components']['transportation']['tour_queried_rates_inventory_only']===true,
+      'Tour query remains non-authoritative inventory');
 check(in_array('transport_route_cost_unapproved',$c['blockers'],true),'editorial route not priced');
 check(in_array('certified_fx_receipt_missing',$c['blockers'],true),'unsupported FX remains blocked');
 check(in_array('child_infant_component_costs_not_certified',$c['blockers'],true),'child/infant remains blocked');
