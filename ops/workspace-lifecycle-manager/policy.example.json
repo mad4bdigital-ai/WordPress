@@ -1,0 +1,32 @@
+{
+  "version": "mad4b.workspace-lifecycle.v1",
+  "minimum_age_days": 14,
+  "max_remove_per_run": 4,
+  "max_1minute_load": 8.0,
+  "require_no_ignored_files": true,
+  "suspend_dirty_automatically": false,
+  "repositories": [
+    "/opt/hostinger-migrations/hosting-3/etg-commerce-staging/source-git/wordpress",
+    "/opt/mad4b-company-provisioning/spec-kit/company-reconcile-orchestrator",
+    "/opt/mad4b-company-provisioning/reports/original318-v82-live-admission-20261118/source-git-exact-candidate",
+    "/opt/mad4b-company-provisioning/reports/scoped-chatgpt-cimd-github-20261118/source"
+  ],
+  "allowed_checkout_prefixes": [
+    "/opt/mad4b-company-provisioning/worktrees/",
+    "/opt/mad4b-company-provisioning/reports/source-unification-20261119/",
+    "/opt/mad4b-company-provisioning/reports/20261118-are-etg-staging-source-reconcile/",
+    "/opt/mad4b-company-provisioning/reports/wayfa-production-gate-reconcile-20261119/",
+    "/opt/mad4b-company-provisioning/reports/original318-v82-live-admission-20261118/",
+    "/opt/mad4b-company-provisioning/reports/scoped-chatgpt-cimd-github-20261118/",
+    "/opt/mad4b-company-transport/worktrees/",
+    "/opt/hostinger-migrations/hosting-3/etg-commerce-staging/source-git/worktrees/",
+    "/opt/mad4b-company-provisioning/source-releases/"
+  ],
+  "protected_paths": [
+    "/opt/mad4b-company-provisioning/reports/source-unification-20261119/single-source-reconcile-20261121",
+    "/opt/hostinger-migrations/hosting-3/etg-commerce-staging/source-git/wordpress",
+    "/opt/mad4b-company-provisioning/spec-kit/company-reconcile-orchestrator",
+    "/opt/mad4b-company-provisioning/reports/original318-v82-live-admission-20261118/source-git-exact-candidate",
+    "/opt/mad4b-company-provisioning/reports/scoped-chatgpt-cimd-github-20261118/source"
+  ]
+}

@@ -1,0 +1,33 @@
+name: MAD4B Workspace Lifecycle Source Review
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mad4b-workspace-lifecycle-review.yml'
+      - 'ops/workspace-lifecycle-manager/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-workspace-lifecycle-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  hermetic-git:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11','3.12']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Verify no data loss, protected source and exact restore
+        run: |
+          set -euo pipefail
+          PYTHONDONTWRITEBYTECODE=1 python3 ops/workspace-lifecycle-manager/test_workspace_lifecycle.py
+          python3 -m py_compile ops/workspace-lifecycle-manager/workspace_lifecycle.py
