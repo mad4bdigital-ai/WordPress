@@ -24180,6 +24180,25 @@
       "needs_new_control": false,
       "review_rationale": "CP4 Content Readiness reconciliation retains original source-owned lifecycle. Missing unreviewed source, a changed stage, deleted stage, or a partial canonical scan cannot resolve any existing cost alert. A specific unchanged stage can be resolved only after its receipt passes the independent supplier Cost Receipt signature gate. Positive signature tests use a hermetic mock only, never a real commercial approval.",
       "coverage_reuse_rationale": "Existing site-bound original Content Readiness ledger, source admission with immutable stage identity, WordPress role controls, independent Cost Receipt signature gate, native scheduler and Production release controls remain in force. This review does not grant an administrator role, new REST capability, external notification, automatic supplier approval, pricing authorization or checkout permission."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-workflow-options.php",
+      "source_blob_sha": "2b0b20927811e097b6dc19a3d84134205a8eb423",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PROVIDERS-02",
+        "LOCALIZATION-01"
+      ],
+      "regression_tests": [
+        "tests/cp4_content_readiness_source_regression.py"
+      ],
+      "owner_role": "MAD4B first-party Pricing and Content Readiness CI reviewer; independent commercial and Production owner remain mandatory",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "The original FluentBoards Readiness owner router now maps only exact first-party CP4 cost alerts with a native source, typed 12-digit hex stage code and source contract to its existing Pricing group, while retaining Hotel Supplier Contracts, Cruise Contracting, and Rail Supplier Contracting labels in signed source evidence. No arbitrary user assignment, task creation, external notifications or new permissions. Hermetic PHP regression rejects fake source and fake contract.",
+      "coverage_reuse_rationale": "The existing Pricing group owner role, explicit per-site board/stage configuration, WordPress capability, independent task mutation gate, original scope-bounded issue registry and Cost Receipt signature check remain unchanged. No new Control IDs, task creation, privileged identity, commercial approval or Production release authority."
     }
   ],
   "code_change_rules": {
