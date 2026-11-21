@@ -183,7 +183,18 @@ final class MAD4B_CP4_Cost_Alerts_V1 {
        $current=get_post_meta($tour,self::LINK_META,true);
        if(!is_array($current))return false;
        $now=hash('sha256',wp_json_encode($current,JSON_UNESCAPED_SLASHES));
-       return hash_equals(self::$coverage[$tour],$now);
+       if(!hash_equals(self::$coverage[$tour],$now))return false;
+       // A deleted/renamed stage is not proof of commercial readiness.
+       // A missing alert can close ONLY for the identical approved stage.
+       $e=(array)($old['source_evidence']??[]);
+       foreach((array)($current['bindings']??[]) as $stage) {
+           if(!is_array($stage) ||
+              (string)($stage['stage_key']??'')!==(string)($e['stage_key']??'') ||
+              (string)($stage['lodging_kind']??'')!==(string)($e['kind']??''))
+               continue;
+           return self::receipt_qualified($tour,$stage)['qualified']===true;
+       }
+       return false;
     }
 }
 MAD4B_CP4_Cost_Alerts_V1::boot();
