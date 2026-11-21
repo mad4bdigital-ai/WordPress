@@ -90,3 +90,18 @@
   columns:2;column-gap:22px;line-height:1.65;margin:10px 0}
 .mad4b-pcl-native-findings li{overflow-wrap:anywhere;break-inside:avoid}
 @media(max-width:782px){.mad4b-pcl-native-findings ul{columns:1}}
+
+/* Read-only source discovery: native hotel inventory and route-matched trains */
+.mad4b-pcl-source-scout{margin:12px 0;background:#f6f7f7;padding:10px 12px;
+  border:1px solid #c3c4c7;border-radius:4px}
+.mad4b-pcl-source-scout>summary{font-weight:600;cursor:pointer;line-height:1.55}
+.mad4b-pcl-source-scout>summary:focus-visible{outline:2px solid #2271b1;outline-offset:3px}
+.mad4b-pcl-source-scout .mad4b-pcl-table{margin:10px 0}
+.mad4b-pcl-source-scout p{margin:8px 0}
+.mad4b-pcl-source-program{background:#eef6fc;border-left:3px solid #2271b1;
+  padding:10px 12px;margin:10px 0}
+.mad4b-pcl-source-program p{margin:0;line-height:1.5}
+@media(max-width:782px){
+.mad4b-pcl-source-scout{overflow-x:auto}
+.mad4b-pcl-source-scout .mad4b-pcl-table{min-width:550px}
+}
