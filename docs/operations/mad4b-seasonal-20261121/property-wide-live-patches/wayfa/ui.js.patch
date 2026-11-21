@@ -1,0 +1,13 @@
+--- a/wp-content/mu-plugins/mad4b-stay-pricing-admin/ui.js
++++ b/wp-content/mu-plugins/mad4b-stay-pricing-admin/ui.js
+@@ -221,6 +221,10 @@
+         rate.board||'Meal not declared',
+         rate.valid_from&&rate.valid_to?rate.valid_from+' – '+rate.valid_to:'Dates missing',
+         rate.amount&&rate.currency?rate.amount+' '+rate.currency:'Amount missing',
++        rate.season_window_source==='season_term_meta'?'Season dates inherited from Term Meta':'',
++        rate.supplier_quote_pending_review?'SUPPLIER SHEET · REVIEW / STOP SALE':'',
++        rate.source_cell?'Cell '+rate.source_cell:'',
++        rate.source_occupancy?'Occupancy '+rate.source_occupancy:'',
+         rate.qa_only?'QA ONLY':''
+       ].filter(Boolean).join(' · '));
+       row.append(title,meta);

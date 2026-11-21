@@ -1,0 +1,82 @@
+--- a/wp-content/mu-plugins/006-mad4b-accommodation-layered-pricing.php
++++ b/wp-content/mu-plugins/006-mad4b-accommodation-layered-pricing.php
+@@ -22,6 +22,45 @@
+         $d=DateTimeImmutable::createFromFormat('!Y-m-d',$v,new DateTimeZone('UTC'));
+         return $d&&$d->format('Y-m-d')===$v;
+     }
++    /**
++     * One source of Season dates: existing approved Term Meta.
++     * The sheet imports carry a Term reference and anchor year, NOT duplicate
++     * valid_from/valid_to fields. Explicit complete Rate dates take precedence.
++     */
++    public static function effectiveRateWindow(int $rate):array {
++        if(get_post_type($rate)!=='property-rates')
++            return ['valid'=>false,'source'=>null,'reason'=>'rate_type_mismatch'];
++        $from=(string)get_post_meta($rate,'valid_from',true);
++        $to=(string)get_post_meta($rate,'valid_to',true);
++        if($from!==''||$to!==''){
++            if(!self::date_valid($from)||!self::date_valid($to)||$from>$to)
++                return ['valid'=>false,'source'=>'explicit','reason'=>'partial_or_invalid_custom_dates'];
++            return ['valid'=>true,'source'=>'explicit','start'=>$from,'end'=>$to];
++        }
++        $slug=(string)get_post_meta($rate,'_mad4b_supplier_sheet_season_slug_v1',true);
++        $term=(int)get_post_meta($rate,'_mad4b_supplier_sheet_season_term_id_v1',true);
++        $year=(int)get_post_meta($rate,'_mad4b_supplier_sheet_season_anchor_year_v1',true);
++        if(!in_array($slug,['summer','winter'],true)||$term<1||
++           $year<2020||$year>2100 ||
++           !class_exists('MAD4B_Package_Seasonal_Assignment_V1',false))
++            return ['valid'=>false,'source'=>null,'reason'=>'date_and_source_season_missing'];
++        $seasons=MAD4B_Package_Seasonal_Assignment_V1::seasons();
++        $policy=$seasons[$slug]??null;
++        if(!is_array($policy)||(int)$policy['policy_term_id']!==$term)
++            return ['valid'=>false,'source'=>'season_term_meta','reason'=>'season_term_identity_or_policy_changed'];
++        $sm=(int)$policy['sm'];$sd=(int)$policy['sd'];
++        $em=(int)$policy['em'];$ed=(int)$policy['ed'];
++        $cross=!empty($policy['cross']);
++        $endYear=$year+($cross?1:0);
++        if(!checkdate($sm,$sd,$year)||!checkdate($em,$ed,$endYear))
++            return ['valid'=>false,'source'=>'season_term_meta','reason'=>'season_term_dates_invalid'];
++        $start=sprintf('%04d-%02d-%02d',$year,$sm,$sd);
++        $end=sprintf('%04d-%02d-%02d',$endYear,$em,$ed);
++        if($start>$end)
++            return ['valid'=>false,'source'=>'season_term_meta','reason'=>'season_window_reversed'];
++        return ['valid'=>true,'source'=>'season_term_meta','start'=>$start,'end'=>$end,
++            'policy_term_id'=>$term,'season_slug'=>$slug,'anchor_year'=>$year];
++    }
+     private static function source(int $id,string $type,int $property,int $unit) {
+         if($type==='property_direct')
+             $keys=['prop_start_price','prop_base_currency','prop_direct_price_unit','prop_direct_price_kind'];
+@@ -83,6 +122,13 @@
+             $simulated=get_post_meta($id,'_mad4b_simulated_supplier_evidence',true);
+             if(($supplierProposal!==''&&$supplierProposal!==false&&$supplierProposal!==null)
+                 ||($simulated!==''&&$simulated!==false&&$simulated!==null))continue;
++            $sheetProposal=get_post_meta($id,'_mad4b_supplier_sheet_proposal_v1',true);
++            if(is_array($sheetProposal) && (
++                empty($sheetProposal['supplier_contract_verified'])||
++                empty($sheetProposal['nightly_basis_verified'])||
++                empty($sheetProposal['cost_receipt_approved'])))continue;
++            if((string)get_post_meta($id,'_mad4b_supplier_sheet_quote_unapproved_v1',true)==='1')
++                continue;
+             $foreign=false;
+             foreach(['provider_id','supplier_id','_mad4b_provider_id'] as $ownerKey){
+                 $owner=(string)get_post_meta($id,$ownerKey,true);
+@@ -97,9 +143,16 @@
+             // Match Accommodation Booking Core, which treats any non-empty value
+             // other than "0" as Stop Sale. Unknown states must not imply availability.
+             if($stop!=='0')continue;
+-            $from=(string)get_post_meta($id,'valid_from',true);
+-            $to=(string)get_post_meta($id,'valid_to',true);
+-            if(!self::date_valid($from)||!self::date_valid($to)||$date<$from||$date>$to)continue;
++            $window=self::effectiveRateWindow($id);
++            if(empty($window['valid']))continue;
++            $from=$window['start'];$to=$window['end'];
++            if($date<$from||$date>$to)continue;
++            $quotedOcc=(string)get_post_meta($id,'_mad4b_supplier_sheet_occupancy_v1',true);
++            if($quotedOcc!==''){
++                if(($quotedOcc==='double'&&($adults!==2||$children!==0))||
++                    ($quotedOcc==='triple'&&($adults!==3||$children!==0))||
++                    !in_array($quotedOcc,['double','triple'],true))continue;
++            }
+             $checkout=(new DateTimeImmutable($date,new DateTimeZone('UTC')))->modify('+'.$nights.' days');
+             // Native abk_accommodation_shadow_quote requires checkout <= valid_to.
+             // Do not preview a rate that the existing quote provider would reject.
