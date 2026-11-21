@@ -231,6 +231,67 @@ def verifier_only_recheck_candidates(site,catalog,state,ledger,root,rows,now=Non
     return [x[2] for x in sorted(result)]
 
 
+
+def recoverable_listing_generation_keys(site,catalog,state,ledger,published,rows):
+    """Previously *certified* exact routes needing independent requalification.
+
+    A recent tour/listing edit may invalidate a previously valid certificate.
+    This is ONLY a scheduling lane. Original WordPress source, market/currency,
+    CSS manifest, post-release browser QA and public consumer remain mandatory.
+    Never resurrect a certificate minted by an older runtime or release epoch.
+    """
+    if site not in ROOTS or catalog.get('host')!=ROOTS[site][1]:
+        raise ValueError('regression-recovery-company-scope-invalid')
+    active=state.get('enabled_currencies')
+    if not isinstance(active,list) or not all(
+            isinstance(x,str) and re.fullmatch('[A-Z]{3}',x) for x in active):
+        return []
+    allowed=set(active)
+    by_route=collections.defaultdict(list)
+    for (lang,path,market,currency),cert in published.items():
+        by_route[(lang,path)].append((market,currency,cert))
+    nowlisting=catalog.get('listing_generation')
+    if type(nowlisting) is not int or nowlisting<1:return []
+    candidates=[]
+    for route in rows:
+        record=ledger.get('routes',{}).get(route.get('route_key'),{})
+        if not isinstance(record,dict) or record.get('status')!='certified':
+            continue
+        if record.get('depends_on_listings') is not True:continue
+        if record.get('source_key')==queue.source_key(
+                catalog,route,state,True):continue
+        for market,currency,cert in by_route.get(
+                (route['language'],route['path']),[]):
+            if (not isinstance(cert,dict)
+                or cert.get('contract')!=v2.CONTRACT
+                or cert.get('status')!='certified'
+                or cert.get('host')!=catalog['host']
+                or cert.get('language')!=route['language']
+                or cert.get('path')!=route['path']
+                or cert.get('object_id')!=route['id']
+                or cert.get('type')!=route['type']
+                or cert.get('market_country')!=market
+                or cert.get('currency')!=currency
+                or currency not in allowed
+                or not MARKET_RE.fullmatch(market+'|'+currency)
+                or cert.get('runtime_sha')!=state.get('runtime_sha')
+                or cert.get('consumer_sha')!=state.get('consumer_v2_sha')
+                or cert.get('css_epoch')!=state.get('css_epoch')):
+                continue
+            deps=cert.get('dependencies')
+            if (not isinstance(deps,dict)
+                or deps.get('global_generation')!=catalog.get('global_generation')
+                or deps.get('route_generation')!=route.get('revision')
+                or deps.get('contains_dynamic_listing') is not True):
+                continue
+            old=deps.get('listing_generation')
+            if type(old) is not int or not 0<nowlisting-old<=100:continue
+            attempted=record.get('attempted_at')
+            if type(attempted) is not int or attempted<=0:continue
+            candidates.append((-attempted,route['path'],route['route_key']))
+            break
+    return [x[2] for x in sorted(set(candidates))[:64]]
+
 def published_v2_generation_drift(catalog,state,published):
     """Report why immutable v2 files are not current CSS source proofs.
 
@@ -284,6 +345,8 @@ def build(site,catalog,state,ledger,root=None,variant_index=None):
                  if not queue.independently_certified_home(r)]
     published=load_certs(root)
     published_context=published_v2_generation_drift(catalog,state,published)
+    recovery_keys=recoverable_listing_generation_keys(
+        site,catalog,state,ledger,published,catalogrows)
     verifier_retries=verifier_only_recheck_candidates(
         site,catalog,state,ledger,root,catalogrows)
     by_route=collections.defaultdict(list)
@@ -503,6 +566,8 @@ def build(site,catalog,state,ledger,root=None,variant_index=None):
       'routes_discovered':len(catalogrows),'routes_with_exact_current_certificate':qualified_routes,
       'routes_on_native_or_unproven_css':len(catalogrows)-qualified_routes,
       'source_families':rows,
+      'recoverable_listing_generation_route_keys':recovery_keys,
+      'recoverable_listing_generation_count':len(recovery_keys),
       'verifier_only_recheck_candidates':len(verifier_retries),
       'next_verifier_only_recheck_route_key':verifier_retries[0] if verifier_retries else None,
       'next_canary_route_key':wants[0]['next_canary'] if wants else None,
@@ -563,6 +628,7 @@ def plan_next_css_issuance(report,sequence,verified_drift_route_key=None):
     family_keys=report.get('next_canary_route_keys')
     individual_keys=report.get('next_individual_css_route_keys')
     near_keys=report.get('near_qualified_route_keys')
+    recovery_keys=report.get('recoverable_listing_generation_route_keys')
     modern=family_keys is not None or individual_keys is not None
     if modern:
         for lane in (family_keys,individual_keys):
@@ -583,6 +649,17 @@ def plan_next_css_issuance(report,sequence,verified_drift_route_key=None):
             or not set(near_keys).issubset(set(family_lane)))):
             raise ValueError('invalid-original-source-family-completion-lane')
         near_lane=near_keys or []
+        # This lane contains source-derived catalog routes previously
+        # certified with the CURRENT runtime and epoch, invalidated solely
+        # by a later listing generation. Rebuild still requires the full
+        # original Chromium and WordPress consumer after this choice.
+        if (recovery_keys is not None and (
+            not isinstance(recovery_keys,list) or len(recovery_keys)>64
+            or len(set(recovery_keys))!=len(recovery_keys)
+            or any(not isinstance(k,str) or not re.fullmatch('[a-f0-9]{64}',k)
+                   for k in recovery_keys))):
+            raise ValueError('invalid-source-regression-recovery-lane')
+        recovery_lane=recovery_keys or []
         # A bounded old-QA retry uses at most one slot per eight attempts.
         # The 1/4 exact-route lane stays untouched. Unlike a fixed first
         # family, this never repeatedly tests Arabic while leaving
@@ -597,8 +674,19 @@ def plan_next_css_issuance(report,sequence,verified_drift_route_key=None):
         # partially evidenced, exact-context family. Unseen families retain
         # the other available slots, and retry/individual lanes keep their
         # bounded original priority and independent QA requirements.
-        if near_lane and sequence%4==1:
-            return near_lane[(sequence//4)%len(near_lane)]
+        if sequence%4==1:
+            # Share the existing bounded progress slot with families that
+            # are almost complete. Neither can monopolize unseen groups.
+            recovery_turn=recovery_lane and (
+                not near_lane or sequence%8==5)
+            if recovery_turn:
+                cursor=sequence//8 if near_lane else sequence//4
+                return recovery_lane[cursor%len(recovery_lane)]
+            if near_lane:
+                cursor=sequence//8 if recovery_lane else sequence//4
+                return near_lane[cursor%len(near_lane)]
+        if not family_lane and not individual_lane and recovery_lane:
+            return recovery_lane[(sequence//4)%len(recovery_lane)]
         if family_lane:
             consumed_retry=(sequence+7)//8 if retry else 0
             consumed_near=(sequence+2)//4 if near_lane else 0
