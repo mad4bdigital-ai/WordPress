@@ -113,6 +113,7 @@ final class MAD4B_Rate_Planner {
      if(!empty($stageReview['applies'])){
        $c['package_stage_review']=[
           'contract'=>$stageReview['contract'],
+          'applies'=>$stageReview['applies'],
           'source_tour_id'=>$stageReview['source_tour_id'],
           'ready'=>$stageReview['ready'],
           'blockers'=>$stageReview['blockers'],
