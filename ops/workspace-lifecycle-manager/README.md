@@ -44,3 +44,10 @@ retaining all refs/parked/* and recovery archives. Restoring a suspended
 checkout uses git worktree add --detach NEW_EMPTY_DIR RECOVERY_REF.
 The logs latest-audit.json and events.jsonl are restricted on the host.
 This Draft review is NOT a WordPress production release or Host authority.
+
+Disk capacity is also reported on every audit cycle. The installed policy
+uses 75% / 85% warning/critical usage thresholds; only when the threshold
+is crossed during an executable run does the manager write a durable local
+alert receipt and send a daemon.warning event to the host system journal.
+No outbound mail or webhook and no destructive cache or volume purge is
+triggered by these alerts.

@@ -12,6 +12,7 @@ import json
 import os
 import pathlib
 import subprocess
+import shutil
 import sys
 import time
 
@@ -96,6 +97,20 @@ def audit_and_apply(p,execute=False,minimum_age=None,max_remove=None):
     result={'timestamp':utc(),'mode':'execute' if execute else 'audit','scanned':0,'eligible':0,'suspended':0,'suspended_mib_estimate':0,'dirty':0,'skipped':{},'entries':[]}
     load=os.getloadavg()[0]
     result['load_1m']=round(load,2)
+    disk=shutil.disk_usage('/opt')
+    used_pct=round(100.0*disk.used/disk.total,1)
+    result['disk']={'used_pct':used_pct,'free_gib':round(disk.free/(1024**3),1)}
+    warn_pct=float(p.get('disk_warning_percent',75))
+    crit_pct=float(p.get('disk_critical_percent',85))
+    result['alerts']=[]
+    if used_pct >= warn_pct:
+        level='CRITICAL' if used_pct>=crit_pct else 'WARNING'
+        msg='MAD4B_WORKSPACE_DISK_'+level+' used='+str(used_pct)+'% free_GiB='+str(result['disk']['free_gib'])
+        result['alerts'].append(msg)
+        if execute:
+            journal({'at':utc(),'kind':'disk_capacity_alert','severity':level,'disk_used_percent':used_pct})
+            subprocess.run(['/usr/bin/logger','-p','daemon.warning','-t','mad4b-workspace-lifecycle',msg],
+                           capture_output=True,timeout=5,check=False)
     if execute and load>float(p['max_1minute_load']):
         result['blocked']='LOAD_LIMIT_EXCEEDED'
         return result

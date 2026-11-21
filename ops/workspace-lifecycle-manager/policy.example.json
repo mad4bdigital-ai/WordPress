@@ -28,5 +28,7 @@
     "/opt/mad4b-company-provisioning/spec-kit/company-reconcile-orchestrator",
     "/opt/mad4b-company-provisioning/reports/original318-v82-live-admission-20261118/source-git-exact-candidate",
     "/opt/mad4b-company-provisioning/reports/scoped-chatgpt-cimd-github-20261118/source"
-  ]
+  ],
+  "disk_warning_percent": 75,
+  "disk_critical_percent": 85
 }
