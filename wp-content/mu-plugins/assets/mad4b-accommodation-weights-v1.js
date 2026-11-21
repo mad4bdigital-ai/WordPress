@@ -175,8 +175,13 @@ async function calculate(){
   }else{
     output.append(make('p','','No Unit selected: room-grade weight is a scenario, not a room assignment.'));
   }
+  const meal=data.meal_base_policy||{};
+  if(meal.base_board)
+    output.append(make('p','',
+      'Inherited meal base: '+meal.base_board.replaceAll('-',' ')+
+      ' · '+(meal.source||'policy')+' · not a supplier-contract confirmation.'));
   output.append(make('p','mad4b-aw-important',
-    'ESTIMATE ONLY. Supplier cost, room capacity, period, meal board, inventory, published Rates and checkout have not been approved.'));
+    'ESTIMATE ONLY. Supplier cost, occupancy, period, included board contract, inventory, published Rates and checkout have not been approved.'));
  }catch(err){output.textContent='Cannot calculate: '+err.message}
 }
 scope.addEventListener('change',()=>{
