@@ -1,6 +1,8 @@
 """Live PHP 8.5 contract: remote review + independent signed owner proof only."""
 import base64
 import os
+import re
+import shutil
 from pathlib import Path
 import shlex
 import subprocess
@@ -182,6 +184,23 @@ echo "V135_REAL_PHP_REMOTE_SIGNED_OWNER_PROOF_31_ASSERTIONS_PASS\n";
         result=subprocess.run(cmd,input=php,text=True,capture_output=True,timeout=26)
         self.assertEqual(result.returncode,0,result.stdout[-1000:]+"\n"+result.stderr[-2600:])
         self.assertIn("V135_REAL_PHP_REMOTE_SIGNED_OWNER_PROOF_31_ASSERTIONS_PASS",result.stdout)
+
+    def test_inline_browser_admin_javascript_parses(self):
+        source=PHP.read_text()
+        segments=re.findall(r"\?>\n(.*?)\n<\?php",source,re.S)
+        self.assertEqual(len(segments),1,"Expected one additive Admin UI script segment")
+        self.assertIn("Create remote review request",segments[0])
+        self.assertIn("Copy handoff",segments[0])
+        self.assertIn("Verify signed proof remotely",segments[0])
+        node=shutil.which("node")
+        if not node:
+            if os.environ.get("MAD4B_REQUIRE_NODE")=="1":
+                self.fail("Node is required to verify the browser Admin UI syntax")
+            self.skipTest("Node.js absent")
+        full='(function(){"use strict";const base="https://example.invalid",nonce="test";\n'+segments[0]
+        result=subprocess.run([node,"--check"],input=full,text=True,
+                              capture_output=True,timeout=9)
+        self.assertEqual(result.returncode,0,result.stderr)
 
     def test_no_private_key_loading_or_root_mutations(self):
         src=PHP.read_text()

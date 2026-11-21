@@ -68,6 +68,7 @@ jobs:
         env:
           MAD4B_TEST_PHP: php
           MAD4B_REQUIRE_PHP: '1'
+          MAD4B_REQUIRE_NODE: '1'
         run: python -B -m unittest discover -s tests/host-v135 -p 'test_*.py' -v
       - name: Verify existing bounded Host Runner write limits and path safety
         run: |
