@@ -17,7 +17,8 @@ HOLD_REASONS={'market_context_unavailable','capture_error',
               'source_html_drift','country_or_currency_context_drift',
               'unstable_css_source','unstable_elementor_graph',
               'unstable_market_currency','candidate_incomplete',
-              'source_css_bundle_unavailable'}
+              'source_css_bundle_unavailable',
+              'multi_css_route_qa_pending'}
 EXCLUDED=['checkout','cart','my-account','order-pay','order-received','carrito',
           'carrello','panier','warenkorb','kasse','paiement','pagamento',
           'mein-konto','mio-account','account','password','login','checkout']
@@ -46,18 +47,57 @@ def safe_catalog(cat,site):
         if k in keys:raise ValueError('duplicated-WPML-path')
         keys.add(k)
     return rows
+# Preserve long-term family rotation while retaining the original 1-in-4
+# repair/coverage lanes. Modulo four here prevented the source-family planner
+# from ever advancing beyond its first few templates.
+SCHEDULER_SEQUENCE_MODULUS=1<<24
+def next_scheduler_sequence(ledger):
+    seq=ledger.get('scheduler_sequence',0)
+    if (type(seq) is not int or seq<0
+        or seq>=SCHEDULER_SEQUENCE_MODULUS):
+        raise ValueError('invalid-family-rotation-sequence')
+    return (seq+1)%SCHEDULER_SEQUENCE_MODULUS
+
 def read_ledger(p,site):
     if not p.exists():return {'contract':QUEUE,'site':site,'routes':{}}
     if p.is_symlink() or p.stat().st_size>2000000:raise ValueError('invalid-private-ledger')
     x=json.loads(p.read_text())
     if x.get('contract')!=QUEUE or x.get('site')!=site or not isinstance(x.get('routes'),dict):raise ValueError('foreign-ledger')
+    seq=x.get('scheduler_sequence',0)
+    if (type(seq) is not int or seq<0
+        or seq>=SCHEDULER_SEQUENCE_MODULUS):
+        raise ValueError('invalid-family-rotation-sequence')
     return x
+def independently_certified_home(route):
+    # Home EN and translated Home pages already have an independent first-
+    # fold and origin-cache lifecycle. The per-route cache release refuses
+    # them on purpose; never select them for this separate worker.
+    language=route.get('language')
+    path=route.get('path')
+    return (isinstance(language,str) and isinstance(path,str)
+            and path in ('/','/'+language+'/'))
+
 def source_key(cat,r,state,depends_on_listings=False):
     deps=[cat['host'],r['language'],r['path'],r['route_key'],
           str(r.get('revision',0)),str(cat.get('global_generation',0)),
           str(cat.get('listing_generation',0)) if (r['type'] not in ['page','post'] or depends_on_listings) else '',
           str(state.get('css_epoch')),str(state.get('native_breakpoint')),
           str(state.get('critical_css')),str(state.get('runtime_sha',''))]
+    # Original WordPress core category archive body classes use category-ID,
+    # unlike custom taxonomies (term-ID). The historical browser code
+    # rejected genuine core categories and wrote long-lived HOLD receipts.
+    # Change identity for category routes only: retest them immediately
+    # under unchanged WPML, WCML, CSS and WordPress dependency gates.
+    if r['type']=='category':
+        deps.append('core-category-body-class:category-id-v2')
+        if cat['host']=='wayfatours.com':
+            # Change only original core-category CSS source identity;
+            # stale archive negative proofs/cert-ready HOLDs now retry.
+            deps.append('category-native-css:'+str(
+                state.get('source_category_css_policy_sha') or 'absent'))
+    if r['type']=='destinations' and cat['host']=='wayfatours.com':
+        deps.append('destination-native-css:'+str(
+            state.get('source_destination_css_policy_sha') or 'absent'))
     return hashlib.sha256('|'.join(deps).encode()).hexdigest()
 def optimizer_source_key(cat,r,state):
     """Negative browser proof for an exact Elementor+optimizer source.
@@ -77,6 +117,34 @@ def optimizer_source_key(cat,r,state):
         str(state.get('native_breakpoint')),runtime,optimizer,
         ','.join(sorted(state['enabled_currencies'])),
         str(bool(state.get('wcml_multi_currency')))]
+    # The original 378 MU file is a tour-only CSS compile contract. Its
+    # immutable SHA invalidates earlier negative browser claims only for
+    # tours, leaving other source-family certificates untouched.
+    if r['type']=='tours-and-activities' and state.get('source_tour_css_policy_sha'):
+        values.append('tour-css:'+state['source_tour_css_policy_sha'])
+    # The new first-party Source CSS bundler changes private/no-store source
+    # page compilation, including tours and public archives. Historical
+    # no-bundle proofs predate it; invalidate only for staging Source.
+    # Never let this nonce authorize publishing: actual browser QA remains.
+    if (cat['host']=='tours.dev.mad4b.com'
+        and state.get('source_private_css_policy_sha')):
+        values.append('source-private-css:'+state['source_private_css_policy_sha'])
+    # Changing browser egress (Docker NAT -> public Host IP) alters WCML
+    # currency/market and real-world first paint. Only staging Source
+    # must discard bridge-network negative QA claims and remeasure.
+    # Existing exact market/currency certificates retain their own hashes.
+    if cat['host']=='tours.dev.mad4b.com':
+        values.append('source-browser-egress:public-host-network-v1')
+    # Correct only the historical category browser negative-proof cohort.
+    # No destination, tour, property, post, page or archive source is dirty.
+    if r['type']=='category':
+        values.append('core-category-body-class:category-id-v2')
+        if cat['host']=='wayfatours.com':
+            values.append('category-native-css:'+str(
+                state.get('source_category_css_policy_sha') or 'absent'))
+    if r['type']=='destinations' and cat['host']=='wayfatours.com':
+        values.append('destination-native-css:'+str(
+            state.get('source_destination_css_policy_sha') or 'absent'))
     return hashlib.sha256('|'.join(values).encode()).hexdigest()
 
 def order_key(r):
@@ -109,6 +177,10 @@ def choose(cat,state,ledger,now,preferred=None):
             raise ValueError('invalid-source-canary-selection')
         chosen=next((r for r in rows if r['route_key']==preferred),None)
         if chosen is None:raise ValueError('source-canary-route-not-in-catalog')
+        if independently_certified_home(chosen):
+            # A stale source-family suggestion cannot send Home to the
+            # per-route cache-release path. It remains on its own certifier.
+            return None,None
         record=ledger['routes'].get(preferred,{})
         if not isinstance(record,dict):raise ValueError('invalid-source-canary-ledger')
         key=source_key(cat,chosen,state,bool(record.get('depends_on_listings')))
@@ -119,7 +191,7 @@ def choose(cat,state,ledger,now,preferred=None):
         return None,None
     unseen=[];changed=[];retry=[]
     for r in rows:
-        if r['path'] in ['/',('/'+r['language']+'/')]:continue
+        if independently_certified_home(r):continue
         record=ledger['routes'].get(r['route_key'],{})
         if not isinstance(record,dict):raise ValueError('invalid-queue-state-record')
         key=source_key(cat,r,state,bool(record.get('depends_on_listings')))
@@ -186,6 +258,8 @@ def main():
         previous=ledger['routes'].get(route['route_key'],{})
         if actual!=route or source_key(catalog,route,state,bool(previous.get('depends_on_listings')))!=key:
             raise ValueError('stale-catalog-revision')
+        if independently_certified_home(route):
+            raise ValueError('home-owned-by-independent-first-paint-certifier')
         if not rest or rest[0] not in ['certified','hold','unsupported','native_candidate']:raise ValueError('invalid-result')
         status=rest[0]
         # First-party capture preflight may carry a bounded machine-readable
@@ -220,11 +294,15 @@ def main():
         negative_key=(optimizer_source_key(catalog,route,state)
             if status=='hold' and hold_reason=='source_css_bundle_unavailable'
             else None)
+        qa=state.get('qa_policy_sha')
+        if qa is not None and (not isinstance(qa,str) or not re.fullmatch('[a-f0-9]{64}',qa)):
+            raise ValueError('invalid-qa-verifier-source-fingerprint')
         ledger['routes'][route['route_key']]={'source_key':key,'status':status,'failures':failures,
             'depends_on_listings':depends,'attempted_at':now,'retry_after':now+delay,
+            **({'qa_policy_sha':qa} if qa else {}),
             **({'hold_reason':hold_reason} if hold_reason else {}),
             **({'optimizer_source_key':negative_key} if negative_key else {})}
-        ledger['scheduler_sequence']=(int(ledger.get('scheduler_sequence',0))+1)%4
+        ledger['scheduler_sequence']=next_scheduler_sequence(ledger)
         if len(ledger['routes'])>30000:raise ValueError('ledger-memory-cap')
         atom(Path(ledgerfile),ledger)
         print('PUBLIC_CCSS_QUEUE_RECORDED',route['language'],route['path'],status,failures)

@@ -1,0 +1,40 @@
+name: MAD4B Original Native CSS Listing Requalification QA
+on:
+  push:
+    paths:
+      - "ops/dynamic-critical-css-20261116/public-source-families.py"
+      - "ops/dynamic-critical-css-20261116/public-route-queue.py"
+      - "ops/dynamic-critical-css-20261116/public-v2-family-canary.py"
+      - "ops/dynamic-critical-css-20261116/public-template-variant-index.py"
+      - "ops/dynamic-critical-css-20261116/tests/test-native-recovery-admission.py"
+      - ".github/workflows/mad4b-native-listing-requalification-qa.yml"
+  pull_request:
+    paths:
+      - "ops/dynamic-critical-css-20261116/public-source-families.py"
+      - "ops/dynamic-critical-css-20261116/public-route-queue.py"
+      - "ops/dynamic-critical-css-20261116/public-v2-family-canary.py"
+      - "ops/dynamic-critical-css-20261116/public-template-variant-index.py"
+      - "ops/dynamic-critical-css-20261116/tests/test-native-recovery-admission.py"
+      - ".github/workflows/mad4b-native-listing-requalification-qa.yml"
+concurrency:
+  group: mad4b-native-listing-recert-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  original-native-requalification:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Native source regression, Chrome-proof admission and family fairness
+        run: |
+          set -euo pipefail
+          root=ops/dynamic-critical-css-20261116
+          python3 -m py_compile "$root/public-source-families.py" "$root/public-route-queue.py" "$root/public-v2-family-canary.py"
+          python3 "$root/tests/test-native-recovery-admission.py"
+          python3 "$root/tests/test-family-warm-fairness.py" "$root"
+          python3 "$root/tests/test-autonomous-family-sequence.py" "$root"
