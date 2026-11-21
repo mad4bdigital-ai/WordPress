@@ -492,6 +492,11 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
         $statuses=[];foreach($nativeRates as $r){$s=(string)get_post_status($r);$statuses[$s]=($statuses[$s]??0)+1;}
         $context=class_exists('MAD4B_Package_Components_Editor_Context_V1',false)
             ?MAD4B_Package_Components_Editor_Context_V1::inspect($tour):[];
+        $nativeGuard=class_exists('MAD4B_Package_Stage_Rate_Guard_V1',false)
+            ?MAD4B_Package_Stage_Rate_Guard_V1::review($tour,$tierId)
+            :['applies'=>true,'ready'=>false,
+              'blockers'=>['native_package_rate_guard_unavailable'],
+              'contract'=>'mad4b.package-rate-stage-guard.unavailable'];
         return [
             'contract'=>'mad4b.package-cost-readiness.v1',
             'tour_id'=>$tour,'tour_title'=>wp_strip_all_tags(html_entity_decode(get_the_title($tour),ENT_QUOTES,'UTF-8')),
@@ -510,6 +515,13 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
                 'tour_rate_relation'=>'related_tour_id'],
             'summary'=>$stats,
             'unit_sources_are_editorial_only'=>true,
+            'native_generator_stage_admission'=>[
+                'contract'=>(string)($nativeGuard['contract']??''),
+                'ready'=>($nativeGuard['ready']??false)===true,
+                'blockers'=>array_values((array)($nativeGuard['blockers']??[])),
+                'date_window_selected'=>false,
+                'rate_generation_attempted'=>false,
+            ],
             'destination_validation'=>'per_stage_exact_taxonomy_plus_documented_cairo_giza_scope',
             'stage_pricing_authority'=>'separate_stage_key_and_date_occupancy',
             'candidate_exclusions_are_not_priced'=>true,
