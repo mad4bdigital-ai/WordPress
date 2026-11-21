@@ -8,6 +8,8 @@ on:
       - 'wp-content/plugins/mcp-adapter.zip'
       - 'wp-content/plugins/*.zip'
       - 'tools/capture-functional-gap-contract-evidence.py'
+      - 'tools/forward_only_cp_zip_verifier.py'
+      - 'governance/release-parity/qa31-pr1014-native-forward-only-source-review-20261121.json'
       - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
   workflow_dispatch:
 
@@ -173,6 +175,13 @@ jobs:
           sha256sum dist/mad4b-site-control-plane.zip > dist/mad4b-site-control-plane.zip.sha256
           printf '%s\n' '${{ github.event.pull_request.head.sha || github.sha }}' > dist/SOURCE_HEAD.txt
           printf '%s\n' "$embedded_sha" > dist/MCP_ADAPTER_SHA256.txt
+
+      - name: Verify reviewed guard bytes in the built ZIP (fail closed)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/forward_only_cp_zip_verifier.py --self-test
+          python3 tools/forward_only_cp_zip_verifier.py --archive dist/mad4b-site-control-plane.zip
 
       - name: Verify embedded zero-touch functional-gap evidence
         shell: bash
