@@ -77,4 +77,25 @@ for invalid in ('bad',[key(9),key(9)],['garbage'],[key(i) for i in range(65)]):
  except (ValueError,TypeError):pass
  else:raise AssertionError('unsafe regression lane accepted')
 check('malformed, duplicate or oversized candidate lane is rejected',True)
+# Regression: merely selecting the recovery route every fourth attempt
+# MUST NOT starve a stable subset of family members over repeated cycles.
+for near_mode in (False,True):
+    families=[key(100+n) for n in range(55)]
+    recovery=[key(300),key(301),key(302),key(303)]
+    near_families=[families[0]] if near_mode else []
+    fair={'next_canary_route_keys':families,
+          'next_canary_route_key':families[0],
+          'near_qualified_route_keys':near_families,
+          'next_individual_css_route_keys':[key(400)],
+          'next_individual_css_route_key':key(400),
+          'next_verifier_only_recheck_route_key':key(401),
+          'recoverable_listing_generation_route_keys':recovery}
+    chosen=[m.plan_next_css_issuance(fair,i) for i in range(2000)]
+    check(('near+recovery' if near_mode else 'recovery-only')+
+        ' full 55-family coverage across 2000 admissions',
+        set(families).issubset(set(chosen)))
+    check(('near+recovery' if near_mode else 'recovery-only')+
+        ' all four stale certificates eventually selected',
+        set(recovery).issubset(set(chosen)))
+
 print('PASS ALL',ok,'bounded recovery lane invariants')

@@ -690,7 +690,12 @@ def plan_next_css_issuance(report,sequence,verified_drift_route_key=None):
         if family_lane:
             consumed_retry=(sequence+7)//8 if retry else 0
             consumed_near=(sequence+2)//4 if near_lane else 0
-            family_index=sequence-sequence//4-consumed_retry-consumed_near
+            # Recovery occupies the existing near-family 1-in-4 slot.
+            # When no near family exists, discount that same slot explicitly
+            # or the modulo pattern systematically skips 2/5 of families.
+            consumed_recovery=(sequence+2)//4 if recovery_lane and not near_lane else 0
+            family_index=(sequence-sequence//4-consumed_retry
+                          -consumed_near-consumed_recovery)
             return family_lane[family_index%len(family_lane)]
         return individual_lane[0] if individual_lane else retry
     if retry and (not family and not individual or sequence%4==0):
