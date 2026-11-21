@@ -563,6 +563,8 @@ final class MAD4B_Accommodation_Weight_Policies_V1 {
             $out=self::effective($data);
         }elseif($mode==='inventory'){
             $out=self::inventory();
+        }elseif(str_starts_with($mode,'margin_')){
+            $out=MAD4B_Accommodation_Stay_Margin_V1::dispatch($mode);
         }elseif($mode==='preview'){
             $fields=['property_id','unit_id','occupancy','room_grade',
                 'price_unit','currency','base_amount','origin'];
@@ -611,3 +613,445 @@ add_action('wp_ajax_'.MAD4B_Accommodation_Weight_Policies_V1::ACTION,
 add_action('admin_enqueue_scripts',
     [MAD4B_Accommodation_Weight_Policies_V1::class,'assets'],92);
 endif;
+
+
+/**
+ * Native accommodation financial policy: stay-length target margin or markup.
+ * Same original scope identities and original JetEngine pricing workspace;
+ * separate financial source keys to prevent double application with room weights.
+ */
+if(!class_exists('MAD4B_Accommodation_Stay_Margin_V1',false)){
+final class MAD4B_Accommodation_Stay_Margin_V1 {
+    public const CONTRACT='mad4b.accommodation-stay-margin.v1';
+    public const GLOBAL='mad4b_accommodation_stay_margin_global_v1';
+    public const META='_mad4b_accommodation_stay_margin_v1';
+    private const SCOPES=['global','property_type','destination','property','unit','rate'];
+    public static function allowed():bool {
+        return MAD4B_Accommodation_Weight_Policies_V1::can();
+    }
+    private static function number($raw):int {
+        if(!is_scalar($raw)||is_bool($raw))return 0;
+        $n=filter_var($raw,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+        return $n===false?0:(int)$n;
+    }
+    private static function tax(string $scope):?string {
+        return match($scope){'property_type'=>'property-types','destination'=>'destinations',default=>null};
+    }
+    public static function authorize(string $scope,int $id,bool $write=false) {
+        if(!self::allowed())return new WP_Error('stay_margin_forbidden');
+        if(!in_array($scope,self::SCOPES,true))return new WP_Error('stay_margin_scope_invalid');
+        if($scope!=='rate')
+            return MAD4B_Accommodation_Weight_Policies_V1::authorize($scope,$id,$write);
+        if($id<1 || get_post_type($id)!=='property-rates' ||
+           !in_array(get_post_status($id),['publish','draft','pending'],true))
+            return new WP_Error('stay_margin_rate_invalid');
+        if(!current_user_can('edit_post',$id))return new WP_Error('stay_margin_rate_access_denied');
+        return true;
+    }
+    private static function defaults():array {
+        return ['schema'=>1,'mode'=>'preview_only',
+            'pricing_rule_kind'=>'inherit','bands'=>[]];
+    }
+    public static function validate($raw) {
+        if(!is_array($raw)||array_diff(array_keys($raw),
+            ['schema','mode','pricing_rule_kind','bands'])||
+           ($raw['schema']??null)!==1||
+           ($raw['mode']??null)!=='preview_only')
+            return new WP_Error('stay_margin_schema_invalid');
+        $kind=$raw['pricing_rule_kind']??null;
+        if(!in_array($kind,['inherit','target_margin_percent','markup_percent'],true))
+            return new WP_Error('stay_margin_kind_invalid');
+        $bands=$raw['bands']??null;
+        if(!is_array($bands)||!array_is_list($bands)||count($bands)>24)
+            return new WP_Error('stay_margin_bands_invalid');
+        if(($kind==='inherit'&&$bands)||($kind!=='inherit'&&!$bands))
+            return new WP_Error('stay_margin_kind_bands_mismatch');
+        $out=[];
+        foreach($bands as $band){
+            if(!is_array($band)||array_diff(array_keys($band),
+                  ['min_nights','max_nights','percent']))
+                return new WP_Error('stay_margin_band_fields_invalid');
+            $min=filter_var($band['min_nights']??null,FILTER_VALIDATE_INT,
+                ['options'=>['min_range'=>1,'max_range'=>365]]);
+            $max=filter_var($band['max_nights']??null,FILTER_VALIDATE_INT,
+                ['options'=>['min_range'=>1,'max_range'=>365]]);
+            if($min===false||$max===false||$min===null||$max===null||$min>$max)
+                return new WP_Error('stay_margin_night_range_invalid');
+            $percent=$band['percent']??null;
+            if(!is_scalar($percent)||is_bool($percent)||
+               !preg_match('/^(?:0|[1-9][0-9]{0,2})(?:\.[0-9]{1,2})?$/D',(string)$percent))
+                return new WP_Error('stay_margin_percent_invalid');
+            $n=(float)$percent;
+            $limit=$kind==='target_margin_percent'?80:300;
+            if(!is_finite($n)||$n>$limit)
+                return new WP_Error('stay_margin_percent_out_of_range');
+            $out[]=['min_nights'=>(int)$min,'max_nights'=>(int)$max,
+                'percent'=>number_format($n,2,'.','')];
+        }
+        usort($out,static fn($a,$b)=>$a['min_nights']<=>$b['min_nights']);
+        $prev=0;
+        foreach($out as $band){
+            if($band['min_nights']<=$prev)
+                return new WP_Error('stay_margin_overlapping_bands');
+            $prev=$band['max_nights'];
+        }
+        return ['schema'=>1,'mode'=>'preview_only',
+            'pricing_rule_kind'=>$kind,'bands'=>$out];
+    }
+    private static function storage(string $scope,int $id):array {
+        global $wpdb;
+        if($scope==='global'){
+            $row=$wpdb->get_row($wpdb->prepare(
+              "SELECT option_id AS rowid,option_value AS raw FROM {$wpdb->options} WHERE option_name=%s",self::GLOBAL),ARRAY_A);
+            return ['table'=>$wpdb->options,'row'=>$row?:null,
+                'kind'=>'option','id_field'=>'option_id','value_field'=>'option_value'];
+        }
+        $isTerm=self::tax($scope)!==null;
+        $table=$isTerm?$wpdb->termmeta:$wpdb->postmeta;
+        $parent=$isTerm?'term_id':'post_id';
+        $rows=$wpdb->get_results($wpdb->prepare(
+          "SELECT meta_id AS rowid,meta_value AS raw FROM {$table} WHERE {$parent}=%d AND meta_key=%s LIMIT 2",
+          $id,self::META),ARRAY_A);
+        return ['table'=>$table,'row'=>count($rows)===1?$rows[0]:null,
+            'duplicate'=>count($rows)>1,'kind'=>$isTerm?'term':'post',
+            'id_field'=>'meta_id','value_field'=>'meta_value'];
+    }
+    private static function raw(string $scope,int $id) {
+        $s=self::storage($scope,$id);
+        if(!empty($s['duplicate']))return new WP_Error('stay_margin_duplicate_meta');
+        if(!$s['row'])return null;
+        return self::validate(maybe_unserialize($s['row']['raw']));
+    }
+    public static function read(string $scope,int $id=0) {
+        $auth=self::authorize($scope,$id,false);
+        if(is_wp_error($auth))return $auth;
+        $s=self::storage($scope,$id);
+        if(!empty($s['duplicate']))return new WP_Error('stay_margin_duplicate_meta');
+        $raw=$s['row']['raw']??null;
+        $rev=hash('sha256',$raw===null?'STAY_MARGIN_SCOPE_ABSENT_V1':$raw);
+        $v=$raw===null?self::defaults():self::validate(maybe_unserialize($raw));
+        if(is_wp_error($v))return $v;
+        return ['policy'=>$v,'revision'=>$rev,
+            'configured'=>$raw!==null&&$v['pricing_rule_kind']!=='inherit',
+            'record_present'=>$raw!==null,
+            'can_write'=>self::authorize($scope,$id,true)===true];
+    }
+    public static function save(string $scope,int $id,$policy,string $revision) {
+        $auth=self::authorize($scope,$id,true);
+        if(is_wp_error($auth))return $auth;
+        if(!preg_match('/^[a-f0-9]{64}$/D',$revision))
+            return new WP_Error('stay_margin_revision_required');
+        $v=self::validate($policy);if(is_wp_error($v))return $v;
+        $s=self::storage($scope,$id);
+        if(!empty($s['duplicate']))return new WP_Error('stay_margin_duplicate_meta');
+        $raw=$s['row']['raw']??null;
+        $actual=hash('sha256',$raw===null?'STAY_MARGIN_SCOPE_ABSENT_V1':$raw);
+        if(!hash_equals($actual,$revision))
+            return new WP_Error('stay_margin_stale_editor_revision');
+        $next=maybe_serialize($v);
+        if($raw===$next)
+            return ['written'=>false,'revision'=>$actual,'policy'=>$v,
+                'prices_modified'=>false,'rates_modified'=>false];
+        global $wpdb;
+        if($raw!==null){
+            $affected=$wpdb->query($wpdb->prepare(
+              "UPDATE {$s['table']} SET {$s['value_field']}=%s WHERE {$s['id_field']}=%d AND {$s['value_field']}=%s",
+              $next,(int)$s['row']['rowid'],$raw));
+            if($affected!==1)return new WP_Error('stay_margin_concurrent_write_rejected');
+        }elseif($scope==='global'){
+            if(!add_option(self::GLOBAL,$v,'',false))
+                return new WP_Error('stay_margin_option_create_conflict');
+        }elseif(!add_metadata($s['kind'],$id,self::META,$v,true))
+            return new WP_Error('stay_margin_meta_create_conflict');
+        if($scope==='global'){
+            wp_cache_delete(self::GLOBAL,'options');
+            wp_cache_delete('notoptions','options');
+            wp_cache_delete('alloptions','options');
+        }else wp_cache_delete($id,$s['kind'].'_meta');
+        $read=self::read($scope,$id);
+        if(is_wp_error($read)||$read['policy']!==$v)
+            return new WP_Error('stay_margin_readback_failed');
+        return ['written'=>true,'revision'=>$read['revision'],
+            'policy'=>$v,'configured'=>$read['configured'],
+            'prices_modified'=>false,'rates_modified'=>false,
+            'checkout_modified'=>false];
+    }
+    private static function relation(int $property,int $unit,int $rate) {
+        if(get_post_type($property)!=='properties')
+            return new WP_Error('stay_margin_property_invalid');
+        $p=MAD4B_Accommodation_Weight_Policies_V1::authorize('property',$property);
+        if(is_wp_error($p))return $p;
+        if($unit>0){
+            $p=MAD4B_Accommodation_Weight_Policies_V1::authorize('unit',$unit);
+            if(is_wp_error($p))return $p;
+            if(!function_exists('jet_engine'))
+                return new WP_Error('stay_margin_relation_provider_missing');
+            $relation=jet_engine()->relations->get_active_relations()[223]??null;
+            if(!$relation)return new WP_Error('stay_margin_relation_provider_missing');
+            $matches=0;
+            foreach((array)$relation->get_children($property) as $child){
+                $c=(int)(is_array($child)?($child['child_object_id']??0):
+                    (is_object($child)?($child->child_object_id??0):$child));
+                if($c===$unit)$matches++;
+            }
+            if($matches!==1)return new WP_Error('stay_margin_wrong_property_unit');
+        }
+        if($rate>0){
+            $p=self::authorize('rate',$rate);
+            if(is_wp_error($p))return $p;
+            $relatedProperty=(int)get_post_meta($rate,'prop_related_property_id',true);
+            $relatedUnit=(int)get_post_meta($rate,'prop_related_unit_id',true);
+            if($relatedProperty!==$property||$relatedUnit!==$unit)
+                return new WP_Error('stay_margin_rate_relation_mismatch');
+        }
+        return true;
+    }
+    private static function applicable(array $policy,int $nights):?array {
+        if($policy['pricing_rule_kind']==='inherit')return null;
+        foreach($policy['bands'] as $band)
+            if($band['min_nights']<=$nights && $nights<=$band['max_nights'])
+                return $band;
+        return null;
+    }
+    private static function terms(int $property,string $taxonomy,string $scope,int $nights) {
+        $ids=wp_get_object_terms($property,$taxonomy,['fields'=>'ids']);
+        if(is_wp_error($ids))return $ids;
+        $out=[];
+        foreach($ids as $id){
+            $policy=self::raw($scope,(int)$id);
+            if(is_wp_error($policy))return $policy;
+            if($policy && ($band=self::applicable($policy,$nights))){
+                $term=get_term((int)$id,$taxonomy);
+                $out[]=['scope'=>$scope,'target_id'=>(int)$id,
+                    'label'=>$term instanceof WP_Term?$term->name:'#'.$id,
+                    'pricing_rule_kind'=>$policy['pricing_rule_kind'],
+                    'band'=>$band];
+            }
+        }
+        if(count($out)>1)return new WP_Error('stay_margin_ambiguous_'.$scope);
+        return $out[0]??null;
+    }
+    public static function resolve(int $property,int $unit,int $rate,int $nights) {
+        if(!self::allowed())return new WP_Error('stay_margin_forbidden');
+        if($nights<1||$nights>365)return new WP_Error('stay_margin_nights_invalid');
+        $linked=self::relation($property,$unit,$rate);
+        if(is_wp_error($linked))return $linked;
+        $chain=[];$winner=null;
+        $add=static function(string $scope,int $id,string $label)use($nights,&$winner,&$chain) {
+            $policy=self::raw($scope,$id);
+            if(is_wp_error($policy))return $policy;
+            if(!$policy)return true;
+            $band=self::applicable($policy,$nights);
+            $chain[]=['scope'=>$scope,'target_id'=>$id,'label'=>$label,
+                'configured'=>true,'match'=>$band!==null,'kind'=>$policy['pricing_rule_kind'],
+                'bands'=>count($policy['bands'])];
+            if($band!==null)
+                $winner=['scope'=>$scope,'target_id'=>$id,'label'=>$label,
+                    'pricing_rule_kind'=>$policy['pricing_rule_kind'],'band'=>$band];
+            return true;
+        };
+        $ok=$add('global',0,'Global');
+        if(is_wp_error($ok))return $ok;
+        foreach([['property-types','property_type'],['destinations','destination']] as [$taxonomy,$scope]){
+            $row=self::terms($property,$taxonomy,$scope,$nights);
+            if(is_wp_error($row))return $row;
+            if($row!==null){
+                $ok=$add($scope,(int)$row['target_id'],$row['label']);
+                if(is_wp_error($ok))return $ok;
+            }
+        }
+        $ok=$add('property',$property,get_the_title($property));
+        if(is_wp_error($ok))return $ok;
+        if($unit){
+            $ok=$add('unit',$unit,get_the_title($unit));
+            if(is_wp_error($ok))return $ok;
+        }
+        if($rate){
+            $ok=$add('rate',$rate,get_the_title($rate));
+            if(is_wp_error($ok))return $ok;
+        }
+        return ['contract'=>self::CONTRACT,'status'=>$winner?'effective_preview_rule':'margin_not_configured',
+            'property_id'=>$property,'unit_id'=>$unit?:null,'rate_id'=>$rate?:null,
+            'nights'=>$nights,'effective'=>$winner,'source_chain'=>$chain,
+            'supplier_authority'=>false,'rates_modified'=>false,'checkout_ready'=>false];
+    }
+    public static function preview(array $input) {
+        $property=self::number($input['property_id']??0);
+        $unit=self::number($input['unit_id']??0);
+        $rate=self::number($input['rate_id']??0);
+        $nights=filter_var($input['nights']??null,FILTER_VALIDATE_INT,
+           ['options'=>['min_range'=>1,'max_range'=>365]]);
+        if(!$property||$nights===false||$nights===null)
+            return new WP_Error('stay_margin_preview_input_invalid');
+        $resolved=self::resolve($property,$unit,$rate,(int)$nights);
+        if(is_wp_error($resolved))return $resolved;
+        $kind=$input['source_kind']??'manual_cost_reference';
+        if(!in_array($kind,['manual_cost_reference','unapproved_sheet_cost','explicit_selling_price'],true))
+            return new WP_Error('stay_margin_source_kind_invalid');
+        if($rate>0){
+            $priceRole=(string)get_post_meta($rate,'mad4b_rate_price_kind_v1',true);
+            // A published selling Rate (including legacy rate without a cost flag)
+            // must NOT be priced again by a nights margin.
+            if($priceRole!=='cost' && get_post_status($rate)==='publish')
+                return ['contract'=>self::CONTRACT,'status'=>'native_selling_rate_takes_precedence',
+                    'effective_policy'=>$resolved,'proposed_sell_price'=>null,
+                    'price_written'=>false,'checkout_ready'=>false];
+        }
+        if($kind==='explicit_selling_price')
+            return ['contract'=>self::CONTRACT,'status'=>'native_selling_price_takes_precedence',
+                'effective_policy'=>$resolved,'proposed_sell_price'=>null,
+                'price_written'=>false,'checkout_ready'=>false];
+        $raw=$input['unit_cost_per_night']??null;
+        if(!is_scalar($raw)||is_bool($raw)||
+           !preg_match('/^(?:0|[1-9][0-9]{0,8})(?:\.[0-9]{1,4})?$/D',(string)$raw)||
+           (float)$raw<=0)
+            return new WP_Error('stay_margin_cost_invalid');
+        $currency=strtoupper((string)($input['currency']??''));
+        if(!preg_match('/^[A-Z]{3}$/D',$currency))
+            return new WP_Error('stay_margin_currency_invalid');
+        $basis=$input['cost_basis']??'per_room_night';
+        if(!in_array($basis,['per_room_night','per_cabin_night','per_person_night'],true))
+            return new WP_Error('stay_margin_cost_basis_invalid');
+        $rule=$resolved['effective'];
+        if(!$rule)
+            return ['contract'=>self::CONTRACT,'status'=>'margin_not_configured',
+                'effective_policy'=>$resolved,'proposed_sell_price'=>null,
+                'price_written'=>false,'checkout_ready'=>false];
+        $cost=round((float)$raw*(int)$nights,4);
+        $percent=(float)$rule['band']['percent'];
+        if($rule['pricing_rule_kind']==='target_margin_percent')
+            $selling=round($cost/(1-$percent/100),4);
+        else $selling=round($cost*(1+$percent/100),4);
+        $profit=round($selling-$cost,4);
+        return ['contract'=>self::CONTRACT,'status'=>'estimated_margin_from_unapproved_cost',
+            'nights'=>(int)$nights,'currency'=>$currency,'cost_basis'=>$basis,
+            'unit_cost_per_night'=>number_format((float)$raw,4,'.',''),
+            'total_cost'=>number_format($cost,4,'.',''),
+            'pricing_rule_kind'=>$rule['pricing_rule_kind'],
+            'requested_percent'=>$rule['band']['percent'],
+            'actual_gross_margin_percent'=>number_format(100*$profit/$selling,2,'.',''),
+            'actual_markup_percent'=>number_format(100*$profit/$cost,2,'.',''),
+            'estimated_profit'=>number_format($profit,4,'.',''),
+            'proposed_sell_price'=>number_format($selling,4,'.',''),
+            'effective_policy'=>$resolved,'supplier_cost_approved'=>false,
+            'season_verified'=>false,'tax_included'=>false,'meals_verified'=>false,
+            'inventory_verified'=>false,'rate_written'=>false,
+            'price_written'=>false,'checkout_ready'=>false];
+    }
+    public static function inventory() {
+        if(!self::allowed())return new WP_Error('stay_margin_forbidden');
+        global $wpdb;
+        $out=[];$seen=[];
+        $add=static function(string $scope,int $id,string $label)use(&$out,&$seen){
+            $key=$scope.':'.$id;
+            if(isset($seen[$key]))return;
+            $seen[$key]=true;
+            $read=self::read($scope,$id);
+            if(is_wp_error($read)||!$read['record_present'])return;
+            $out[]=['scope'=>$scope,'target_id'=>$id,'label'=>$label,
+                'configured'=>$read['configured'],'can_write'=>$read['can_write'],
+                'pricing_rule_kind'=>$read['policy']['pricing_rule_kind'],
+                'bands'=>$read['policy']['bands']];
+        };
+        $add('global',0,'Global');
+        $terms=$wpdb->get_results($wpdb->prepare(
+          "SELECT m.term_id,t.name,tt.taxonomy FROM {$wpdb->termmeta} m
+           INNER JOIN {$wpdb->terms} t ON t.term_id=m.term_id
+           INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_id=m.term_id
+           WHERE m.meta_key=%s AND tt.taxonomy IN ('property-types','destinations')
+           ORDER BY m.meta_id DESC LIMIT 201",self::META),ARRAY_A);
+        foreach($terms as $r){
+            $scope=$r['taxonomy']==='property-types'?'property_type':'destination';
+            $add($scope,(int)$r['term_id'],$r['name']);
+        }
+        $posts=$wpdb->get_results($wpdb->prepare(
+          "SELECT m.post_id,p.post_title,p.post_type FROM {$wpdb->postmeta} m
+           INNER JOIN {$wpdb->posts} p ON p.ID=m.post_id
+           WHERE m.meta_key=%s AND p.post_type IN ('properties','units','property-rates')
+           AND p.post_status IN ('publish','draft','pending')
+           ORDER BY m.meta_id DESC LIMIT 201",self::META),ARRAY_A);
+        foreach($posts as $r){
+            $id=(int)$r['post_id'];
+            if(!current_user_can('edit_post',$id))continue;
+            $scope=match($r['post_type']){'units'=>'unit','property-rates'=>'rate',default=>'property'};
+            $add($scope,$id,$r['post_title']);
+        }
+        $active=count(array_filter($out,static fn($r)=>$r['configured']));
+        return ['contract'=>self::CONTRACT,'status'=>'margin_policy_inventory_readonly',
+            'items'=>array_slice($out,0,200),'configured_count'=>$active,
+            'inherit_only_count'=>count($out)-$active,
+            'truncated'=>count($terms)>=201||count($posts)>=201||count($out)>200,
+            'commercial_authority'=>false];
+    }
+    public static function search(string $scope,string $term):array {
+        if(!self::allowed()||!in_array($scope,self::SCOPES,true)||$scope==='global')return [];
+        $term=trim(sanitize_text_field($term));
+        if(mb_strlen($term)<2)return [];
+        if(($tax=self::tax($scope))){
+            $terms=get_terms(['taxonomy'=>$tax,'hide_empty'=>false,
+                'search'=>$term,'number'=>25]);
+            $out=[];
+            if(!is_wp_error($terms))foreach($terms as $t)
+                if($t instanceof WP_Term)$out[]=['id'=>(int)$t->term_id,'title'=>$t->name];
+            return $out;
+        }
+        $postType=match($scope){'property'=>'properties','unit'=>'units','rate'=>'property-rates'};
+        $q=['post_type'=>$postType,'post_status'=>['publish','draft'],
+            'posts_per_page'=>25,'fields'=>'ids','suppress_filters'=>true,'no_found_rows'=>true];
+        if(ctype_digit($term))$q['post__in']=[(int)$term];
+        else $q['s']=$term;
+        $out=[];
+        foreach(get_posts($q) as $id){
+            $id=(int)$id;
+            if(!current_user_can('edit_post',$id))continue;
+            $r=['id'=>$id,'title'=>get_the_title($id)];
+            if($scope==='rate'){
+                $r['property_id']=(int)get_post_meta($id,'prop_related_property_id',true);
+                $r['unit_id']=(int)get_post_meta($id,'prop_related_unit_id',true);
+            }
+            if($scope==='unit'){
+                $result=MAD4B_Accommodation_Weight_Policies_V1::search('unit',(string)$id);
+                foreach($result as $item)if($item['id']===$id){
+                    $r['property_id']=$item['related_property_id']??0;break;
+                }
+            }
+            $out[]=$r;
+        }
+        return $out;
+    }
+    /** Same authenticated native Pricing Controls AJAX endpoint; no new route. */
+    public static function dispatch(string $mode) {
+        if(!self::allowed())return new WP_Error('stay_margin_forbidden');
+        $scope=sanitize_key((string)($_POST['scope']??'global'));
+        $id=self::number($_POST['target_id']??0);
+        if($mode==='margin_inventory')return self::inventory();
+        if($mode==='margin_search'){
+            $q=sanitize_text_field(wp_unslash((string)($_POST['search']??'')));
+            if(strlen($q)>95)return new WP_Error('stay_margin_search_too_long');
+            return ['items'=>self::search($scope,$q)];
+        }
+        if($mode==='margin_load')return self::read($scope,$id);
+        if($mode==='margin_save'){
+            if(!isset($_POST['policy'])||!is_string($_POST['policy'])||
+               strlen($_POST['policy'])>4600)return new WP_Error('stay_margin_payload_invalid');
+            $p=json_decode(wp_unslash($_POST['policy']),true);
+            $revision=sanitize_text_field((string)($_POST['revision']??''));
+            return self::save($scope,$id,$p,$revision);
+        }
+        $keys=['property_id','unit_id','rate_id','nights','unit_cost_per_night',
+            'currency','cost_basis','source_kind'];
+        $input=[];
+        foreach($keys as $key)if(isset($_POST[$key])&&is_scalar($_POST[$key]))
+            $input[$key]=sanitize_text_field(wp_unslash((string)$_POST[$key]));
+        $property=self::number($input['property_id']??0);
+        $unit=self::number($input['unit_id']??0);
+        $rate=self::number($input['rate_id']??0);
+        $nights=filter_var($input['nights']??0,FILTER_VALIDATE_INT,
+            ['options'=>['min_range'=>1,'max_range'=>365]]);
+        if(!$property||$nights===false)return new WP_Error('stay_margin_inputs_invalid');
+        if($mode==='margin_effective')return self::resolve($property,$unit,$rate,(int)$nights);
+        if($mode==='margin_preview')return self::preview($input);
+        return new WP_Error('stay_margin_mode_unknown');
+    }
+}
+}
