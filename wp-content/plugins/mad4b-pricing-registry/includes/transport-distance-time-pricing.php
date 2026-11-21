@@ -564,6 +564,17 @@ final class MAD4B_Transport_Distance_Time_V1 {
  public static function catalog():array {
   $slugs=['cairo','aswan-gov','luxor','hurghada','marsa-alam',
    'abu-simbel','edfu-city','kom-ombo-city'];
+  // Keep the original origin cities, discover every verified route target.
+  // Do not limit the draft advisor to a hard-coded eight-term sample.
+  if(class_exists('MAD4B_Transport_Tour_Rate_Routing_V1')){
+   $evidence=MAD4B_Transport_Tour_Rate_Routing_V1::source();
+   foreach(($evidence['route']['entries']??[]) as $item){
+    if(is_string($item['origin_slug']??null))$slugs[]=$item['origin_slug'];
+    foreach((array)($item['dest_slugs']??[]) as $target)
+     if(is_string($target))$slugs[]=$target;
+   }
+  }
+  $slugs=array_values(array_unique($slugs));
   $terms=[];
   foreach($slugs as $slug){
    $t=get_term_by('slug',$slug,'destinations');
