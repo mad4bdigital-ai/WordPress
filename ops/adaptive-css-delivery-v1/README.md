@@ -66,3 +66,11 @@ The site-owned hourly REST-health option exposes the conservative p75 histogram 
 
 ## Exactly-once guarded Wayfa schema activation
 A root-owned one-time cron entry is installed for the production RUM schema initialization only; it checks the original host CPU budget and acquires the shared WordPress CSS worker lock. It verifies the exact enrolled company, checksums of the PHP/JS source, WP schema readback, and the observe-mode sample basis points. On success it saves a root receipt and disables itself. Any non-resource failure disables future attempts. The configuration expires after 24h. This task **does not** run CSS or Chromium, purge FastCGI, or enable a public canary. It is a schema/observe enrollment and not a proof of CSS source authority.
+
+
+## Source-fresh telemetry token
+The v2 short-lived HMAC proof binds the actual site, route SHA, variant SHA,
+device, CSS epoch, JetEngine listing generation, Elementor global generation
+and timestamp. Both generations are re-checked on every RUM POST against the
+current WordPress source; a stale HTML token fails closed on source changes.
+Previously cached v1 tokens are rejected and can simply skip observations.

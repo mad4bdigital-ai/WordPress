@@ -89,7 +89,8 @@ final class MAD4B_Adaptive_CSS_RUM_V1 {
             ||$globalGeneration<0||$globalGeneration>1000000000)return null;
         $variant=hash('sha256',implode('|',['v2',$route,$device,$epoch,
               $globalGeneration,$listingGeneration,$modified]));
-        return [$site,$route,$variant,$device,(string)$epoch];
+        return [$site,$route,$variant,$device,(string)$epoch,
+                (string)$listingGeneration,(string)$globalGeneration];
     }
     public static function signed_proof(array $fields,int $created):string {
         $head=implode('|',[...$fields,(string)$created]);
@@ -102,17 +103,21 @@ final class MAD4B_Adaptive_CSS_RUM_V1 {
         $raw=base64_decode(strtr($token,'-_','+/'),true);
         if (!is_string($raw))return null;
         $v=explode('|',$raw);
-        if (count($v)!==7)return null;
-        [$site,$route,$variant,$device,$epoch,$issued,$mac]=$v;
+        if (count($v)!==9)return null;
+        [$site,$route,$variant,$device,$epoch,$listing,$global,$issued,$mac]=$v;
         if ($site!==self::site()||!preg_match('/^[a-f0-9]{64}$/D',$route)
             ||!preg_match('/^[a-f0-9]{64}$/D',$variant)
             ||!in_array($device,['mobile','desktop'],true)
             ||!preg_match('/^(0|[1-9][0-9]{0,9})$/D',$epoch)
             ||!preg_match('/^[0-9]{10}$/D',$issued)
             ||!preg_match('/^[a-f0-9]{64}$/D',$mac)
+            ||!preg_match('/^(0|[1-9][0-9]{0,9})$/D',$listing)
+            ||!preg_match('/^(0|[1-9][0-9]{0,9})$/D',$global)
             ||(int)$epoch!==(int)get_option('mad4b_css_ai_epoch_v1',0)
+            ||(int)$listing!==(int)get_option('mad4b_ccss_listing_generation_v1',0)
+            ||(int)$global!==(int)get_option('mad4b_ccss_global_generation_v1',0)
             ||(int)$issued>time()+120||time()-(int)$issued>7200)return null;
-        if (!hash_equals(hash_hmac('sha256',implode('|',array_slice($v,0,6)),
+        if (!hash_equals(hash_hmac('sha256',implode('|',array_slice($v,0,8)),
                     wp_salt('secure_auth')),$mac))return null;
         return ['site'=>$site,'route'=>$route,'variant'=>$variant,'device'=>$device];
     }
