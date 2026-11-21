@@ -129,7 +129,7 @@ function renderReport(data){
       const heading=el('strong','',property.title || ('Property #'+property.id));
       const sub=el('span','',
         String(property.native_units_linked||0)+' units · '+String(property.unit_capacity_known||0)+' occupancy known · '+
-        String(property.unit_cost_sources||0)+' cost sources');
+        String(property.unit_cost_fields||0)+' cost fields entered');
       sum.append(heading,sub);
       block.append(sum);
       const body=el('div','mad4b-pcl-property-body');
@@ -158,7 +158,7 @@ function renderReport(data){
             cell,
             el('td','',unit.capacity!==null?String(unit.capacity):'Missing'),
             el('td','',unit.available?'Marked available':'Not available'),
-            el('td','',unit.verified_unit_cost_source?'Cost field entered, verify receipt':'Missing')
+            el('td','',unit.declared_unit_cost_field?'Declared cost field (not approved)':'Missing')
           ]));
         }
         table.append(tbody);body.append(table);
