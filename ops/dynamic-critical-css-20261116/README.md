@@ -1021,3 +1021,20 @@ CPU admission and the same original global browser lock. It reuses
 renderer/tools/probe-public.js and writes into the existing source reports,
 rechecks source generation after capture, and does not issue CSS certificates,
 change cache, acknowledge WordPress jobs or relax V2 market/LCP rules.
+
+### Source 320px image-network jitter: bounded original QA recheck
+The actual Source Staging original verify-native-ordered-critical.js now
+has a reviewed source copy under tools/. It is not a replacement for the
+Wayfatours site-specific copy. At 320px, a single LCP regression may be
+explained by the same image resource arriving later in the second Chromium
+navigation (21 Nov 2026 QA showed 4.0s LCP difference versus 4.1s image
+response-end difference). A candidate may be REOBSERVED only when original
+layout, FCP, CLS, stylesheets, interactions and JavaScript already pass,
+both original/candidate saw the same image, and that delay matches its
+original observed image-resource timing. A slow image is never proof of
+successful QA. Admission requires TWO NEW FULLY PASSING measurements in
+opposite navigation orders with every original 10%/400ms LCP guard,
+150ms FCP improvement, restored CSS and unchanged interactions.
+If either new pair fails, no certificate is admitted. This source path
+does not alter live page content, CSS publication, caching, pricing,
+WPML/WCML or the original native 767px critical CSS cutoff.
