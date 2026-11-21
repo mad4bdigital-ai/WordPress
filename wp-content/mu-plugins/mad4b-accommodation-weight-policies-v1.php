@@ -604,7 +604,8 @@ final class MAD4B_Accommodation_Weight_Policies_V1 {
                 ['id'=>'property_type','label'=>'Property Type taxonomy'],
                 ['id'=>'destination','label'=>'Destination taxonomy'],
                 ['id'=>'property','label'=>'Original Property'],
-                ['id'=>'unit','label'=>'Original Unit']]],
+                ['id'=>'unit','label'=>'Original Unit'],
+                ['id'=>'rate','label'=>'Original Property Rate (margin only)']]],
                JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT).';','before');
     }
 }
