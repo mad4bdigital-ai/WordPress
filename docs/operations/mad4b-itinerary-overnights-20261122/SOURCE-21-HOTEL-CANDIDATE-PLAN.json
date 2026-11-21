@@ -1,0 +1,737 @@
+{
+  "contract": "mad4b.source-city-tier-hotel-candidate-parity-only.v1",
+  "site": "https://tours.dev.mad4b.com",
+  "approved_nightly_hotel_tariff_basis_cells": 253,
+  "valid_source_receipts": 21,
+  "reference": "https://wayfatours.com",
+  "match_method": "exact_approved_sheet_cost_cell_set",
+  "source_company_margin_expected": 20,
+  "wayfa_company_margin_expected": 25,
+  "owner_requested_count_parity": true,
+  "no_booking_activation": true,
+  "no_public_properties_catalog_change": true,
+  "no_selling_rate_created": true,
+  "records": [
+    {
+      "source_property_id": 71520,
+      "wayfa_property_id": 70739,
+      "title_source": "Sheraton Cairo Hotel & Casino",
+      "title_wayfa": "Sheraton Cairo Hotel & Casino",
+      "expected_source_cost_cells": [
+        "C106",
+        "C107",
+        "C108",
+        "H106",
+        "H107",
+        "M106",
+        "M107"
+      ],
+      "before_optin": [
+        "0"
+      ],
+      "existing_package_tier_ids": [
+        2356
+      ],
+      "approved_package_tier_ids": [
+        2356
+      ],
+      "existing_destination_term_ids": [
+        560
+      ],
+      "existing_stars_term_ids": [
+        490
+      ],
+      "existing_type_term_ids": [
+        262
+      ],
+      "approval_type": "preserve_explicit",
+      "checkout_allowed": false,
+      "commercial_rate_creation": false
+    },
+    {
+      "source_property_id": 71519,
+      "wayfa_property_id": 70736,
+      "title_source": "Steigenberger Pyramids Cairo",
+      "title_wayfa": "Steigenberger Pyramids Cairo",
+      "expected_source_cost_cells": [
+        "C110",
+        "C111",
+        "C112"
+      ],
+      "before_optin": [
+        "0"
+      ],
+      "existing_package_tier_ids": [
+        2356
+      ],
+      "approved_package_tier_ids": [
+        2356
+      ],
+      "existing_destination_term_ids": [
+        560
+      ],
+      "existing_stars_term_ids": [
+        490
+      ],
+      "existing_type_term_ids": [
+        262
+      ],
+      "approval_type": "preserve_explicit",
+      "checkout_allowed": false,
+      "commercial_rate_creation": false
+    },
+    {
+      "source_property_id": 71518,
+      "wayfa_property_id": 70735,
+      "title_source": "Fairmont Nile City",
+      "title_wayfa": "Fairmont Nile City",
+      "expected_source_cost_cells": [
+        "C114",
+        "C115",
+        "C116"
+      ],
+      "before_optin": [
+        "0"
+      ],
+      "existing_package_tier_ids": [
+        2356
+      ],
+      "approved_package_tier_ids": [
+        2356
+      ],
+      "existing_destination_term_ids": [
+        123
+      ],
+      "existing_stars_term_ids": [
+        490
+      ],
+      "existing_type_term_ids": [
+        262
+      ],
+      "approval_type": "preserve_explicit",
+      "checkout_allowed": false,
+      "commercial_rate_creation": false
+    },
+    {
+      "source_property_id": 71517,
+      "wayfa_property_id": 70732,
+      "title_source": "Pyramids Park Resort Cairo",
+      "title_wayfa": "Pyramids Park Resort Cairo",
+      "expected_source_cost_cells": [
+        "H10",
+        "H8",
+        "H9",
+        "M10",
+        "M8",
+        "M9"
+      ],
+      "before_optin": [
+        "0"
+      ],
+      "existing_package_tier_ids": [
+        2353
+      ],
+      "approved_package_tier_ids": [
+        2353
+      ],
+      "existing_destination_term_ids": [
+        560
+      ],
+      "existing_stars_term_ids": [
+        490
+      ],
+      "existing_type_term_ids": [
+        262
+      ],
+      "approval_type": "preserve_explicit",
+      "checkout_allowed": false,
+      "commercial_rate_creation": false
+    },
+    {
+      "source_property_id": 71495,
+      "wayfa_property_id": 71980,
+      "title_source": "Tolip Hotel Aswan",
+      "title_wayfa": "Tolip Hotel Aswan",
+      "expected_source_cost_cells": [
+        "C135",
+        "C136",
+        "C137",
+        "H135",
+        "H136",
+        "H137",
+        "M135",
+        "M136",
+        "M137"
+      ],
+      "before_optin": [],
+      "existing_package_tier_ids": [
+        2354,
+        2356
+      ],
+      "approved_package_tier_ids": [
+        2354,
+        2356
+      ],
+      "existing_destination_term_ids": [
+        122,
+        665,
+        2311
+      ],
+      "existing_stars_term_ids": [
+        490
+      ],
+      "existing_type_term_ids": [
+        262
+      ],
+      "approval_type": "preserve_explicit",
+      "checkout_allowed": false,
+      "commercial_rate_creation": false
+    },
+    {
+      "source_property_id": 36486,
+      "wayfa_property_id": 36486,
+      "title_source": "Staigenberger Nile place",
+      "title_wayfa": "Staigenberger Nile place",
+      "expected_source_cost_cells": [
+        "C163",
+        "C164",
+        "C165",
+        "H163",
+        "H164",
+        "H165",
+        "M163",
+        "M164",
+        "M165"
+      ],
+      "before_optin": [],
+      "existing_package_tier_ids": [],
+      "approved_package_tier_ids": [
+        2354
+      ],
+      "existing_destination_term_ids": [
+        125
+      ],
+      "existing_stars_term_ids": [
+        490
+      ],
+      "existing_type_term_ids": [
+        262
+      ],
+      "approval_type": "fill_missing_from_sheet_cell_matched_wayfa",
+      "checkout_allowed": false,
+      "commercial_rate_creation": false
+    },
+    {
+      "source_property_id": 36483,
+      "wayfa_property_id": 36483,
+      "title_source": "Staigenberger Achti",
+      "title_wayfa": "Staigenberger Achti",
+      "expected_source_cost_cells": [
+        "C171",
+        "C172",
+        "C173",
+        "H171",
+        "H172",
+        "H173",
+        "M171",
+        "M172",
+        "M173"
+      ],
+      "before_optin": [],
+      "existing_package_tier_ids": [],
+      "approved_package_tier_ids": [
+        2354
+      ],
+      "existing_destination_term_ids": [
+        125
+      ],
+      "existing_stars_term_ids": [
+        490
+      ],
+      "existing_type_term_ids": [
+        262
+      ],
+      "approval_type": "fill_missing_from_sheet_cell_matched_wayfa",
+      "checkout_allowed": false,
+      "commercial_rate_creation": false
+    },
+    {
+      "source_property_id": 36481,
+      "wayfa_property_id": 36481,
+      "title_source": "Sonesta ST Gorge luxor",
+      "title_wayfa": "Sonesta ST Gorge luxor",
+      "expected_source_cost_cells": [
+        "C155",
+        "C156",
+        "C157",
+        "H155",
+        "H156",
+        "H157",
+        "M155",
+        "M156",
+        "M157"
+      ],
+      "before_optin": [],
+      "existing_package_tier_ids": [
+        2354,
+        2356
+      ],
+      "approved_package_tier_ids": [
+        2354,
+        2356
+      ],
+      "existing_destination_term_ids": [
+        125
+      ],
+      "existing_stars_term_ids": [
+        490
+      ],
+      "existing_type_term_ids": [
+        262
+      ],
+      "approval_type": "preserve_explicit",
+      "checkout_allowed": false,
+      "commercial_rate_creation": false
+    },
+    {
+      "source_property_id": 36479,
+      "wayfa_property_id": 36479,
+      "title_source": "Hilton Grand Nile Tower",
+      "title_wayfa": "Hilton Grand Nile Tower",
+      "expected_source_cost_cells": [
+        "C85",
+        "C86",
+        "C87"
+      ],
+      "before_optin": [],
+      "existing_package_tier_ids": [
+        2354
+      ],
+      "approved_package_tier_ids": [
+        2354
+      ],
+      "existing_destination_term_ids": [
+        123
+      ],
+      "existing_stars_term_ids": [
+        490
+      ],
+      "existing_type_term_ids": [
+        262
+      ],
+      "approval_type": "preserve_explicit",
+      "checkout_allowed": false,
+      "commercial_rate_creation": false
+    },
+    {
+      "source_property_id": 36475,
+      "wayfa_property_id": 36475,
+      "title_source": "Barcelo Cairo pyramids",
+      "title_wayfa": "Barcelo Cairo pyramids",
+      "expected_source_cost_cells": [
+        "C56",
+        "C57",
+        "C58",
+        "H56",
+        "H57",
+        "H58",
+        "M56",
+        "M57",
+        "M58"
+      ],
+      "before_optin": [],
+      "existing_package_tier_ids": [
+        2353
+      ],
+      "approved_package_tier_ids": [
+        2353
+      ],
+      "existing_destination_term_ids": [
+        560
+      ],
+      "existing_stars_term_ids": [
+        489
+      ],
+      "existing_type_term_ids": [
+        262
+      ],
+      "approval_type": "preserve_explicit",
+      "checkout_allowed": false,
+      "commercial_rate_creation": false
+    },
+    {
+      "source_property_id": 36350,
+      "wayfa_property_id": 36350,
+      "title_source": "Hilton Nile Maadi",
+      "title_wayfa": "Hilton Nile Maadi",
+      "expected_source_cost_cells": [
+        "C97",
+        "C98",
+        "C99",
+        "H97",
+        "H98",
+        "H99",
+        "M97",
+        "M98",
+        "M99"
+      ],
+      "before_optin": [],
+      "existing_package_tier_ids": [],
+      "approved_package_tier_ids": [
+        2356
+      ],
+      "existing_destination_term_ids": [
+        123,
+        665
+      ],
+      "existing_stars_term_ids": [
+        490
+      ],
+      "existing_type_term_ids": [
+        262
+      ],
+      "approval_type": "fill_missing_from_sheet_cell_matched_wayfa",
+      "checkout_allowed": false,
+      "commercial_rate_creation": false
+    },
+    {
+      "source_property_id": 36317,
+      "wayfa_property_id": 36317,
+      "title_source": "Kemet Boutique Hotel",
+      "title_wayfa": "Kemet Boutique Hotel",
+      "expected_source_cost_cells": [
+        "H12",
+        "H13",
+        "M12",
+        "M13"
+      ],
+      "before_optin": [],
+      "existing_package_tier_ids": [],
+      "approved_package_tier_ids": [
+        2353
+      ],
+      "existing_destination_term_ids": [
+        123,
+        665
+      ],
+      "existing_stars_term_ids": [
+        488
+      ],
+      "existing_type_term_ids": [
+        262
+      ],
+      "approval_type": "fill_missing_from_sheet_cell_matched_wayfa",
+      "checkout_allowed": false,
+      "commercial_rate_creation": false
+    },
+    {
+      "source_property_id": 36316,
+      "wayfa_property_id": 36316,
+      "title_source": "Saraya Pyramids Hotel",
+      "title_wayfa": "Saray Pyramids & Museum View Hotel",
+      "expected_source_cost_cells": [
+        "C20",
+        "C21",
+        "C22",
+        "H20",
+        "H21",
+        "H22",
+        "M20",
+        "M21",
+        "M22"
+      ],
+      "before_optin": [],
+      "existing_package_tier_ids": [],
+      "approved_package_tier_ids": [
+        2353
+      ],
+      "existing_destination_term_ids": [
+        123,
+        665
+      ],
+      "existing_stars_term_ids": [
+        488
+      ],
+      "existing_type_term_ids": [
+        262
+      ],
+      "approval_type": "fill_missing_from_sheet_cell_matched_wayfa",
+      "checkout_allowed": false,
+      "commercial_rate_creation": false
+    },
+    {
+      "source_property_id": 36291,
+      "wayfa_property_id": 36291,
+      "title_source": "The Gabriel Hotel",
+      "title_wayfa": "The Gabriel Hotel",
+      "expected_source_cost_cells": [
+        "C53",
+        "C54",
+        "H53",
+        "H54"
+      ],
+      "before_optin": [],
+      "existing_package_tier_ids": [],
+      "approved_package_tier_ids": [
+        2353
+      ],
+      "existing_destination_term_ids": [
+        123,
+        665
+      ],
+      "existing_stars_term_ids": [
+        488
+      ],
+      "existing_type_term_ids": [
+        262
+      ],
+      "approval_type": "fill_missing_from_sheet_cell_matched_wayfa",
+      "checkout_allowed": false,
+      "commercial_rate_creation": false
+    },
+    {
+      "source_property_id": 36251,
+      "wayfa_property_id": 36251,
+      "title_source": "Azal Pyramids Hotel",
+      "title_wayfa": "Azal Pyramids Hotel",
+      "expected_source_cost_cells": [
+        "C32",
+        "C33",
+        "C34",
+        "H32",
+        "H33",
+        "H34",
+        "M32",
+        "M33",
+        "M34"
+      ],
+      "before_optin": [],
+      "existing_package_tier_ids": [],
+      "approved_package_tier_ids": [
+        2353
+      ],
+      "existing_destination_term_ids": [
+        123,
+        665
+      ],
+      "existing_stars_term_ids": [
+        489
+      ],
+      "existing_type_term_ids": [
+        262
+      ],
+      "approval_type": "fill_missing_from_sheet_cell_matched_wayfa",
+      "checkout_allowed": false,
+      "commercial_rate_creation": false
+    },
+    {
+      "source_property_id": 36209,
+      "wayfa_property_id": 36209,
+      "title_source": "Triumph Plaza Hotel",
+      "title_wayfa": "Triumph Plaza Hotel",
+      "expected_source_cost_cells": [
+        "C68",
+        "C69",
+        "C70",
+        "H68",
+        "H69",
+        "H70",
+        "M68",
+        "M69",
+        "M70"
+      ],
+      "before_optin": [],
+      "existing_package_tier_ids": [
+        2353
+      ],
+      "approved_package_tier_ids": [
+        2353
+      ],
+      "existing_destination_term_ids": [
+        123,
+        665
+      ],
+      "existing_stars_term_ids": [
+        489
+      ],
+      "existing_type_term_ids": [
+        262
+      ],
+      "approval_type": "preserve_explicit",
+      "checkout_allowed": false,
+      "commercial_rate_creation": false
+    },
+    {
+      "source_property_id": 36197,
+      "wayfa_property_id": 36197,
+      "title_source": "Tolip Gardens Hotel",
+      "title_wayfa": "Tolip Gardens Hotel",
+      "expected_source_cost_cells": [
+        "C37",
+        "C38",
+        "C39",
+        "H37",
+        "H38",
+        "H39",
+        "M37",
+        "M38",
+        "M39"
+      ],
+      "before_optin": [],
+      "existing_package_tier_ids": [
+        2353
+      ],
+      "approved_package_tier_ids": [
+        2353
+      ],
+      "existing_destination_term_ids": [
+        123,
+        665
+      ],
+      "existing_stars_term_ids": [
+        490
+      ],
+      "existing_type_term_ids": [
+        262
+      ],
+      "approval_type": "preserve_explicit",
+      "checkout_allowed": false,
+      "commercial_rate_creation": false
+    },
+    {
+      "source_property_id": 36142,
+      "wayfa_property_id": 36142,
+      "title_source": "Iberotel Luxor",
+      "title_wayfa": "Iberotel Luxor",
+      "expected_source_cost_cells": [
+        "C175",
+        "C176"
+      ],
+      "before_optin": [],
+      "existing_package_tier_ids": [
+        2353
+      ],
+      "approved_package_tier_ids": [
+        2353
+      ],
+      "existing_destination_term_ids": [
+        125,
+        665
+      ],
+      "existing_stars_term_ids": [
+        489
+      ],
+      "existing_type_term_ids": [
+        262
+      ],
+      "approval_type": "preserve_explicit",
+      "checkout_allowed": false,
+      "commercial_rate_creation": false
+    },
+    {
+      "source_property_id": 36140,
+      "wayfa_property_id": 36140,
+      "title_source": "Triumph Luxury Hotel",
+      "title_wayfa": "Triumph Luxury Hotel",
+      "expected_source_cost_cells": [
+        "C93",
+        "C94",
+        "C95",
+        "H93",
+        "H94",
+        "H95",
+        "M93",
+        "M94",
+        "M95"
+      ],
+      "before_optin": [],
+      "existing_package_tier_ids": [
+        2354
+      ],
+      "approved_package_tier_ids": [
+        2354
+      ],
+      "existing_destination_term_ids": [
+        123,
+        665
+      ],
+      "existing_stars_term_ids": [],
+      "existing_type_term_ids": [
+        262
+      ],
+      "approval_type": "preserve_explicit",
+      "checkout_allowed": false,
+      "commercial_rate_creation": false
+    },
+    {
+      "source_property_id": 36104,
+      "wayfa_property_id": 36104,
+      "title_source": "The Zen Wellness Resort",
+      "title_wayfa": "The Zen Wellness Resort",
+      "expected_source_cost_cells": [
+        "C143",
+        "C144",
+        "C145",
+        "H143",
+        "H144",
+        "H145",
+        "M143",
+        "M144",
+        "M145"
+      ],
+      "before_optin": [],
+      "existing_package_tier_ids": [],
+      "approved_package_tier_ids": [
+        2356
+      ],
+      "existing_destination_term_ids": [
+        122,
+        665
+      ],
+      "existing_stars_term_ids": [
+        490
+      ],
+      "existing_type_term_ids": [
+        262
+      ],
+      "approval_type": "fill_missing_from_sheet_cell_matched_wayfa",
+      "checkout_allowed": false,
+      "commercial_rate_creation": false
+    },
+    {
+      "source_property_id": 36097,
+      "wayfa_property_id": 36097,
+      "title_source": "Stay Inn Pyramids",
+      "title_wayfa": "Stay Inn Pyramids",
+      "expected_source_cost_cells": [
+        "C28",
+        "C29",
+        "C30",
+        "H28",
+        "H29",
+        "H30",
+        "M28",
+        "M29",
+        "M30"
+      ],
+      "before_optin": [],
+      "existing_package_tier_ids": [],
+      "approved_package_tier_ids": [
+        2353
+      ],
+      "existing_destination_term_ids": [
+        123,
+        665
+      ],
+      "existing_stars_term_ids": [
+        489
+      ],
+      "existing_type_term_ids": [
+        262
+      ],
+      "approval_type": "fill_missing_from_sheet_cell_matched_wayfa",
+      "checkout_allowed": false,
+      "commercial_rate_creation": false
+    }
+  ]
+}
