@@ -10,13 +10,24 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
     private static function edit(int $id):string {
         return (string) get_edit_post_link($id,'raw');
     }
-    private static function relationCount(int $property):int {
+    private static function relationStatusCounts(int $property):array {
         global $wpdb;
         $name=$wpdb->prefix.'jet_rel_default';
-        if(!preg_match('/^[A-Za-z0-9_]+$/D',$name))return 0;
-        return (int)$wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(DISTINCT child_object_id) FROM {$name} WHERE rel_id=%d AND parent_object_id=%d",
-            223,$property));
+        $zero=['publish'=>0,'draft'=>0,'other'=>0];
+        if(!preg_match('/^[A-Za-z0-9_]+$/D',$name))return $zero;
+        $rows=$wpdb->get_results($wpdb->prepare(
+            "SELECT p.post_status,COUNT(DISTINCT r.child_object_id) count_units
+             FROM {$name} r JOIN {$wpdb->posts} p
+               ON p.ID=r.child_object_id AND p.post_type='units'
+             WHERE r.rel_id=%d AND r.parent_object_id=%d
+             GROUP BY p.post_status",
+             223,$property),ARRAY_A);
+        foreach((array)$rows as $row){
+            $k=$row['post_status']==='publish'?'publish':
+               ($row['post_status']==='draft'?'draft':'other');
+            $zero[$k]+=(int)($row['count_units']??0);
+        }
+        return $zero;
     }
     private static function hotel(int $tour,array $stage,int $tier):array {
         $scope=class_exists('MAD4B_Package_Stage_Rate_Guard_V1',false)
@@ -29,7 +40,8 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
             'source'=>'native_properties_destinations_stars_package_levels_and_relation_223',
             'properties'=>[],'source_property_count'=>0,
             'tier_matched_count'=>0,'tier_unclassified_count'=>0,
-            'missing_native_units_count'=>0,'excluded_wrong_locality'=>0,
+            'missing_native_units_count'=>0,'draft_native_units_discovered'=>0,
+            'published_native_units_discovered'=>0,'excluded_wrong_locality'=>0,
             'city_location_unverified_count'=>0,
             'supplier_cost_total'=>null,'ready'=>false,'writes'=>false];
         $terms=array_map('absint',(array)($scope['accepted_term_ids']??[]));
@@ -61,20 +73,25 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
                 ? MAD4B_Package_Stage_Rate_Guard_V1::propertyEligibility($id,$tier,$scope,
                     (string)($stage['lodging_kind']??'hotel'))
                 : ['eligible'=>false,'reason'=>'generator_guard_unavailable'];
-            $unitCount=self::relationCount($id);
+            $unitStatus=self::relationStatusCounts($id);
+            $unitCount=array_sum($unitStatus);
             $cityVerified=($scope['destination']??'')!=='aswan' ||
                 in_array('aswan-city',(array)$dest,true);
             $out['source_property_count']++;
             if(!$cityVerified)$out['city_location_unverified_count']++;
             if($eligible['eligible'])$out['tier_matched_count']++;
             elseif(!$levels)$out['tier_unclassified_count']++;
-            if(!$unitCount)$out['missing_native_units_count']++;
+            if(!$unitStatus['publish'])$out['missing_native_units_count']++;
+            $out['draft_native_units_discovered']+=$unitStatus['draft'];
+            $out['published_native_units_discovered']+=$unitStatus['publish'];
             $out['properties'][]=[
                 'id'=>$id,'title'=>wp_strip_all_tags(html_entity_decode(
                     get_the_title($id),ENT_QUOTES,'UTF-8')),
                 'stars'=>array_values((array)$stars),
                 'native_tiers'=>array_values(array_map('intval',(array)$levels)),
                 'native_unit_count'=>$unitCount,
+                'native_published_unit_count'=>$unitStatus['publish'],
+                'native_draft_unit_count'=>$unitStatus['draft'],
                 'stage_city_location_verified'=>$cityVerified,
                 'tier_eligible'=>$eligible['eligible'],
                 'tier_status'=>$eligible['eligible']?'tier_matched':
