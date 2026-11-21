@@ -12,6 +12,39 @@ final class MAD4B_Package_Supplier_Admission_V1 {
 
     public const AJAX='mad4b_package_supplier_admission_review_v1';
 
+    /**
+     * Accept only the signed native guide/day composition contract.
+     * The native provider intentionally has no "ready" field: a successful
+     * verified cost receipt is not permission to sell or charge the traveler.
+     */
+    public static function guideEvidenceReady($receipt):bool {
+        if(!is_array($receipt) ||
+           ($receipt['contract']??'')!=='mad4b.guide-cost-component.v1' ||
+           ($receipt['supplier']??'')!=='self' ||
+           ($receipt['currency']??'')!=='EGP' ||
+           ($receipt['amount_type']??'')!=='internal_cost_not_sell' ||
+           ($receipt['not_price_authority']??false)!==true ||
+           ($receipt['apply_to_retail_total']??true)!==false ||
+           ($receipt['checkout_ready']??true)!==false ||
+           (int)($receipt['source_record_revision']??0)<1 ||
+           !preg_match('/^[a-f0-9]{64}$/D',(string)($receipt['source_hash']??'')) ||
+           !preg_match('/^[a-f0-9]{64}$/D',(string)($receipt['cost_fingerprint']??'')))
+            return false;
+        foreach(['unit_cost','effective_guide_days','cost'] as $key)
+            if(!isset($receipt[$key])||!is_numeric($receipt[$key])||
+               !is_finite((float)$receipt[$key])||(float)$receipt[$key]<0)
+                return false;
+        $count=$receipt['guide_count']??null;
+        if(!is_int($count)||$count<0||$count>30)return false;
+        $expected=round((float)$receipt['unit_cost']*
+            (float)$receipt['effective_guide_days']*$count,2);
+        if(abs($expected-(float)$receipt['cost'])>0.01)return false;
+        $unsigned=$receipt;
+        unset($unsigned['cost_fingerprint']);
+        return hash_equals((string)$receipt['cost_fingerprint'],
+            hash('sha256',wp_json_encode($unsigned)));
+    }
+
     public static function ajax():void {
         if(!current_user_can('commerce_manage_pricing') ||
            !current_user_can('manage_woocommerce'))
@@ -156,20 +189,42 @@ final class MAD4B_Package_Supplier_Admission_V1 {
             'cost_qualified'=>false,
         ];
 
-        $guide=class_exists('MAD4B_Guide_Service_Composition_V1',false)
+        $guideRuntime=class_exists('MAD4B_Guide_Service_Composition_V1',false);
+        $guideSource=$guideRuntime
+            ?MAD4B_Guide_Service_Composition_V1::source($tour)
+            :new WP_Error('guide_component_runtime_missing');
+        $guideReview=is_array($guideSource)
+            ?MAD4B_Guide_Service_Composition_V1::saved($guideSource)
+            :$guideSource;
+        // English is a read-only default preview, not a traveler or product
+        // language assignment. Native provider enforces the offered taxonomy.
+        $guide=$guideRuntime
             ?MAD4B_Guide_Service_Composition_V1::guide($tour,'english')
             :new WP_Error('guide_component_runtime_missing');
-        $guideReady=!is_wp_error($guide)
-            && is_array($guide)
-            && ($guide['ready']??false)===true;
+        $guideReady=self::guideEvidenceReady($guide);
         if(!$guideReady)$add(is_wp_error($guide)?
             'guide:'.$guide->get_error_code():'guide_cost_source_not_certified');
+        $base=class_exists('MAD4B_Guide_Daily_Base_Cost_V1',false)
+            ?MAD4B_Guide_Daily_Base_Cost_V1::status():[];
+        $reviewCounts=is_array($guideReview) &&
+            is_array($guideReview['statuses']??null)
+            ?array_count_values($guideReview['statuses']):[];
         $report['guide']=[
             'source'=>'mad4b-guide-service-composition-v1',
             'status'=>is_wp_error($guide)?$guide->get_error_code():
                 ($guideReady?'internal_cost_verified':'source_not_ready'),
+            'company_self_cost_configured'=>($base['configured']??false)===true,
+            'source_day_count'=>is_array($guideSource)
+                ?count($guideSource['days']??[]):0,
+            'coverage_review_status'=>is_wp_error($guideReview)
+                ?$guideReview->get_error_code():'reviewed',
+            'coverage_counts'=>$reviewCounts,
+            'language_preview'=>'english',
+            'source_cost_egp'=>$guideReady?(float)$guide['cost']:null,
+            'source_cost_fingerprint'=>$guideReady?$guide['cost_fingerprint']:null,
             'cost_qualified'=>$guideReady,
             'included_in_customer_price'=>false,
+            'not_price_authority'=>true,
         ];
 
         $extra=class_exists('MAD4B_Extra_Readonly_Quote_Runtime_V1',false)
