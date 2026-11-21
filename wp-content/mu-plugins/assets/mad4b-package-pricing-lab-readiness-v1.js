@@ -84,7 +84,10 @@ state.setAttribute('role','status');
 const result=el('div','mad4b-pcl-result');
 inner.replaceChildren(form,responsibilities,note,state,result);
 if(!packages.length||!tiers.length){
-  b.disabled=true;state.textContent='No package source plans and levels are available for review on this company.';
+  b.disabled=true;
+  state.textContent=!packages.length
+    ? 'No editable Package tours with saved stage plans are available to this signed-in WordPress user. Check Package tour type, source plan and edit permissions; do not interpret this as an empty company catalog.'
+    : 'Package Level terms are missing. Check the original Silver, Gold and Diamond taxonomy terms.';
   return;
 }
 let requestToken=0;
@@ -374,22 +377,46 @@ function renderReport(data){
           String(source.city_location_unverified_count)+
           ' Aswan governorate candidate(s) still lack native Aswan-city destination proof. Assigning a tier alone will not make them eligible.'));
       }
+      if(source.draft_native_units_discovered){
+        scout.append(el('p','mad4b-pcl-info',
+          String(source.draft_native_units_discovered)+
+          ' official-source Unit category draft(s) are linked to these Properties. Drafts are not available stock, occupancy approval or supplier costs.'));
+      }
       const properties=Array.isArray(source.properties)?source.properties:[];
       if(properties.length){
         const table=el('table','widefat striped mad4b-pcl-table');
         table.append(row('thead',[row('tr',[
           el('th','','Published Property'),el('th','','Native stars'),
-          el('th','','Package Level'),el('th','','Linked Units')
+          el('th','','Package Level'),el('th','','Units: published / draft')
         ])]));
         const tbody=el('tbody');
         for(const prop of properties){
+          const unitCell=el('td','');
+          unitCell.append(el('span','',String(prop.native_published_unit_count||0)+
+            ' published / '+String(prop.native_draft_unit_count||0)+' draft'));
+          const drafts=Array.isArray(prop.source_unit_draft_editors)
+            ?prop.source_unit_draft_editors:[];
+          if(drafts.length){
+            const more=el('details','mad4b-pcl-source-unit-drafts');
+            more.append(el('summary','','Open original room drafts ('+drafts.length+')'));
+            const links=el('ul','');
+            for(const item of drafts){
+              const li=el('li','');
+              li.append(link(item.edit_url,item.title||('Unit #'+item.id)));
+              li.append(el('small','',
+                ' · capacity '+(item.capacity===null?'unverified':String(item.capacity))+
+                ' · supplier cost pending'));
+              links.append(li);
+            }
+            more.append(links);unitCell.append(more);
+          }
           tbody.append(row('tr',[
             row('td',[link(prop.edit_url,prop.title||('Property #'+prop.id))]),
             el('td','',(prop.stars||[]).join(', ')||'Not classified'),
             el('td','',prop.tier_eligible?'Matches selected tier':
               (prop.tier_status==='tier_unclassified'?'Not assigned to any package tier':
                'Not eligible for selected tier')),
-            el('td','',String(prop.native_unit_count||0))
+            unitCell
           ]));
         }
         table.append(tbody);scout.append(table);
@@ -410,6 +437,15 @@ function renderReport(data){
             ' · '+String(train.published_transport_rate_count||0)+
             ' published transport rates · sleeper cabin fare not verified')
         ]));
+        if(train.native_terminal_needs_schedule_revalidation){
+          scout.append(el('p','mad4b-pcl-warning',
+            'Station source requires review: the saved route does not include a verified Upper Egypt (Bashtil) terminal. Revalidate the station, service date, cabin class and fare directly with Abela before booking.'));
+          scout.append(row('p',[
+            link(train.public_timetable_reference,'Review published timetable reference'),
+            el('span','',' · '),
+            link(train.official_operator_booking_url,'Verify on Abela')
+          ],'mad4b-pcl-source-line'));
+        }
       }
       if(!trains.length)scout.append(el('p','mad4b-pcl-empty',
         'No published sleeping train supports the route in the original itinerary.'));

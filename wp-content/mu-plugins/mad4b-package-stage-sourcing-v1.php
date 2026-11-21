@@ -10,13 +10,24 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
     private static function edit(int $id):string {
         return (string) get_edit_post_link($id,'raw');
     }
-    private static function relationCount(int $property):int {
+    private static function relationStatusCounts(int $property):array {
         global $wpdb;
         $name=$wpdb->prefix.'jet_rel_default';
-        if(!preg_match('/^[A-Za-z0-9_]+$/D',$name))return 0;
-        return (int)$wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(DISTINCT child_object_id) FROM {$name} WHERE rel_id=%d AND parent_object_id=%d",
-            223,$property));
+        $zero=['publish'=>0,'draft'=>0,'other'=>0];
+        if(!preg_match('/^[A-Za-z0-9_]+$/D',$name))return $zero;
+        $rows=$wpdb->get_results($wpdb->prepare(
+            "SELECT p.post_status,COUNT(DISTINCT r.child_object_id) count_units
+             FROM {$name} r JOIN {$wpdb->posts} p
+               ON p.ID=r.child_object_id AND p.post_type='units'
+             WHERE r.rel_id=%d AND r.parent_object_id=%d
+             GROUP BY p.post_status",
+             223,$property),ARRAY_A);
+        foreach((array)$rows as $row){
+            $k=$row['post_status']==='publish'?'publish':
+               ($row['post_status']==='draft'?'draft':'other');
+            $zero[$k]+=(int)($row['count_units']??0);
+        }
+        return $zero;
     }
     private static function hotel(int $tour,array $stage,int $tier):array {
         $scope=class_exists('MAD4B_Package_Stage_Rate_Guard_V1',false)
@@ -29,7 +40,8 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
             'source'=>'native_properties_destinations_stars_package_levels_and_relation_223',
             'properties'=>[],'source_property_count'=>0,
             'tier_matched_count'=>0,'tier_unclassified_count'=>0,
-            'missing_native_units_count'=>0,'excluded_wrong_locality'=>0,
+            'missing_native_units_count'=>0,'draft_native_units_discovered'=>0,
+            'published_native_units_discovered'=>0,'excluded_wrong_locality'=>0,
             'city_location_unverified_count'=>0,
             'supplier_cost_total'=>null,'ready'=>false,'writes'=>false];
         $terms=array_map('absint',(array)($scope['accepted_term_ids']??[]));
@@ -61,20 +73,58 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
                 ? MAD4B_Package_Stage_Rate_Guard_V1::propertyEligibility($id,$tier,$scope,
                     (string)($stage['lodging_kind']??'hotel'))
                 : ['eligible'=>false,'reason'=>'generator_guard_unavailable'];
-            $unitCount=self::relationCount($id);
+            $unitStatus=self::relationStatusCounts($id);
+            $unitCount=array_sum($unitStatus);
             $cityVerified=($scope['destination']??'')!=='aswan' ||
                 in_array('aswan-city',(array)$dest,true);
             $out['source_property_count']++;
             if(!$cityVerified)$out['city_location_unverified_count']++;
             if($eligible['eligible'])$out['tier_matched_count']++;
             elseif(!$levels)$out['tier_unclassified_count']++;
-            if(!$unitCount)$out['missing_native_units_count']++;
+            if(!$unitStatus['publish'])$out['missing_native_units_count']++;
+            $out['draft_native_units_discovered']+=$unitStatus['draft'];
+            $out['published_native_units_discovered']+=$unitStatus['publish'];
+            $draftEditors=[];
+            if($unitStatus['draft']>0){
+                global $wpdb;
+                $relationTable=$wpdb->prefix.'jet_rel_default';
+                if(preg_match('/^[A-Za-z0-9_]+$/D',$relationTable)){
+                    $draftIds=$wpdb->get_col($wpdb->prepare(
+                       "SELECT DISTINCT p.ID FROM {$relationTable} r
+                        JOIN {$wpdb->posts} p ON p.ID=r.child_object_id
+                        WHERE r.rel_id=%d AND r.parent_object_id=%d
+                          AND p.post_type='units' AND p.post_status='draft'
+                        ORDER BY p.ID ASC LIMIT 40",223,$id));
+                    foreach((array)$draftIds as $uid){
+                        $uid=(int)$uid;
+                        $r=get_post_meta($uid,'_mad4b_room_source_receipt_v1',true);
+                        $capacity=get_post_meta($uid,'unit_max_occupancy',true);
+                        $draftEditors[]=[
+                            'id'=>$uid,
+                            'title'=>wp_strip_all_tags(html_entity_decode(
+                                get_the_title($uid),ENT_QUOTES,'UTF-8')),
+                            'capacity'=>(is_numeric($capacity)&&(int)$capacity>0)
+                                ?(int)$capacity:null,
+                            'source_verified'=>is_array($r) &&
+                                (int)($r['property_id']??0)===$id &&
+                                !empty($r['source_url']),
+                            'ready'=>false,
+                            'supplier_cost_verified'=>false,
+                            'edit_url'=>current_user_can('edit_post',$uid)
+                                ?self::edit($uid):''
+                        ];
+                    }
+                }
+            }
             $out['properties'][]=[
                 'id'=>$id,'title'=>wp_strip_all_tags(html_entity_decode(
                     get_the_title($id),ENT_QUOTES,'UTF-8')),
                 'stars'=>array_values((array)$stars),
                 'native_tiers'=>array_values(array_map('intval',(array)$levels)),
                 'native_unit_count'=>$unitCount,
+                'native_published_unit_count'=>$unitStatus['publish'],
+                'native_draft_unit_count'=>$unitStatus['draft'],
+                'source_unit_draft_editors'=>$draftEditors,
                 'stage_city_location_verified'=>$cityVerified,
                 'tier_eligible'=>$eligible['eligible'],
                 'tier_status'=>$eligible['eligible']?'tier_matched':
@@ -134,6 +184,27 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
             'source_title'=>mb_substr($title,0,160),
             'status'=>$from&&$to?'itinerary_route_proposal':'route_not_explicitly_resolved'];
     }
+    private static function bashtilStation():int {
+        // JetEngine CPT IDs are site-local. Match the exact published
+        // native Station identity and real Giza location, not a foreign ID.
+        $p=get_page_by_path('upper-egypt-railway-station-bashteel',OBJECT,'stations');
+        if(!$p instanceof WP_Post || $p->post_type!=='stations' ||
+           $p->post_status!=='publish' ||
+           $p->post_title!=='Upper Egypt Railway Station (Bashteel)')
+            return 0;
+        $slugs=wp_get_object_terms((int)$p->ID,'destinations',['fields'=>'slugs']);
+        if(is_wp_error($slugs) || !in_array('giza-city',(array)$slugs,true))
+            return 0;
+        return (int)$p->ID;
+    }
+    private static function ramsesStation():int {
+        // Station IDs are local to each company; never trust a source-site ID.
+        $post=get_page_by_path('ramses-station',OBJECT,'stations');
+        if(!$post instanceof WP_Post || $post->post_type!=='stations' ||
+            $post->post_status!=='publish' || $post->post_title!=='Ramses Station')
+            return 0;
+        return (int)$post->ID;
+    }
     private static function stationCities(int $station):array {
         $terms=wp_get_object_terms($station,'destinations',['fields'=>'slugs']);
         if(is_wp_error($terms))return [];
@@ -143,6 +214,11 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
             if(in_array($slug,['aswan-city','aswan-gov'],true))$cities['aswan']=true;
             if(in_array($slug,['luxor-city','luxor'],true))$cities['luxor']=true;
         }
+        // Bashtil is in Giza, but officially serves as Greater Cairo's
+        // Upper Egypt train terminal. The exception is ONE verified station
+        // identity, not a general Giza/Cairo destination substitution.
+        if($station>0 && $station===self::bashtilStation())
+            $cities['cairo']=true;
         return array_keys($cities);
     }
     private static function train(int $tour,array $stage):array {
@@ -154,6 +230,8 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
             'supplier_cabin_rate_verified'=>false,'schedule_verified'=>false,
             'checkout_ready'=>false,'cost_total'=>null,'writes'=>false];
         if($route['status']!=='itinerary_route_proposal')return $out;
+        $bashtil=self::bashtilStation();
+        $ramses=self::ramsesStation();
         $ids=get_posts(['post_type'=>'transportations','post_status'=>'publish',
             'fields'=>'ids','posts_per_page'=>100,'suppress_filters'=>true,
             'tax_query'=>[
@@ -168,10 +246,12 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
             if(stripos(get_the_title($id),'QA ONLY')!==false ||
                 get_post_meta($id,'_booking_experience_qa_pricing_fixture',true)!=='')continue;
             $stops=get_post_meta($id,'trans_train_stops',true);
+            $nativeStationIds=[];
             $pos=[];
             foreach((array)$stops as $stop){
                 if(!is_array($stop))continue;
                 $station=(int)($stop['station_id']??0);
+                $nativeStationIds[$station]=true;
                 if(get_post_type($station)!=='stations' ||
                     get_post_status($station)!=='publish')continue;
                 $order=$stop['sort_num']??null;
@@ -187,10 +267,24 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
             $rates=get_posts(['post_type'=>'transport-rates','post_status'=>'publish',
                 'fields'=>'ids','posts_per_page'=>20,'meta_key'=>'source_post_id',
                 'meta_value'=>(string)$id,'suppress_filters'=>true]);
+            $number=(string)get_post_meta($id,'trans_train_number',true);
+            // Publicly published late-2026 train 86/87 reference lists
+            // Bashtil/Upper Egypt, not the old Ramses terminal. This is
+            // an editorial warning, NEVER an operator-approved timetable.
+            $staleTerminal=in_array($number,['86','87'],true) &&
+                ($bashtil===0 || !isset($nativeStationIds[$bashtil]));
             $out['train_candidates'][]=[
                 'id'=>$id,'title'=>wp_strip_all_tags(html_entity_decode(get_the_title($id),ENT_QUOTES,'UTF-8')),
-                'number'=>(string)get_post_meta($id,'trans_train_number',true),
+                'number'=>$number,
                 'native_route_order_verified'=>true,
+                'native_terminal_needs_schedule_revalidation'=>$staleTerminal,
+                'native_terminal_source_station_id'=>$ramses>0 && isset($nativeStationIds[$ramses])?$ramses:0,
+                'public_timetable_terminal_station_id'=>$bashtil,
+                'native_bashtil_station_in_route'=>$bashtil>0 && isset($nativeStationIds[$bashtil]),
+                'public_timetable_reference'=>'https://egypttrains.com/trains/'.$number.'?lang=en',
+                'official_operator_booking_url'=>'https://abelatrains.com/',
+                'reference_reviewed_on'=>'2026-11-21',
+                'operator_timetable_confirmed'=>false,
                 'published_transport_rate_count'=>count($rates),
                 'cabin_supplier_contract_verified'=>false,
                 'edit_url'=>self::edit($id)
