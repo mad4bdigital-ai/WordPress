@@ -319,6 +319,25 @@ final class MAD4B_Accommodation_Weight_Policies_V1 {
         $explicit=$origin==='explicit_rate';
         if($explicit)return new WP_Error('accommodation_weight_explicit_rate_must_be_resolved_by_native_rate');
         $computed=round($amount*$occFactor*$roomFactor,4);
+        // Board selection is delegated to the original native meal policy,
+        // never converted to a percentage or silently charged a second time.
+        $mealContext=['status'=>'meal_policy_unavailable',
+            'base_board'=>null,'source'=>null,'contract_confirmed'=>false];
+        if(class_exists('MAD4B_Hotel_Meal_Base_Policy_V1',false)){
+            $meal=MAD4B_Hotel_Meal_Base_Policy_V1::resolve($property);
+            if(is_wp_error($meal)){
+                $mealContext['status']=$meal->get_error_code();
+            }else{
+                $mealContext=[
+                    'status'=>'recommended_board_requires_rate_confirmation',
+                    'base_board'=>(string)$meal['base_board'],
+                    'source'=>(string)$meal['source'],
+                    'source_ref'=>$meal['source_ref']??null,
+                    'contract_confirmed'=>false,
+                    'optional_extras_included_in_estimate'=>false
+                ];
+            }
+        }
         return ['contract'=>self::CONTRACT,'status'=>'estimate_only_not_supplier_cost',
             'origin'=>$origin,'property_id'=>$property,'unit_id'=>$unit?:null,
             'reference_amount'=>number_format($amount,4,'.',''),
@@ -333,6 +352,7 @@ final class MAD4B_Accommodation_Weight_Policies_V1 {
             'estimated_unit_amount'=>number_format($computed,4,'.',''),
             'effective_policy'=>$effective,
             'priced_season'=>null,'date_window_verified'=>false,
+            'meal_base_policy'=>$mealContext,
             'supplier_contract_approved'=>false,'availability_verified'=>false,
             'base_board_included_verified'=>false,
             'commercial_ready'=>false,'rate_written'=>false,'checkout_ready'=>false,
