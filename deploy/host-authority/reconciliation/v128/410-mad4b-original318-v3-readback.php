@@ -59,17 +59,39 @@ final class MAD4B_Original318_Host_V3_Readback {
             || !function_exists('home_url')
             || ($pinned['origin']??null)!==untrailingslashit(home_url('/')))
             return self::denied($company,$environment,'PINNED_SITE_IDENTITY_INVALID');
-        // The company registry checks site UUID and enrolled company, not
-        // a hostname-only guess or a stale copied WordPress option.
-        if (!class_exists('MAD4B_Company_Environment_Registry_V2',false))
-            return self::denied($company,$environment,'CENTRAL_SITE_REGISTRY_NOT_READY');
-        $registered=MAD4B_Company_Environment_Registry_V2::target($company,$environment);
-        if (!is_array($registered)
-            || ($registered['company_id']??null)!==$company
-            || ($registered['environment']??null)!==$environment
-            || ($registered['site_uuid']??null)!==$pinned['site_uuid']
-            || ($registered['canonical_origin']??null)!==$pinned['origin'])
-            return self::denied($company,$environment,'ENROLLED_COMPANY_SITE_DRIFT');
+        // The Central host itself is not a Company Environment Registry
+        // target. It has a separate first-party Site Profile with its own
+        // enrolled deployment-binding digest. Exact immutable Root pins
+        // remain the authority; the WordPress profile is a cross-check only.
+        if ($company==='mad4b-central' && $environment==='staging') {
+            $profile=get_option('mad4b_scp_site_profile_v2',false);
+            if (!is_array($profile)
+                || ($profile['contract']??null)!=='mad4b.site-profile.v2'
+                || ($profile['version']??null)!==2
+                || ($profile['environment']??null)!=='staging'
+                || ($profile['site_uuid']??null)!==$pinned['site_uuid']
+                || ($profile['canonical_origin']??null)!==$pinned['origin']
+                || !isset($profile['deployment_binding_digest'])
+                || !is_string($profile['deployment_binding_digest'])
+                || !preg_match('/^[a-f0-9]{64}$/D',$profile['deployment_binding_digest'])
+                || !defined('MAD4B_HOST_V3_CENTRAL_DEPLOYMENT_BINDING_SHA256')
+                || !is_string(constant('MAD4B_HOST_V3_CENTRAL_DEPLOYMENT_BINDING_SHA256'))
+                || !hash_equals(
+                    (string)constant('MAD4B_HOST_V3_CENTRAL_DEPLOYMENT_BINDING_SHA256'),
+                    $profile['deployment_binding_digest']))
+                return self::denied($company,$environment,'CENTRAL_SITE_PROFILE_BINDING_DRIFT');
+        } else {
+            // Company sites use their separately enrolled company registry.
+            if (!class_exists('MAD4B_Company_Environment_Registry_V2',false))
+                return self::denied($company,$environment,'CENTRAL_SITE_REGISTRY_NOT_READY');
+            $registered=MAD4B_Company_Environment_Registry_V2::target($company,$environment);
+            if (!is_array($registered)
+                || ($registered['company_id']??null)!==$company
+                || ($registered['environment']??null)!==$environment
+                || ($registered['site_uuid']??null)!==$pinned['site_uuid']
+                || ($registered['canonical_origin']??null)!==$pinned['origin'])
+                return self::denied($company,$environment,'ENROLLED_COMPANY_SITE_DRIFT');
+        }
         $pub312=base64_decode((string)constant('MAD4B_HOST_V3_ORIGINAL312_PUBLIC_B64'),true);
         $pub313=base64_decode((string)constant('MAD4B_HOST_V3_ORIGINAL313_PUBLIC_B64'),true);
         if (!is_string($pub312)||strlen($pub312)!==32 ||
