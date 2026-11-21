@@ -172,13 +172,11 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
         if(!array_intersect($actual,array_map('intval',$scope['accepted_term_ids'])))
             return ['eligible'=>false,'reason'=>'property_destination_mismatch'];
         if(($scope['destination']??'')==='aswan'){
-            // A governorate-wide tag does NOT make an Abu Simbel hotel
-            // an eligible Aswan-city overnight. Enforce the specific
-            // excluded locality, even when the parent governorate matches.
+            // Native governorate overlap cannot approve Abu Simbel lodging
+            // as an Aswan-city accommodation stage.
             $abu=get_term_by('slug','abu-simbel-temples','destinations');
             if($abu instanceof WP_Term && in_array((int)$abu->term_id,$actual,true))
                 return ['eligible'=>false,'reason'=>'property_in_abu_simbel_not_aswan_city'];
-            // Aswan governorate is broader than the actual stay city.
             $city=get_term_by('slug','aswan-city','destinations');
             if(!$city instanceof WP_Term ||
                 !in_array((int)$city->term_id,$actual,true))
@@ -413,8 +411,6 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
                 'supplier_receipt_approved'=>is_array($receipt)&&($receipt['status']??'')==='approved',
                 'native_rate_stage_written'=>!empty($b['native_rate_stage_written']),
                 'cruise_program_term'=>(int)(is_array($program)?($program['program_term_id_en']??0):0),
-                // Separate from saved qualified Package candidates; these
-                // are real-site *discovery options*, never price authority.
                 'source_discovery'=>(!$candidates ||
                     in_array($kind,['sleeper_train','cruise'],true))
                     ?MAD4B_Package_Stage_Sourcing_V1::inspect($tour,$p,$tierId)
@@ -589,6 +585,9 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
                 'nonce'=>wp_create_nonce(self::AJAX),'packages'=>self::packages(),
                 'tiers'=>self::tierIds(),
                 'property_pricing_url'=>admin_url('admin.php?page=mad4b-stay-price-layers'),
+                'overview_url'=>admin_url('admin.php?page=mad4b-pricing-workspace'),
+                'pricing_controls_url'=>admin_url('admin.php?page=etg-dynamic-pricing-controls'),
+                'policy_bindings_url'=>admin_url('admin.php?page=mad4b-policy-bindings'),
             ],JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT).';',
             'before');
     }
@@ -606,6 +605,13 @@ add_action('wp_ajax_'.MAD4B_Package_Pricing_Lab_Readiness_V1::AJAX,
     [MAD4B_Package_Pricing_Lab_Readiness_V1::class,'ajax']);
 add_action('admin_enqueue_scripts',
     [MAD4B_Package_Pricing_Lab_Readiness_V1::class,'assets'],87);
-add_action('admin_notices',
-    [MAD4B_Package_Pricing_Lab_Readiness_V1::class,'container'],100);
+// Mount inside the original Pricing Lab page instead of WordPress notices.
+add_action('mad4b/pricing-lab/before-root',
+    [MAD4B_Package_Pricing_Lab_Readiness_V1::class,'container'],10);
+// Compatibility only if a future older Pricing Lab loses the native slot.
+add_action('admin_notices',static function():void {
+    if(!defined('MAD4B_PRICING_LAB_NATIVE_SLOT_READY'))
+        MAD4B_Package_Pricing_Lab_Readiness_V1::container();
+},100);
 }
+
