@@ -661,6 +661,37 @@ def run_core(site):
                             or admitted.get('source_manifest_sha256')!=observed['manifest_sha256']):
                             print(run(release_args+['discard_staged'],timeout=30))
                             issued_before_qa=False
+                            # The original 421/422 market-bound consumer remains
+                            # Native CSS. Two independently measured *full*
+                            # V2 LCP-only failures are needed before the
+                            # original queue can prefer Native permanently
+                            # for this exact source/dependency/QA fingerprint.
+                            # No partial, interaction-failed or source-drift
+                            # evidence may take this fast path.
+                            import importlib.util
+                            negspec=importlib.util.spec_from_file_location(
+                                'bounded_v2_lcp_nonbenefit',
+                                TOOLS/'public-v2-negative-performance.py')
+                            negmod=importlib.util.module_from_spec(negspec)
+                            negspec.loader.exec_module(negmod)
+                            negative_qa=json.loads((jobdir/'ordered-native-critical-qa.json').read_text())
+                            if negmod.is_v2_lcp_negative_candidate(admitted,negative_qa):
+                                current_state=obs(php,host,env)
+                                current_state['runtime_sha']=approved_native_runtime_sha(site,wp)
+                                still_enrolled=approved_v2_consumer_sha(
+                                    site,wp,current_state['runtime_sha'])
+                                if still_enrolled:current_state['consumer_v2_sha']=still_enrolled
+                                current_state['qa_policy_sha']=qa_policy_sha()
+                                latest_route=next((r for r in catalog(php,host)['routes']
+                                                   if r['route_key']==route['route_key']),None)
+                                if current_state==state and latest_route==route:
+                                    depends=bool(route.get('source_listing_dependency'))
+                                    record('native_candidate',
+                                           'listing' if depends else 'no-listing')
+                                    print('V2_NATIVE_LCP_NONBENEFIT_MEASURED',site,lang,
+                                          jobpath,'PENDING_INDEPENDENT_CONFIRMATION',
+                                          flush=True)
+                                    return
                             raise ValueError('MULTICSS_POST_RELEASE_QA_FAILED_AND_REVERTED')
                         # Re-check current WPML/market/runtime generations AFTER
                         # browser QA. This is post-release invalidation, never
