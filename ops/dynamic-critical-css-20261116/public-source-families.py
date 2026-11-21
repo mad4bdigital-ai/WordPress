@@ -309,6 +309,93 @@ def recoverable_listing_generation_keys(site,catalog,state,ledger,published,rows
             break
     return [x[2] for x in sorted(set(candidates))[:64]]
 
+def recoverable_same_epoch_runtime_keys(site,catalog,state,ledger,published,rows):
+    """Old same-epoch V2 original QA receipts: source-key-verified retries only.
+
+    This is scheduling, not certificate validation, grant or public delivery.
+    Original source, five-width Chromium, WCML, 422 and post-QA gates always run.
+    """
+    if site not in ROOTS or catalog.get('host')!=ROOTS[site][1]:
+        raise ValueError('runtime-recovery-foreign-company')
+    consumer=state.get('consumer_v2_sha')
+    if not isinstance(consumer,str) or not v2.SHA.fullmatch(consumer):
+        return []
+    currencies=state.get('enabled_currencies')
+    if not isinstance(currencies,list) or not all(
+        isinstance(c,str) and re.fullmatch('[A-Z]{3}',c) for c in currencies):
+        return []
+    prior=collections.defaultdict(list)
+    for (lang,path,market,currency),cert in published.items():
+        prior[(lang,path)].append((market,currency,cert))
+    candidates=[]
+    now=int(time.time())
+    for route in rows:
+        ledger_row=ledger.get('routes',{}).get(route.get('route_key'))
+        if not isinstance(ledger_row,dict) or ledger_row.get('status')!='certified':
+            continue
+        listed=ledger_row.get('depends_on_listings')
+        if type(listed) is not bool:continue
+        new_key=queue.source_key(catalog,route,state,listed)
+        if ledger_row.get('source_key')==new_key:continue
+        attempt=ledger_row.get('attempted_at')
+        if type(attempt) is not int or attempt<=0:continue
+        for market,currency,cert in prior.get((route['language'],route['path']),[]):
+            if (not isinstance(cert,dict)
+                or cert.get('contract')!=v2.CONTRACT
+                or cert.get('status')!='certified'
+                or cert.get('host')!=catalog['host']
+                or cert.get('language')!=route['language']
+                or cert.get('path')!=route['path']
+                or cert.get('object_id')!=route['id']
+                or cert.get('type')!=route['type']
+                or cert.get('market_country')!=market
+                or cert.get('currency')!=currency
+                or currency not in currencies
+                or not MARKET_RE.fullmatch(market+'|'+currency)
+                or not v2.exact_market_is_supported(route,cert,state)
+                or cert.get('css_epoch')!=state.get('css_epoch')
+                or cert.get('consumer_sha')!=consumer
+                or not isinstance(cert.get('runtime_sha'),str)
+                or not v2.SHA.fullmatch(cert['runtime_sha'])
+                or cert['runtime_sha']==state.get('runtime_sha')
+                or cert.get('native_mobile_breakpoint')!=767
+                or cert.get('critical_cap_px')!=767):
+                continue
+            evidence=cert.get('evidence')
+            if (not isinstance(evidence,dict)
+                or evidence.get('decision')!='passed_evidence'
+                or evidence.get('tested')!=5
+                or evidence.get('viewports')!=[320,390,414,767,768]
+                or evidence.get('performance_source')!='real-original-css-urls'
+                or not v2.SHA.fullmatch(str(evidence.get('qa_sha256','')))):
+                continue
+            certified_at=cert.get('certified_at')
+            if (type(certified_at) is not int
+                or not 0<=now-certified_at<=14*86400
+                or not 0<=attempt-certified_at<=86400):
+                continue
+            deps=cert.get('dependencies')
+            if (not isinstance(deps,dict)
+                or deps.get('global_generation')!=catalog.get('global_generation')
+                or deps.get('route_generation')!=route.get('revision')
+                or deps.get('contains_dynamic_listing') is not listed):
+                continue
+            old_catalog=catalog
+            if listed:
+                old=deps.get('listing_generation')
+                current=catalog.get('listing_generation')
+                if (type(old) is not int or type(current) is not int
+                    or not 0<=current-old<=100):continue
+                old_catalog=dict(catalog,listing_generation=old)
+            old_state=dict(state,runtime_sha=cert['runtime_sha'])
+            if ledger_row.get('source_key')!=queue.source_key(
+                    old_catalog,route,old_state,listed):
+                continue
+            candidates.append((-attempt,route['path'],route['route_key']))
+            break
+    return [r[2] for r in sorted(set(candidates))[:64]]
+
+
 def published_v2_generation_drift(catalog,state,published):
     """Report why immutable v2 files are not current CSS source proofs.
 
@@ -363,6 +450,8 @@ def build(site,catalog,state,ledger,root=None,variant_index=None):
     published=load_certs(root)
     published_context=published_v2_generation_drift(catalog,state,published)
     recovery_keys=recoverable_listing_generation_keys(
+        site,catalog,state,ledger,published,catalogrows)
+    same_epoch_runtime_keys=recoverable_same_epoch_runtime_keys(
         site,catalog,state,ledger,published,catalogrows)
     verifier_retries=verifier_only_recheck_candidates(
         site,catalog,state,ledger,root,catalogrows)
@@ -585,6 +674,8 @@ def build(site,catalog,state,ledger,root=None,variant_index=None):
       'source_families':rows,
       'recoverable_listing_generation_route_keys':recovery_keys,
       'recoverable_listing_generation_count':len(recovery_keys),
+      'recoverable_same_epoch_runtime_route_keys':same_epoch_runtime_keys,
+      'recoverable_same_epoch_runtime_count':len(same_epoch_runtime_keys),
       'verifier_only_recheck_candidates':len(verifier_retries),
       'next_verifier_only_recheck_route_key':verifier_retries[0] if verifier_retries else None,
       'next_canary_route_key':wants[0]['next_canary'] if wants else None,
@@ -646,6 +737,7 @@ def plan_next_css_issuance(report,sequence,verified_drift_route_key=None):
     individual_keys=report.get('next_individual_css_route_keys')
     near_keys=report.get('near_qualified_route_keys')
     recovery_keys=report.get('recoverable_listing_generation_route_keys')
+    runtime_keys=report.get('recoverable_same_epoch_runtime_route_keys')
     modern=family_keys is not None or individual_keys is not None
     if modern:
         for lane in (family_keys,individual_keys):
@@ -677,6 +769,17 @@ def plan_next_css_issuance(report,sequence,verified_drift_route_key=None):
                    for k in recovery_keys))):
             raise ValueError('invalid-source-regression-recovery-lane')
         recovery_lane=recovery_keys or []
+        if (runtime_keys is not None and (
+            not isinstance(runtime_keys,list) or len(runtime_keys)>64
+            or len(set(runtime_keys))!=len(runtime_keys)
+            or any(not isinstance(k,str) or not re.fullmatch('[a-f0-9]{64}',k)
+                   for k in runtime_keys))):
+            raise ValueError('invalid-same-epoch-runtime-route-lane')
+        runtime_lane=runtime_keys or []
+        # Current listing recovery and old-runtime certification retries
+        # SHARE the original near-completion 1/4 lane with other families.
+        # No historic receipt may authorize CSS on a new runtime.
+        progress_lanes=[a for a in (near_lane,recovery_lane,runtime_lane) if a]
         # A bounded old-QA retry uses at most one slot per eight attempts.
         # The 1/4 exact-route lane stays untouched. Unlike a fixed first
         # family, this never repeatedly tests Arabic while leaving
@@ -691,28 +794,18 @@ def plan_next_css_issuance(report,sequence,verified_drift_route_key=None):
         # partially evidenced, exact-context family. Unseen families retain
         # the other available slots, and retry/individual lanes keep their
         # bounded original priority and independent QA requirements.
-        if sequence%4==1:
-            # Share the existing bounded progress slot with families that
-            # are almost complete. Neither can monopolize unseen groups.
-            recovery_turn=recovery_lane and (
-                not near_lane or sequence%8==5)
-            if recovery_turn:
-                cursor=sequence//8 if near_lane else sequence//4
-                return recovery_lane[cursor%len(recovery_lane)]
-            if near_lane:
-                cursor=sequence//8 if recovery_lane else sequence//4
-                return near_lane[cursor%len(near_lane)]
-        if not family_lane and not individual_lane and recovery_lane:
-            return recovery_lane[(sequence//4)%len(recovery_lane)]
+        if sequence%4==1 and progress_lanes:
+            slot=(sequence-1)//4
+            group=progress_lanes[slot%len(progress_lanes)]
+            return group[(slot//len(progress_lanes))%len(group)]
+        if not family_lane and not individual_lane and progress_lanes:
+            slot=sequence//4
+            group=progress_lanes[slot%len(progress_lanes)]
+            return group[(slot//len(progress_lanes))%len(group)]
         if family_lane:
             consumed_retry=(sequence+7)//8 if retry else 0
-            consumed_near=(sequence+2)//4 if near_lane else 0
-            # Recovery occupies the existing near-family 1-in-4 slot.
-            # When no near family exists, discount that same slot explicitly
-            # or the modulo pattern systematically skips 2/5 of families.
-            consumed_recovery=(sequence+2)//4 if recovery_lane and not near_lane else 0
-            family_index=(sequence-sequence//4-consumed_retry
-                          -consumed_near-consumed_recovery)
+            consumed_progress=(sequence+2)//4 if progress_lanes else 0
+            family_index=sequence-sequence//4-consumed_retry-consumed_progress
             return family_lane[family_index%len(family_lane)]
         return individual_lane[0] if individual_lane else retry
     if retry and (not family and not individual or sequence%4==0):
