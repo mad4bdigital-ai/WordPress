@@ -237,12 +237,15 @@ final class MAD4B_Package_Components_Editor_Context_V1 {
                 'Review actual sailing program, ship, cabin unit, departure and supplier terms. Shown because a saved cruise stage or Cruise Tour mode exists.',
                 $rateAction,$rateActionLabel);
         }
-        $costUrl=current_user_can('commerce_manage_pricing')&&
-            current_user_can('manage_woocommerce')
-            ?admin_url('admin.php?page=dynamic-pricing-controls'):'';
+        $canInspectLab=current_user_can('commerce_manage_pricing') &&
+            (current_user_can('manage_woocommerce') ||
+             (current_user_can('mad4b_manage_company_operations') &&
+              current_user_can('mad4b_work_company_tasks')));
+        $costUrl=$canInspectLab
+            ?admin_url('admin.php?page=mad4b-pricing-lab&mad4b_package_tour='.(int)$post->ID):'';
         self::line('5. Cost & financial readiness','Not certified by this panel',
             'Check the original provider cost receipts, children/infants, FX, taxes, margin, and customer price inclusion before generation or checkout. This read-only view does not certify or change a selling Rate.',
-            $costUrl,'Review existing Pricing Controls');
+            $costUrl,'Inspect this Package in Pricing Lab');
         echo '</ol>';
         echo '<p class="description mad4b-pkg-context__footer">For other Rate variants, use the Tour\'s existing Queried Rates inventory. This panel does not save, select, or synchronize any additional Rate IDs.</p>';
         echo '</div>';
