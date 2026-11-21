@@ -1,0 +1,33 @@
+--- a/wp-content/mu-plugins/mad4b-stay-pricing-admin/ui.js
++++ b/wp-content/mu-plugins/mad4b-stay-pricing-admin/ui.js
+@@ -217,6 +217,7 @@
+       const title=el('strong','',rate.title||'Rate #'+rate.id);
+       const meta=el('small','',[
+         (rate.kind||'unscoped').replaceAll('_',' '),rate.status,
++        rate.source_kind==='cost'?'Internal cost · approval not established':'Selling price / unclassified',
+         rate.board||'Meal not declared',
+         rate.valid_from&&rate.valid_to?rate.valid_from+' – '+rate.valid_to:'Dates missing',
+         rate.amount&&rate.currency?rate.amount+' '+rate.currency:'Amount missing',
+@@ -256,6 +257,22 @@
+     q('price-basis').textContent=price?(price.price_unit||'').replaceAll('_',' '):'';
+     q('price-meal').textContent='Base: '+(data.quote?.meal_base||'not classified')+
+       ' · Requested: '+(data.quote?.requested_board||'inherit');
++    const cost=data.quote?.cost_reference;
++    q('cost-reference').textContent=cost?
++      'Unapproved cost reference: '+cost.source.replaceAll('_',' ')+
++      ' #'+cost.rate_id+' · '+Number(cost.amount).toLocaleString(undefined,
++        {maximumFractionDigits:4})+' '+cost.currency+' / '+cost.price_unit.replaceAll('_',' ')+
++      '. Supplier receipt, native Unit and inventory still required.':
++      'No approved Unit/Property cost reference for this stay. Direct prices cannot substitute for supplier cost.';
++    const weights=data.effective_weight_policy;
++    const fields=Array.isArray(weights?.fields)?weights.fields:[];
++    q('effective-weight').textContent=weights?.status==='effective_shadow_only'?
++      'Weights (preview only): reference '+weights.reference+
++      ' · '+fields.map(x=>x.field.replace('_pct','')+' '+x.percent+'%'+
++        ' ['+x.source+']').join(' · ')+
++      '. A documented explicit Rate is NOT multiplied by these weights again.':
++      'Effective weights unavailable for this selection; review native policy ('+
++        (weights?.code||weights?.status||'unknown')+').';
+     q('preview-result').hidden=false;
+     clear(q('edit-links'));
+     [safeLink(data.edit_property_url,'Edit Property'),safeLink(data.edit_unit_url,'Edit Unit'),

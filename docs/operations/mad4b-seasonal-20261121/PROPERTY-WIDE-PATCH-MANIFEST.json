@@ -1,0 +1,94 @@
+{
+  "contract": "mad4b.property-wide-sheet-reviewed-live-release.v1",
+  "created_utc": "2026-11-21T16:35:37.454019+00:00",
+  "sites": {
+    "source": {
+      "006-mad4b-accommodation-layered-pricing.php": {
+        "path": "wp-content/mu-plugins/006-mad4b-accommodation-layered-pricing.php",
+        "before_sha256": "84861601b175a04381a5f8c62d40a38e630443dc7c20938b4628373dc04036ee",
+        "after_sha256": "7ea27659b4b2d5897596422f130fba2ca31873c14ff6e2bad332a9dd32a140fc",
+        "patch_sha256": "bc59d254139fb4662c9906401dbc6a73b541199638ef3e2cda94418a3ea8e02c"
+      },
+      "007-mad4b-stay-price-layers-admin.php": {
+        "path": "wp-content/mu-plugins/007-mad4b-stay-price-layers-admin.php",
+        "before_sha256": "7bb1eade9665b15525394b98f39a1e61088620b86973ce6abb04a66cc3a7431c",
+        "after_sha256": "53bf39818d130e852ed854934477bf3bbb8548eb2c98aa4d1b4abe664084d588",
+        "patch_sha256": "7af1a3bf26fd471688a1ad8082f3fd1c454de89585b883ab6ae7e3c78da86e11"
+      },
+      "008-mad4b-stay-pricing-controls-panel.php": {
+        "path": "wp-content/mu-plugins/008-mad4b-stay-pricing-controls-panel.php",
+        "before_sha256": "f9e3b98bb4343e7d7ae99b07be1f847e087d0573414bf0d18ea235a2a6a401af",
+        "after_sha256": "991e986408584a84451e63ef0b1bd85014341013998beaf51027d0d88914c7de",
+        "patch_sha256": "016636af0a3895860c4fafadd279ffd9a224bf3123691b3af94b4ed19544c40a"
+      },
+      "ui.js": {
+        "path": "wp-content/mu-plugins/mad4b-stay-pricing-admin/ui.js",
+        "before_sha256": "9d99f39a55135e6033107be2db0d3cf82e6d666bf8a2f50df72bac6e802b5fa9",
+        "after_sha256": "78bcd46e556a2e611a08f05489acab5ca672f2a0b6a46f4eb87d4230e0b35c7a",
+        "patch_sha256": "42b81bd98b2975ec2c1e5adda4f70b4b23cbb16293e76cc6b7655ddedf94d829"
+      },
+      "package-stage-rate-guard-v1.php": {
+        "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/package-stage-rate-guard-v1.php",
+        "before_sha256": "f9d3407b28a2411aca193df27cca56672d64abf14867f1889bd2fb83afcd25de",
+        "after_sha256": "1eb44dc3176b507699fbb160f96999b49310cd8adfb3e22dc5ee1c0cf74432ec",
+        "patch_sha256": "317fa1d756a33318eb9a8b2b602abc0137968dff8ba5b892d454510d25f82cbf"
+      },
+      "rate_review": {
+        "created_draft": 47,
+        "properties": 13,
+        "original_rate_count": 29,
+        "current_rate_count": 76,
+        "source_published": 0,
+        "full_readback_failures": 0
+      }
+    },
+    "wayfa": {
+      "006-mad4b-accommodation-layered-pricing.php": {
+        "path": "wp-content/mu-plugins/006-mad4b-accommodation-layered-pricing.php",
+        "before_sha256": "84861601b175a04381a5f8c62d40a38e630443dc7c20938b4628373dc04036ee",
+        "after_sha256": "7ea27659b4b2d5897596422f130fba2ca31873c14ff6e2bad332a9dd32a140fc",
+        "patch_sha256": "bc59d254139fb4662c9906401dbc6a73b541199638ef3e2cda94418a3ea8e02c"
+      },
+      "007-mad4b-stay-price-layers-admin.php": {
+        "path": "wp-content/mu-plugins/007-mad4b-stay-price-layers-admin.php",
+        "before_sha256": "7bb1eade9665b15525394b98f39a1e61088620b86973ce6abb04a66cc3a7431c",
+        "after_sha256": "53bf39818d130e852ed854934477bf3bbb8548eb2c98aa4d1b4abe664084d588",
+        "patch_sha256": "7af1a3bf26fd471688a1ad8082f3fd1c454de89585b883ab6ae7e3c78da86e11"
+      },
+      "008-mad4b-stay-pricing-controls-panel.php": {
+        "path": "wp-content/mu-plugins/008-mad4b-stay-pricing-controls-panel.php",
+        "before_sha256": "f9e3b98bb4343e7d7ae99b07be1f847e087d0573414bf0d18ea235a2a6a401af",
+        "after_sha256": "991e986408584a84451e63ef0b1bd85014341013998beaf51027d0d88914c7de",
+        "patch_sha256": "016636af0a3895860c4fafadd279ffd9a224bf3123691b3af94b4ed19544c40a"
+      },
+      "ui.js": {
+        "path": "wp-content/mu-plugins/mad4b-stay-pricing-admin/ui.js",
+        "before_sha256": "9d99f39a55135e6033107be2db0d3cf82e6d666bf8a2f50df72bac6e802b5fa9",
+        "after_sha256": "78bcd46e556a2e611a08f05489acab5ca672f2a0b6a46f4eb87d4230e0b35c7a",
+        "patch_sha256": "42b81bd98b2975ec2c1e5adda4f70b4b23cbb16293e76cc6b7655ddedf94d829"
+      },
+      "package-stage-rate-guard-v1.php": {
+        "path": "wp-content/mu-plugins/shared-product-core/pricing/package-stage-rate-guard-v1.php",
+        "before_sha256": "f9d3407b28a2411aca193df27cca56672d64abf14867f1889bd2fb83afcd25de",
+        "after_sha256": "1eb44dc3176b507699fbb160f96999b49310cd8adfb3e22dc5ee1c0cf74432ec",
+        "patch_sha256": "92a1d8e1212d78585de354ec657533dee30e02a7836a72a857180a234bbe7e6a"
+      },
+      "rate_review": {
+        "created_draft": 56,
+        "properties": 17,
+        "original_rate_count": 28,
+        "current_rate_count": 84,
+        "source_published": 0,
+        "full_readback_failures": 0
+      }
+    }
+  },
+  "patches": {},
+  "metadata_and_prices_in_git": false,
+  "nightly_and_supplier_verified": false,
+  "new_published_rates": 0,
+  "new_supplier_approved_cost_receipts": 0,
+  "checkout_activated": false,
+  "enforced_rate_status": "draft",
+  "source_commerce_head": "24f862890b11f28822d90352f85a77b570c867af"
+}

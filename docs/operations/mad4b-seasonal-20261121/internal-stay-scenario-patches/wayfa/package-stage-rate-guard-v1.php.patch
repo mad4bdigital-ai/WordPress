@@ -1,0 +1,67 @@
+--- a/wp-content/mu-plugins/shared-product-core/pricing/package-stage-rate-guard-v1.php
++++ b/wp-content/mu-plugins/shared-product-core/pricing/package-stage-rate-guard-v1.php
+@@ -44,12 +44,31 @@
+         return ['valid'=>false,'scope'=>null,
+             'reason'=>'property_cost_rate_scope_not_explicit'];
+     }
++    /**
++     * Native commercial source IDs are English. WPML can replace
++     * term-slug filters by the admin interface locale, falsely treating
++     * an existing package as non-package, or mismatching destination IDs.
++     * Hold the original source locale only during this internal read.
++     */
++    private static function withSourceLocale(callable $fn) {
++        $active=apply_filters('wpml_current_language',null);
++        $default=apply_filters('wpml_default_language',null);
++        if(!is_string($active)||$active===''||
++           !is_string($default)||$default===''||$active===$default)
++            return $fn();
++        do_action('wpml_switch_language',$default);
++        try {return $fn();}
++        finally {do_action('wpml_switch_language',$active);}
++    }
+     public static function canonicalTour(int $tour): int {
+         if (get_post_type($tour) !== 'tours-and-activities') return 0;
+         $en = (int) apply_filters('wpml_object_id', $tour, 'tours-and-activities', false, 'en');
+         return $en > 0 && get_post_type($en) === 'tours-and-activities' ? $en : $tour;
+     }
+     public static function applies(int $tour): bool {
++        return self::withSourceLocale(static fn()=>self::appliesInSourceLocale($tour));
++    }
++    private static function appliesInSourceLocale(int $tour): bool {
+         $source = self::canonicalTour($tour);
+         if (!$source) return false;
+         $terms = wp_get_object_terms($source, 'tour-types', ['fields'=>'slugs']);
+@@ -65,6 +84,9 @@
+      * or generic Egypt-wide taxonomy parents.
+      */
+     public static function stageScope(int $tour, array $stage): array {
++        return self::withSourceLocale(static fn()=>self::stageScopeInSourceLocale($tour,$stage));
++    }
++    private static function stageScopeInSourceLocale(int $tour, array $stage): array {
+         $source = self::canonicalTour($tour);
+         $key = sanitize_key((string) ($stage['destination_key'] ?? ''));
+         $map = [
+@@ -104,6 +126,11 @@
+     }
+     public static function propertyEligibility(int $property, int $tier, array $scope,
+         string $kind): array {
++        return self::withSourceLocale(static fn()=>
++            self::propertyEligibilityInSourceLocale($property,$tier,$scope,$kind));
++    }
++    private static function propertyEligibilityInSourceLocale(int $property, int $tier, array $scope,
++        string $kind): array {
+         if (get_post_type($property) !== 'properties')
+             return ['eligible'=>false,'reason'=>'invalid_property_type'];
+         if (get_post_status($property) !== 'publish')
+@@ -202,6 +229,10 @@
+     }
+     /** Pure readback. No caller-supplied candidate IDs or approval switches. */
+     public static function review(int $tour,int $tier,string $from='',string $to=''): array {
++        return self::withSourceLocale(static fn()=>
++            self::reviewInSourceLocale($tour,$tier,$from,$to));
++    }
++    private static function reviewInSourceLocale(int $tour,int $tier,string $from='',string $to=''): array {
+         $parent = self::canonicalTour($tour);
+         $out = ['contract'=>self::CONTRACT, 'applies'=>false,
+             'tour_id'=>$tour,'source_tour_id'=>$parent,'tier_id'=>$tier,

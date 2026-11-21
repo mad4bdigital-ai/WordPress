@@ -1,0 +1,25 @@
+--- a/wp-content/mu-plugins/mad4b-stay-pricing-admin/panel.html
++++ b/wp-content/mu-plugins/mad4b-stay-pricing-admin/panel.html
+@@ -15,8 +15,8 @@
+     <p data-stay="supplier-status" class="mad4b-stay-panel__status" role="status" aria-live="polite">Loading supplier configuration…</p>
+     <p class="mad4b-stay-panel__intro"><strong>Inside self — source order:</strong></p>
+     <div class="mad4b-stay-panel__layers" aria-label="Price source priority within self">
+-      <span><b>1</b> Unit Rate</span><span><b>2</b> Unit Direct</span>
+-      <span><b>3</b> Property Rate</span><span><b>4</b> Property Direct</span>
++      <span><b>1</b> Unit Rate</span><span><b>2</b> Property Rate</span>
++      <span><b>3</b> Unit Direct</span><span><b>4</b> Property Direct</span>
+     </div>
+     <div class="mad4b-stay-panel__layout">
+       <div class="mad4b-stay-panel__catalog">
+@@ -79,8 +79,10 @@
+           <div class="mad4b-stay-panel__price-label" data-stay="price-source"></div>
+           <strong data-stay="price-value" class="mad4b-stay-panel__price-value"></strong>
+           <div data-stay="price-basis" class="mad4b-stay-panel__price-basis"></div>
++          <p data-stay="cost-reference" class="mad4b-stay-panel__price-meal"></p>
++          <p data-stay="effective-weight" class="mad4b-stay-panel__price-meal"></p>
+           <p data-stay="price-meal" class="mad4b-stay-panel__price-meal"></p>
+-          <p class="mad4b-stay-panel__warning">Indicative source amount only. Not a stay total, meal-inclusion guarantee, inventory confirmation or checkout authorization.</p>
++          <p class="mad4b-stay-panel__warning">Direct prices are indicative. Cost Rate references require original supplier approval, verified occupancy and native Unit quote; no checkout, duplicate weights or automatic markup.</p>
+         </div>
+         <nav data-stay="edit-links" aria-label="Native pricing editors" class="mad4b-stay-panel__edit-links"></nav>
+       </aside>

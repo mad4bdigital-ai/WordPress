@@ -1,0 +1,35 @@
+--- a/wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/package-stage-rate-guard-v1.php
++++ b/wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/package-stage-rate-guard-v1.php
+@@ -394,7 +394,17 @@
+                     $stop=(string)get_post_meta($rate,'stop_sale',true);
+                     $qa=(string)get_post_meta($rate,'_mad4b_is_test_data',true);
+                     $amount=get_post_meta($rate,'base_amount',true);
+-                    $verified=$rate>0&&($scope['valid']??false)===true&&
++                    $proposal=get_post_meta($rate,'_mad4b_supplier_sheet_proposal_v1',true);
++                    $proposalUnapproved=(string)get_post_meta($rate,'_mad4b_supplier_sheet_quote_unapproved_v1',true)==='1';
++                    if(is_array($proposal) && (
++                        empty($proposal['supplier_contract_verified'])||
++                        empty($proposal['nightly_basis_verified'])||
++                        empty($proposal['cost_receipt_approved'])||
++                        empty($proposal['commercial_activation_allowed'])))
++                        $proposalUnapproved=true;
++                    $verified=$rate>0&&!$proposalUnapproved&&
++                        !get_post_meta($rate,'_shared_generation_supplier_proposal',true)&&
++                        ($scope['valid']??false)===true&&
+                         get_post_status($rate)==='publish'&&
+                         (int)get_post_meta($rate,'prop_related_property_id',true)===$selected&&
+                         !get_post_meta($rate,'_booking_experience_qa_pricing_fixture',true)&&
+@@ -414,8 +424,11 @@
+                         $offset=$begin-1;
+                         $first=gmdate('Y-m-d',strtotime($from.' +'.$offset.' days UTC'));
+                         $last=gmdate('Y-m-d',strtotime($to.' +'.($offset+$nights-1).' days UTC'));
+-                        if((string)get_post_meta($rate,'valid_from',true)>$first ||
+-                           (string)get_post_meta($rate,'valid_to',true)<$last)
++                        $window=class_exists('MAD4B_Stay_Layered_Pricing_V1',false)
++                          ?MAD4B_Stay_Layered_Pricing_V1::effectiveRateWindow($rate)
++                          :['valid'=>false];
++                        if(empty($window['valid'])||$window['start']>$first||
++                           $window['end']<$last)
+                             $flag('stage_supplier_rate_period_uncovered');
+                     }
+                     // Property-wide quoted costs are reference evidence until

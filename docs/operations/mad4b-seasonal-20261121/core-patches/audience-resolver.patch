@@ -1,0 +1,15 @@
+--- a/shared-product-core/pricing/audience-resolver.php
++++ b/shared-product-core/pricing/audience-resolver.php
+@@ -9,8 +9,10 @@
+  $locale=shared_product_rate_locale_decision($rate_id);
+  if(!$locale['allowed'])return ['status'=>'unavailable','reason'=>$locale['reason']];
+  if((string)get_post_meta($rate_id,'stop_sale',true)==='1'||(string)get_post_meta($rate_id,'avilabile_status',true)==='0')return ['status'=>'unavailable','reason'=>'stopped'];
+- $now=current_time('timestamp',true);$start=(int)get_post_meta($rate_id,'tour_rate_start_date',true);$end=(int)get_post_meta($rate_id,'tour_rate_end_date',true);
+- if(($start&&$now<$start)||($end&&$now>$end))return ['status'=>'unavailable','reason'=>'outside_period'];
++ $today=gmdate('Y-m-d',current_time('timestamp',true));
++ if(!function_exists('shared_product_booking_v2_rate_covers_date')||
++   !shared_product_booking_v2_rate_covers_date($rate_id,$today))
++  return ['status'=>'unavailable','reason'=>'outside_effective_period'];
+  if($audience==='egyptians'&&(string)get_post_meta($rate_id,'has_egyptians_price',true)!=='1')return ['status'=>'unavailable','reason'=>'audience_disabled'];
+  $prefix=$audience==='egyptians'?'egyptians_':'';
+  $currency=strtoupper(trim((string)get_post_meta($rate_id,$prefix==='egyptians_'?'egyptians_currency':'base_currency',true)));

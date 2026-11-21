@@ -16,3 +16,20 @@
 .mad4b-tr-route-advisor label:has(input[type=checkbox]){display:flex;flex-direction:row;align-items:center}
 @media(max-width:1000px){.mad4b-tr-field-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){.mad4b-tr-field-grid{grid-template-columns:1fr}}
+
+.mad4b-tr-cost-bridge{margin:18px 0 8px;border:1px solid #cbdde0;
+  border-radius:8px;background:#f7faf9;padding:12px;min-width:0}
+.mad4b-tr-cost-bridge summary{cursor:pointer;font-size:14px;padding:5px;
+  color:#224e4b}
+.mad4b-tr-cost-bridge p{line-height:1.6}
+.mad4b-tr-cost-form{margin:14px 0}
+.mad4b-tr-cost-form .mad4b-tr-field-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.mad4b-tr-cost-buttons{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.mad4b-tr-cost-selected,.mad4b-tr-cost-bridge [data-tr=cost-results]{
+  min-width:0;overflow-x:auto;margin:12px 0}
+.mad4b-tr-cost-bridge table{width:100%;min-width:480px;border-collapse:collapse}
+.mad4b-tr-cost-bridge td,.mad4b-tr-cost-bridge th{padding:8px;text-align:left}
+.mad4b-tr-cost-bridge :is(button,summary,input,select):focus-visible{
+  outline:2px solid #176a58;outline-offset:2px}
+@media(max-width:930px){.mad4b-tr-cost-form .mad4b-tr-field-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.mad4b-tr-cost-form .mad4b-tr-field-grid{grid-template-columns:minmax(0,1fr)}}
