@@ -329,3 +329,35 @@ not retried or circumvented. A synthetic transactional writer test
 attempt was also blocked before execution. Original vendor writer
 round-trip, logged-in Save confirmation and two-browser stale response
 remain OPEN. No pricing settings changed.
+
+## CP3.5 — Original native Save evidence, Repeater DB readback, browser negative-path probe
+
+Date: 21 November 2026.
+
+After the earlier auth/session and synthetic writer attempts were
+blocked by platform access controls, those blocked approaches were
+NOT repeated or circumvented. We instead installed passive,
+metadata-only evidence on the ORIGINAL JetEngine Save, before the
+existing CAS unlock. A successful native Save can now be distinguished
+from an unchanged source revision and from a rejected stale request.
+
+The evidence records at most 12 events, only the event status/time,
+short fingerprint prefixes, and exact N/M direct-MariaDB Repeater
+readback counts. It never stores supplier values, amounts or client
+data and is excluded from WP-CLI synthetic regression attempts.
+
+The privileged admin page adds a separate operator-initiated stale
+negative-path probe using their EXISTING signed-in browser session.
+The probe submits no pricing fields and must be rejected HTTP 409
+before the original JetEngine writer. Probe evidence remains explicitly
+different from a real two-session concurrency collision.
+
+Tours.dev and Wayfatours passed proof PHP lints, hook ordering checks,
+source revisions unchanged, original CAS admission, independent MySQL
+lock contention, original native one-form readback checks, and offline
+Chromium 409/403/200 probe behavior. Rollback backups retained per site.
+
+OPEN: a human-operated authenticated click of the probe is required
+for real HTTP 409 receipt evidence, plus a reversible staging-only
+native Repeater Save and actual two-tab stale conflict. These have
+not been represented as completed.

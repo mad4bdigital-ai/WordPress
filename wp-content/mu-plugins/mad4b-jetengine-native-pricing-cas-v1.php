@@ -96,6 +96,10 @@ final class MAD4B_JetEngine_Native_Pricing_CAS_V1 {
         self::$lockName=$key;
         return true;
     }
+    /** Read-only proof that the original vendor writer is still inside CAS. */
+    public static function save_lock_held():bool {
+        return self::$lockHeld;
+    }
     public static function unlock():void {
         if(!self::$lockHeld)return;
         global $wpdb;
@@ -132,6 +136,9 @@ final class MAD4B_JetEngine_Native_Pricing_CAS_V1 {
     }
 
     private static function deny(WP_Error $error):void {
+        // Metadata-only audit for a legitimate nonce-verified stale request.
+        // No second writer, no original option values or customer data logged.
+        do_action('mad4b/pricing/native-save-denied',$error);
         $code=$error->get_error_code();
         $stale=$code==='native_pricing_cas_stale_source';
         $message=$stale

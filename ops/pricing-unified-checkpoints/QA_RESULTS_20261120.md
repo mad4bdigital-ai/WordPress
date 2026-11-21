@@ -204,3 +204,18 @@ not changed. The logged-in browser Save and commercial E2E remain OPEN.
 - Authenticated browser Save and native vendor database write remain
   unverified because the testing access/mutation safety controls blocked
   the attempts. No fake success or generated login credentials.
+
+### CP3.5 — Metadata-only original Save verification
+
+Added an admin-only diagnostic observer after the original JetEngine
+Save handler and before existing CAS unlock. It records changed versus
+unchanged source revision, exact Repeater post-save DB readback counts,
+and signed stale denials separately from deliberate browser probes.
+The original JetEngine Save remains the only pricing writer.
+
+Tours.dev and Wayfatours passed the read-only observer/source checks,
+native CAS guard and real two-connection lock tests. Offline Chromium
+confirmed the probe sends NO pricing fields and accepts only HTTP 409
+as proof. No user login was minted, no customer orders created and no
+pricing option changed during tests. The browser operator flow remains
+the final live-E2E proof; see SAVE_VERIFICATION_20261121.md.
