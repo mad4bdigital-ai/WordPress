@@ -27,6 +27,38 @@ def expected_market_scope(route,cert):
     if route['type'] in ('page','post') and not deps['contains_dynamic_listing']:
         return 'static'
     return 'base'
+
+def exact_market_is_supported(route,cert,state):
+    """Advisory exact-context evidence, never a CSS grant to sibling routes.
+
+    A WCML source site can prove DE/EUR or FR/EUR even though USD is
+    the base currency. Requiring USD silently drops valid first-party
+    Chromium evidence from the template-family census. The original
+    consumer still independently binds each route, market and currency.
+    """
+    market=cert.get('market_country')
+    currency=cert.get('currency')
+    enabled=state.get('enabled_currencies')
+    multiple=state.get('wcml_multi_currency')
+    base=state.get('base_currency')
+    expected=expected_market_scope(route,cert)
+    if (not isinstance(enabled,list) or not enabled or len(enabled)>8
+        or any(not isinstance(c,str) or not re.fullmatch('[A-Z]{3}',c)
+               for c in enabled)
+        or not isinstance(base,str) or base not in enabled
+        or not isinstance(currency,str) or currency not in enabled
+        or type(multiple) is not bool or expected is None):
+        return False
+    if multiple:
+        # An exact country/market variant can contribute only to its
+        # observed context, not to unobserved currencies or countries.
+        if expected=='static':
+            return market=='static'
+        return market=='base' or (isinstance(market,str)
+                                 and re.fullmatch('[A-Z]{2}',market) is not None)
+    # Company with a single enrolled currency retains the old strict
+    # base/static market identity. No foreign market may be counted.
+    return enabled==[base] and currency==base and market==expected
 BASE=Path(__file__).resolve().parent
 
 def digest(data):
@@ -80,9 +112,7 @@ def validate(root,host,route,state,catalog,ledger,cert,source_key):
         or cert.get('runtime_sha')!=state.get('runtime_sha')
         or cert.get('native_mobile_breakpoint')!=767
         or cert.get('critical_cap_px')!=767
-        or cert.get('currency')!=state.get('base_currency')
-        or state.get('wcml_multi_currency') is not False
-        or state.get('enabled_currencies')!=[state.get('base_currency')]
+        or not exact_market_is_supported(route,cert,state)
         or not isinstance(cert.get('released_at'),int)
         or not isinstance(cert.get('certified_at'),int)
         or cert['certified_at']<cert['released_at']
@@ -96,9 +126,6 @@ def validate(root,host,route,state,catalog,ledger,cert,source_key):
         or ((d.get('contains_dynamic_listing')
              or route['type'] not in ('page','post','tours-and-activities'))
             and d.get('listing_generation')!=catalog.get('listing_generation'))):
-        return False
-    expected_market=expected_market_scope(route,cert)
-    if expected_market is None or cert.get('market_country')!=expected_market:
         return False
     evidence=cert.get('evidence')
     if (not isinstance(evidence,dict)

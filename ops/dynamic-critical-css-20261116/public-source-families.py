@@ -507,6 +507,12 @@ def build(site,catalog,state,ledger,root=None,variant_index=None):
       'next_verifier_only_recheck_route_key':verifier_retries[0] if verifier_retries else None,
       'next_canary_route_key':wants[0]['next_canary'] if wants else None,
       'next_canary_route_keys':[f['next_canary'] for f in wants[:64]],
+      # Finish already independently started families without forcing every
+      # untouched template to await an entire 55-family rotation. This is
+      # planning only, never a certificate or sibling-CSS reuse authority.
+      'near_qualified_route_keys':[f['next_canary'] for f in wants
+          if f['canary_count']>0 and
+             f['status'] in ('source_canary_pending','source_canary_market_partial')][:64],
       'next_individual_css_route_key':css_work[0]['next_individual_css'] if css_work else None,
       'next_individual_css_route_keys':[f['next_individual_css'] for f in css_work[:64]],
       'qualified_families_with_css_routes_pending':len(css_work),
@@ -556,6 +562,7 @@ def plan_next_css_issuance(report,sequence,verified_drift_route_key=None):
     # Legacy one-key receipts preserve their exact prior admission policy.
     family_keys=report.get('next_canary_route_keys')
     individual_keys=report.get('next_individual_css_route_keys')
+    near_keys=report.get('near_qualified_route_keys')
     modern=family_keys is not None or individual_keys is not None
     if modern:
         for lane in (family_keys,individual_keys):
@@ -566,6 +573,16 @@ def plan_next_css_issuance(report,sequence,verified_drift_route_key=None):
                 raise ValueError('invalid-original-source-family-rotation-lane')
         family_lane=family_keys or ([family] if family else [])
         individual_lane=individual_keys or ([individual] if individual else [])
+        # A near-qualified family is eligible only if it is also in the
+        # original admitted source-family lane. An external report cannot
+        # nominate a foreign route by using the short completion lane.
+        if (near_keys is not None and (not isinstance(near_keys,list)
+            or len(near_keys)>64 or len(set(near_keys))!=len(near_keys)
+            or any(not isinstance(k,str) or not re.fullmatch('[a-f0-9]{64}',k)
+                   for k in near_keys)
+            or not set(near_keys).issubset(set(family_lane)))):
+            raise ValueError('invalid-original-source-family-completion-lane')
+        near_lane=near_keys or []
         # A bounded old-QA retry uses at most one slot per eight attempts.
         # The 1/4 exact-route lane stays untouched. Unlike a fixed first
         # family, this never repeatedly tests Arabic while leaving
@@ -576,9 +593,16 @@ def plan_next_css_issuance(report,sequence,verified_drift_route_key=None):
         if individual_lane and (not family_lane or sequence%4==3):
             cursor=sequence//4 if family_lane else sequence
             return individual_lane[cursor%len(individual_lane)]
+        # One of every four original admission opportunities completes a
+        # partially evidenced, exact-context family. Unseen families retain
+        # the other available slots, and retry/individual lanes keep their
+        # bounded original priority and independent QA requirements.
+        if near_lane and sequence%4==1:
+            return near_lane[(sequence//4)%len(near_lane)]
         if family_lane:
             consumed_retry=(sequence+7)//8 if retry else 0
-            family_index=sequence-sequence//4-consumed_retry
+            consumed_near=(sequence+2)//4 if near_lane else 0
+            family_index=sequence-sequence//4-consumed_retry-consumed_near
             return family_lane[family_index%len(family_lane)]
         return individual_lane[0] if individual_lane else retry
     if retry and (not family and not individual or sequence%4==0):
