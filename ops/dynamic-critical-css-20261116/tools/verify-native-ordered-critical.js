@@ -156,12 +156,55 @@ function layout(a,b){
    const unequalLateLcp=needsReobservation(a,b)||needsReobservation(b,a);
    const fcpGain=a.fcp-b.fcp,lcpReg=b.lcp-a.lcp;
    const same=layout(a,b);
-   const pass=!unequalLateLcp&&same&&b.status===200&&a.status===200&&b.failed.length===0&&
+   let pass=!unequalLateLcp&&same&&b.status===200&&a.status===200&&b.failed.length===0&&
     b.errors.length===0&&b.cls<=Math.max(.10,a.cls+.02)
     &&(!a.popup||b.popup)&&(width>=768||(b.links===manifest.files.length&&b.linksRestored&&fcpGain>=150))
     &&lcpReg<=Math.max(400,a.lcp*.1);
+   // A single slow original-source observation can falsely approve a
+   // candidate whose LCP always takes ~9s. Confirm a 320px PASS with the
+   // opposite Chromium navigation order (critical first, original second).
+   // Issuance is still release-first: this is *post-release* QA only.
+   let peerOrderConfirmation=null;
+   if(width===320 && pass){
+    let reverseB=await measure(browser,width,true);
+    let reverseA=await measure(browser,width,false);
+    // The same navigation-relative source/critical LCP horizon applies.
+    for(let replay=0;replay<2;replay++){
+     if(needsReobservation(reverseA,reverseB)){
+      reverseA=await measure(browser,width,false,reverseB.observedUntilMs+600);
+     }else if(needsReobservation(reverseB,reverseA)){
+      reverseB=await measure(browser,width,true,reverseA.observedUntilMs+600);
+     }else break;
+    }
+    const reverseUnequal=needsReobservation(reverseA,reverseB)||
+                         needsReobservation(reverseB,reverseA);
+    const reverseSame=layout(reverseA,reverseB);
+    const reverseFcpGain=reverseA.fcp-reverseB.fcp;
+    const reverseLcpReg=reverseB.lcp-reverseA.lcp;
+    const reversePass=!reverseUnequal&&reverseSame&&
+      reverseA.status===200&&reverseB.status===200&&
+      reverseA.lcp>0&&reverseB.lcp>0&&
+      reverseB.failed.length===0&&reverseB.errors.length===0&&
+      reverseB.cls<=Math.max(.10,reverseA.cls+.02)&&
+      (!reverseA.popup||reverseB.popup)&&
+      reverseB.links===manifest.files.length&&
+      reverseB.linksRestored&&reverseFcpGain>=150&&
+      reverseLcpReg<=Math.max(400,reverseA.lcp*.1);
+    peerOrderConfirmation={
+      critical_first:true,pass:reversePass,
+      fcp_gain_ms:reverseFcpGain,lcp_reg_ms:reverseLcpReg,
+      source_lcp_ms:reverseA.lcp,critical_lcp_ms:reverseB.lcp,
+      layout_pass:reverseSame,unequal_late_lcp:reverseUnequal,
+      real_css_links_loaded:reverseB.linksRestored};
+    // A source result only becomes certified if BOTH independent orderings
+    // meet the exact same original CSS restoration, layout and LCP bounds.
+    pass=pass&&reversePass;
+    console.log('NATIVE_LCP_PEER_ORDER_CONFIRMATION',
+      JSON.stringify({width,pass:reversePass,reverseFcpGain,reverseLcpReg}));
+   }
    results.push({width,pass,fcp_gain_ms:fcpGain,lcp_reg_ms:lcpReg,
       layout_pass:same,unequal_late_lcp:unequalLateLcp,
+      peer_order_confirmation:peerOrderConfirmation,
       source:{fcp:a.fcp,lcp:a.lcp,cls:a.cls,popup:a.popup,
               observed_until_ms:a.observedUntilMs,lcp_trace:a.lcpTrace},
       critical:{fcp:b.fcp,lcp:b.lcp,cls:b.cls,popup:b.popup,
