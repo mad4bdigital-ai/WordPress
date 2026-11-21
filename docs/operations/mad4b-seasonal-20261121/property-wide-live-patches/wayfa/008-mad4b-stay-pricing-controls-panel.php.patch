@@ -1,0 +1,30 @@
+--- a/wp-content/mu-plugins/008-mad4b-stay-pricing-controls-panel.php
++++ b/wp-content/mu-plugins/008-mad4b-stay-pricing-controls-panel.php
+@@ -211,15 +211,25 @@
+             elseif(isset($counts[$status]))$counts[$status]++;
+             $boardId=(int)get_post_meta($id,'prop_board_type',true);
+             $boardTerm=$boardId?get_term($boardId,'board-type'):null;
++            $effective=MAD4B_Stay_Layered_Pricing_V1::effectiveRateWindow($id);
++            $sheet=get_post_meta($id,'_mad4b_supplier_sheet_proposal_v1',true);
+             $out[]=['id'=>$id,'title'=>html_entity_decode(get_the_title($id),ENT_QUOTES,'UTF-8'),
+                 'kind'=>$kind,'status'=>$status,'unit_id'=>$unitId?:null,
+                 'source_kind'=>(string)get_post_meta($id,'mad4b_rate_price_kind_v1',true),
+                 'source_scope'=>$scope,
+                 'cost_receipt_verified'=>false,
++                'supplier_quote_pending_review'=>is_array($sheet)&&
++                    empty($sheet['supplier_contract_verified']),
++                'source_cell'=>is_array($sheet)?(string)($sheet['source_cell']??''):null,
++                'source_occupancy'=>(string)get_post_meta($id,'_mad4b_supplier_sheet_occupancy_v1',true),
++                'season_window_source'=>$effective['source']??null,
++                'season_window_valid'=>!empty($effective['valid']),
+                 'amount'=>(string)get_post_meta($id,'base_amount',true),
+                 'currency'=>(string)get_post_meta($id,'currency',true),
+-                'valid_from'=>(string)get_post_meta($id,'valid_from',true),
+-                'valid_to'=>(string)get_post_meta($id,'valid_to',true),
++                'valid_from'=>!empty($effective['valid'])?$effective['start']:'',
++                'valid_to'=>!empty($effective['valid'])?$effective['end']:'',
++                'custom_valid_from'=>(string)get_post_meta($id,'valid_from',true),
++                'custom_valid_to'=>(string)get_post_meta($id,'valid_to',true),
+                 'board'=>$boardTerm instanceof WP_Term?$boardTerm->name:'',
+                 'edit_url'=>current_user_can('edit_post',$id)?get_edit_post_link($id,''):null,
+                 'qa_only'=>(bool)preg_match('/\bQA\s+ONLY\b/i',(string)get_the_title($id))];

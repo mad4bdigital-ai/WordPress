@@ -1,0 +1,203 @@
+--- a/wp-content/plugins/mad4b-pricing-registry/assets/transport-distance-time.js
++++ b/wp-content/plugins/mad4b-pricing-registry/assets/transport-distance-time.js
+@@ -521,6 +521,146 @@
+  host.append(caution);
+ }
+ 
++
++function renderSupplierEvidenceQueue(data){
++ const host=q('supplier-evidence-result');host.replaceChildren();
++ const head=document.createElement('p');head.className='mad4b-kinetic-warning';
++ head.textContent=data.rates+' Draft Stop Sale Property Rates · '+
++  data.properties+' hotels · 0 supplier cost receipts approved. All amounts are per person, NOT verified per night.';
++ host.append(head);
++ const list=document.createElement('div');
++ for(const group of data.rows){
++  const section=document.createElement('details');section.className='mad4b-kinetic-rule';
++  const summary=document.createElement('summary');
++  summary.textContent=group.property+' · '+group.rates.length+' source Rates'+
++   ' · '+group.note_cells.length+' exception note cells';
++  section.append(summary);
++  const missing=document.createElement('p');
++  missing.textContent='Commercial evidence missing: '+group.missing.map(display).join(' · ');
++  section.append(missing);
++  const ul=document.createElement('ul');
++  for(const rate of group.rates){
++   const li=document.createElement('li');
++   li.textContent=rate.cell+' · '+rate.season+' · '+rate.occupancy+
++     ' · '+rate.amount+' USD / person (night basis UNVERIFIED) · '+rate.calendar+
++     ' · Draft / Stop Sale. ';
++   if(rate.edit_url){
++    const link=document.createElement('a');link.href=rate.edit_url;
++    link.target='_blank';link.rel='noopener noreferrer';
++    link.textContent='Review original Rate';li.append(link);
++   }
++   ul.append(li);
++  }
++  section.append(ul);
++  if(group.note_cells.length){
++   const details=document.createElement('details'),sum=document.createElement('summary');
++   sum.textContent='Supplier season/Peak note cells to verify ('+
++    group.note_cells.length+')';
++   details.append(sum);
++   const noteList=document.createElement('ul');
++   for(const note of group.note_cells){
++    const li=document.createElement('li');
++    li.textContent=note.cell+' · '+display(note.season)+
++     ' · '+note.categories.map(display).join(', ');
++    noteList.append(li);
++   }
++   details.append(noteList);section.append(details);
++  }
++  list.append(section);
++ }
++ host.append(list);
++}
++let packageReadinessSnapshot=null;
++function scenarioTour(){
++ return packageReadinessSnapshot?.tours.find(t=>String(t.tour_id)===q('stay-scenario-tour').value);
++}
++function scenarioTier(){
++ const t=scenarioTour(),id=Number(q('stay-scenario-tier').value||0);
++ return t?Object.values(t.levels).find(x=>x.tier_id===id):null;
++}
++function scenarioStage(){
++ return scenarioTier()?.stages.find(s=>s.key===q('stay-scenario-stage').value);
++}
++function showScenarioTourOptions(snapshot){
++ packageReadinessSnapshot=snapshot;
++ const tPairs=snapshot.tours.map(t=>[t.tour_id,t.title+' · #'+t.tour_id]);
++ select(q('stay-scenario-tour'),tPairs,'Choose package');
++ select(q('stay-scenario-tier'),[],'Choose package first');
++ select(q('stay-scenario-stage'),[],'Choose package level');
++ select(q('stay-scenario-property'),[],'Choose hotel stage');
++ q('stay-scenario-result').textContent=
++  'Select a package stage and eligible Property. Dates must be within the source quotation year.';
++}
++function showScenarioTiers(){
++ const t=scenarioTour();
++ select(q('stay-scenario-tier'),t?Object.entries(t.levels).map(([name,record])=>
++   [record.tier_id,name]):[],'Choose package level');
++ select(q('stay-scenario-stage'),[],'Choose package level');
++ select(q('stay-scenario-property'),[],'Choose hotel stage');
++}
++function showScenarioStages(){
++ const t=scenarioTour();
++ const tierId=Number(q('stay-scenario-tier').value||0);
++ const tier=t?Object.values(t.levels).find(x=>x.tier_id===tierId):null;
++ const stages=(tier?.stages||[]).filter(s=>
++  ['hotel','resort'].includes(s.kind)&&s.hotel_candidate_options?.length);
++ select(q('stay-scenario-stage'),stages.map(s=>[s.key,s.key+
++  ' · '+s.nights+' night(s) · '+s.hotel_candidate_options.length+' eligible hotel(s)']),
++  'Choose hotel stage');
++ select(q('stay-scenario-property'),[],'Choose hotel stage');
++}
++function showScenarioProperties(){
++ const s=scenarioStage();
++ select(q('stay-scenario-property'),(s?.hotel_candidate_options||[]).map(p=>
++  [p.id,p.name+' · #'+p.id]),'Choose eligible hotel');
++}
++function renderScenarioPreview(result){
++ const host=q('stay-scenario-result');
++ host.replaceChildren();
++ const heading=document.createElement('p');
++ heading.textContent=result.property_title+' · '+result.stage_key+
++  ' · '+result.first_overnight+' to '+result.last_overnight+
++  ' · '+result.nights+' night(s), '+result.adults+' adults';
++ host.append(heading);
++ const source=result.source_rate;
++ const basis=document.createElement('p');
++ basis.textContent=source?('Original supplier sheet '+source.source_cell+': '+
++   num(source.source_amount)+' '+source.currency+' per person, BB · '+
++   source.occupancy+' · native '+source.calendar_source+
++   ' · '+source.calendar_from+' to '+source.calendar_to+
++   ' · Draft, Stop Sale, NOT approved per night'):
++   'No source Rate matches the stage stay dates, board and occupancy. Do not enter zero cost.';
++ host.append(basis);
++ if(result.hypothetical_total_usd!==null){
++  const estimate=document.createElement('p');
++  estimate.className='mad4b-kinetic-warning';
++  estimate.textContent='INTERNAL ASSUMPTION ONLY · '+num(result.hypothetical_total_usd)+
++    ' USD = '+num(source.source_amount)+' per person × '+
++    result.adults+' adult(s) × '+result.nights+' night(s). '+
++    'Supplier has not confirmed this basis; DO NOT quote or invoice this number.';
++  host.append(estimate);
++ }
++ const warning=document.createElement('p');warning.className='mad4b-kinetic-warning';
++ warning.textContent='Not a customer quote. Checkout disabled. Missing proof: '+
++   result.missing_commercial_evidence.map(display).join('; ')+
++   '. Actual hotel, inventory, contract, supplements and night basis require approval.';
++ host.append(warning);
++ if(result.supplier_note_evidence.length){
++  const notes=document.createElement('details'),sum=document.createElement('summary');
++  sum.textContent='Original seasonal/Peak notes requiring review ('+
++    result.supplier_note_evidence.length+')';
++  notes.append(sum);
++  const list=document.createElement('ul');
++  for(const item of result.supplier_note_evidence){
++   const li=document.createElement('li');
++   li.textContent=item.source_cell+' · '+display(item.period)+
++    ' · '+(item.review_flags||[]).map(display).join(', ')+
++    ((item.date_review_blockers||[]).length?' · '+item.date_review_blockers.map(display).join(', '):'');
++   list.append(li);
++  }
++  notes.append(list);host.append(notes);
++ }
++}
+ function renderPackageReadinessBoard(value){
+  const host=q('readiness-result');host.replaceChildren();
+  const head=document.createElement('p');head.className='mad4b-kinetic-muted';
+@@ -855,6 +995,36 @@
+   select(q('season-term'),[],'Load native Seasons');
+   q('season-result').textContent='Choose Load to view saved rules for this Tour.';
+  });
++ q('supplier-evidence-run').addEventListener('click',async()=>{
++  const btn=q('supplier-evidence-run'),host=q('supplier-evidence-result');
++  btn.disabled=true;host.textContent='Reading original Property Rate evidence…';
++  try{const result=await api('supplier-evidence-queue');
++      renderSupplierEvidenceQueue(result);}
++  catch(e){host.textContent='Review unavailable: '+e.message;}
++  finally{btn.disabled=false;}
++ });
++ q('stay-scenario-tour').addEventListener('change',showScenarioTiers);
++ q('stay-scenario-tier').addEventListener('change',showScenarioStages);
++ q('stay-scenario-stage').addEventListener('change',showScenarioProperties);
++ q('stay-scenario-run').addEventListener('click',async()=>{
++  const btn=q('stay-scenario-run'),host=q('stay-scenario-result');
++  btn.disabled=true;host.textContent='Reviewing native package stage and supplier quote provenance…';
++  try{
++   const t=scenarioTour(),stage=scenarioStage();
++   if(!t||!stage||!q('stay-scenario-property').value)
++    throw Error('Run package readiness, then choose a package, level, hotel stage and Property.');
++   const payload={
++    tour_id:t.tour_id,tier_id:Number(q('stay-scenario-tier').value),
++    stage_key:stage.key,property_id:Number(q('stay-scenario-property').value),
++    travel_date:q('stay-scenario-date').value,
++    adults:Number(q('stay-scenario-adults').value),children:0,
++    assume_per_person_per_night:q('stay-scenario-assume').checked
++   };
++   const data=await api('package-stay-scenario',{payload:JSON.stringify(payload)});
++   renderScenarioPreview(data);
++  }catch(e){host.textContent='Internal scenario unavailable: '+e.message;}
++  finally{btn.disabled=false;}
++ });
+  q('readiness-run').addEventListener('click',async()=>{
+   const button=q('readiness-run'),host=q('readiness-result');
+   button.disabled=true;host.textContent='Reading current package stages and supplier proof…';
+@@ -863,6 +1033,8 @@
+    if(!from||!to||from>to)throw Error('Choose a valid date window');
+    const result=await api('package-readiness',{from,to});
+    renderPackageReadinessBoard(result);
++   showScenarioTourOptions(result);
++   q('stay-scenario-date').value=from;
+   }catch(e){host.textContent='Readiness blocked: '+e.message;}
+   finally{button.disabled=false;}
+  });
+@@ -871,6 +1043,7 @@
+  const last=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()+7,0));
+  q('readiness-from').value=first.toISOString().slice(0,10);
+  q('readiness-to').value=last.toISOString().slice(0,10);
++ q('stay-scenario-date').value=first.toISOString().slice(0,10);
+  q('package-preview').addEventListener('click',async()=>{
+   const button=q('package-preview'),host=q('package-result');
+   button.disabled=true;host.textContent='Calculating explicit selected components…';

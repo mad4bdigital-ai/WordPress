@@ -1,0 +1,90 @@
+{
+  "contract": "mad4b.internal-stay-scenario-live-patch-manifest.v1",
+  "created_utc": "2026-11-21T17:51:59.777597+00:00",
+  "source_commerce_commit": "4370e4ab3913572178f806f316d2e96829fb4ef4",
+  "sites": {
+    "source": {
+      "package-component-readiness.php": {
+        "path": "wp-content/plugins/mad4b-pricing-registry/includes/package-component-readiness.php",
+        "before": "122858377558d964cfd736e500bcf0fa073dab2db727f74b5448019aa98be30f",
+        "after": "0c2f58576bb040fa6beb964c02568119906c2cc7fce08f9e9beffdd487646bb9",
+        "patch": "0304fe178b1f9a7b356aada28afb3d6be6810c721e4cd00ff1b201607017008a",
+        "diff_bytes": 14884
+      },
+      "transport-distance-time-pricing.php": {
+        "path": "wp-content/plugins/mad4b-pricing-registry/includes/transport-distance-time-pricing.php",
+        "before": "af2fa8921da665005692a3c09606842edee5dc257a3d95ce3675de533b82bb0b",
+        "after": "81c937962c4f48d301ca0112edef31cbfb1f638624738c7ebe76e7c743e1bc99",
+        "patch": "9e70252b2c5fe080690988c994665e60d83a8a508f8dbba88219ecf013ef0117",
+        "diff_bytes": 1233
+      },
+      "transport-distance-time-panel.html": {
+        "path": "wp-content/plugins/mad4b-pricing-registry/assets/transport-distance-time-panel.html",
+        "before": "226e04148dc3eeb65a3eb6c340f2ccc4e02d32b6d57c7f18569e126c8d83614b",
+        "after": "94e61fb7a5254637825a4d8bea7746b930869c058c6dca0e16d6b5ae6ff8e891",
+        "patch": "fa8cb53fcf63fb4d3206ddd97817aff559ff615aac2c0b6519d58b4728f671f7",
+        "diff_bytes": 3123
+      },
+      "transport-distance-time.js": {
+        "path": "wp-content/plugins/mad4b-pricing-registry/assets/transport-distance-time.js",
+        "before": "13bb483ffd7d7823dc717c23785d702e3942c1e454488585720e94cf95b2d448",
+        "after": "a97fdeeab4bae539284b44d55cdd6a31e4e67b4d150433b3cacf36480aa2aca8",
+        "patch": "e8b88c6384684dda6b8d84a23b6ce512a822fa33f12b5c829f6e151f600319d7",
+        "diff_bytes": 10004
+      },
+      "package-stage-rate-guard-v1.php": {
+        "path": "wp-content/plugins/mad4b-commerce/legacy-mu-tree/shared-product-core/pricing/package-stage-rate-guard-v1.php",
+        "before": "1eb44dc3176b507699fbb160f96999b49310cd8adfb3e22dc5ee1c0cf74432ec",
+        "after": "e4c773d511a6b2ce796efce0fccfd1e28543601ffaa3fb22c03f664cac6bd5b1",
+        "patch": "64bb96a2889fae28773ad79cfb5ca3bb0eee628a447e78e27b6f6d3d21f0318a",
+        "diff_bytes": 3590
+      }
+    },
+    "wayfa": {
+      "package-component-readiness.php": {
+        "path": "wp-content/plugins/mad4b-pricing-registry/includes/package-component-readiness.php",
+        "before": "122858377558d964cfd736e500bcf0fa073dab2db727f74b5448019aa98be30f",
+        "after": "0c2f58576bb040fa6beb964c02568119906c2cc7fce08f9e9beffdd487646bb9",
+        "patch": "0304fe178b1f9a7b356aada28afb3d6be6810c721e4cd00ff1b201607017008a",
+        "diff_bytes": 14884
+      },
+      "transport-distance-time-pricing.php": {
+        "path": "wp-content/plugins/mad4b-pricing-registry/includes/transport-distance-time-pricing.php",
+        "before": "af2fa8921da665005692a3c09606842edee5dc257a3d95ce3675de533b82bb0b",
+        "after": "81c937962c4f48d301ca0112edef31cbfb1f638624738c7ebe76e7c743e1bc99",
+        "patch": "9e70252b2c5fe080690988c994665e60d83a8a508f8dbba88219ecf013ef0117",
+        "diff_bytes": 1233
+      },
+      "transport-distance-time-panel.html": {
+        "path": "wp-content/plugins/mad4b-pricing-registry/assets/transport-distance-time-panel.html",
+        "before": "226e04148dc3eeb65a3eb6c340f2ccc4e02d32b6d57c7f18569e126c8d83614b",
+        "after": "94e61fb7a5254637825a4d8bea7746b930869c058c6dca0e16d6b5ae6ff8e891",
+        "patch": "fa8cb53fcf63fb4d3206ddd97817aff559ff615aac2c0b6519d58b4728f671f7",
+        "diff_bytes": 3123
+      },
+      "transport-distance-time.js": {
+        "path": "wp-content/plugins/mad4b-pricing-registry/assets/transport-distance-time.js",
+        "before": "13bb483ffd7d7823dc717c23785d702e3942c1e454488585720e94cf95b2d448",
+        "after": "a97fdeeab4bae539284b44d55cdd6a31e4e67b4d150433b3cacf36480aa2aca8",
+        "patch": "e8b88c6384684dda6b8d84a23b6ce512a822fa33f12b5c829f6e151f600319d7",
+        "diff_bytes": 10004
+      },
+      "package-stage-rate-guard-v1.php": {
+        "path": "wp-content/mu-plugins/shared-product-core/pricing/package-stage-rate-guard-v1.php",
+        "before": "1eb44dc3176b507699fbb160f96999b49310cd8adfb3e22dc5ee1c0cf74432ec",
+        "after": "e4c773d511a6b2ce796efce0fccfd1e28543601ffaa3fb22c03f664cac6bd5b1",
+        "patch": "7a3c08a6dd3dc1e9b225840d5c11b1605e40cf4d989ee285a57ba6fec5f6ee74",
+        "diff_bytes": 3536
+      }
+    }
+  },
+  "live_price_rate_posts_created": 0,
+  "supplier_cost_receipts_approved": 0,
+  "checkout_activated": false,
+  "tests": {
+    "package-stay-scenario-regression.php": "d6620c9ca32171a677ab5ae7ef2da240e22e4a80ab56d99fa2e3da5ae9b32dd4",
+    "package-native-multilingual-parity-regression.php": "46049abd2951eadb19256f819c5c1037cf3c6734ed6851e5e37540c3c30fb489",
+    "supplier-evidence-queue-regression.php": "4508629b3da02ff08772ea3882a5568a72aec0a3bb1ccaf67e98fe07f800abe1",
+    "package-stage-candidate-diagnostics-regression.php": "51970b4879ead5c6c2c30f025c3265cfc5ce81b520f64d2e3e2206de2749fbd8"
+  }
+}

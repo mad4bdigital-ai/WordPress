@@ -1,0 +1,106 @@
+{
+  "contract": "mad4b.source-to-wayfa-stage-candidate-parity-checkpoint.v1",
+  "at_utc": "2026-11-21T19:55:13.138805+00:00",
+  "old_target_stage_binding_digest": {
+    "60627": "233d05514592b8760fe9d2846259bb4e19197e882a1aaf75d141fa68532a7978",
+    "60629": "950b3e592b85cc57c11bb1bc6084f11cf6794b4791329fc746e4b90a35fb45a6",
+    "60437": "e9c59258aa9f5847ea10d312bae6290a07ac47c7afc22397169b9d52037df7c7"
+  },
+  "plan_file_sha256": "20e06c35103ae2107f70f8ddc4c59db7cd73b5e15177a6a8273767bcc4108e44",
+  "source": "tours.dev.mad4b.com",
+  "target": "wayfatours.com",
+  "property_tier_terms_transferred": 5,
+  "source_stage_candidate_links_transferred": 7,
+  "target_source_stages_updated": 3,
+  "target_qualifying_stage_tier_gaps_before": 9,
+  "target_qualifying_stage_tier_gaps_after": 2,
+  "source_qualifying_stage_tier_gaps_after": 2,
+  "remaining_same_stages": [
+    {
+      "tour": 60437,
+      "tier": "Gold",
+      "stage": "hotel-aswan-02",
+      "kind": "hotel"
+    },
+    {
+      "tour": 60437,
+      "tier": "Diamond",
+      "stage": "hotel-aswan-02",
+      "kind": "hotel"
+    }
+  ],
+  "candidate_links_readback": [
+    {
+      "tour": 60627,
+      "stage": "hotel-luxor-02",
+      "tier_property_refs": {
+        "2353": [
+          36142
+        ],
+        "2354": [
+          36481
+        ],
+        "2356": [
+          36481
+        ]
+      }
+    },
+    {
+      "tour": 60629,
+      "stage": "resort-sharm-03",
+      "tier_property_refs": {
+        "2353": [
+          36302
+        ],
+        "2354": [
+          36084
+        ],
+        "2356": [
+          36084
+        ]
+      }
+    },
+    {
+      "tour": 60437,
+      "stage": "hotel-aswan-02",
+      "tier_property_refs": {
+        "2353": [
+          36181
+        ]
+      }
+    }
+  ],
+  "property_terms_readback_verified": true,
+  "tests": {
+    "source": {
+      "legacy_suites": 12,
+      "legacy_checks_passed": 221,
+      "candidate_parity_passed": 307,
+      "candidate_parity_languages": [
+        "en",
+        "fr",
+        "de",
+        "es",
+        "it",
+        "ar"
+      ]
+    },
+    "wayfa": {
+      "legacy_suites": 12,
+      "legacy_checks_passed": 225,
+      "candidate_parity_passed": 103,
+      "candidate_parity_languages": [
+        "en",
+        "es"
+      ]
+    }
+  },
+  "units_written": 0,
+  "supplier_cost_receipts_approved": 0,
+  "customer_quotes_approved": 0,
+  "tour_rates_created": 0,
+  "native_checkout_authorized": false,
+  "aswan_catalogue_gap_not_autofixed": true,
+  "draft_aswan_targets_same_ids_on_both_sites": false,
+  "supplier_proof_required": true
+}

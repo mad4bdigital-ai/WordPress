@@ -1,0 +1,91 @@
+--- a/wp-content/mu-plugins/006-mad4b-accommodation-layered-pricing.php
++++ b/wp-content/mu-plugins/006-mad4b-accommodation-layered-pricing.php
+@@ -8,7 +8,10 @@
+ if (!class_exists('MAD4B_Stay_Layered_Pricing_V1', false)) {
+ final class MAD4B_Stay_Layered_Pricing_V1 {
+     const BASES=['per_person','per_room_night','per_cabin_night','per_person_night','per_stay'];
+-    const PRIORITY=['unit_rate','unit_direct','property_rate','property_direct'];
++    // Explicit dated rates outrank undated direct starting prices.
++    // Cost reference selection is a distinct lane and never becomes a selling price.
++    const PRIORITY=['unit_rate','property_rate','unit_direct','property_direct'];
++    const COST_PRIORITY=['unit_rate','property_rate'];
+ 
+     private static function money($v) {
+         return is_scalar($v) && !is_bool($v) && preg_match('/^(?:0|[1-9][0-9]{0,7})(?:\.[0-9]{1,4})?$/D',(string)$v)
+@@ -120,6 +123,40 @@
+         }
+         return $out;
+     }
++    /**
++     * In-memory source arbitration. The cost lane is reference-only until
++     * the original supplier-approval and native Unit booking providers certify it.
++     * An explicit Rate must not receive occupancy/room-grade weights a second time.
++     */
++    public static function choose(array $sources) {
++        if(array_diff(array_keys($sources),self::PRIORITY))
++            return new WP_Error('stay_layer_unknown_price_source');
++        $selling=null;$cost=null;$counts=[];$directCostIgnored=false;
++        foreach(self::PRIORITY as $key){
++            $rows=$sources[$key]??[];
++            if(!is_array($rows)||count($rows)>1)
++                return new WP_Error('stay_layer_overlapping_rates',$key);
++            $counts[$key]=count($rows);
++            if(!$rows)continue;
++            $source=$rows[0];
++            if(!is_array($source)||
++               !in_array($source['price_kind']??null,['sell','cost'],true))
++                return new WP_Error('stay_layer_source_kind_invalid');
++            if($source['price_kind']==='sell' && $selling===null)
++                $selling=$source;
++            if($source['price_kind']==='cost'&&
++               in_array($key,self::COST_PRIORITY,true)&&$cost===null)
++                $cost=$source;
++            if($source['price_kind']==='cost'&&
++               !in_array($key,self::COST_PRIORITY,true))
++                $directCostIgnored=true;
++        }
++        return ['sell'=>$selling,'cost_reference'=>$cost,'source_counts'=>$counts,
++           'sell_source_priority'=>self::PRIORITY,'cost_source_priority'=>self::COST_PRIORITY,
++           'direct_cost_not_authoritative'=>$directCostIgnored,
++           'cost_authority'=>false,'checkout_authority'=>false,
++           'source_rule'=>'unit_rate_then_property_rate_then_direct_for_indicative_sell'];
++    }
+     public static function preview(array $input) {
+         if(array_diff(array_keys($input),['property_id','unit_id','checkin','nights','adults','children','board_type']))
+             return new WP_Error('stay_layer_unknown_field');
+@@ -167,19 +204,28 @@
+         $direct=self::source($property,'property_direct',$property,$unit);
+         if(is_wp_error($direct))$diagnostics['property_direct']=$direct->get_error_code();
+         elseif($direct)$sources['property_direct'][]=$direct;
+-        $chosen=null;
+-        foreach(self::PRIORITY as $key){
+-            if(count($sources[$key])>1)return new WP_Error('stay_layer_overlapping_rates',$key);
+-            if(!$chosen&&$sources[$key]&&$sources[$key][0]['price_kind']==='sell')
+-                $chosen=$sources[$key][0];
+-        }
++        $choice=self::choose($sources);
++        if(is_wp_error($choice))return $choice;
++        $chosen=$choice['sell'];
++        $cost=$choice['cost_reference'];
+         return [
+             'contract'=>'mad4b.stay-layered-price.v1','provider_id'=>'self',
+             'property_id'=>$property,'unit_id'=>$unit?:null,'checkin'=>$date?:null,
+             'nights'=>$nights,'adults'=>$adults,'children'=>$children,
+             'meal_base'=>$inheritedBoard,'requested_board'=>$board,
+             'selected_source'=>$chosen['source']??null,'price'=>$chosen,
+-            'source_counts'=>array_map('count',$sources),'source_priority'=>self::PRIORITY,
++            'source_counts'=>$choice['source_counts'],'source_priority'=>self::PRIORITY,
++            'cost_source_priority'=>self::COST_PRIORITY,
++            'cost_reference'=>$cost?[
++                'source'=>$cost['source'],'rate_id'=>$cost['id'],
++                'amount'=>$cost['amount'],'currency'=>$cost['currency'],
++                'price_unit'=>$cost['price_unit'],
++                'approval_status'=>'supplier_cost_receipt_and_unit_quote_required',
++                'cost_authority'=>false,'checkout_authority'=>false
++            ]:null,
++            'rate_cost_preferred_over_direct'=>$cost!==null,
++            'direct_cost_not_authoritative'=>$choice['direct_cost_not_authoritative'],
++            'cost_reference_is_not_selling_price'=>true,
+             'invalid_direct_source_diagnostics'=>$diagnostics,
+             'price_status'=>$chosen?'indicative':'unpriced_or_cost_only',
+             'meal_base_explicit_in_rate'=>$chosen&&in_array($chosen['source'],['unit_rate','property_rate'],true),

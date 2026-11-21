@@ -1,0 +1,150 @@
+{
+  "contract": "mad4b.aswan-hotel-draft-commercial-review-patch-receipt.v1",
+  "created_utc": "2026-11-21T20:16:41.033128+00:00",
+  "public_rates_activated": 0,
+  "supplier_approved_costs_created": 0,
+  "unit_stock_modified": false,
+  "checkout_modified": false,
+  "live_sites": {
+    "source": {
+      "package-component-readiness.php": {
+        "relative_path": "wp-content/plugins/mad4b-pricing-registry/includes/package-component-readiness.php",
+        "before_sha256": "0c2f58576bb040fa6beb964c02568119906c2cc7fce08f9e9beffdd487646bb9",
+        "after_sha256": "7589f7b32ed707d8e62d01db6b47348092a406816b0ed6df795f949ec241fdae",
+        "patch_sha256": "795297677375da7e26cc5f0beb13f06d7d4fec93a47d318143652390d6edeb7c"
+      },
+      "transport-distance-time.js": {
+        "relative_path": "wp-content/plugins/mad4b-pricing-registry/assets/transport-distance-time.js",
+        "before_sha256": "a97fdeeab4bae539284b44d55cdd6a31e4e67b4d150433b3cacf36480aa2aca8",
+        "after_sha256": "f630c8761a10ee6f4ade6f22847a2811bb0419086efb6651f544ec51a458ae65",
+        "patch_sha256": "f2fef724d081c116b3968d63879563c3f7dac7ce04fff2cc4393f4a312f7bdfb"
+      },
+      "editorial_qa": [
+        203,
+        203
+      ],
+      "legacy_suites": {
+        "wpml-season-regression.php": [
+          6,
+          6
+        ],
+        "supplier-exception-triage-regression.php": [
+          13,
+          13
+        ],
+        "supplier-sheet-reference-regression.php": [
+          23,
+          23
+        ],
+        "supplier-season-note-regression.php": [
+          18,
+          18
+        ],
+        "package-seasonal-regression.php": [
+          14,
+          14
+        ],
+        "transport-package-workflow-regression.php": [
+          19,
+          19
+        ],
+        "package-readiness-regression.php": [
+          18,
+          18
+        ],
+        "package-stage-quote-season-regression.php": [
+          28,
+          28
+        ],
+        "supplier-explicit-date-review-regression.php": [
+          11,
+          11
+        ],
+        "package-stage-candidate-diagnostics-regression.php": [
+          25,
+          25
+        ],
+        "property-rate-fallback-regression.php": [
+          28,
+          28
+        ],
+        "property-wide-sheet-review-regression.php": [
+          18,
+          18
+        ]
+      }
+    },
+    "wayfa": {
+      "package-component-readiness.php": {
+        "relative_path": "wp-content/plugins/mad4b-pricing-registry/includes/package-component-readiness.php",
+        "before_sha256": "0c2f58576bb040fa6beb964c02568119906c2cc7fce08f9e9beffdd487646bb9",
+        "after_sha256": "7589f7b32ed707d8e62d01db6b47348092a406816b0ed6df795f949ec241fdae",
+        "patch_sha256": "795297677375da7e26cc5f0beb13f06d7d4fec93a47d318143652390d6edeb7c"
+      },
+      "transport-distance-time.js": {
+        "relative_path": "wp-content/plugins/mad4b-pricing-registry/assets/transport-distance-time.js",
+        "before_sha256": "a97fdeeab4bae539284b44d55cdd6a31e4e67b4d150433b3cacf36480aa2aca8",
+        "after_sha256": "f630c8761a10ee6f4ade6f22847a2811bb0419086efb6651f544ec51a458ae65",
+        "patch_sha256": "f2fef724d081c116b3968d63879563c3f7dac7ce04fff2cc4393f4a312f7bdfb"
+      },
+      "editorial_qa": [
+        73,
+        73
+      ],
+      "legacy_suites": {
+        "wpml-season-regression.php": [
+          2,
+          2
+        ],
+        "supplier-exception-triage-regression.php": [
+          17,
+          17
+        ],
+        "supplier-sheet-reference-regression.php": [
+          23,
+          23
+        ],
+        "supplier-season-note-regression.php": [
+          19,
+          19
+        ],
+        "package-seasonal-regression.php": [
+          14,
+          14
+        ],
+        "transport-package-workflow-regression.php": [
+          19,
+          19
+        ],
+        "package-readiness-regression.php": [
+          18,
+          18
+        ],
+        "package-stage-quote-season-regression.php": [
+          28,
+          28
+        ],
+        "supplier-explicit-date-review-regression.php": [
+          14,
+          14
+        ],
+        "package-stage-candidate-diagnostics-regression.php": [
+          25,
+          25
+        ],
+        "property-rate-fallback-regression.php": [
+          28,
+          28
+        ],
+        "property-wide-sheet-review-regression.php": [
+          18,
+          18
+        ]
+      }
+    }
+  },
+  "source_to_target_post_map": {
+    "71495": 71980,
+    "71501": 71981
+  }
+}
