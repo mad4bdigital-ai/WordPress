@@ -99,6 +99,23 @@ function renderReport(data){
   h.append(kpis);
   const warn=el('p','mad4b-pcl-warning','No approved Package Cost total. Missing unit rates, supplier receipts, inventory, and stage assignments must not be treated as zero.');
   h.append(warn);
+  const admission=data.native_generator_stage_admission||{};
+  const blockers=Array.isArray(admission.blockers)?admission.blockers:[];
+  const gate=el('div','mad4b-pcl-native-admission');
+  const label=admission.ready
+    ?'Native Package Rate generator: stage-source check passed for this inspection (not a price or checkout approval)'
+    :'Native Package Rate generator: blocked · '+blockers.length+' source/itinerary/cost finding(s)';
+  gate.append(el('p',admission.ready?'mad4b-pcl-good':'mad4b-pcl-warning',label));
+  if(blockers.length){
+    const detail=el('details','mad4b-pcl-native-findings');
+    detail.append(el('summary','','See exact reasons preventing Tour Rate generation'));
+    const items=el('ul','');
+    for(const code of blockers) items.append(el('li','',String(code)));
+    detail.append(items);gate.append(detail);
+  }
+  gate.append(el('p','mad4b-pcl-note',
+    'Pricing Lab does not select a date range here. Native Rate Planner rechecks the original sources for the requested travel window immediately before any proposed generation.'));
+  h.append(gate);
   const actions=el('p','mad4b-pcl-links');
   if(data.tour_edit_url)actions.append(link(data.tour_edit_url,'Open original Tour editor'),document.createTextNode(' · '));
   actions.append(link(cfg.property_pricing_url,'Open native Property & Unit Pricing'));
