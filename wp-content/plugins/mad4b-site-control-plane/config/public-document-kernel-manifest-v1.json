@@ -1,0 +1,92 @@
+{
+  "contract": "mad4b.scp-public-document-kernel-manifest.v1",
+  "default": "off",
+  "scope": "exact signed Site Profile, cookie-free canonical public singular GET",
+  "security_preconditions": [
+    "early_managed_credential_fence",
+    "catalog_deactivation",
+    "source_tour_highlights"
+  ],
+  "modules": [
+    {
+      "module": "site_profile",
+      "file": "class-mad4b-scp-site-profile.php",
+      "owner": "identity",
+      "boot": "status",
+      "mandatory": true
+    },
+    {
+      "module": "mcp_request_scope",
+      "file": "class-mad4b-scp-mcp-request-scope.php",
+      "owner": "security",
+      "boot": "bootstrap",
+      "mandatory": true
+    },
+    {
+      "module": "market_profiles",
+      "file": "class-mad4b-scp-market-profiles.php",
+      "owner": "market",
+      "boot": "boot",
+      "mandatory": true
+    },
+    {
+      "module": "switcher_sources",
+      "file": "class-mad4b-scp-switcher-sources.php",
+      "owner": "market",
+      "boot": "definition_only",
+      "mandatory": true
+    },
+    {
+      "module": "market_context",
+      "file": "class-mad4b-scp-market-context.php",
+      "owner": "market",
+      "boot": "boot",
+      "mandatory": true
+    },
+    {
+      "module": "market_preferences",
+      "file": "class-mad4b-scp-market-preferences.php",
+      "owner": "market",
+      "boot": "boot",
+      "mandatory": true
+    },
+    {
+      "module": "season_calendar",
+      "file": "class-mad4b-scp-season-calendar.php",
+      "owner": "market",
+      "boot": "definition_only",
+      "mandatory": true
+    },
+    {
+      "module": "company_operations",
+      "file": "class-mad4b-scp-company-operations-policy.php",
+      "owner": "commercial_write_fences",
+      "boot": "file_scope_boot",
+      "mandatory": true
+    }
+  ],
+  "alternate_policy_owner": "mad4b-company-portfolio-manager",
+  "inadmissible": [
+    "admin",
+    "rest",
+    "ajax",
+    "cron",
+    "cli",
+    "post",
+    "checkout",
+    "cookies",
+    "auth",
+    "unbound_site",
+    "unknown_route"
+  ],
+  "fallback": "full_control_plane_bootstrap",
+  "rules": [
+    "A client-provided header or path never grants site, market or mutation authority",
+    "Company Operations Policy write fences remain active",
+    "Market Context and Market Preferences hooks retain original priorities",
+    "Season Calendar admin boot must not execute on public read",
+    "Definition files with top-level side effects must be split before lazy autoload",
+    "No changes to WooCommerce, WPML, pricing, email or cache admission policies",
+    "No production deployment until canonical live request/booking parity is verified"
+  ]
+}
