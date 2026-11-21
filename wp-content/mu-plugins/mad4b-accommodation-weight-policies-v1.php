@@ -174,7 +174,7 @@ final class MAD4B_Accommodation_Weight_Policies_V1 {
         if(!$relation)return false;
         $children=$relation->get_children($property);
         foreach((array)$children as $child)
-            if((int)(is_object($child)?($child->ID??0):$child)===$unit)return true;
+            if((int)(is_array($child)?($child['child_object_id']??0):(is_object($child)?($child->child_object_id??$child->ID??0):$child))===$unit)return true;
         return false;
     }
     private static function taxonomyRow(int $property,string $taxonomy,string $scope) {
