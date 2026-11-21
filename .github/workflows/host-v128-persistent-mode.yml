@@ -4,8 +4,12 @@ on:
     paths:
       - 'ops/host-authority-v128/**'
       - 'tests/host-v128/**'
+      - 'tests/release-qualification/**'
+      - 'tools/mad4b_release_qualification_mode.py'
       - 'docs/host-v128/**'
+      - '.github/mad4b-release-qualification-mode.json'
       - '.github/workflows/host-v128-persistent-mode.yml'
+      - '.github/workflows/mad4b-release-verdict.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -28,7 +32,9 @@ jobs:
         run: python -m pip install 'cryptography>=41,<48'
       - name: Compile source
         run: python -m compileall -q ops/host-authority-v128 tests/host-v128
-      - name: Verify strict host-mode and operation lifecycle contracts
-        run: python -m unittest discover -s tests/host-v128 -p 'test_*.py' -v
+      - name: Verify strict cross-company host modes and operation lifecycle
+        run: python -B -m unittest discover -s tests/host-v128 -p 'test_*.py' -v
+      - name: Verify globally optional release qualification never weakens host authority
+        run: python -B -m unittest discover -s tests/release-qualification -p 'test_*.py' -v
 # Review-only. Nothing is installed into WordPress; no owner attestation,
 # host grants, Root signing, SSH, self-update, or Production deployment.

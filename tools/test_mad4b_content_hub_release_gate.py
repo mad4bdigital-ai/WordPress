@@ -17,6 +17,7 @@ class ContentHubVerdictTests(unittest.TestCase):
         cls.verdict = (ROOT / ".github/workflows/mad4b-release-verdict.yml").read_text()
         cls.workflow = (ROOT / ".github/workflows/mad4b-content-hub-package.yml").read_text()
         cls.script = (ROOT / "tools/mad4b_content_hub_package.py").read_text()
+        cls.qualification = (ROOT / "tools/mad4b_release_qualification_mode.py").read_text()
 
     def test_original_plugin_source_is_runtime_component(self):
         self.assertIn("'ops/mad4b-governed-task-context-v1/',", self.verdict)
@@ -28,7 +29,11 @@ class ContentHubVerdictTests(unittest.TestCase):
         self.assertIn("tools/mad4b_content_hub_package.py','verify'", self.verdict)
         self.assertIn("hub_artifact_ready=not content_hub_artifact_required", self.verdict)
         self.assertIn("and hub_artifact_ready", self.verdict)
-        self.assertIn("or verdict.get('content_hub_artifact_required')", self.verdict)
+        # Artifact readiness stays mandatory when release qualification is
+        # "required"; under "optional" it remains reported but cannot publish.
+        self.assertIn('verdict.get("content_hub_artifact_required")', self.qualification)
+        self.assertIn('EXACT_RELEASE_ARTIFACT_NOT_CERTIFIED', self.qualification)
+        self.assertIn("needs.verdict.outputs.qualification_mode == 'required'", self.verdict)
 
     def test_does_not_pass_off_control_plane_as_hub(self):
         self.assertIn("exact_name='mad4b-content-hub-exact-head-'", self.verdict)

@@ -1,0 +1,14 @@
+{
+  "contract": "mad4b.repository-release-qualification-mode.v1",
+  "qualification_mode": "optional",
+  "optional_scope": "manual_staging_only",
+  "automatic_publication_when_optional": false,
+  "retained_requirements": [
+    "repository_merge_gate",
+    "owner_attestation",
+    "repository_feature_boundary",
+    "site_identity",
+    "signed_execution_authority",
+    "production_separate_authorization"
+  ]
+}
