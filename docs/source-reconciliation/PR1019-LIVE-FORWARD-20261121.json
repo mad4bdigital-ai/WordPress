@@ -1,0 +1,19 @@
+{
+  "schema": "mad4b.pr1019.live-forward.exact-git-blobs.v1",
+  "parent_head": "020f02b6c73e808b55465c5c1a4c581f62db0f68",
+  "status": "reviewed_for_ci_only",
+  "production_authorized": false,
+  "commercially_authorized": false,
+  "source_only": true,
+  "wp_live_mutated": false,
+  "evidence": "2026-11-21 exact sha256 byte identity on both installed site bind mounts, with only trailing blank lines normalized for Git",
+  "source_blobs": {
+    "wp-content/mu-plugins/assets/mad4b-accommodation-weights-v1.css": "01e124ee14316b5ddcf273f008c4bb5897b75c28",
+    "wp-content/mu-plugins/assets/mad4b-accommodation-weights-v1.js": "348728f2134ebe2f27dae1ea9f553b3a49376737",
+    "wp-content/mu-plugins/mad4b-accommodation-weight-policies-v1.php": "9142d558d0a93f9af1d4ba4369cfb0b065c4a644",
+    "wp-content/plugins/mad4b-pricing-registry/includes/package-component-readiness.php": "b0c18b502f604af87db5be814cf1061802d1c77f",
+    "wp-content/plugins/mad4b-pricing-registry/includes/package-seasonal-assignment.php": "62ab57d5ab56789e02fe5cde6e3def2d1643d52e",
+    "wp-content/plugins/mad4b-pricing-registry/includes/supplier-sheet-reference.php": "48f14869be84f17ada92c569cbf3b14c6b0f9019",
+    "wp-content/plugins/mad4b-pricing-registry/includes/transport-distance-time-pricing.php": "a159243bd2384a55dfc253d9f10278990824c64b"
+  }
+}
