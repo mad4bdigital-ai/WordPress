@@ -4,26 +4,46 @@ defined('ABSPATH') || exit;
 final class MAD4B_Package_Seasonal_Assignment_V1 {
  public const META='_mad4b_package_stage_seasonal_rules_v1';
  public const SCHEMA='mad4b.package-stage-seasonal-assignment.v1';
+ private static array $seasonCache=[];
  private static function tour(int $id):int {
   return class_exists('MAD4B_Package_Stage_Rate_Guard_V1')?
    MAD4B_Package_Stage_Rate_Guard_V1::canonicalTour($id):0;
  }
+ public static function invalidate():void {self::$seasonCache=[];}
  public static function seasons():array {
+  // WPML gives us the translated Term (same logical slug), but the approved
+  // calendar fields are attached to the default-language policy Term only.
+  $locale=apply_filters('wpml_current_language',null);
+  $key=is_string($locale)&&$locale!==''?$locale:'_';
+  if(isset(self::$seasonCache[$key]))return self::$seasonCache[$key];
+  $default=apply_filters('wpml_default_language',null);
   $out=[];
   foreach(['summer','winter'] as $slug){
    $t=get_term_by('slug',$slug,'season');if(!$t instanceof WP_Term)continue;
-   $id=(int)$t->term_id;
-   if(get_term_meta($id,'season_enabled',true)!=='1')continue;
-   $mode=(string)get_term_meta($id,'season_mode',true);
+   $policy=(int)$t->term_id;
+   if(get_term_meta($policy,'season_enabled',true)!=='1'){
+    $code=apply_filters('wpml_element_language_code',null,
+      ['element_id'=>(int)$t->term_taxonomy_id,'element_type'=>'tax_season']);
+    if(!is_string($default)||$default===''||
+       !is_string($code)||$code===''||$default===$code)continue;
+    $mapped=(int)apply_filters('wpml_object_id',$policy,'season',false,$default);
+    $back=$mapped>0?(int)apply_filters('wpml_object_id',$mapped,'season',false,$code):0;
+    if($mapped<=0||$back!==$policy||
+       get_term_meta($mapped,'season_enabled',true)!=='1')continue;
+    $policy=$mapped;
+   }
+   $mode=(string)get_term_meta($policy,'season_mode',true);
    if($mode!==''&&$mode!=='travel')continue;
-   $out[$slug]=['slug'=>$slug,'name'=>$t->name,'term_id'=>$id,
-    'sm'=>(int)get_term_meta($id,'season_start_month',true),
-    'sd'=>(int)get_term_meta($id,'season_start_day',true),
-    'em'=>(int)get_term_meta($id,'season_end_month',true),
-    'ed'=>(int)get_term_meta($id,'season_end_day',true),
-    'cross'=>get_term_meta($id,'season_cross_year',true)==='1'];
+   $out[$slug]=['slug'=>$slug,'name'=>$t->name,'term_id'=>(int)$t->term_id,
+    'policy_term_id'=>$policy,
+    'sm'=>(int)get_term_meta($policy,'season_start_month',true),
+    'sd'=>(int)get_term_meta($policy,'season_start_day',true),
+    'em'=>(int)get_term_meta($policy,'season_end_month',true),
+    'ed'=>(int)get_term_meta($policy,'season_end_day',true),
+    'cross'=>get_term_meta($policy,'season_cross_year',true)==='1',
+    'priority'=>(int)get_term_meta($policy,'season_priority',true)];
   }
-  return $out;
+  return self::$seasonCache[$key]=$out;
  }
  public static function seasonOn(string $date):?string {
   $day=DateTimeImmutable::createFromFormat('!Y-m-d',$date,new DateTimeZone('UTC'));
@@ -212,6 +232,9 @@ final class MAD4B_Package_Seasonal_Assignment_V1 {
  }
  public static function boot():void {
   add_action('rest_api_init',[__CLASS__,'rest']);
+  foreach(['edited_term','delete_term','added_term_meta',
+    'updated_term_meta','deleted_term_meta'] as $hook)
+   add_action($hook,[__CLASS__,'invalidate'],5,0);
  }
 }
 MAD4B_Package_Seasonal_Assignment_V1::boot();

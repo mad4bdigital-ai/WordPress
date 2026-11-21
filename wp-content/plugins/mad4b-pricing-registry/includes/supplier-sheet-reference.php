@@ -24,30 +24,32 @@ final class MAD4B_Supplier_Sheet_Reference_V1 {
     'dates_directly_approved'=>false
   ];
   $slug=$period==='summer'?'summer':'winter';
-  $term=get_term_by('slug',$slug,'season');
-  if(!$term instanceof WP_Term)
-   return new WP_Error('supplier_quote_season_term_missing');
-  $id=(int)$term->term_id;
-  if(get_term_meta($id,'season_enabled',true)!=='1')
+  if(!class_exists('MAD4B_Package_Seasonal_Assignment_V1',false))
+   return new WP_Error('supplier_quote_season_policy_missing');
+  $seasons=MAD4B_Package_Seasonal_Assignment_V1::seasons();
+  $policy=$seasons[$slug]??null;
+  if(!is_array($policy))
    return new WP_Error('supplier_quote_season_term_disabled');
+  $id=(int)$policy['term_id'];
+  $policyId=(int)$policy['policy_term_id'];
   $startYear=(int)($doc['sheet_period_anchor_year']??0);
   if($startYear<2020||$startYear>2100)
    return new WP_Error('supplier_quote_season_year_missing');
-  $sm=(int)get_term_meta($id,'season_start_month',true);
-  $sd=(int)get_term_meta($id,'season_start_day',true);
-  $em=(int)get_term_meta($id,'season_end_month',true);
-  $ed=(int)get_term_meta($id,'season_end_day',true);
-  $cross=get_term_meta($id,'season_cross_year',true)==='1';
+  $sm=(int)$policy['sm'];
+  $sd=(int)$policy['sd'];
+  $em=(int)$policy['em'];
+  $ed=(int)$policy['ed'];
+  $cross=(bool)$policy['cross'];
   if(!checkdate($sm,$sd,$startYear)||!checkdate($em,$ed,$startYear+($cross?1:0)))
    return new WP_Error('supplier_quote_season_term_dates_invalid');
   return [
    'status'=>'base_calendar_from_existing_term_meta',
    'source'=>'season_taxonomy_term_meta',
-   'term_id'=>$id,'term_slug'=>$term->slug,
+   'term_id'=>$id,'policy_term_id'=>$policyId,'term_slug'=>$slug,
    'window_start'=>sprintf('%04d-%02d-%02d',$startYear,$sm,$sd),
    'window_end'=>sprintf('%04d-%02d-%02d',$startYear+($cross?1:0),$em,$ed),
    'cross_year'=>$cross,
-   'term_priority'=>(int)get_term_meta($id,'season_priority',true),
+   'term_priority'=>(int)$policy['priority'],
    'dates_directly_approved'=>false,
    'supplier_exception_notes_may_override'=>true
   ];
