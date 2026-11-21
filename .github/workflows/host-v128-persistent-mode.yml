@@ -7,6 +7,8 @@ on:
       - 'tests/host-v128/**'
       - 'tests/release-qualification/**'
       - 'tools/mad4b_release_qualification_mode.py'
+      - 'tools/mad4b_host_runner.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py'
       - 'docs/host-v128/**'
       - '.github/mad4b-release-qualification-mode.json'
       - '.github/workflows/host-v128-persistent-mode.yml'
@@ -20,6 +22,8 @@ on:
       - 'tests/host-v128/**'
       - 'tests/release-qualification/**'
       - 'tools/mad4b_release_qualification_mode.py'
+      - 'tools/mad4b_host_runner.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py'
       - 'docs/host-v128/**'
       - '.github/mad4b-release-qualification-mode.json'
       - '.github/workflows/host-v128-persistent-mode.yml'
@@ -56,6 +60,11 @@ jobs:
         env:
           MAD4B_REQUIRE_PHP: '1'
         run: python -B -m unittest discover -s tests/host-v128 -p 'test_*.py' -v
+      - name: Verify existing bounded Host Runner write limits and path safety
+        run: |
+          python -B wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py
+          python -B wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py
+          python -B wp-content/plugins/mad4b-site-control-plane/tests/host-runner-path-security-contract.py
       - name: Verify globally optional release qualification never weakens host authority
         run: python -B -m unittest discover -s tests/release-qualification -p 'test_*.py' -v
 # Review-only. Nothing is installed into WordPress; no owner attestation,
