@@ -274,7 +274,9 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
             'tier_mismatches'=>0,
             'hotel_stages_requiring_itinerary_review'=>0,
             'hotel_stages_with_explicit_itinerary_conflict'=>0,
-            'stage_selection_isolation_violations'=>0];
+            'stage_selection_isolation_violations'=>0,
+            'unique_candidate_properties'=>0,
+            'properties_eligible_in_multiple_stages'=>0];
         foreach(array_slice($plan['stages'],0,40) as $p){
             if(!is_array($p))continue;
             $key=(string)($p['stage_key']??'');
@@ -385,8 +387,11 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
                 'candidates'=>$candidates
             ];
         }
+        $stats['unique_candidate_properties']=count($allProps);
+        $stats['properties_eligible_in_multiple_stages']=count(array_filter(
+            $seenPropertyStage,static fn($keys)=>count(array_unique($keys))>1));
         $rateIndex=self::publishedRateIndex($allProps);
-        $distinctUnits=[];$detailed=[];
+        $distinctUnits=[];$detailed=[];$countedRateProps=[];
         foreach($stages as $stage){
             $out=$stage;$out['candidates']=[];
             $out['repeated_candidate_property_ids']=array_values(array_map('intval',
@@ -440,7 +445,10 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
                     ];
                 }
                 $rates=$rateIndex[$pid]??[];
-                $stats['published_property_rates']+=(int)($rates['published']??0);
+                if(!isset($countedRateProps[$pid])){
+                    $countedRateProps[$pid]=true;
+                    $stats['published_property_rates']+=(int)($rates['published']??0);
+                }
                 $out['candidates'][]=[
                     'id'=>$pid,
                     'title'=>wp_strip_all_tags(html_entity_decode(get_the_title($pid),ENT_QUOTES,'UTF-8')),
