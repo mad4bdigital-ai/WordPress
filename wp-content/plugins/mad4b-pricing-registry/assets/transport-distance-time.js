@@ -419,6 +419,68 @@ function drawPackageResult(value){
 }
 
 
+
+function renderSheetQuoteCatalog(value){
+ const host=q('sheet-quote-result');host.replaceChildren();
+ const summary=document.createElement('p');summary.className='mad4b-kinetic-muted';
+ summary.textContent=value.matched_entities+' matched Properties · '+
+  value.tariff_values+' quoted values for '+value.period+' · '+
+  value.unmapped_entities+' unresolved property identities. Not approved for booking.';
+ host.append(summary);
+ const list=document.createElement('div');
+ for(const item of value.rows){
+  const details=document.createElement('details');
+  const headline=document.createElement('summary');
+  headline.textContent=item.title+' (#'+item.property_id+') — '+
+    item.tariffs.length+' source quotes';
+  details.append(headline);
+  const source=document.createElement('a');
+  source.href=item.source_link;source.target='_blank';source.rel='noopener noreferrer';
+  source.textContent='View source quotation row '+item.source_row;
+  details.append(source);
+  if(item.tariffs.length){
+   const table=document.createElement('table');table.className='widefat striped';
+   const tr=document.createElement('tr');
+   for(const name of ['Occupancy','Quoted amount','Meal','Price basis']){
+    const th=document.createElement('th');th.textContent=name;tr.append(th);
+   }
+   table.append(tr);
+   for(const quote of item.tariffs){
+    const row=document.createElement('tr');
+    for(const text of [quote.occupancy,quote.amount+' '+quote.currency,
+       quote.meal||'Not specified',quote.basis==='per_person'?'Per person · night unverified':'Basis not verified']){
+      const td=document.createElement('td');td.textContent=text;row.append(td);
+    }
+    table.append(row);
+    const note=Object.values(quote.notes||{}).filter(Boolean).join(' | ');
+    if(note){const line=document.createElement('tr'),cell=document.createElement('td');
+     cell.colSpan=4;cell.textContent=quote.cell_ref+': '+note;
+     line.append(cell);table.append(line);}
+   }
+   details.append(table);
+  }else{
+   const missing=document.createElement('p');
+   missing.textContent='No numeric reference for this season. Do not assume zero cost.';
+   details.append(missing);
+  }
+  list.append(details);
+ }
+ host.append(list);
+ if(value.unmapped.length){
+  const others=document.createElement('details');const title=document.createElement('summary');
+  title.textContent='Unmatched source names ('+value.unmapped.length+')';
+  others.append(title);
+  const ul=document.createElement('ul');
+  for(const e of value.unmapped){const li=document.createElement('li');
+   li.textContent='Row '+e.source_row+': '+e.entity+' — identity not verified';
+   ul.append(li);}
+  others.append(ul);host.append(others);
+ }
+ const caution=document.createElement('p');caution.className='mad4b-kinetic-warning';
+ caution.textContent='Original quotation sheet only. Seasonal dates, unit basis, taxes/supplements, capacity and supplier contracts require verification. All values are excluded from booking and Tour Rate generation.';
+ host.append(caution);
+}
+
 function renderPackageReadinessBoard(value){
  const host=q('readiness-result');host.replaceChildren();
  const head=document.createElement('p');head.className='mad4b-kinetic-muted';
@@ -449,7 +511,7 @@ function renderPackageReadinessBoard(value){
   section.append(edit);
   const table=document.createElement('table');table.className='widefat striped';
   const header=document.createElement('tr');
-  for(const label of ['Level','Commercial stage blockers','Candidate hotels','Draft room categories','Cost status']){
+   for(const label of ['Level','Commercial stage blockers','Candidate hotels','Winter sheet quote refs','Draft room categories','Cost status']){
    const th=document.createElement('th');th.textContent=label;header.append(th);
   }
   table.append(header);
@@ -457,15 +519,17 @@ function renderPackageReadinessBoard(value){
    const tr=document.createElement('tr');
    const hotelCount=tier.stages.reduce((n,x)=>n+x.eligible_properties,0);
    const draftUnitRefs=tier.stages.reduce((n,x)=>n+Number(x.unbookable_draft_unit_candidates||0),0);
+   const winterQuotes=tier.stages.reduce((n,x)=>n+Number(x.sheet_winter_quote_values||0),0);
    for(const text of [name,String(tier.blocking_count),
      String(hotelCount)+' stage-level alternatives',
+     String(winterQuotes)+' quoted values, dates unverified',
      String(draftUnitRefs)+' unbookable candidate references',
      tier.price_ready?'Cost proof ready':'Missing verified supplier receipts']){
     const td=document.createElement('td');td.textContent=text;tr.append(td);
    }
    table.append(tr);
    const issueRow=document.createElement('tr'),cell=document.createElement('td');
-   cell.colSpan=5;
+   cell.colSpan=6;
    const keys=tier.stages.map(s=>{
     return s.key+' ['+s.kind+', '+s.destination+']: '+
       (s.issues.length?s.issues.join(', '):'component proof recorded');
@@ -640,6 +704,16 @@ function bind(){
  });
  q('package-clear').addEventListener('click',()=>{
   packageLines=[];renderPackageLines();q('package-result').textContent='';});
+ q('sheet-quote-find').addEventListener('click',async()=>{
+  const button=q('sheet-quote-find'),host=q('sheet-quote-result');
+  button.disabled=true;host.textContent='Reading quotation evidence…';
+  try{
+   const result=await api('quote-sheet',{tab:q('sheet-quote-tab').value,
+      period:q('sheet-quote-period').value});
+   renderSheetQuoteCatalog(result);
+  }catch(error){host.textContent='Quotation review blocked: '+error.message;}
+  finally{button.disabled=false;}
+ });
  q('readiness-run').addEventListener('click',async()=>{
   const button=q('readiness-run'),host=q('readiness-result');
   button.disabled=true;host.textContent='Reading current package stages and supplier proof…';

@@ -28,6 +28,9 @@ final class MAD4B_Package_Component_Readiness_V1 {
   $window=self::window($from,$to);
   if(is_wp_error($window))return $window;
   [$from,$to]=$window;
+  $quoteIndex=class_exists('MAD4B_Supplier_Sheet_Reference_V1')?
+   MAD4B_Supplier_Sheet_Reference_V1::countsByProperty('winter_2026_27'):[];
+  if(is_wp_error($quoteIndex))return $quoteIndex;
   $out=['contract'=>self::CONTRACT,'site'=>home_url('/'),
    'travel_from'=>$from,'travel_to'=>$to,
    'levels'=>self::TIERS,'tour_count'=>count(self::TOURS),
@@ -92,7 +95,15 @@ final class MAD4B_Package_Component_Readiness_V1 {
         $unitCandidatePublished++;
       }
      }
+     $sheetQuoteMatches=0;$sheetQuoteProperties=0;
+     foreach((array)($s['eligible_property_ids']??[]) as $property){
+      $qCount=(int)($quoteIndex[(int)$property]['quotation_count']??0);
+      if($qCount>0){$sheetQuoteMatches+=$qCount;$sheetQuoteProperties++;}
+     }
      $rows[]=['key'=>$s['key'],'kind'=>$s['kind'],'destination'=>$s['destination'],
+      'sheet_winter_quote_properties'=>$sheetQuoteProperties,
+      'sheet_winter_quote_values'=>$sheetQuoteMatches,
+      'sheet_price_valid_for_dates'=>false,
       'unbookable_draft_unit_candidates'=>$unitCandidateDraft,
       'published_but_unavailable_unit_candidates'=>$unitCandidatePublished,
       'nights'=>(int)$s['nights'],'eligible_properties'=>count((array)($s['eligible_property_ids']??[])),

@@ -114,6 +114,22 @@
    </div>
    <button type="button" class="button" data-id="readiness-run">Review package readiness</button>
    <div data-id="readiness-result" class="mad4b-kinetic-results" role="status" aria-live="polite">Select a date window and run the review. No changes will be saved.</div>
+   <h4>Supplier quote sheet · reference only</h4>
+   <p class="mad4b-kinetic-muted">Read the connected quotation sheet beside the saved Company Properties. Values keep their original occupancy, meal plan, currency, row and seasonal label. Neither Winter nor Peak confirms a valid travel date or supplier contract.</p>
+   <div class="mad4b-kinetic-grid">
+    <label>Supplier quote category<select data-id="sheet-quote-tab">
+      <option value="hotels">Hotels · Cairo / Luxor / Aswan</option>
+      <option value="cruises">Nile cruises</option>
+      <option value="costal">Coastal resorts</option>
+    </select></label>
+    <label>Quoted season<select data-id="sheet-quote-period">
+      <option value="winter_2026_27">Winter 2026/27 · dates not approved</option>
+      <option value="summer">Summer · dates to verify</option>
+      <option value="peak">Peak · dates to verify</option>
+    </select></label>
+   </div>
+   <button class="button" type="button" data-id="sheet-quote-find">Show matched quotation references</button>
+   <div data-id="sheet-quote-result" class="mad4b-kinetic-results" role="status" aria-live="polite">Select category and season to inspect the original quoted prices.</div>
    <h4>Package component cost preview</h4>
    <p class="mad4b-kinetic-muted">Create each selected vehicle journey in the <strong>Route calculator</strong>, then use <strong>Add selected component</strong>. This list lives in your browser until you leave the page. It is not a stored Rate, supplier booking, or itinerary assignment.</p>
    <div class="mad4b-kinetic-grid">

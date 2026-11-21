@@ -611,6 +611,12 @@ final class MAD4B_Transport_Distance_Time_V1 {
      MAD4B_Transport_Package_Workflow_V1::candidates(
        $raw['stage'],sanitize_key((string)($raw['lang']??'en'))):
      new WP_Error('transport_eligibility_input_invalid');
+  }elseif($mode==='quote-sheet'){
+   $result=class_exists('MAD4B_Supplier_Sheet_Reference_V1')?
+     MAD4B_Supplier_Sheet_Reference_V1::catalog(
+       sanitize_key((string)($_POST['tab']??'hotels')),
+       sanitize_key((string)($_POST['period']??'winter_2026_27'))):
+     new WP_Error('quote_sheet_module_missing');
   }elseif($mode==='package-readiness'){
    $result=class_exists('MAD4B_Package_Component_Readiness_V1')?
     MAD4B_Package_Component_Readiness_V1::report(
