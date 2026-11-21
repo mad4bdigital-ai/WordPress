@@ -7,6 +7,7 @@ dispatch = (root / 'includes' / 'class-mad4b-scp-enrollment-dispatch.php').read_
 servers = (root / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8') + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
 servers += (root / 'includes' / 'class-mad4b-scp-server-core-catalog.php').read_text(encoding='utf-8')
 abilities = (root / 'includes' / 'class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
+registration = (root / 'includes' / 'trait-mad4b-scp-abilities-registration.php').read_text(encoding='utf-8')
 write_authority = (root / 'includes' / 'class-mad4b-scp-staging-write-authority.php').read_text(encoding='utf-8')
 oauth = (root / 'includes' / 'class-mad4b-scp-oauth-resource-bridge.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
@@ -379,15 +380,33 @@ for marker in [
     "MAD4B_SCP_Enrollment_Dispatch::discover",
     "MAD4B_SCP_Enrollment_Dispatch::info",
     "MAD4B_SCP_Enrollment_Dispatch::execute",
-    "'expected_registration_digest'",
-    "'expected_dispatch_policy_digest'",
-    "'expected_input_schema_sha256'",
     "MAD4B_SCP_Remote_Operation_Parity::reconciliation_status( $operation_id )",
     "'mad4b.chatgpt-enrollment-mutation-reconciliation.v1'",
     "'blind_retry_allowed' => false",
 ]:
     if marker not in abilities:
         raise SystemExit(f'canonical core Enrollment dispatcher invariant missing: {marker}')
+
+# The exact invocation digests moved from the public Abilities façade to
+# the WordPress Ability schema trait and the authoritative Enrollment
+# Dispatcher. Verify both pieces: input schema AND runtime constant-time
+# comparison. Never pass merely because the token appears in a comment.
+for marker in [
+    "'expected_registration_digest'",
+    "'expected_dispatch_policy_digest'",
+    "'expected_input_schema_sha256'",
+]:
+    if marker not in registration or marker not in dispatch:
+        raise SystemExit(f'canonical Enrollment schema/dispatcher pin missing: {marker}')
+for marker in (
+    "hash_equals( strtolower( (string) $row['registration_digest'] ), $expected_registration )",
+    "MAD4B_SCP_Enrollment_Dispatch::execute_for_mcp",
+    "mad4b_enrollment_dispatch_registration_drift",
+    "mad4b_enrollment_dispatch_policy_drift",
+    "mad4b_enrollment_dispatch_schema_drift",
+):
+    if marker not in dispatch and marker not in abilities:
+        raise SystemExit(f'Enrollment runtime must enforce signed exact binding: {marker}')
 if "MAD4B_SCP_Enrollment_Dispatch::boot();" in dispatch:
     raise SystemExit('Enrollment policy helper must not self-register abilities after core dispatcher adoption')
 

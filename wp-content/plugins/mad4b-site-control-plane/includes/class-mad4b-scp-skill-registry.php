@@ -16,7 +16,8 @@ final class MAD4B_SCP_Skill_Registry {
 	const ROOT_DIRNAME = 'mad4b-skills';
 	const META_FILE = '.mad4b.json';
 	const MAX_SKILL_BYTES = 262144;
-	const MAX_SCAN_SKILLS = 500;
+	const MAX_SCAN_SKILLS = 500; // Legacy informational constant; no longer a scan ceiling.
+	const MAX_PAGE_SIZE = 100;
 
 	private static $levels = array( 'site', 'connection', 'provider', 'adapter', 'workflow' );
 
@@ -96,7 +97,6 @@ final class MAD4B_SCP_Skill_Registry {
 					if ( is_wp_error( $entry ) ) continue;
 					if ( null !== $enabled_filter && $enabled_filter !== ! empty( $entry['enabled'] ) ) continue;
 					$items[] = self::summary( $entry );
-					if ( count( $items ) >= self::MAX_SCAN_SKILLS ) break 3;
 				}
 			}
 		}
@@ -473,7 +473,7 @@ final class MAD4B_SCP_Skill_Registry {
 		$out = array();
 		$entries = @scandir( $path );
 		if ( ! is_array( $entries ) ) return $out;
-		foreach ( array_slice( $entries, 0, self::MAX_SCAN_SKILLS + 2 ) as $entry ) {
+		foreach ( $entries as $entry ) {
 			if ( '.' === $entry || '..' === $entry || ! is_dir( $path . '/' . $entry ) || is_link( $path . '/' . $entry ) ) continue;
 			$out[] = $entry;
 		}

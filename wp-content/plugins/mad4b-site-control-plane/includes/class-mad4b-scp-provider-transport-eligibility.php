@@ -94,10 +94,14 @@ final class MAD4B_SCP_Provider_Transport_Eligibility {
 			'artifact_authority_bound' => ! empty( $status['artifact_authority_bound'] ),
 			'structural_compatible' => ! empty( $status['structural_compatible'] ),
 			'quarantined' => $quarantined,
+			'reversible_declared' => ! empty( $status['reversible'] ),
 			'static_certification_ready' => $certified,
 			'release_ring' => $ring, 'release_ring_eligible' => $ring_allowed,
 			'reason_code' => $reason,
-			'next_action' => ! $certified ? 'certify_exact_provider_capability'
+			'next_action' => ! $certified
+				? ( 'bounded_write' === (string) ( $status['risk'] ?? '' ) && empty( $status['reversible'] )
+					? 'design_real_compensation_or_review_safe_append_only_policy'
+					: 'certify_exact_provider_capability' )
 				: ( ! $ring_allowed ? 'review_exact_release_ring'
 					: 'verify_separate_write_authority_and_breaker' ),
 		) );

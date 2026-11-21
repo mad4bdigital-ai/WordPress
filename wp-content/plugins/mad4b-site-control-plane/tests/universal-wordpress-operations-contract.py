@@ -25,8 +25,23 @@ provider_autopilot = (PLUGIN / "includes/class-mad4b-scp-provider-autopilot.php"
 adapter_registry = (PLUGIN / "includes/class-mad4b-scp-adapter-registry.php").read_text(encoding="utf-8")
 transport_registry = (PLUGIN / "includes/class-mad4b-scp-provider-transport-registry.php").read_text(encoding="utf-8")
 servers = (PLUGIN / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+server_facade = servers
+write_catalog = (PLUGIN / "includes/class-mad4b-scp-server-write-catalog.php").read_text(encoding="utf-8")
 # Declarations moved into a required trait; inspect both source units.
 servers += "\n" + (PLUGIN / "includes/class-mad4b-scp-server-core-catalog.php").read_text(encoding="utf-8")
+# Exact source-ownership review: the facade MUST wire the real request-local
+# Write Catalog. This is paired with the PHP regression that executes the
+# extracted live_write_provider_snapshot against real fixtures and revocation.
+assert "require_once __DIR__ . '/class-mad4b-scp-server-write-catalog.php';" in server_facade
+assert "use MAD4B_SCP_Server_Write_Catalog;" in server_facade
+assert "trait MAD4B_SCP_Server_Write_Catalog" in write_catalog
+assert "public static function live_write_provider_snapshot()" in write_catalog
+assert "self::write_tools()" in write_catalog
+assert "self::core_write_candidates()" in write_catalog
+assert "self::registered_adapter_write_candidates()" in write_catalog
+assert "if ( isset( $core[ $ability ] ) ) $result[ $ability ] = 'core';" in write_catalog
+assert "elseif ( isset( $adapters[ $ability ] ) && '' !== $adapters[ $ability ] )" in write_catalog
+assert "function live_write_provider_snapshot" not in server_facade
 all_php = "\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in (PLUGIN / "includes").rglob("*.php"))
 search_runtime = (PLUGIN / "includes/class-mad4b-scp-adaptive-search-intelligence.php").read_text(encoding="utf-8")
 

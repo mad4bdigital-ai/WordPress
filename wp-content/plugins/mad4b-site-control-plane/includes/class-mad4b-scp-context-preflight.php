@@ -592,6 +592,36 @@ final class MAD4B_SCP_Context_Preflight {
 			}
 			return self::mutation_context_guard( $target, $input['input'] );
 		}
+		// Brand Core bootstrap has its own Brand Strategy-only Skill context:
+		// accept ONLY a signed, live, ability-bound receipt from that canonical
+		// builder. Ordinary content-authoring still requires full Brand Core.
+		// The draft remains non-authoritative, and approval, current evidence,
+		// idempotency, review and materialization stay independent gates.
+		if ( 'context/brand-draft-create' === $ability_name ) {
+			if ( ! function_exists( 'wp_get_environment_type' ) || 'staging' !== wp_get_environment_type() )
+				return new WP_Error( 'mad4b_brand_draft_bootstrap_staging_only', 'Brand draft bootstrap is permitted on Staging only.' );
+			if ( ! class_exists( 'MAD4B_SCP_Brand_Context_Builder' ) || ! method_exists( 'MAD4B_SCP_Brand_Context_Builder', 'draft_preflight' ) )
+				return new WP_Error( 'mad4b_brand_draft_bootstrap_preflight_unavailable', 'The evidence-bound draft preflight must be available.' );
+			$receipt = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+				? MAD4B_SCP_Staging_Write_Authority::context_receipt_from_input( $input )
+				: ( isset( $input['_mad4b_context_receipt'] ) && is_array( $input['_mad4b_context_receipt'] ) ? $input['_mad4b_context_receipt'] : array() );
+			if ( empty( $receipt ) ) return new WP_Error( 'mad4b_content_context_receipt_required', 'Brand Core bootstrap requires a signed, ability-bound Context Receipt from the Brand Context builder.' );
+			if ( empty( $receipt['brand_context_required'] )
+				|| 'workflow:brand-context:wordpress-brand-context-builder' !== (string) ( $receipt['skill_logical_id'] ?? '' )
+				|| 'context/brand-draft-create' !== (string) ( $receipt['intended_ability'] ?? '' )
+				|| array( 'brand_strategy' ) !== (array) ( $receipt['declared_required_context_sets'] ?? array() ) )
+				return new WP_Error( 'mad4b_brand_draft_bootstrap_receipt_scope_invalid', 'Brand Core bootstrap requires the exact Brand Strategy-only Context Receipt bound to draft creation.' );
+			$validated = self::validate_receipt_binding( $receipt );
+			if ( is_wp_error( $validated ) ) return $validated;
+			$draft_preflight = MAD4B_SCP_Brand_Context_Builder::draft_preflight( $input );
+			if ( is_wp_error( $draft_preflight ) ) return $draft_preflight;
+			$content = isset( $input['content'] ) ? trim( (string) $input['content'] ) : '';
+			if ( empty( $draft_preflight['quality_gate_pass'] ) || '' === $content
+				|| ! isset( $draft_preflight['content_sha256'] )
+				|| ! hash_equals( (string) $draft_preflight['content_sha256'], hash( 'sha256', $content ) ) )
+				return new WP_Error( 'mad4b_brand_draft_bootstrap_quality_required', 'The exact proposed Brand draft must pass current evidence-bound quality preflight.' );
+			return true;
+		}
 		$requirement = self::content_mutation_requirement( $ability_name, $input );
 		if ( is_wp_error( $requirement ) ) return $requirement;
 		if ( ! empty( $requirement['review_required'] ) ) {

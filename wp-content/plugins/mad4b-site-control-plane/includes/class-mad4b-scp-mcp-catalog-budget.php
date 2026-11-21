@@ -4,7 +4,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /**
  * Request-local, site-scoped MCP display budget. It never changes the Ability
  * registry, grants, permissions, execution, or the stable dispatch routes.
- * Only reviewed optional direct tools may be trimmed.
+ * No eligible Ability is dropped by a historical tool-count estimate;
+ * policy and per-tool wire validation remain independent.
  */
 final class MAD4B_SCP_MCP_Catalog_Budget {
     const CONTRACT = 'mad4b.mcp-catalog-budget.v1';
@@ -59,6 +60,8 @@ final class MAD4B_SCP_MCP_Catalog_Budget {
             self::LEGACY_BYTE_LIMIT, 32768, self::HARD_BYTE_LIMIT );
         $target_ms = self::bounded_config( 'MAD4B_MCP_CATALOG_TARGET_MS', 1200, 300, 5000 );
         $telemetry = self::telemetry();
+        // Telemetry tunes the initial display suggestion only; discovered inventory
+        // is never rejected solely due to a historical 36/64 tool limit.
         // Expansion beyond the tested legacy envelope requires at least
         // three real successful authenticated tools/list observations.
         $effective_tools = min( $configured_tools, self::LEGACY_TOOL_LIMIT );
@@ -78,9 +81,9 @@ final class MAD4B_SCP_MCP_Catalog_Budget {
         }
         return array(
             'contract' => self::CONTRACT,
-            'max_tools' => min( self::HARD_TOOL_LIMIT, max( (int) $required_count, $effective_tools ) ),
+             'max_tools' => max( (int) $required_count, $effective_tools ),
             'max_bytes' => $effective_bytes,
-            'configured_max_tools' => $configured_tools,
+            'configured_max_tools' => max( (int) $required_count, $configured_tools ),
             'configured_max_bytes' => $configured_bytes,
             'target_ms' => $target_ms,
             'latency_state' => $state,

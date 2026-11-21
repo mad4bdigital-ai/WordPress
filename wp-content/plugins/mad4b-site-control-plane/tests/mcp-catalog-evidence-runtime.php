@@ -35,10 +35,20 @@ check( isset( $record_data['icons'][0] ) && is_array( $record_data['icons'][0] )
 $required = array_map( static function ( $i ) { return 'required/tool-' . $i; }, range( 1, 30 ) );
 $optional = array_map( static function ( $i ) { return 'optional/tool-' . $i; }, range( 1, 100 ) );
 $budget = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( array_merge( $required, $optional ), $optional );
-check( $budget['ready'] && 36 === count( $budget['selected'] ) && ! array_diff( $required, $budget['selected'] ) && 94 === count( $budget['excluded_optional'] ), 'rich optional catalog preserves core and bounded priority' );
+check( $budget['ready'] && 130 === count( $budget['selected'] ) && ! array_diff( $required, $budget['selected'] ) && empty( $budget['excluded_optional'] ), 'dynamic catalog retains all valid required and optional abilities' );
 check( $budget === MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( array_merge( $required, $optional ), $optional ), 'budget selection deterministic' );
+// Regression for dynamic scale: no legacy 36/64 tool-count cap may silently
+// drop healthy tool definitions, even if all are reviewed optional tools.
+$large = array_map( static function ( $i ) { return 'dynamic/tool-' . $i; }, range( 1, 1024 ) );
+$large_budget = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( $large, $large );
+check( ! empty( $large_budget['ready'] ) && $large_budget['selected'] === $large
+    && empty( $large_budget['excluded_optional'] )
+    && ! empty( $large_budget['dynamic_unbounded_catalog'] ),
+    '1024-tool dynamic catalog must remain fully available without a fixed count cap' );
 $over = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( array_merge( $required, array_slice( $optional, 0, 7 ) ), array() );
-check( ! $over['ready'] && 'mcp_required_catalog_budget_exceeded' === $over['blocker'], 'required overflow fails closed' );
+check( $over['ready'] && count( $over['selected'] ) === 37
+    && $over['required_count'] === 37 && $over['optional_capacity'] === 0,
+    'required abilities are never dropped by an optional display budget' );
 $duplicate = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( array( 'core/tool', 'core/tool' ), array() );
 check( ! $duplicate['ready'], 'duplicate identity cannot degrade' );
 $one = new FixtureTool( 'mad4b-site-info', 'mad4b/site-info' );
@@ -56,7 +66,7 @@ $two = new FixtureTool( 'mad4b-extra', 'mad4b/site-info' );
 $s = MAD4B_SCP_MCP_Catalog_Diagnostics::inspect( new FixtureServer( array( $one->name => $one, $two->name => $two ) ), $expected );
 check( 'mcp_catalog_duplicate_ability' === $s['blocker'], 'duplicate binding detected' );
 $s = MAD4B_SCP_MCP_Catalog_Diagnostics::inspect( $server, array_fill( 0, 37, 'mad4b/site-info' ) );
-check( 'mcp_catalog_budget_exceeded' === $s['blocker'], 'bounded inventory' );
+check( ! empty( $s['ready'] ) && 1 === $s['tool_count'], 'duplicate expected labels cannot impose a fixed inventory cap' );
 $s = MAD4B_SCP_MCP_Catalog_Diagnostics::inspect( new FixtureServer( array( 'wrong-name' => $one ) ), $expected );
 check( 'mcp_tool_identity_invalid' === $s['blocker'], 'registry key and DTO name must agree' );
 $s = MAD4B_SCP_MCP_Catalog_Diagnostics::inspect( $server, array( 'mad4b/tool-discover' ) );

@@ -19,7 +19,7 @@ function wp_safe_remote_get($url,$args){
   if($network_mode==='fail')return new WP_Error('network_disconnected');
   if($network_mode==='badsha')return ['code'=>200,'body'=>'{"sha":"ffffffffffffffffffffffffffffffffffffffff"}'];
   if($network_mode==='invalid')return ['code'=>200,'body'=>'invalid'];
-  preg_match('~/git/commits/([a-f0-9]{40})$~',$url,$match);
+  preg_match('~/commits/([a-f0-9]{40})$~',$url,$match);
   return ['code'=>200,'body'=>json_encode(['sha'=>$match[1]??''])];
 }
 function wp_remote_retrieve_response_code($response){return (int)$response['code'];}

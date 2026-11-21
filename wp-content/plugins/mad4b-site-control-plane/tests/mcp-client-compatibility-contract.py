@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import re
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
@@ -161,17 +162,18 @@ for source, label in [
 ]:
     assert 'verified_bearer_client_is' in source, f'{label} direct execution lacks exact-client attribution'
 
-# Provider-rich sites must not lose the required catalog because optional
-# step-ups exceed the refresh budget. Composite step-ups retain explicit priority.
+# The dynamic catalog admits the complete valid requested inventory,
+# regardless of legacy telemetry/display estimates. Composite step-ups keep
+# independent wire validation and execution authorization.
 for marker in [
     'public static function budget_projection( array $abilities, array $optional )',
-    "'mcp_required_catalog_budget_exceeded'",
+    'MAD4B_SCP_MCP_Catalog_Budget::limits( count( $abilities ) )',
     "'mcp_optional_catalog_budget_excluded'",
-    "$limits['max_tools'] - count( $required )",
-    "MAX_SERIALIZED_TOOL_BYTES",
+    "'dynamic_unbounded_catalog' => true",
+    "'bounded_single_tool_schema_unbounded_total'",
     "'mcp_optional_catalog_size_excluded'",
     "'mcp_required_catalog_size_exceeded'",
-    "'bounded_serialized_tool_bytes'",
+    "'per_tool_serialized_bytes_limit'",
 ]:
     assert marker in catalog_diagnostics, f'missing bounded catalog budget invariant: {marker}'
 # Dynamic projections use the live effective registry so same-request projection
@@ -287,15 +289,31 @@ for forbidden in [
     assert forbidden not in registry, f'forbidden registry authority marker: {forbidden}'
 
 # Projection plans and real server registration must use the same optional
-# classification, otherwise a direct profile convenience gets counted as a
-# required transport and exceeds the bounded 36-tool envelope.
+# classification for independent wire/policy checks. Historical 36/64 tool
+# counts are telemetry/display suggestions, never a registry limit.
 assert "MAD4B_SCP_Servers::chatgpt_materialization_optional_tools( $base )" in projection
 assert "MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools() : array();" not in projection
 assert "function chatgpt_materialization_optional_tools" in servers
 assert "MAD4B_SCP_Servers::chatgpt_materialization_optional_tools( $abilities )" in catalog_diagnostics
 assert "isset( $materialized_optional[ $ability_name ] )" in catalog_diagnostics
-assert "MAX_TOOLS = 36" in catalog_diagnostics  # legacy default, not fixed active limit
+assert "MAD4B_SCP_MCP_Catalog_Budget::limits( count( $abilities ) )" in catalog_diagnostics  # full requested dynamic inventory
 assert "MAD4B_SCP_MCP_Catalog_Budget::limits" in catalog_diagnostics
 assert "class-mad4b-scp-mcp-catalog-budget.php" in catalog_diagnostics
 assert "MAD4B_SCP_MCP_Catalog_Budget::observe" in catalog_diagnostics
+# The live WP-CLI integration tests must opt in BEFORE plugin bootstrap.
+# Regular WP-CLI remains route-only to avoid eager 9-server materialization.
+cli_workflow = (root.parents[2] / '.github/workflows/mad4b-mcp-client-compatibility.yml').read_text(encoding='utf-8')
+for cli_test in ('runtime-chatgpt-tool-inventory-smoke.php', 'runtime-chatgpt-dynamic-tool-projection.php'):
+    assert any(
+        'MAD4B_SCP_MCP_CLI_REQUEST=1 php /tmp/wp-cli.phar eval-file' in line and cli_test in line
+        for line in cli_workflow.splitlines()
+    ), f'explicit MCP-only CLI lifecycle missing for {cli_test}'
+assert cli_workflow.count('MAD4B_SCP_MCP_CLI_REQUEST=1 php /tmp/wp-cli.phar eval-file') == 2
+# Never reintroduce global count/total-byte test vetoes over a valid MCP
+# inventory. Per-tool schema and permission checks are separate hard gates.
+for smoke_name in ('runtime-chatgpt-tool-inventory-smoke.php', 'runtime-local-oauth-chatgpt-http-smoke.php'):
+    smoke = (root / 'tests' / smoke_name).read_text(encoding='utf-8')
+    assert not re.search(r'count\(\s*\$(?:actual_names|names)\s*\)\s*>\s*(?:36|64)\b', smoke), smoke_name
+    assert 'MCP_Catalog_Diagnostics::MAX_TOOLS' not in smoke, smoke_name
+    assert 'MCP_Catalog_Diagnostics::MAX_SERIALIZED_TOOL_BYTES' not in smoke, smoke_name
 print('mad4b.site-control-plane.mcp-client-compatibility.v12: PASS')

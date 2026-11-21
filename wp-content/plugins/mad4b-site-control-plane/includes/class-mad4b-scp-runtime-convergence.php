@@ -175,7 +175,13 @@ final class MAD4B_SCP_Runtime_Convergence {
 		// is installed. Never ignore schema, skills, OAuth or authority gates.
 		$stale_release_cache_only = ! $independently_ready
 			&& self::superseded_cached_release_only( $checkpoint, $current, $graph );
-		if ( ! $independently_ready && ! $stale_release_cache_only ) return false;
+		// An obsolete self-update checkpoint must not keep an independently
+		// validated newer staging package in permanent HTTP 503 solely because
+		// OWNER WRITE authority has not been re-attested. This is a READ-ONLY
+		// historical interpretation; the owner/write gate is never granted here.
+		$owner_gate_audit_only = ! $independently_ready
+			&& self::superseded_owner_gate_audit_only( $checkpoint, $current, $graph );
+		if ( ! $independently_ready && ! $stale_release_cache_only && ! $owner_gate_audit_only ) return false;
 		$observed_checkpoint = $graph['checkpoint'] ?? array();
 		if ( ! is_array( $observed_checkpoint ) || 'pending_manual_resume' !== ( $observed_checkpoint['state'] ?? '' )
 			|| 'self_update' !== ( $observed_checkpoint['source'] ?? '' )
@@ -185,8 +191,55 @@ final class MAD4B_SCP_Runtime_Convergence {
 		if ( ! empty( $graph['checkpoint_operator_state']['replay_old_checkpoint_allowed'] ) ) return false;
 		return $independently_ready
 			? 'superseded_audit_only' === ( $graph['checkpoint_operator_state']['state'] ?? '' )
-			: ( $stale_release_cache_only
+			: ( ( $stale_release_cache_only || $owner_gate_audit_only )
 				&& 'historical_checkpoint_independent_blockers' === ( $graph['checkpoint_operator_state']['state'] ?? '' ) );
+	}
+
+	/**
+	 * Narrow old-checkpoint reconciliation for an exact *newer* Staging
+	 * release whose only independent blockers are OWNER WRITE admission,
+	 * optionally accompanied by an independently verified stale release
+	 * cache. Never replace a current candidate, loosen OAuth, revive Cron,
+	 * grant a mutation, or edit/delete the historical checkpoint.
+	 */
+	private static function superseded_owner_gate_audit_only( $checkpoint, $current, $graph ) {
+		if ( ! is_array( $checkpoint ) || ! is_array( $current ) || ! is_array( $graph )
+			|| 'self_update' !== ( $checkpoint['source'] ?? '' )
+			|| 'pending_manual_resume' !== ( $checkpoint['state'] ?? '' )
+			|| 'staging' !== ( $graph['environment'] ?? '' )
+			|| 'convergence_required' !== ( $graph['state'] ?? '' )
+			|| ! empty( $graph['ready'] )
+			|| true !== ( $graph['phase_graph_valid'] ?? false )
+			|| ! class_exists( 'MAD4B_SCP_Policy', false )
+			|| true === MAD4B_SCP_Policy::can_mutate() ) return false;
+
+		$target = is_array( $checkpoint['target_identity'] ?? null )
+			? self::bounded_identity( $checkpoint['target_identity'] ) : array();
+		if ( ! self::automatic_identity_safe( $target )
+			|| ! self::automatic_identity_safe( self::bounded_identity( $current ) )
+			|| ! version_compare( (string) $current['version'], (string) $target['version'], '>' )
+			|| hash_equals( (string) $current['source_commit_sha'], (string) $target['source_commit_sha'] )
+			|| ! self::identity_matches( $current, $graph['current_identity'] ?? array() )
+			|| 'historical_checkpoint_independent_blockers'
+				!== ( $graph['checkpoint_operator_state']['state'] ?? '' )
+			|| ! empty( $graph['checkpoint_operator_state']['replay_old_checkpoint_allowed'] ) ) return false;
+
+		$blockers = $graph['required_blockers'] ?? null;
+		$owner_only = array( 'authority_binding:owner_gate' ) === $blockers;
+		$stale_owner = array( 'deployment:pending', 'authority_binding:owner_gate' ) === $blockers
+			&& self::superseded_cached_release_only( $checkpoint, $current, $graph, true );
+		if ( ! $owner_only && ! $stale_owner ) return false;
+		$phases = $graph['phases'] ?? null;
+		if ( ! is_array( $phases ) || ! isset( $phases['authority_binding'] )
+			|| empty( $phases['authority_binding']['required'] )
+			|| 'owner_gate' !== ( $phases['authority_binding']['state'] ?? '' ) ) return false;
+		foreach ( $phases as $name => $phase ) {
+			if ( ! is_array( $phase ) ) return false;
+			if ( empty( $phase['required'] ) || 'authority_binding' === $name ) continue;
+			if ( 'ready' !== ( $phase['state'] ?? '' )
+				&& ! ( $stale_owner && 'deployment' === $name && 'pending' === ( $phase['state'] ?? '' ) ) ) return false;
+		}
+		return true;
 	}
 
 	/**
@@ -215,8 +268,15 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$stale_deployment_owner_only = array( 'deployment:pending', 'authority_binding:owner_gate' )
 			=== ( $graph['required_blockers'] ?? null )
 			&& self::superseded_cached_release_only( $checkpoint, $current, $graph, true );
+		// Preserve the existing site-approved read-only allowance for a
+		// historical managed-Skills checkpoint. This does not authorize any
+		// MCP write request or change the independent authority gate.
+		$managed_skills_owner_only = array( 'managed_skills:pending', 'authority_binding:owner_gate' )
+			=== ( $graph['required_blockers'] ?? null )
+			&& ! empty( $graph['phases']['managed_skills']['required'] )
+			&& 'pending' === ( $graph['phases']['managed_skills']['state'] ?? '' );
 		if ( array( 'authority_binding:owner_gate' ) !== ( $graph['required_blockers'] ?? null )
-			&& ! $stale_deployment_owner_only ) return false;
+			&& ! $stale_deployment_owner_only && ! $managed_skills_owner_only ) return false;
 		$target = is_array( $checkpoint['target_identity'] ?? null )
 			? self::bounded_identity( $checkpoint['target_identity'] ) : array();
 		$old_sha = strtolower( trim( (string) ( $target['source_commit_sha'] ?? '' ) ) );
@@ -242,7 +302,39 @@ final class MAD4B_SCP_Runtime_Convergence {
 				|| ( 'authority_binding' !== $id && ! empty( $phase['required'] )
 					&& 'ready' !== ( $phase['state'] ?? '' )
 					&& ! ( $stale_deployment_owner_only && 'deployment' === $id
-						&& 'pending' === ( $phase['state'] ?? '' ) ) ) ) return false;
+						&& 'pending' === ( $phase['state'] ?? '' ) )
+				&& ! ( $managed_skills_owner_only && 'managed_skills' === $id
+					&& 'pending' === ( $phase['state'] ?? '' ) ) ) ) return false;
+		}
+		return true;
+	}
+
+	/**
+	 * A verified newer LOCAL build is not waiting for an obsolete remote
+	 * update target on enrolled Staging. This changes status only; it never
+	 * enrolls a grant or certifies an update. Production and same-version SHA
+	 * conflicts retain the original deployment comparison.
+	 */
+	private static function staging_local_build_supersedes_target( $environment, $profile, $identity, $target ) {
+		if ( 'staging' !== $environment || ! is_array( $profile )
+			|| empty( $profile['origin_match'] )
+			|| empty( $profile['deployment_binding_match'] )
+			|| ! is_array( $identity ) || ! is_array( $target ) ) return false;
+		$local_version = (string) ( $identity['version'] ?? '' );
+		$cached_version = (string) ( $target['version'] ?? '' );
+		if ( '' === $local_version || '' === $cached_version
+			|| ! version_compare( $local_version, $cached_version, '>' ) ) return false;
+		if ( ! preg_match( '/^[a-f0-9]{40}$/D', (string) ( $target['source_commit_sha'] ?? '' ) )
+			|| ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $target['build_fingerprint'] ?? '' ) )
+			|| ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $target['package_manifest_digest'] ?? '' ) ) ) return false;
+		if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer', false ) ) return false;
+		$manifest = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status();
+		if ( ! is_array( $manifest ) || empty( $manifest['identity_ready'] )
+			|| empty( $manifest['manifest_valid'] ) ) return false;
+		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $field ) {
+			$expected = (string) ( $identity[ $field ] ?? '' );
+			$actual = (string) ( $manifest[ $field ] ?? '' );
+			if ( '' === $expected || '' === $actual || ! hash_equals( $expected, $actual ) ) return false;
 		}
 		return true;
 	}
@@ -457,9 +549,13 @@ final class MAD4B_SCP_Runtime_Convergence {
 		// A missing cached release target means "no update-channel observation", not
 		// "runtime unknown". Exact on-disk identity is sufficient for local runtime
 		// convergence; update freshness remains a separate advisory concern.
+		$stale_cached_target = '' !== $target_sha && '' !== $current_sha
+			&& ! hash_equals( $target_sha, $current_sha )
+			&& $runtime_identity_complete
+			&& self::staging_local_build_supersedes_target( $environment, $profile, $identity, $update_target );
 		$deployment_state = '' === $target_sha
 			? ( $runtime_identity_complete ? 'ready' : 'unknown' )
-			: ( '' !== $current_sha && hash_equals( $target_sha, $current_sha ) ? 'ready' : 'pending' );
+			: ( ( '' !== $current_sha && hash_equals( $target_sha, $current_sha ) ) || $stale_cached_target ? 'ready' : 'pending' );
 
 		$write_enabled = ! empty( $profile['write_enabled'] );
 		$skills_enabled = ! empty( $profile['skills_enabled'] );
@@ -477,7 +573,9 @@ final class MAD4B_SCP_Runtime_Convergence {
 				'manifest_state' => isset( $update['native_wordpress_update']['manifest_state'] ) ? (string) $update['native_wordpress_update']['manifest_state'] : '',
 				'cached_release_target_present' => '' !== $target_sha,
 				'runtime_identity_complete' => $runtime_identity_complete,
-				'readiness_basis' => '' === $target_sha && $runtime_identity_complete ? 'exact_current_runtime_identity' : 'cached_release_target',
+				'readiness_basis' => $stale_cached_target ? 'verified_newer_staging_local_manifest'
+					: ( '' === $target_sha && $runtime_identity_complete ? 'exact_current_runtime_identity' : 'cached_release_target' ),
+				'cached_release_target_superseded' => $stale_cached_target,
 			) ),
 			'schema' => self::phase( 'schema', ! empty( $schema['ready'] ) ? 'ready' : 'pending', true, array( 'deployment' ), true, array(
 				'expected_version' => isset( $schema['expected_version'] ) ? (int) $schema['expected_version'] : 0,

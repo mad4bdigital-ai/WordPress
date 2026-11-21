@@ -15,6 +15,8 @@ TESTS = (
     "context-semantic-source-approval-runtime.php",
     "content-bundle-semantic-contract-runtime.php",
     "approval-decision-runtime.php",
+    "approval-plan-route-preflight-runtime.php",
+    "staging-write-grant-reviewed-inventory-runtime.php",
     "context-preflight-runtime.php",
     "reconnect-hardening-runtime.php",
     "runtime-restart-grace-readonly-runtime.php",

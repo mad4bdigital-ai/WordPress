@@ -97,7 +97,18 @@ $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( $required[0] ), a
 check( ! $result['ready'] && 'official_wire_build' === $result['failures'][0]['stage'] && 'mcp_tool_name_filter_invalid' === $result['failures'][0]['error_code'], 'Invalid third-party name filter lost precise builder evidence' );
 $GLOBALS['filters']['mcp_adapter_tool_name'] = static function() { return 'colliding-name'; };
 $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array_slice( $required, 0, 2 ), array( $required[1] ) );
-check( ! $result['ready'] && 'identity' === $result['failures'][0]['stage'], 'Optional tool identity collision must fail closed' );
+// A colliding optional projection is quarantined; the already validated
+// required tool remains discoverable with its original identity and callbacks.
+// The collision must be diagnosed, never admitted as a second wire tool.
+check(
+    $result['ready'] && $result['degraded']
+    && array( $required[0] ) === $result['tools']
+    && 1 === count( $result['failures'] )
+    && 'identity' === $result['failures'][0]['stage']
+    && 'mcp_identity_collision' === $result['failures'][0]['error_code']
+    && $required[1] === $result['failures'][0]['failing_ability'],
+    'Optional wire collision displaced a required tool or escaped quarantine'
+);
 unset( $GLOBALS['filters']['mcp_adapter_tool_name'] );
 wp_register_ability( 'fixture/large', array( 'description' => str_repeat( 'x', 100000 ) ) );
 $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( $required[0], 'fixture/large' ), array( 'fixture/large' ) );

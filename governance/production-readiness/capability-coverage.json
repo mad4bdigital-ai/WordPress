@@ -2096,18 +2096,40 @@
         "RECOVERY-01",
         "ROLLOUT-01",
         "GOVERNANCE-01",
-        "SECURITY-01"
+        "SECURITY-01",
+        "MCP-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-router-runtime.php"
       ],
       "owner_role": "Repository source-review maintainer — CI-only static candidate audit, not remote authorization or WordPress Site Owner",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
       "needs_new_control": false,
-      "coverage_reuse_rationale": "Existing update-coordinator, cross-plugin isolation, recovery, rollout, governance and security controls apply. The introduced source only mentions the established Ability as non-authorizing routing guidance; this review does not register, grant, invoke, install or certify it.",
-      "review_rationale": "Static source scanner identifies the literal mad4b/control-plane-selected-head-plan in the new package route guidance. It is a pointer to an independent already-governed Control Plane planning surface, NOT a newly registered Ability or an executable provider-package action. Same-PR hermetic PHP test validates fail-closed MAD4B provider rejection, read-only guidance and no auto-apply/Production permission. Runtime discovery remains unverified. The same-PR Python regression contract executes both fixed PHP CLI fixtures with bounded timeout, checks nonzero exit codes and requires positive PASS markers; neither fixture is counted as a trusted standalone PHPUnit test."
+      "coverage_reuse_rationale": "Existing update-coordinator, cross-plugin isolation, recovery, rollout, governance and security controls apply. The introduced source only mentions the established Ability as non-authorizing routing guidance; this review does not register, grant, invoke, install or certify it. MCP-01 governs the bounded MCP plan reference; this review preserves source signature, identity, read-only result and approval gates, not a new grant.",
+      "review_rationale": "Static source scanner identifies the literal mad4b/control-plane-selected-head-plan in the new package route guidance. It is a pointer to an independent already-governed Control Plane planning surface, NOT a newly registered Ability or an executable provider-package action. Same-PR hermetic PHP test validates fail-closed MAD4B provider rejection, read-only guidance and no auto-apply/Production permission. Runtime discovery remains unverified. The same-PR Python regression contract executes both fixed PHP CLI fixtures with bounded timeout, checks nonzero exit codes and requires positive PASS markers; neither fixture is counted as a trusted standalone PHPUnit test. Added same-PR PHP reducer regression verifies actual Production denial, exact signed source linkage, fallback when Selected HEAD identity differs, no automatic mutation, and governed admin read authorization. Historical package governance contract is retained and now executes the new PHP route regression, preserving cumulative same-PR executable evidence."
+    },
+    {
+      "id": "ability:mad4b/control-plane-test-route",
+      "control_ids": [
+        "MCP-01",
+        "UPDATES-01",
+        "RECOVERY-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/control-plane-test-router-runtime.php"
+      ],
+      "owner_role": "Repository source-review maintainer — static CI-only review; no WordPress Site Owner or deploy authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The new read-only route selects certified Source SHA and separate planning surfaces; existing MCP transport, update/recovery and security controls apply. It is not an installation authorization.",
+      "review_rationale": "Reviewed pure reducer and admin permission callback in new Control Plane router. Same-PR hermetic PHP test executes Production denial, missing archive proof, mismatched Selected HEAD fallback and non-authorizing result assertions. No Apply or OAuth grant is created. Live Staging and release evidence remain absent."
     },
     {
       "id": "ability:mad4b/control-plane-upload-plan",
@@ -11538,6 +11560,113 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The existing original Agent Registry exact grant, Staging-only provider review, site profile, mutation gate, owner approval, checkpoint, readback and audit safeguards govern this single diagnostic, without wildcard rights.",
       "review_rationale": "Exact source review allows a core grant to be considered only for mad4b/hub-queue-site-health-enqueue when the Ability is registered on the correct central Staging site. No grant is issued merely because this provider pair appears; broad hub-bulk-enqueue remains outside the reviewed policy and Production is not enabled."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "9f873295f5b754932c5786701ef09c31e4a0c8a7",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/universal-wordpress-operations-contract.py"
+      ],
+      "owner_role": "Repository source/security CI reviewer — no Site Owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing site-bound MCP catalog, runtime Write mount, identity, OAuth and policy callbacks remain under existing controls. Only the provider snapshot method is extracted into the loaded Write Catalog trait.",
+      "review_rationale": "Exact Git blob of Servers facade after moving the unchanged live_write_provider_snapshot algorithm to the required Write Catalog trait. No new Ability, execution path, grant, role, environment access or Production permission. The hermetic QA31 test executes the trait's actual method; full MCP and release acceptance remain independent."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php",
+      "source_blob_sha": "512a2d8f2817bea44409a4923b4eae30ddeddc6c",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php"
+      ],
+      "owner_role": "Repository source/security CI reviewer — no Site Owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Original provider mapping implementation and existing Write catalog admission controls reused verbatim; provider precedence remains core first, then certified registered adapter, only for mounted abilities.",
+      "review_rationale": "Exact Git blob of Write Catalog trait after relocation of the unchanged provider snapshot. The QA31 hermetic regression executes this exact implementation, checks core-first precedence, excludes unmounted and unmapped writes, and rejects adapter overrides. This is nonauthorizing CI source coverage; no release or Production approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "c85ec62adf01c6537aa853930be774d0e8cfd0d0",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/transport-permission-containment-runtime.php"
+      ],
+      "owner_role": "Repository source reviewer — exact extracted method comparison; CI only, not owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The existing scoped CLI host-identity and request transport admission rules remain in the unchanged six original methods; the façade now loads and uses their required trait, with no new Write/Breakglass grant.",
+      "review_rationale": "Compared prior exact reviewed Git blob 9f873295 against this successor: three hunks only (one require_once, one use, 122 lines removed and replaced by an informational comment). The 122 removed lines exactly match the six methods relocated to the loaded trait, byte-for-byte. The hermetic transport regression denies an unregistered host actor and preserves real read permission and fail-closed exception semantics. No site write or Production approval."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-servers-vps-local-transport.php",
+      "source_blob_sha": "645377e4439cbb7deb980bef8ffbf9da7feee788",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/transport-permission-containment-runtime.php"
+      ],
+      "owner_role": "Repository source reviewer — exact extracted method comparison; CI only, not owner attestation",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "The trait is bound only inside the existing Servers class and retains the original root CLI, explicit server, registry-bound actor, site UUID/origin, administrator-role and Staging checks. It does not supply independent remote activation.",
+      "review_rationale": "Verified that the six moved local VPS transport methods in this exact Git blob are byte-identical to the 122 lines removed from the previously reviewed Servers facade. No new functions, remote authentication fallbacks or policy bypasses are introduced; a direct negative runtime assertion rejects unregistered read/write host transport. This nonauthorizing CI-only source record does not create a grant."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "99692028839affabdc95d46f414e8b283f27b671",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "MCP-01",
+        "PLATFORM-01",
+        "EXECUTION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/private-operations-early-boundary-contract.py"
+      ],
+      "owner_role": "Repository source/security reviewer — source and CI only; no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing private Tour Operations hooks, REST/CLI early fences, per-module capabilities and source-bound MCP/Write controls stay independently authoritative. This record does not authorize new grants or Runtime Release Set promotion.",
+      "review_rationale": "Examined the successor Bootstrap relative to reviewed source 4a83dc4b3ad5df67d9e43bea8e8b52d4eae80c0d: rc.104 to rc.129 marker, additive module requires/explicit boot registration and optional Staging readiness pathways. A previously removed early private Tour Orders/Bookings boundary was restored before foreign REST and passive WP-CLI exits; existing early AI credential guard remains first. The changed Python contract checks required module paths, version parity, explicit boot order and private CPT/JetEngine route guards. Independent PHP 7.4–8.5 lint, G6/G9 hermetic behavior, Auth and Production Readiness remain separate. No site data, grant, ticket or deployment was changed.",
+      "execution_note": "This exact Git blob is reviewed only as a non-authorizing source successor for G6/G9 historical delivery check and runtime source discovery. Feature-level runtime certification and production release gates remain independent."
     }
   ],
   "code_change_rules": {

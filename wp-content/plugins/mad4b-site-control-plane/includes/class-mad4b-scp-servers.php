@@ -4,6 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/class-mad4b-scp-server-write-catalog.php';
 require_once __DIR__ . '/class-mad4b-scp-chatgpt-approval-bootstrap.php';
 require_once __DIR__ . '/class-mad4b-scp-server-core-catalog.php';
+require_once __DIR__ . '/trait-mad4b-scp-servers-vps-local-transport.php';
 require_once __DIR__ . '/class-mad4b-scp-governed-ability-census.php';
 require_once __DIR__ . '/class-mad4b-scp-post-identity.php';
 require_once __DIR__ . '/class-mad4b-scp-site-profile-enrollment.php';
@@ -25,6 +26,7 @@ MAD4B_SCP_Staging_Write_Grant_Reconciliation::boot();
 final class MAD4B_SCP_Servers {
 	use MAD4B_SCP_Server_Write_Catalog;
 	use MAD4B_SCP_Server_Core_Catalog;
+	use MAD4B_SCP_Servers_VPS_Local_Transport;
 	private static $registrations = array();
 	private static $adapter_write_projection_cache = null;
 	private static $registered_adapter_write_candidates_cache = null;
@@ -45,13 +47,75 @@ final class MAD4B_SCP_Servers {
 	}
 
 	public static function expected_server_ids() {
-		return array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-developer', 'mad4b-developer-breakglass', 'mad4b-breakglass' );
+		return array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-vps-local', 'mad4b-developer', 'mad4b-developer-breakglass', 'mad4b-breakglass' );
 	}
 
 	/** Core declarations before dynamically mounted Admin tools are added. */
 
 	public static function core_tools( $server_id ) {
 		$tools = self::declared_core_tools( $server_id );
+		// An isolated VPS-local stdio surface. Never attach the enqueue
+		// Ability to the public/read/ChatGPT servers or the normal write
+		// catalog. The transport guard rejects all HTTP, non-WP-CLI and
+		// non-enrolled actors, including on tools/list and tools/call.
+		if ( 'mad4b-vps-local' === $server_id ) {
+			$tools = array();
+			foreach ( array(
+				'mad4b/hub-universal-vps-status',
+				'mad4b/hub-universal-vps-discover',
+				'mad4b/hub-universal-vps-plan',
+				'mad4b/hub-universal-vps-enqueue',
+			) as $candidate ) {
+				if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $candidate ) )
+					$tools[] = $candidate;
+			}
+			return $tools;
+		}
+		// Safe staging-only MCP surface for read-only prompt validation.
+		// Existing WordPress Ability permissions still gate every tools/call.
+		if ( 'mad4b-content' === $server_id
+			&& function_exists( 'wp_get_environment_type' )
+			&& 'staging' === wp_get_environment_type()
+			&& strtolower( (string) wp_parse_url( home_url( '/' ), PHP_URL_HOST ) ) === 'tours.dev.mad4b.com' ) {
+			foreach ( array(
+				'mad4b/hub-ai-context-status',
+				'mad4b/hub-ai-context-assemble',
+				'mad4b/hub-ai-context-injection-defense',
+				'mad4b/hub-ai-context-output-requirements',
+				'mad4b/hub-ai-context-validate-output',
+				'mad4b/hub-ai-context-compile',
+				'mad4b/hub-universal-vps-status',
+				'mad4b/hub-universal-vps-discover',
+				'mad4b/hub-universal-vps-plan',
+				'mad4b/hub-ai-pipeline-status',
+				'mad4b/hub-chatgpt-work-pending',
+				'mad4b/hub-chatgpt-work-prepare',
+				'mad4b/hub-role-review-inbox',
+				'mad4b/hub-role-review-preview',
+				'mad4b/hub-review-svg-plan',
+				'mad4b/hub-scraped-media-context-plan',
+				'mad4b/hub-capture-read',
+				'mad4b/hub-review-localization-pending',
+				'mad4b/hub-native-stages-status',
+				'mad4b/hub-native-stages-plan',
+				'mad4b/hub-native-rate-generator-preview',
+				'mad4b/hub-source-sync-plan',
+				'mad4b/hub-canonical-release-assess',
+				'mad4b/editorial-image-publish-readiness',
+				'mad4b/hub-executor-select-status',
+				'mad4b/hub-adaptive-concurrency-status',
+				'mad4b/hub-site-health-status',
+				'mad4b/hub-executor-select-plan',
+				'mad4b/hub-bulk-list_queue',
+				'mad4b/hub-queue-lifecycle-audit',
+				'mad4b/hub-workflow-origin-audit',
+				'mad4b/hub-queue-lifecycle-plan',
+				'mad4b/hub-runtime-handoff',
+			) as $ai_guard ) {
+				if ( function_exists( 'wp_get_ability' ) && wp_get_ability( $ai_guard ) ) $tools[] = $ai_guard;
+			}
+		}
+
 		// Feature 007 operator diagnostics are registered as read-only Abilities,
 		// and must be mounted on the Read plane, not on a mutation surface.
 		if ( 'mad4b-read' === $server_id && class_exists( 'MAD4B_SCP_Operator_Doctor' ) ) {
@@ -625,6 +689,13 @@ final class MAD4B_SCP_Servers {
 		};
 
 		if ( ! in_array( $server_id, self::expected_server_ids(), true ) ) return $remember( null );
+		if ( 'mad4b-vps-local' === $server_id ) {
+			// Provider resolution is not a transport grant. Enforce the same
+			// local identity fence at transport admission and native execution.
+			if ( ! self::vps_local_read_verified() && ! self::vps_local_actor_verified() ) return $remember( null );
+			return $remember( in_array( $ability_name,
+				self::core_tools( 'mad4b-vps-local' ), true ) ? 'core' : null );
+		}
 		if ( 'mad4b-enrollment' === $server_id ) {
 			if ( ! in_array( $ability_name, self::core_tools( 'mad4b-enrollment' ), true ) ) return $remember( null );
 			$catalog_provider = self::provider_for_enrollment_catalog_ability( $ability_name );
@@ -721,6 +792,8 @@ final class MAD4B_SCP_Servers {
 	public static function can_enrollment_transport( $request = null ) { return self::transport_permission( 'mad4b-enrollment', $request, array( 'MAD4B_SCP_Site_Profile_Enrollment', 'can_access_transport' ) ); }
 	public static function can_content_transport( $request = null ) { return self::transport_permission( 'mad4b-content', $request, array( 'MAD4B_SCP_Policy', 'can_content' ) ); }
 	public static function can_write_transport( $request = null ) { return self::transport_permission( 'mad4b-write', $request, array( 'MAD4B_SCP_Policy', 'can_admin' ) ); }
+
+	// Registered Host Operator transport is implemented by the bound local trait.
 	public static function can_admin_transport( $request = null ) { return self::transport_permission( 'mad4b-admin', $request, array( 'MAD4B_SCP_Policy', 'can_admin' ) ); }
 	public static function can_developer_transport( $request = null ) { return self::transport_permission( 'mad4b-developer', $request, array( 'MAD4B_SCP_Policy', 'can_developer_read' ) ); }
 	public static function can_developer_breakglass_transport( $request = null ) { return self::transport_permission( 'mad4b-developer-breakglass', $request, array( 'MAD4B_SCP_Policy', 'can_developer_breakglass' ) ); }
@@ -756,7 +829,16 @@ final class MAD4B_SCP_Servers {
 			$diagnostic_target = MAD4B_SCP_MCP_Request_Scope::endpoint_diagnostic_server_id();
 			if ( in_array( $diagnostic_target, self::expected_server_ids(), true ) ) return $diagnostic_target;
 		}
-		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return '';
+		// Normal WP-CLI (including plugin updates) does not invoke MAD4B MCP.
+		// Rank Math or another provider may already own mixed MCP DTO classes;
+		// advertising nine full catalogs here would validate schemas under
+		// the wrong ABI and surface false connection blockers. Keep route-only
+		// registrations; explicit MCP CLI diagnostics opt in to actual tooling.
+		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) {
+			$cli_mcp = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+				&& MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime();
+			return $cli_mcp ? '' : '__mad4b_non_mcp_cli__';
+		}
 
 		$route = '';
 		if ( isset( $_GET['rest_route'] ) && is_string( $_GET['rest_route'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
@@ -785,6 +867,10 @@ final class MAD4B_SCP_Servers {
 		foreach ( self::expected_server_ids() as $server_id ) {
 			if ( '/mcp/' . $server_id === $route ) return $server_id;
 		}
+		// Unrelated WordPress REST/frontend requests only need Adapter routes.
+		// They must not eagerly build every MAD4B MCP server using whichever
+		// third-party MCP class set happens to be present in this request.
+		if ( '' !== $uri || isset( $_GET['rest_route'] ) ) return '__mad4b_non_mcp_http__';
 		return '';
 	}
 
@@ -828,6 +914,7 @@ final class MAD4B_SCP_Servers {
 		$enrollment_tools = $materialize( 'mad4b-enrollment', static function () { return self::chatgpt_enrollment_candidates(); } );
 		$content_tools = $materialize( 'mad4b-content', static function () use ( $registry_for_surface ) { $registry = $registry_for_surface(); return array_merge( self::core_tools( 'mad4b-content' ), $registry->ability_names( 'content' ) ); } );
 		$write_tools = $materialize( 'mad4b-write', static function () { return self::write_tools(); } );
+		$vps_local_tools = $materialize( 'mad4b-vps-local', static function () { return self::core_tools( 'mad4b-vps-local' ); } );
 		$admin_tools = $materialize( 'mad4b-admin', static function () use ( $registry_for_surface ) { $registry = $registry_for_surface(); return array_merge( self::core_tools( 'mad4b-admin' ), $registry->ability_names( 'admin' ) ); } );
 		$developer_tools = $materialize( 'mad4b-developer', static function () { return self::core_tools( 'mad4b-developer' ); } );
 		$developer_breakglass_tools = $materialize( 'mad4b-developer-breakglass', static function () { return self::core_tools( 'mad4b-developer-breakglass' ); } );
@@ -845,6 +932,7 @@ final class MAD4B_SCP_Servers {
 		$this->create( $adapter, 'mad4b-enrollment', 'MAD4B Enrollment MCP', 'Bounded exact Site Profile feature/App/write bootstrap for Staging or Production. Production mutation requires explicit profile confirmation and exact one-time approvals; Developer and Breakglass remain non-Production.', $enrollment_tools, array( __CLASS__, 'can_enrollment_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-enrollment', $target_server_id ) );
 		$this->create( $adapter, 'mad4b-content', 'MAD4B Content MCP', 'Governed content, media, SEO and plugin-specific editing abilities.', $content_tools, array( __CLASS__, 'can_content_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-content', $target_server_id ) );
 		$this->create( $adapter, 'mad4b-write', 'MAD4B Write MCP', 'Unified governed write authority containing every runtime-eligible registered content/admin/write mutation explicitly annotated non-readonly. Cataloged provider mutations are projected per ability from capability certification; adapter-native runtime capability checks are hard mount gates; legacy providers retain exact runtime certification; breakglass is excluded.', $write_tools, array( __CLASS__, 'can_write_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-write', $target_server_id ) );
+		$this->create( $adapter, 'mad4b-vps-local', 'MAD4B Local VPS Operator MCP', 'Staging-only verified WordPress WP-CLI stdio executor for four bounded Universal VPS Abilities. No public HTTP admission, no Production, no arbitrary shell.', $vps_local_tools, array( __CLASS__, 'can_vps_local_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-vps-local', $target_server_id ) );
 		$this->create( $adapter, 'mad4b-admin', 'MAD4B Admin MCP', 'Administrative governance, repair, mutation evidence and governed recovery abilities.', $admin_tools, array( __CLASS__, 'can_admin_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-admin', $target_server_id ) );
 		$this->create( $adapter, 'mad4b-developer', 'MAD4B Developer MCP', 'Isolated explicit non-Production Developer Agent plane. It is never mounted on mad4b-chatgpt or mad4b-write; execution requires the exact configured developer agent, exact grant, one-time approval, budget, audit and runtime gate.', $developer_tools, array( __CLASS__, 'can_developer_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-developer', $target_server_id ) );
 		$this->create( $adapter, 'mad4b-developer-breakglass', 'MAD4B Developer Breakglass MCP', 'Exceptional non-Production Developer Agent recovery plane. Disabled by default and separately gated from normal developer execution.', $developer_breakglass_tools, array( __CLASS__, 'can_developer_breakglass_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-developer-breakglass', $target_server_id ) );
@@ -866,14 +954,19 @@ final class MAD4B_SCP_Servers {
 				);
 				return;
 			}
-			// Catalog validation must never silently fail open for tools/call;
-			// preserve only the *authenticated MCP route* so initialize and an
-			// empty tools/list can establish whether OAuth/transport is healthy.
-			// Do not materialize any unverified Ability schema.
-			$preflight = array( 'ready'=>false,
+			// Register ONLY abilities whose canonical descriptor binding verified.
+			// A bad descriptor is quarantined individually: it never becomes a tool,
+			// and never hides unrelated, successfully bound abilities.
+			$verified = array_fill_keys( array_keys( $descriptor_evidence['bindings'] ?? array() ), true );
+			$tools = array_values( array_filter( $tools, static function ( $ability ) use ( $verified ) {
+				return isset( $verified[ $ability ] );
+			} ) );
+			$descriptor_evidence['quarantined_abilities'] = array_values( array_diff( $requested_tools, $tools ) );
+			$descriptor_evidence['partial_ready'] = ! empty( $tools );
+			$descriptor_evidence['degraded'] = ! empty( $tools );
+			if ( ! $tools ) $preflight = array( 'ready'=>false,
 				'blocker'=>'capability_descriptor_binding_unavailable',
 				'authorizing'=>false );
-			$tools = array();
 		}
 		if ( 'mad4b-chatgpt' === $id && $materialized && null === $preflight ) {
 			// Server registration and client/runtime checks must share this exact order.
@@ -905,9 +998,16 @@ final class MAD4B_SCP_Servers {
 			self::$registrations[ $id ]['tool_count'] = $evidence['tool_count'];
 			self::$registrations[ $id ]['catalog_evidence'] = $evidence;
 			self::$registrations[ $id ]['materialized'] = ! empty( $evidence['observed'] );
-			if ( empty( $evidence['ready'] ) ) self::$registrations[ $id ]['error'] = $evidence['blocker'];
+			if ( empty( $evidence['ready'] ) ) {
+			    // Keep exact bounded cause in catalog_evidence, but surface
+			    // the required-tool preflight failure on route-only servers.
+			    self::$registrations[ $id ]['error'] = empty( $preflight['ready'] )
+			        ? 'mcp_required_tool_preflight_failed'
+			        : $evidence['blocker'];
+			}
 		}
 	}
 }
 
+add_filter( 'mad4b_scp_authenticated_subject_context', array( 'MAD4B_SCP_Servers', 'vps_local_identity_context' ), 30 );
 add_filter( 'option_mad4b_scp_external_inventory_attestation_v1', array( 'MAD4B_SCP_Servers', 'filter_external_inventory_attestation_runtime' ), 120 );

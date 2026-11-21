@@ -227,7 +227,7 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 			$route = (string) $route;
 			if ( in_array( $route, $known_routes, true ) ) continue;
 			if ( self::is_known_namespace_index( $route, $route_definition, $known_namespaces, $rest_server ) ) continue;
-			if ( self::is_reviewed_non_transport_route( $route ) ) {
+			if ( self::is_reviewed_non_transport_route( $route, $route_definition ) ) {
 				$reviewed_non_transport_routes[] = substr( $route, 0, 255 );
 				continue;
 			}
@@ -281,7 +281,71 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 		return $rest_server;
 	}
 
-	private static function is_reviewed_non_transport_route( $route ) {
+    private static function reviewed_mad4b_rest_control($route,$definition) {
+        // Narrow recognition of six first-party REST *operations*, not MCP
+        // JSON-RPC transports. Requires the exact source registration owner
+        // and its original staging-only permission callback on every endpoint.
+        $allowed=array(
+            '/mad4b-central/v1/bulk-mcp/readiness'=>array('MAD4B_Bulk_MCP_Dispatcher_V1','admin'),
+            '/mad4b-central/v1/bulk-mcp/plan-gaps'=>array('MAD4B_Bulk_MCP_Dispatcher_V1','admin'),
+            '/mad4b-central/v1/bulk-mcp/enqueue-gaps'=>array('MAD4B_Bulk_MCP_Dispatcher_V1','admin'),
+            '/mad4b-central/v1/bulk-mcp/plan-vps'=>array('MAD4B_Bulk_MCP_Dispatcher_V1','admin'),
+            '/mad4b-central/v1/bulk-mcp/enqueue-vps'=>array('MAD4B_Bulk_MCP_Dispatcher_V1','admin'),
+            '/mad4b-hub/v1/control-workflow/delegation/mcp-to-vps'=>array('MAD4B_Hub_MCP_Delegation_V1','allowed')
+        );
+        if(!isset($allowed[$route])||!is_array($definition))return false;
+        $expected=$allowed[$route];$found=false;
+        if(!class_exists($expected[0],false))return false;
+        foreach($definition as $key=>$endpoint){
+            if(!is_int($key))continue;
+            if(!is_array($endpoint)||!isset($endpoint['callback'],$endpoint['permission_callback']))
+                return false;
+            if(!($endpoint['callback'] instanceof \Closure))return false;
+            $permission=$endpoint['permission_callback'];
+            if(!is_array($permission)||count($permission)!==2
+                ||$permission[0]!==$expected[0]||$permission[1]!==$expected[1])
+                return false;
+            $found=true;
+        }
+        return $found;
+    }
+	private static function is_reviewed_non_transport_route( $route, $definition = array() ) {
+		if ( self::reviewed_mad4b_rest_control( (string) $route, $definition ) ) return true;
+		// Recognize only exact third-party MCP administration/configuration REST routes.
+		// Their framework callbacks must match the currently reviewed registration;
+		// unfamiliar MCP endpoints remain foreign, regardless of namespace.
+		$reviewed = array(
+			'/fluent-boards/v2/admin/mcp/status' => 'FluentBoards',
+			'/fluent-boards/v2/admin/mcp/toggle' => 'FluentBoards',
+			'/fluent-boards/v2/admin/mcp/member-access' => 'FluentBoards',
+			'/fluent-boards/v2/admin/mcp/install-adapter' => 'FluentBoards',
+			'/fluent-boards/v2/member/(?P<id>[^' . chr(92) . 's(?!/)]+)/mcp-connections' => 'FluentBoards',
+			'/fluent-boards/v2/member/(?P<id>[^' . chr(92) . 's(?!/)]+)/mcp-connections/(?P<uuid>[^' . chr(92) . 's(?!/)]+)' => 'FluentBoards',
+			'/fluent-crm/v2/mcp/status' => 'FluentCrm',
+			'/fluent-crm/v2/mcp/toggle' => 'FluentCrm',
+			'/fluent-crm/v2/mcp/install-adapter' => 'FluentCrm',
+			'/fluent-crm/v2/mcp/config-snippet' => 'FluentCrm',
+			'/fluent-support/v2/settings/mcp' => 'FluentSupport',
+			'/fluent-support/v2/settings/mcp/toggle' => 'FluentSupport',
+			'/fluent-support/v2/settings/mcp/install-adapter' => 'FluentSupport',
+			'/fluent-support/v2/settings/mcp/config-snippets' => 'FluentSupport',
+		);
+		if ( isset( $reviewed[ $route ] ) ) {
+			if ( ! is_array( $definition ) ) return false;
+			$expected = $reviewed[ $route ] . chr(92) . 'Framework' . chr(92) . 'Http' . chr(92) . 'Route';
+			$found = false;
+			foreach ( $definition as $key => $endpoint ) {
+				if ( ! is_int( $key ) ) continue;
+				if ( ! is_array( $endpoint ) || ! isset( $endpoint['callback'], $endpoint['permission_callback'] ) ) return false;
+				foreach ( array( 'callback' => 'callback', 'permission_callback' => 'permissionCallback' ) as $field => $method ) {
+					$cb = $endpoint[ $field ];
+					if ( ! is_array( $cb ) || 2 !== count( $cb ) || ! is_object( $cb[0] ) || get_class( $cb[0] ) !== $expected || $cb[1] !== $method ) return false;
+				}
+				$found = true;
+			}
+			return $found;
+		}
+
 		// Exact live Hostinger Easy Onboarding UI/control endpoint. It updates the
 		// connector-banner state; it is not an MCP transport, tool discovery route,
 		// execution endpoint, credential endpoint, or Adapter server. The exception

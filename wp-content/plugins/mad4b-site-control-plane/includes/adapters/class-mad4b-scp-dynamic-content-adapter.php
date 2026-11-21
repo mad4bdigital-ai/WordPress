@@ -190,7 +190,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			self::READBACK,
 			'Read Dynamic Content Bundle',
 			'readback',
-			array('MAD4B_SCP_Policy','can_read'),
+			array('MAD4B_SCP_Policy','can_plan_mutations'),
 			$this->schema(array(
 				'post_id'=>array('type'=>'integer','minimum'=>1),
 				'meta_keys'=>array('type'=>'array','maxItems'=>200,'items'=>array('type'=>'string','minLength'=>1,'maxLength'=>191)),
@@ -206,7 +206,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			self::PLAN,
 			'Plan Dynamic Content Orchestration',
 			'orchestration_plan',
-			array('MAD4B_SCP_Policy','can_read'),
+			array('MAD4B_SCP_Policy','can_plan_mutations'),
 			$this->schema(array(
 				'mode'=>array('type'=>'string','enum'=>array('create','update'),'default'=>'create'),
 				'post_type'=>array('type'=>'string','minLength'=>1,'maxLength'=>64,'pattern'=>'^[a-zA-Z0-9_-]+$'),

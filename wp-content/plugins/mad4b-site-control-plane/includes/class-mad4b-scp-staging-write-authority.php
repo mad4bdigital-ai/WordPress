@@ -533,8 +533,36 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $operation_id ) || '' === $correlation_id ) return new WP_Error( 'mad4b_candidate_binding_operation_identity_invalid', 'Candidate binding operation/correlation identity is invalid.' );
 		$actor = isset( $context['actor'] ) && is_array( $context['actor'] ) ? $context['actor'] : array();
 		$operation_basis_probe = isset( $context['operation_basis'] ) && is_array( $context['operation_basis'] ) ? $context['operation_basis'] : array();
-		$continuation_source = 'self_update_continuation' === ( isset( $operation_basis_probe['source'] ) ? sanitize_key( (string) $operation_basis_probe['source'] ) : '' );
-		if ( $continuation_source ) {
+		$authorization_kind=sanitize_key((string)($operation_basis_probe['source']??''));
+		$continuation_source = 'self_update_continuation' === $authorization_kind;
+		$host_source = 'binding_only_host' === $authorization_kind;
+		if ( $host_source ) {
+			$facts = class_exists('MAD4B_SCP_CLI_Execution_Context')
+				? MAD4B_SCP_CLI_Execution_Context::resolve('candidate.binding',true) : array();
+			$principal = class_exists('MAD4B_SCP_Execution_Authority')
+				? MAD4B_SCP_Execution_Authority::resolve('apply')
+				: new WP_Error('mad4b_candidate_host_actor_missing','Host actor unavailable.');
+			$owners=MAD4B_SCP_Site_Profile::oauth_user_ids();
+			if ( ! defined('WP_CLI') || true !== WP_CLI || 'cli' !== PHP_SAPI
+				|| ! function_exists('posix_geteuid') || 0 !== posix_geteuid()
+				|| 0 !== get_current_user_id()
+				|| ! is_array($facts) || empty($facts['local_operation_authorized'])
+				|| empty($facts['host_site_binding_verified']) || ! empty($facts['blockers'])
+				|| is_wp_error($principal) || ! is_array($principal)
+				|| empty($principal['authenticated']) || empty($principal['registry_bound'])
+				|| 'host_cli' !== (string)($principal['transport']??'')
+				|| 'host_operator' !== (string)($principal['subject_type']??'')
+				|| 'staging' !== (string)($principal['environment']??'')
+				|| ! is_array($owners)
+				|| ! in_array((int)($principal['wp_user_id']??0),array_map('intval',$owners),true)
+				|| (int)($actor['wp_user_id']??0) !== (int)$principal['wp_user_id']
+				|| 'registered_host_wpcli' !== (string)($actor['identity_method']??'')
+				|| 'host_operator' !== (string)($actor['actor_type']??'')
+				|| (string)($actor['transport_server_id']??'') !== 'local_root_ssh_host_operator'
+				|| ! preg_match('/^[a-f0-9]{64}$/',(string)($actor['subject_fingerprint']??''))
+				|| ! hash_equals((string)($principal['subject_fingerprint']??''),(string)($actor['subject_fingerprint']??'')) )
+				return new WP_Error('mad4b_candidate_binding_host_actor_mismatch','Exact registered Host Operator does not match candidate audit actor.');
+		} elseif ( $continuation_source ) {
 			if ( ! class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) ) return new WP_Error( 'mad4b_candidate_binding_continuation_unavailable', 'Post-update continuation authority is unavailable.' );
 			$continuation_check = MAD4B_SCP_Post_Update_Continuation::validate_binding_context( $context, $current );
 			if ( is_wp_error( $continuation_check ) ) return $continuation_check;
@@ -544,7 +572,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 				$actor_value = isset( $actor[ $fingerprint_field ] ) ? strtolower( trim( (string) $actor[ $fingerprint_field ] ) ) : '';
 				if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $actor_value ) ) return new WP_Error( 'mad4b_candidate_binding_actor_attribution_mismatch', 'Continuation actor attribution is incomplete.', array( 'field' => $fingerprint_field ) );
 			}
-		} else {
+		} elseif ( ! $host_source ) {
 			$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : array();
 			if ( is_wp_error( $identity ) || empty( $identity['authenticated'] ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) ) return new WP_Error( 'mad4b_candidate_binding_primitive_oauth_required', 'Candidate binding primitive requires the live verified OAuth governance identity.' );
 			$subject_fingerprint = isset( $actor['subject_fingerprint'] ) ? strtolower( trim( (string) $actor['subject_fingerprint'] ) ) : '';
@@ -610,7 +638,10 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			&& class_exists( 'MAD4B_SCP_Post_Update_Continuation' )
 			&& hash_equals( (string) MAD4B_SCP_Post_Update_Continuation::CONTRACT, $authorization_contract )
 			&& 1 === preg_match( '/^[a-f0-9]{64}$/', strtolower( $authorization_confirmation ) );
-		if ( ( ! $direct_authorization && ! $reconcile_authorization && ! $continuation_authorization ) || ! hash_equals( $authorization_confirmation, $context_confirmation ) ) {
+		$host_authorization = $host_source
+			&& 'mad4b.staging-write-candidate-binding.v2' === $authorization_contract
+			&& hash_equals($binding_confirmation,$authorization_confirmation);
+		if ( ( ! $direct_authorization && ! $reconcile_authorization && ! $continuation_authorization && ! $host_authorization ) || ! hash_equals( $authorization_confirmation, $context_confirmation ) ) {
 			return new WP_Error( 'mad4b_candidate_binding_confirmation_context_invalid', 'Candidate binding audit context authorization/confirmation is invalid.' );
 		}
 		return $context;
@@ -1530,7 +1561,11 @@ final class MAD4B_SCP_Staging_Write_Authority {
 				if ( ! is_array( $binding ) ) continue;
 				$expected_agent_id = is_array( $agent ) && ! empty( $agent['id'] ) ? (int) $agent['id'] : 0;
 				if ( $expected_agent_id < 1 || (int) $binding['agent_id'] !== $expected_agent_id ) {
-					$subject_preflight_blockers[] = 'oauth_subject_bound_to_other_agent';
+					$other = MAD4B_SCP_Agent_Registry::get_agent_by_id( (int) $binding['agent_id'] );
+					if ( 'enabled' !== (string) ( $binding['status'] ?? '' )
+						|| ! self::is_exact_delegated_oauth_agent( $other, $user_id ) ) {
+						$subject_preflight_blockers[] = 'oauth_subject_bound_to_other_agent';
+					}
 				}
 			}
 		}
@@ -1865,6 +1900,60 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			return self::finish_blocked( $status, 'unreviewed_stale_write_authority' );
 		}
 
+		// Admission must finish BEFORE create/update of any Agent, subject or grant.
+		// An OAuth subject already bound to a delegated user is not free to move
+		// to the governed-write Agent. Preserve that binding and fail closed.
+		if ( ! empty( $preflight_plan['subject_preflight_blockers'] ) ) {
+			$status['subject_preflight_blockers'] = $preflight_plan['subject_preflight_blockers'];
+			$status['mutation_performed'] = false;
+			return self::finish_blocked( $status, 'write_identity_preflight_blocked' );
+		}
+
+		// Mounted ability != approved privilege. Every missing grant must
+		// match the exact, source-reviewed provider policy BEFORE any of the
+		// requested grants is issued or any stale grant is revoked.
+		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ) {
+			return self::finish_blocked( $status, 'reviewed_grant_policy_unavailable' );
+		}
+		$reviewed_provider_policy = MAD4B_SCP_Staging_Write_Grant_Reconciliation::allowed_ability_providers();
+		if ( ! is_array( $reviewed_provider_policy ) ) {
+			return self::finish_blocked( $status, 'reviewed_grant_policy_unavailable' );
+		}
+		$unapproved_missing = array();
+		$unapproved_review = array();
+		foreach ( (array) ( $preflight_plan['exact_grants_missing'] ?? array() ) as $grant_row ) {
+			$ability = (string) ( $grant_row['ability'] ?? '' );
+			$provider = sanitize_key( (string) ( $grant_row['provider'] ?? '' ) );
+			$reason = (string) ( $grant_row['reason'] ?? '' );
+			$expected = isset( $reviewed_provider_policy[ $ability ] )
+				? sanitize_key( (string) $reviewed_provider_policy[ $ability ] ) : '';
+			$review_reason = 'missing_exact_grant' !== $reason ? 'grant_not_issuable'
+				: ( '' === $ability || '' === $provider ? 'unbound_ability_or_provider'
+					: ( '' === $expected ? 'source_policy_absent'
+						: ( $expected !== $provider ? 'source_provider_mismatch' : '' ) ) );
+			if ( '' !== $review_reason ) {
+				$unapproved_missing[] = $ability;
+				// All fields are canonical public identifiers: no principal, grant
+				// secret, WP user, provenance material or input schema is returned.
+				if ( count( $unapproved_review ) < 32 ) $unapproved_review[] = array(
+					'ability' => $ability, 'provider' => $provider,
+					'expected_provider' => $expected, 'review_reason' => $review_reason,
+					'plan_reason' => $reason,
+				);
+			}
+		}
+		if ( ! empty( $unapproved_missing ) ) {
+			$status['source_policy_unapproved_missing_count'] = count( $unapproved_missing );
+			$status['source_policy_review_pairs'] = $unapproved_review;
+			// Ability identifiers are not credentials. Surface a bounded list for
+			// exact source-review without granting anything or exposing tokens.
+			// The blocked outcome remains mandatory until the policy is reviewed.
+			$status['source_policy_unapproved_abilities'] = array_slice(
+				array_values( array_unique( $unapproved_missing ) ), 0, 32 );
+			$status['mutation_performed'] = false;
+			return self::finish_blocked( $status, 'write_grant_source_policy_preflight_blocked' );
+		}
+
 		$environment = self::current_environment();
 		$agent_slug = self::agent_slug();
 		$agent = self::agent_by_slug( $agent_slug );
@@ -1913,7 +2002,11 @@ final class MAD4B_SCP_Staging_Write_Authority {
 				$binding = MAD4B_SCP_Agent_Registry::bind_subject( $agent['public_id'], 'oauth', $fingerprint, 'Local OAuth user:' . $user_id );
 				if ( is_wp_error( $binding ) ) $subject_blockers[] = $binding->get_error_code() . ':user:' . $user_id;
 			} elseif ( (int) $bound['id'] !== (int) $agent['id'] ) {
-				$subject_blockers[] = 'oauth_subject_bound_to_other_agent:user:' . $user_id;
+				// Keep the delegated user's OAuth subject with its original Agent.
+				// Never bind/transfer it to governed-write merely to pass readiness.
+				if ( ! self::is_exact_delegated_oauth_agent( $bound, $user_id ) ) {
+					$subject_blockers[] = 'oauth_subject_bound_to_other_agent:user:' . $user_id;
+				}
 			}
 		}
 
@@ -2077,7 +2170,9 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			$desired_subjects[ $fingerprint ] = true;
 			$identity = array( 'authenticated' => true, 'subject_type' => 'oauth', 'subject_fingerprint' => $fingerprint );
 			$bound = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
-			if ( is_wp_error( $bound ) || (int) $bound['id'] !== (int) $agent['id'] ) $subject_blockers[] = 'exact_subject_binding_missing:user:' . $user_id;
+			if ( is_wp_error( $bound ) || ( (int) ($bound['id'] ?? 0) !== (int) $agent['id']
+				&& ! self::is_exact_delegated_oauth_agent( $bound, $user_id ) ) )
+				$subject_blockers[] = 'exact_subject_binding_missing:user:' . $user_id;
 		}
 		$subjects = MAD4B_SCP_Agent_Registry::subjects_for_agent( $agent['id'], 'oauth' );
 		foreach ( $subjects as $subject ) {
@@ -2276,6 +2371,23 @@ final class MAD4B_SCP_Staging_Write_Authority {
 
 	private static function oauth_issuer() {
 		return class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ? rtrim( (string) MAD4B_SCP_Local_OAuth_Server::issuer(), '/' ) : '';
+	}
+
+	/**
+	 * An enrolled OAuth user may legitimately authenticate through the
+	 * existing delegated-user Agent instead of the governed-write Agent.
+	 * This recognizes the identity owner; it DOES NOT grant any write ability.
+	 * Exact write authorization remains operation/provider/target scoped.
+	 */
+	public static function is_exact_delegated_oauth_agent( $other, $user_id ) {
+		$user_id = absint( $user_id );
+		return $user_id > 0 && is_array( $other )
+			&& 'mad4b-delegated-user-' . $user_id === (string) ( $other['slug'] ?? '' )
+			&& 'enabled' === (string) ( $other['status'] ?? '' )
+			&& (int) ( $other['wp_user_id'] ?? 0 ) === $user_id
+			&& self::current_environment() === (string) ( $other['environment'] ?? '' )
+			&& class_exists( 'MAD4B_SCP_Policy' )
+			&& MAD4B_SCP_Policy::can_connect_user( $user_id );
 	}
 
 	private static function subject_fingerprint( $issuer, $user_id ) {

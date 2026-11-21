@@ -196,6 +196,24 @@ def main() -> int:
             if "symlinks are forbidden" not in result.stderr:
                 raise AssertionError("test must prove symlink rejection, not fail on an unrelated CLI error")
 
+        # PHP backups are not executable source and must never enter the
+        # reproducible distribution archive or its trusted file manifest.
+        backup_root = base / "backup-snapshot"
+        (backup_root / "includes").mkdir(parents=True)
+        (backup_root / "entry.php").write_text("<?php\\n", encoding="utf-8")
+        (backup_root / "includes" / "class-example.php.before-fix.bak").write_text(
+            "<?php\\n", encoding="utf-8"
+        )
+        snapshot = subprocess.run(
+            [sys.executable, str(BUILDER), "--root", str(backup_root),
+             "--output-zip", str(base / "backup-snapshot.zip"),
+             "--version", VERSION, "--source-sha", SOURCE,
+             "--adapter-version", "0.6.1", "--adapter-sha", ADAPTER],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        )
+        if snapshot.returncode == 0 or "backup snapshot forbidden" not in snapshot.stderr:
+            raise AssertionError("canonical builder must reject obsolete PHP backup files")
+
     print("mad4b.deterministic-control-plane-package.contract.v1: PASS")
     return 0
 

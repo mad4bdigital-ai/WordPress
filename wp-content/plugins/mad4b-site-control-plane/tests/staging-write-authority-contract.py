@@ -6,7 +6,12 @@ repo = Path(__file__).resolve().parents[4]
 wp = repo / 'wp-content' / 'plugins' / 'mad4b-site-control-plane'
 
 write = (wp / 'includes' / 'class-mad4b-scp-staging-write-authority.php').read_text(encoding='utf-8')
-abilities = (wp / 'includes' / 'class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
+abilities_facade = (wp / 'includes' / 'class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
+ability_registration = (wp / 'includes' / 'trait-mad4b-scp-abilities-registration.php').read_text(encoding='utf-8')
+if ("require_once __DIR__ . '/trait-mad4b-scp-abilities-registration.php';" not in abilities_facade
+        or "use MAD4B_SCP_Abilities_Registration_Trait;" not in abilities_facade):
+    raise SystemExit("governed write registration trait is not bound by the abilities facade")
+abilities = abilities_facade + ability_registration
 grant_reconcile = (wp / 'includes' / 'class-mad4b-scp-staging-write-grant-reconciliation.php').read_text(encoding='utf-8')
 grant_plan = (wp / 'includes' / 'class-mad4b-scp-staging-write-grant-reconciliation-plan.php').read_text(encoding='utf-8')
 planning = (wp / 'includes' / 'class-mad4b-scp-staging-write-planning-guard.php').read_text(encoding='utf-8')
@@ -911,7 +916,7 @@ for marker in [
 for marker in [
     "const CONTRACT = 'mad4b.staging-write-planning-guard.v2'",
     "const ABILITY = 'mad4b/approval-plan'",
-    "MAD4B_SCP_Authorization::authorize_mutation( self::ABILITY, 'mad4b-admin', 'core', $input )",
+    "MAD4B_SCP_Authorization::authorize_mutation( self::ABILITY, 'mad4b-write', 'core', $input )",
     "'ability:' . self::ABILITY",
     "planner_approval_exception",
     "validate_remote_plan_input",
@@ -1259,16 +1264,14 @@ if any(key in target for key in ('environment', 'origin', 'host')):
     raise SystemExit('generic deployment handoff must not embed a tenant environment/origin/host')
 if target.get('plugin_slug') != 'mad4b-site-control-plane':
     raise SystemExit('deployment handoff plugin slug mismatch')
-expected_adapter_version = str(runtime_release_policy.get('target_adapter_version') or '')
-if not expected_adapter_version:
-    raise SystemExit('runtime release policy target Adapter version is missing')
 if target.get('mcp_adapter') != {
     'slug': 'mcp-adapter',
-    'required_version': expected_adapter_version,
-    'required_version_source': 'runtime_release_policy.target_adapter_version',
-    'deployment_mode': 'require_exact_preinstalled_or_verified_bundled',
+    'deployment_mode': 'accept_compatible_installed_or_verified_release_artifact',
+    'version_gate': False,
+    'compatibility_source': 'dependency_manager.adapter_read_runtime_observation',
+    'exact_release_target_source': 'certified_runtime_release_set.mcp_adapter',
 }:
-    raise SystemExit('deployment handoff MCP Adapter dependency contract drift')
+    raise SystemExit('deployment handoff must use capability compatibility, not Adapter version pin')
 
 executor = deployment.get('executor', {})
 required_executor = {

@@ -12,6 +12,9 @@ final class MAD4B_SCP_Plugin_Transaction {
 
 	public static function boot() {
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 34 );
+		// Central Staging validation is read-only; company staging is optional.
+		require_once __DIR__ . '/class-mad4b-scp-central-company-rollout.php';
+		MAD4B_SCP_Central_Company_Rollout::boot();
 	}
 
 	public static function register_ability() {

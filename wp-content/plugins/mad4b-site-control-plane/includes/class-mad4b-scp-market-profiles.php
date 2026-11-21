@@ -29,8 +29,11 @@ final class MAD4B_SCP_Market_Profiles {
    $code=sanitize_key((string)$code);if(preg_match('/^[a-z]{2,8}$/D',$code))$hidden[$code]=true;
   }
   $public=[];
-  if($wpml&&has_filter('wpml_active_languages')){
-   $result=apply_filters('wpml_active_languages',null,['skip_missing'=>0]);
+  // Consume language metadata, not language-switcher URLs. The latter calls
+  // wp_reset_query() and can replace a nested listing's current product context.
+  // Keep unsupported WPML providers fail-closed below.
+  if($wpml&&is_callable([$GLOBALS['sitepress'],'get_active_languages'])){
+   $result=$GLOBALS['sitepress']->get_active_languages();
    if(is_array($result))foreach($result as $entry){
     if(!is_array($entry))continue;
     $code=sanitize_key((string)($entry['language_code']??$entry['code']??''));
@@ -104,9 +107,9 @@ final class MAD4B_SCP_Market_Profiles {
   return count($found)===1?$found[0]:[];
  }
  public static function status(){
-  return ['contract'=>self::CONTRACT,'site_bound'=>self::site_uuid()!=='','count'=>count(self::records()),'approved_count'=>count(self::approved_list()),'suggestion_count'=>count(self::suggestions()),'enabled_languages'=>array_keys(self::enabled_languages()),'hidden_languages'=>self::language_visibility()['hidden'],'market_exclusions'=>self::targeting_policy(),'environment'=>wp_get_environment_type(),'write_policy'=>'local_admin_only_until_governed_release'];
+  return ['contract'=>self::CONTRACT,'site_bound'=>self::site_uuid()!=='','count'=>count(self::records()),'approved_count'=>count(self::approved_list()),'suggestion_count'=>count(self::suggestions()),'enabled_languages'=>array_keys(self::enabled_languages()),'hidden_languages'=>self::language_visibility()['hidden'],'market_exclusions'=>self::targeting_policy(),'environment'=>wp_get_environment_type(),'write_policy'=>'local_or_staging_admin_site_bound_revision_approval'];
  }
- private static function write_allowed(){return wp_get_environment_type()==='local'&&current_user_can('manage_options')&&self::site_uuid()!=='';}
+ private static function write_allowed(){return in_array(wp_get_environment_type(),['local','staging'],true)&&current_user_can('manage_options')&&self::site_uuid()!=='';}
  private static function error($code){return new WP_Error('mad4b_market_'.$code,$code);}
  private static function log_event($event,$id,$revision){
   $entries=get_option(self::AUDIT,[]);if(!is_array($entries))$entries=[];

@@ -437,7 +437,27 @@ final class MAD4B_SCP_Site_Profile {
 
 	public static function current_origin() {
 		if ( ! function_exists( 'home_url' ) ) return '';
-		return self::normalize_origin( home_url( '/' ) );
+		$observed = self::normalize_origin( home_url( '/' ) );
+		if ( '' === $observed ) return '';
+		$stored = self::normalize_origin( (string) get_option( 'home', '' ) );
+		if ( '' === $stored || hash_equals( $stored, $observed ) ) return $observed;
+		// WPML localizes the HOME link (e.g. /ar/). A language URL is not a
+		// new site origin. Never remove arbitrary path segments, and never
+		// accept a different host, WordPress siteurl, or unregistered locale.
+		if ( ! defined( 'ICL_SITEPRESS_VERSION' ) || ! class_exists( 'SitePress', false )
+			|| ! function_exists( 'site_url' ) || ! function_exists( 'apply_filters' )
+			|| ! hash_equals( $stored, self::normalize_origin( site_url( '/' ) ) ) ) return $observed;
+		$code = (string) apply_filters( 'wpml_current_language', '' );
+		if ( 1 !== preg_match( '/^[a-z]{2,8}(?:[-_][a-z0-9]{2,8})?$/Di', $code ) ) return $observed;
+		$languages = apply_filters( 'wpml_active_languages', null, array( 'skip_missing' => 0 ) );
+		if ( ! is_array( $languages ) || ! isset( $languages[ $code ] ) ) return $observed;
+		if ( ! hash_equals( $stored . '/' . $code, $observed ) ) return $observed;
+		if ( ! empty( $_SERVER['HTTP_HOST'] ) ) {
+			$expected_host = strtolower( (string) wp_parse_url( $stored, PHP_URL_HOST ) );
+			$request_host = strtolower( rtrim( (string) preg_replace( '/:[0-9]+$/', '', (string) $_SERVER['HTTP_HOST'] ), '.' ) );
+			if ( '' === $expected_host || ! hash_equals( $expected_host, $request_host ) ) return $observed;
+		}
+		return $stored;
 	}
 
 	public static function current_host() {
@@ -484,8 +504,19 @@ final class MAD4B_SCP_Site_Profile {
 		if ( ! self::origin_enrolled() ) return false;
 		$expected = self::site_origin();
 		if ( '' === $expected ) return false;
-		$home = function_exists( 'home_url' ) ? self::normalize_origin( home_url( '/' ) ) : '';
+		$home = self::current_origin();
 		$site = function_exists( 'site_url' ) ? self::normalize_origin( site_url( '/' ) ) : $home;
+		// WP-CLI has no HTTPS request context: WordPress site_url() may convert
+		// a configured HTTPS site URL to HTTP. Compare the stored canonical
+		// origin as well, but ONLY in native CLI, never for HTTP/REST requests.
+		// A true siteurl/home change must still fail this identity check.
+		if ( defined( 'WP_CLI' ) && WP_CLI && '' !== $home ) {
+			$home_saved = self::normalize_origin( (string) get_option( 'home', '' ) );
+			$site_saved = self::normalize_origin( (string) get_option( 'siteurl', '' ) );
+			return hash_equals( $expected, $home )
+				&& hash_equals( $expected, $home_saved )
+				&& hash_equals( $expected, $site_saved );
+		}
 		return '' !== $home && '' !== $site && hash_equals( $expected, $home ) && hash_equals( $expected, $site );
 	}
 
@@ -905,9 +936,25 @@ final class MAD4B_SCP_Site_Profile {
 				'WordPress is using its implicit Production default. Confirm this exact origin is non-Production and type CONFIRM THIS ORIGIN IS NON-PRODUCTION.'
 			);
 		}
-		$site_uuid = $existing_identity_matches && ! empty( $existing_normalized['site_uuid'] )
-			? strtolower( (string) $existing_normalized['site_uuid'] )
-			: wp_generate_uuid4();
+		// A cloned tenant may carry the source Site UUID. An authorized host
+		// provisioning adapter must attest the RESERVED UUID; the caller's
+		// requested value alone must never become an identity authority.
+		$reserved_uuid = isset( $input['reserved_site_uuid'] ) ? strtolower( trim( (string) $input['reserved_site_uuid'] ) ) : '';
+		$verified_reserved_uuid = '';
+		if ( '' !== $reserved_uuid ) {
+			if ( ! self::valid_uuid( $reserved_uuid ) ) return new WP_Error( 'mad4b_reserved_site_uuid_invalid', 'Reserved UUID is invalid.' );
+			$verified_reserved_uuid = apply_filters( 'mad4b_scp_authorized_reserved_site_uuid', '', $input, $origin, $environment );
+			if ( ! is_string( $verified_reserved_uuid ) || ! self::valid_uuid( $verified_reserved_uuid )
+				|| ! hash_equals( $reserved_uuid, strtolower( $verified_reserved_uuid ) ) )
+				return new WP_Error( 'mad4b_reserved_site_uuid_not_attested', 'Company Manager / native host reservation attestation required.' );
+			if ( $existing_identity_matches && ! empty( $existing_normalized['site_uuid'] )
+				&& ! hash_equals( strtolower( (string) $existing_normalized['site_uuid'] ), $reserved_uuid ) )
+				return new WP_Error( 'mad4b_reserved_site_uuid_identity_conflict', 'Existing identity conflicts with the reserved UUID.' );
+		}
+		$site_uuid = '' !== $verified_reserved_uuid ? strtolower( $verified_reserved_uuid )
+			: ( $existing_identity_matches && ! empty( $existing_normalized['site_uuid'] )
+				? strtolower( (string) $existing_normalized['site_uuid'] )
+				: wp_generate_uuid4() );
 		$revision = $existing_identity_matches ? $current_revision + 1 : 1;
 		$app_id = isset( $input['chatgpt_app_id'] ) ? trim( sanitize_text_field( (string) $input['chatgpt_app_id'] ) ) : '';
 		if ( '' !== $app_id && ! preg_match( '/^(?:plugin_)?asdk_app_[A-Za-z0-9]+$/D', $app_id ) ) return new WP_Error( 'mad4b_site_profile_app_id_invalid', 'ChatGPT App ID is invalid.' );

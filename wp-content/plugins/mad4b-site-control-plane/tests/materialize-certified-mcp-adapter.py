@@ -13,9 +13,15 @@ import urllib.request
 from pathlib import Path
 
 MAX_ADAPTER_BYTES = 16 * 1024 * 1024
-ALLOWED_INITIAL_PREFIX = "https://github.com/WordPress/mcp-adapter/releases/download/v"
+def is_certified_release_url(version: str, url: str) -> bool:
+    """Allow only the exact official archive path for this certified profile."""
+    return url in (
+        f"https://github.com/WordPress/mcp-adapter/releases/download/v{version}/mcp-adapter.zip",
+        f"https://downloads.wordpress.org/plugin/mcp-adapter.{version}.zip",
+    )
 ALLOWED_FINAL_HOSTS = {
     "github.com",
+    "downloads.wordpress.org",
     "objects.githubusercontent.com",
     "release-assets.githubusercontent.com",
     "github-releases.githubusercontent.com",
@@ -30,6 +36,8 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--plugins-dir", required=True)
     parser.add_argument("--timeout", type=int, default=30)
+    parser.add_argument("--version", default=None,
+                        help="Exact reviewed provider profile to materialize for this CI job, not a runtime minimum")
     args = parser.parse_args()
 
     root = Path(__file__).resolve().parents[1]
@@ -40,7 +48,11 @@ def main() -> int:
     if policy.get("contract") != "mad4b.runtime-release-policy.v1":
         fail("runtime release policy contract mismatch")
 
-    version = str(policy.get("target_adapter_version") or "").strip()
+    # The materializer explicitly downloads a reviewed release artifact for
+    # a CI fixture; it does not impose its version on installed runtimes.
+    protocol = json.loads((config / "mcp-protocol-profiles.json").read_text(encoding="utf-8"))
+    reference = (protocol.get("certified_adapter") or {}).get("version")
+    version = str(args.version if args.version is not None else reference or "").strip()
     profile = ((profiles.get("providers") or {}).get("mcp_adapter") or {}).get(version) or {}
     if not version or profile.get("version") != version:
         fail("target MCP Adapter profile missing")
@@ -52,12 +64,12 @@ def main() -> int:
         len(expected_sha) != 64
         or expected_bytes < 1
         or expected_bytes > MAX_ADAPTER_BYTES
-        or not url.startswith(ALLOWED_INITIAL_PREFIX)
+        or not is_certified_release_url(version, url)
     ):
         fail("target MCP Adapter profile identity invalid")
 
     parsed = urllib.parse.urlparse(url)
-    if parsed.scheme != "https" or parsed.hostname != "github.com":
+    if parsed.scheme != "https" or parsed.hostname not in {"github.com", "downloads.wordpress.org"}:
         fail("target MCP Adapter package URL is outside the certified GitHub release origin")
 
     request = urllib.request.Request(url, headers={"User-Agent": "MAD4B-Certified-Adapter-CI/1"})
@@ -104,7 +116,7 @@ def main() -> int:
         "version": version,
         "archive_sha256": actual_sha,
         "archive_bytes": len(payload),
-        "source": "runtime_release_policy+certified_provider_profile",
+        "source": "explicit_or_protocol_reference+certified_provider_profile",
         "materialization": materialization,
         "status": "passed",
     }

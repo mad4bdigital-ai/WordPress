@@ -219,6 +219,14 @@ final class MAD4B_SCP_Adaptive_Interaction_Broker {
         $out['write_resume_supported']=false;
         return $out;
     }
+    /** Native settings locator, never saves or validates credential values. */
+    public static function native_owner($args=array()){
+        if(!self::permitted() || !self::clean($args,array('target')))
+            return self::deny('owner_invalid');
+        if(!class_exists('MAD4B_SCP_Native_Settings_Locator',false))
+            return self::deny('owner_not_loaded');
+        return MAD4B_SCP_Native_Settings_Locator::status($args['target']??'');
+    }
     /** Native WP registered MetaFields only. Descriptor metadata, never values.
      * JetEngine, complex relationships and WooCommerce private meta require a
      * separate owner-certified adapter; they are not guessed or autoedited.
@@ -264,20 +272,20 @@ final class MAD4B_SCP_Adaptive_Interaction_Broker {
         return $out;
     }
     public static function rest(){
-        foreach(array('plan'=>'POST','status'=>'POST','resolve'=>'POST','resume'=>'POST','fields'=>'POST') as $method=>$verb){
+        foreach(array('plan'=>'POST','status'=>'POST','resolve'=>'POST','resume'=>'POST','fields'=>'POST','native-owner'=>'POST') as $method=>$verb){
             register_rest_route(self::NAMESPACE_,self::ROUTE.'/'.$method,array(
                 'methods'=>$verb,'permission_callback'=>array(__CLASS__,'permitted'),
                 'callback'=>static function($request) use($method){
                     $args=$request->get_json_params();
                     if(!is_array($args))return self::deny('input_not_object');
-                    return call_user_func(array(__CLASS__,$method),$args);
+                    return call_user_func(array(__CLASS__,$method==='native-owner'?'native_owner':$method),$args);
                 },'args'=>array(),
             ));
         }
     }
     public static function abilities(){
         if(!function_exists('wp_register_ability'))return;
-        $spec=array('plan'=>array('reason_code','provider','ability_name'),'status'=>array('checkpoint_ref'),'resolve'=>array('checkpoint_ref','expected_descriptor_sha256','values'),'resume'=>array('checkpoint_ref'),'fields'=>array('object_type','object_subtype'));
+        $spec=array('plan'=>array('reason_code','provider','ability_name'),'status'=>array('checkpoint_ref'),'resolve'=>array('checkpoint_ref','expected_descriptor_sha256','values'),'resume'=>array('checkpoint_ref'),'fields'=>array('object_type','object_subtype'),'native-owner'=>array('target'));
         foreach($spec as $name=>$keys){
             $id='mad4b/adaptive-interaction-'.$name;
             if(function_exists('wp_has_ability')&&wp_has_ability($id))continue;
@@ -290,10 +298,10 @@ final class MAD4B_SCP_Adaptive_Interaction_Broker {
               'input_schema'=>array('type'=>'object','properties'=>$props,'additionalProperties'=>false),
               'output_schema'=>array('type'=>'object','additionalProperties'=>true),
               'permission_callback'=>array(__CLASS__,'permitted'),
-              'execute_callback'=>array(__CLASS__,$name),
+              'execute_callback'=>array(__CLASS__,$name==='native-owner'?'native_owner':$name),
               'meta'=>array('public'=>false,'show_in_rest'=>false,
                 'mcp'=>array('public'=>false,'type'=>'tool','surface'=>'read','non_authorizing'=>true),
-                'annotations'=>array('readonly'=>$name==='fields','destructive'=>false,'idempotent'=>$name==='fields'))));
+                'annotations'=>array('readonly'=>in_array($name,array('fields','native-owner'),true),'destructive'=>false,'idempotent'=>$name==='fields'))));
         }
     }
 }

@@ -5,8 +5,10 @@ if ( ! class_exists( 'MAD4B_SCP_Approval_Impact_Binding' ) ) require_once __DIR_
 if ( ! class_exists( 'MAD4B_SCP_Authorization_Decision_Graph' ) ) require_once __DIR__ . '/class-mad4b-scp-authorization-decision-graph.php';
 if ( ! class_exists( 'MAD4B_SCP_Execution_Receipt' ) ) require_once __DIR__ . '/class-mad4b-scp-execution-receipt.php';
 if ( ! class_exists( 'MAD4B_SCP_Authorization_Target_Fingerprint' ) ) require_once __DIR__ . '/class-mad4b-scp-authorization-target-fingerprint.php';
+require_once __DIR__ . '/trait-mad4b-scp-authorization-execution-recovery.php';
 
 final class MAD4B_SCP_Authorization {
+	use MAD4B_SCP_Authorization_Execution_Recovery_Trait;
 	const TARGET_FINGERPRINT_CONTRACT = 'mad4b.authorization-target.v1';
 	const EXECUTION_BOUNDARY_CONTRACT = 'mad4b.authorization-execution-boundary.v1';
 	const PERMISSION_DENIAL_AUDIT_CONTRACT = 'mad4b.authorization-permission-denial-audit.v1';
@@ -541,6 +543,92 @@ final class MAD4B_SCP_Authorization {
 			if ( MAD4B_SCP_Authorization::local_approval_planner_execution( $name ) ) {
 				return call_user_func( $original, $input );
 			}
+			// A local enrolled Staging operator is authorized by WordPress for
+			// this exact draft-only Ability. It is not a remote NHI execution.
+			// Preserve all native content validation/journaling/rollback fences,
+			// external restore epoch monotonicity and MCP peer isolation.
+			$native_draft = 'mad4b/content-apply-bundle' === $name
+				&& class_exists( 'MAD4B_SCP_Policy' )
+				&& MAD4B_SCP_Policy::can_native_content_draft( $input );
+			if ( $native_draft ) {
+				if ( ! class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) )
+					return new WP_Error( 'mcp_peer_inventory_unavailable', 'Peer governance is required for local drafts.' );
+				$peer = MAD4B_SCP_MCP_Peer_Governance::mutation_guard();
+				if ( is_wp_error( $peer ) ) return $peer;
+				if ( ! class_exists( 'MAD4B_SCP_Restore_Epoch' ) )
+					return new WP_Error( 'mad4b_restore_epoch_unavailable', 'Restore epoch authority is required for local drafts.' );
+				if ( ! class_exists( 'MAD4B_SCP_Audit' ) || empty( MAD4B_SCP_Audit::storage_status()['ready'] ) )
+					return new WP_Error( 'mad4b_native_draft_audit_unavailable', 'Durable audit is required for local drafts.' );
+				$epoch = MAD4B_SCP_Restore_Epoch::advance( 'local_native_draft' );
+				if ( is_wp_error( $epoch ) ) return $epoch;
+				$audit = MAD4B_SCP_Audit::record( 'mad4b/native-content-draft-execution', array(
+					'ability' => $name,
+					'actor_user_id' => get_current_user_id(),
+					'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
+					'restore_epoch' => isset( $epoch['epoch'] ) ? (int) $epoch['epoch'] : 0,
+					'operation_key_sha256' => is_array( $input ) && isset( $input['operation_key'] ) ? hash( 'sha256', (string) $input['operation_key'] ) : '',
+				), 'ok' );
+				if ( is_wp_error( $audit ) ) return $audit;
+				return call_user_func( $original, $input );
+			}
+
+            // Verified native WordPress principal for reviewed core Abilities.
+            // No Agent enrollment; unreviewed filesystem, SQL, host, secrets,
+            // developer, production deployment and breakglass routes stay on
+            // their original, separately authorized execution path.
+            if ( class_exists( 'MAD4B_SCP_Delegation_Mode' )
+                && class_exists( 'MAD4B_SCP_Identity_Context' )
+                && in_array( $name,
+                    MAD4B_SCP_Delegation_Mode::native_write_abilities(), true ) ) {
+                $subject = MAD4B_SCP_Identity_Context::current();
+                $wp_actor = MAD4B_SCP_Delegation_Mode::verified_wordpress_user( $subject );
+                if ( $wp_actor ) {
+                    if ( ! MAD4B_SCP_Policy::can_mutate() )
+                        return new WP_Error( 'mad4b_wordpress_principal_write_disabled',
+                            'WordPress site write authority or actor capability is unavailable.' );
+                    $capability_guard = MAD4B_SCP_Delegation_Mode::authorize_ability(
+                        $subject, $name, $input );
+                    if ( is_wp_error( $capability_guard ) || true !== $capability_guard )
+                        return is_wp_error( $capability_guard ) ? $capability_guard
+                            : new WP_Error( 'mad4b_wordpress_principal_cap_denied',
+                                'WordPress user lacks the exact ContentJob permission.' );
+                    // MCP peer isolation and restore binding still apply,
+                    // independent of whether an Agent is involved.
+                    if ( ! class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) )
+                        return new WP_Error( 'mcp_peer_inventory_unavailable',
+                            'MCP peer governance is unavailable.' );
+                    $peer_guard = MAD4B_SCP_MCP_Peer_Governance::mutation_guard();
+                    if ( is_wp_error( $peer_guard ) ) return $peer_guard;
+                    if ( ! class_exists( 'MAD4B_SCP_Restore_Epoch' ) )
+                        return new WP_Error( 'mad4b_restore_epoch_unavailable',
+                            'Restore epoch binding is unavailable.' );
+                    $epoch_guard = MAD4B_SCP_Restore_Epoch::ensure_bound();
+                    if ( is_wp_error( $epoch_guard ) ) return $epoch_guard;
+                    // OAuth is only permitted when its verified bearer has
+                    // an actual write scope; read-only bearer cannot write.
+                    if ( is_array( $subject ) && 'oauth' === ( $subject['subject_type'] ?? '' ) ) {
+                        if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+                            || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'mad4b:write' ) )
+                            return new WP_Error( 'mad4b_wordpress_oauth_write_scope_required',
+                                'Authenticated OAuth user requires verified mad4b:write scope.' );
+                    }
+                    if ( ! class_exists( 'MAD4B_SCP_Audit' )
+                        || empty( MAD4B_SCP_Audit::storage_status()['ready'] ) )
+                        return new WP_Error( 'mad4b_wordpress_principal_audit_unavailable',
+                            'Native WordPress mutation requires a durable site audit.' );
+                    $record = MAD4B_SCP_Audit::record( 'mad4b/native-wordpress-ability', array(
+                        'ability' => $name,
+                        'actor_type' => 'wordpress_user',
+                        'actor_user_id' => (int) $wp_actor->ID,
+                        'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
+                    ), 'ok' );
+                    if ( is_wp_error( $record ) ) return $record;
+                    // Each original provider still owns its validation,
+                    // transactional persistence and readback.
+                    return call_user_func( $original, $input );
+                }
+            }
+
 			$provider = MAD4B_SCP_Authorization::provider_for_execution( $name, $declared_server );
 			if ( is_wp_error( $provider ) ) return $provider;
 			$claim = MAD4B_SCP_Authorization::claim_mutation( $name, $declared_server, $provider, $input );
@@ -629,134 +717,7 @@ final class MAD4B_SCP_Authorization {
 		return $args;
 	}
 
-	public static function execution_checkpoint( array $claim, $point, array $extra = array() ) {
-		if ( ! class_exists( 'MAD4B_SCP_Execution_Evidence_Policy' ) ) {
-			return new WP_Error( 'mad4b_execution_checkpoint_policy_unavailable', 'Execution checkpoint policy is unavailable.', array(
-				'reconciliation_required' => true,
-				'blind_retry_allowed' => false,
-			) );
-		}
-		$state = MAD4B_SCP_Execution_Evidence_Policy::crash_point( $point );
-		if ( is_wp_error( $state ) ) return $state;
-		$attempt = isset( $claim['execution_attempt_sha256'] ) ? strtolower( trim( (string) $claim['execution_attempt_sha256'] ) ) : self::execution_attempt_sha256( $claim );
-		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $attempt ) ) {
-			return new WP_Error( 'mad4b_execution_attempt_identity_invalid', 'Execution checkpoint requires a stable attempt identity.', array(
-				'reconciliation_required' => true,
-				'blind_retry_allowed' => false,
-			) );
-		}
-		$summary = array_merge( array(
-			'reason_code' => 'execution_checkpoint',
-			'execution_attempt_sha256' => $attempt,
-			'crash_point' => (string) $state['crash_point'],
-			'recovery_state' => (string) $state['state'],
-			'reconciliation_required' => ! empty( $state['reconciliation_required'] ),
-			'blind_retry_allowed' => false,
-			'client_action' => isset( $state['client_action'] ) ? (string) $state['client_action'] : '',
-			'ability' => isset( $claim['ability'] ) ? (string) $claim['ability'] : '',
-			'provider' => isset( $claim['provider'] ) ? sanitize_key( (string) $claim['provider'] ) : 'core',
-			'request_id' => isset( $claim['request_id'] ) ? substr( (string) $claim['request_id'], 0, 100 ) : '',
-			'target_fingerprint' => isset( $claim['target_fingerprint'] ) ? strtolower( trim( (string) $claim['target_fingerprint'] ) ) : '',
-			'authorizing' => false,
-		), $extra );
-		$entry = self::audit( isset( $claim['ability'] ) ? $claim['ability'] : '', $summary, 'execution_checkpoint' );
-		if ( is_wp_error( $entry ) ) {
-			return new WP_Error( 'mad4b_execution_checkpoint_persist_failed', 'Execution checkpoint could not be durably persisted.', array_merge( $state, array(
-				'reason_code' => sanitize_key( (string) $entry->get_error_code() ),
-				'execution_attempt_sha256' => $attempt,
-				'terminal_success' => false,
-			) ) );
-		}
-		return array(
-			'contract' => MAD4B_SCP_Execution_Evidence_Policy::CRASH_CONTRACT,
-			'execution_attempt_sha256' => $attempt,
-			'crash_point' => (string) $state['crash_point'],
-			'state' => (string) $state['state'],
-			'audit_event_id' => isset( $entry['event_id'] ) ? (string) $entry['event_id'] : '',
-			'audit_entry_hash' => isset( $entry['entry_hash'] ) ? (string) $entry['entry_hash'] : '',
-			'authorizing' => false,
-		);
-	}
-
-	private static function execution_attempt_sha256( array $claim ) {
-		$material = array(
-			'contract' => 'mad4b.execution-attempt-identity.v1',
-			'ability' => isset( $claim['ability'] ) ? (string) $claim['ability'] : '',
-			'provider' => isset( $claim['provider'] ) ? sanitize_key( (string) $claim['provider'] ) : 'core',
-			'server_id' => isset( $claim['server_id'] ) ? sanitize_key( (string) $claim['server_id'] ) : '',
-			'request_id' => isset( $claim['request_id'] ) ? substr( (string) $claim['request_id'], 0, 100 ) : '',
-			'approval_ticket_id' => isset( $claim['approval_ticket_id'] ) ? strtolower( trim( (string) $claim['approval_ticket_id'] ) ) : '',
-			'target_fingerprint' => isset( $claim['target_fingerprint'] ) ? strtolower( trim( (string) $claim['target_fingerprint'] ) ) : '',
-			'policy_decision_sha256' => isset( $claim['policy_decision_sha256'] ) ? strtolower( trim( (string) $claim['policy_decision_sha256'] ) ) : '',
-		);
-		$json = wp_json_encode( $material, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-		return is_string( $json ) ? hash( 'sha256', $json ) : '';
-	}
-
-	public static function execution_attempt_state( $execution_attempt_sha256 ) {
-		$attempt = strtolower( trim( (string) $execution_attempt_sha256 ) );
-		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $attempt ) ) {
-			return new WP_Error( 'mad4b_execution_attempt_identity_invalid', 'Execution attempt identity is invalid.' );
-		}
-		if ( ! class_exists( 'MAD4B_SCP_Audit' ) || ! method_exists( 'MAD4B_SCP_Audit', 'execution_checkpoint_events' ) ) {
-			return new WP_Error( 'mad4b_execution_attempt_recovery_unavailable', 'Execution checkpoint recovery evidence is unavailable.', array(
-				'reconciliation_required' => true,
-				'blind_retry_allowed' => false,
-			) );
-		}
-		$lookup = MAD4B_SCP_Audit::execution_checkpoint_events( $attempt, 50 );
-		if ( is_wp_error( $lookup ) ) return $lookup;
-		$events = isset( $lookup['events'] ) && is_array( $lookup['events'] ) ? $lookup['events'] : array();
-		if ( empty( $events ) ) {
-			return array(
-				'contract' => 'mad4b.execution-attempt-recovery.v1',
-				'execution_attempt_sha256' => $attempt,
-				'state' => 'UNKNOWN',
-				'terminal' => false,
-				'reconciliation_required' => true,
-				'blind_retry_allowed' => false,
-				'client_action' => 'reconcile_execution_state_before_any_retry',
-				'evidence_count' => 0,
-				'authorizing' => false,
-			);
-		}
-		if ( empty( $lookup['chain_valid'] ) || empty( $lookup['head_consistent'] ) ) {
-			return array(
-				'contract' => 'mad4b.execution-attempt-recovery.v1',
-				'execution_attempt_sha256' => $attempt,
-				'state' => 'RECONCILING',
-				'terminal' => false,
-				'reconciliation_required' => true,
-				'blind_retry_allowed' => false,
-				'client_action' => 'repair_and_verify_audit_chain_before_execution_recovery',
-				'evidence_count' => count( $events ),
-				'chain_valid' => ! empty( $lookup['chain_valid'] ),
-				'head_consistent' => ! empty( $lookup['head_consistent'] ),
-				'authorizing' => false,
-			);
-		}
-		$last = end( $events );
-		$summary = is_array( $last ) && isset( $last['summary'] ) && is_array( $last['summary'] ) ? $last['summary'] : array();
-		$point = isset( $summary['crash_point'] ) ? sanitize_key( (string) $summary['crash_point'] ) : '';
-		if ( 'unified_execution_receipt_committed' === ( isset( $summary['reason_code'] ) ? sanitize_key( (string) $summary['reason_code'] ) : '' ) ) {
-			$point = 'durable_receipt_committed';
-		}
-		if ( ! class_exists( 'MAD4B_SCP_Execution_Evidence_Policy' ) ) {
-			return new WP_Error( 'mad4b_execution_checkpoint_policy_unavailable', 'Execution checkpoint policy is unavailable.' );
-		}
-		$state = MAD4B_SCP_Execution_Evidence_Policy::crash_point( $point );
-		if ( is_wp_error( $state ) ) return $state;
-		return array_merge( $state, array(
-			'contract' => 'mad4b.execution-attempt-recovery.v1',
-			'execution_attempt_sha256' => $attempt,
-			'evidence_count' => count( $events ),
-			'last_audit_event_id' => isset( $last['event_id'] ) ? (string) $last['event_id'] : '',
-			'last_audit_entry_hash' => isset( $last['entry_hash'] ) ? (string) $last['entry_hash'] : '',
-			'chain_valid' => ! empty( $lookup['chain_valid'] ),
-			'head_consistent' => ! empty( $lookup['head_consistent'] ),
-			'authorizing' => false,
-		) );
-	}
+	// Durable execution checkpoints and recovery are defined in the bound trait.
 
 	public static function execution_boundary_verified( $ability ) {
 		try {

@@ -131,12 +131,46 @@ final class MAD4B_SCP_Addon_Registry {
 		);
 	}
 
+	/**
+	 * Identify the first-party Control Plane by its exact installed plugin
+	 * and live runtime, rather than querying the external-provider catalogue.
+	 * This read-only proof is NOT an add-on pair certificate or write grant.
+	 */
+	private static function base_provider_runtime_status( array $manifest ) {
+		$id = sanitize_key( (string) ( $manifest['base_provider']['provider_id'] ?? '' ) );
+		$core_file = 'mad4b-site-control-plane/mad4b-site-control-plane.php';
+		if ( 'mad4b-site-control-plane' === $id
+			&& $core_file === (string) ( $manifest['base_provider']['plugin_file'] ?? '' ) ) {
+			$core = self::plugin_state( $core_file );
+			$active = ! empty( $core['installed'] ) && ( ! empty( $core['active'] ) || ! empty( $core['network_active'] ) );
+			$bound = $active
+				&& defined( 'MAD4B_SCP_VERSION' )
+				&& hash_equals( (string) $core['version'], (string) MAD4B_SCP_VERSION )
+				&& class_exists( 'MAD4B_SCP_Operation_Registry', false )
+				&& class_exists( 'MAD4B_SCP_Site_Profile', false )
+				&& class_exists( 'MAD4B_SCP_Addon_Registry', false );
+			return array(
+				'status' => $bound ? 'native_core_runtime_bound' : 'native_core_runtime_unavailable',
+				'runtime_contract_ok' => (bool) $bound,
+				'native_core_runtime_bound' => (bool) $bound,
+				'installed_version' => (string) $core['version'],
+				'plugin_file' => $core_file,
+				'plugin_main_file_sha256' => (string) $core['sha256'],
+				'certification_authority' => 'native_runtime_inventory_only',
+				'production_authorized' => false,
+			);
+		}
+		return class_exists( 'MAD4B_SCP_Provider_Contracts' )
+			? MAD4B_SCP_Provider_Contracts::runtime_status( $id )
+			: array( 'status' => 'provider_contract_unavailable', 'runtime_contract_ok' => false );
+	}
+
 	private static function pair_status( array $manifest ) {
 		$valid = self::validate_manifest( $manifest );
 		if ( is_wp_error( $valid ) ) return array( 'state' => 'manifest_invalid', 'certified' => false, 'error_code' => $valid->get_error_code() );
 		$addon = self::plugin_state( $manifest['plugin_file'] );
 		$provider_id = sanitize_key( (string) $manifest['base_provider']['provider_id'] );
-		$provider = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::runtime_status( $provider_id ) : array( 'status' => 'provider_contract_unavailable', 'runtime_contract_ok' => false );
+		$provider = self::base_provider_runtime_status( $manifest );
 		$extension_points_sha256 = self::fingerprint( $manifest['extension_points'] );
 		$manifest_sha256 = self::fingerprint( $manifest );
 		$provider_version = isset( $provider['installed_version'] ) ? (string) $provider['installed_version'] : '';
@@ -171,11 +205,11 @@ final class MAD4B_SCP_Addon_Registry {
 			break;
 		}
 
-		$provider_certified = ! empty( $provider['runtime_contract_ok'] ) && isset( $provider['status'] ) && 'certified' === $provider['status'];
+		$provider_verified = ! empty( $provider['runtime_contract_ok'] ) && in_array( (string) ( $provider['status'] ?? '' ), array( 'certified', 'native_core_runtime_bound' ), true );
 		$state = 'pair_uncertified';
 		if ( ! $addon['installed'] ) $state = 'addon_unavailable';
 		elseif ( ! $addon['active'] && ! $addon['network_active'] ) $state = 'addon_inactive';
-		elseif ( ! $provider_certified ) $state = 'provider_uncertified';
+		elseif ( ! $provider_verified ) $state = 'provider_uncertified';
 		elseif ( $certified_pair ) $state = 'certified';
 
 		return array(

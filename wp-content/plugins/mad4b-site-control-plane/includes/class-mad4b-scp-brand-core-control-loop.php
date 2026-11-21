@@ -123,8 +123,22 @@ final class MAD4B_SCP_Brand_Core_Control_Loop {
 			|| empty( $convergence['authority_manifest_fingerprint'] )
 			|| empty( $coverage['authority_manifest_fingerprint'] )
 			|| ! hash_equals( (string) $coverage['authority_manifest_fingerprint'], (string) $convergence['authority_manifest_fingerprint'] );
-		$provider_connected = ! empty( $provider['connection']['connected'] );
-		$provider_write = ! empty( $provider['connection']['write_available'] );
+		$google_connected = ! empty( $provider['connection']['connected'] );
+		$google_write = ! empty( $provider['connection']['write_available'] );
+		$provider_connected = $google_connected;
+		$provider_write = $google_write;
+		$provider_route = 'google_drive';
+		// External Google OAuth must not block Brand recovery when an authorized
+		// native WordPress store/adapter is ready. This only changes read-only
+		// recovery routing: it never grants writes, approvals or source ownership.
+		$alternative = apply_filters( 'mad4b_brand_core_alternative_store_readiness',
+			array( 'ready' => false, 'write_capable' => false, 'store' => '' ),
+			$context, $coverage );
+		if ( is_array( $alternative ) && ! empty( $alternative['ready'] ) ) {
+			$provider_connected = true;
+			$provider_write = $provider_write || ! empty( $alternative['write_capable'] );
+			$provider_route = sanitize_key( (string) ( $alternative['store'] ?? 'wordpress_media' ) );
+		}
 		$review = $context['review_policy'] ?? array();
 		$ai_delegated = is_array( $review ) && ! empty( $review['ready'] );
 		$by_category = array();
@@ -237,6 +251,10 @@ final class MAD4B_SCP_Brand_Core_Control_Loop {
 			'quarantine' => array( 'source_count' => $quarantined_sources, 'asset_count' => $quarantined_assets,
 				'prevents_recreation' => $quarantine, 'migration_automatically_authorized' => false ),
 			'provider' => array( 'connected' => $provider_connected, 'write_available' => $provider_write,
+				'effective_recovery_route' => $provider_route,
+				'google_drive_connected' => $google_connected,
+				'google_drive_write_available' => $google_write,
+				'google_drive_optional' => true,
 				'credential_refresh_required' => ! empty( $provider['connection']['refresh_required'] ) ),
 			'categories' => $categories,
 			'next_ability' => $next,

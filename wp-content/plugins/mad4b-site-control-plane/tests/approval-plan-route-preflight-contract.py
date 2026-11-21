@@ -42,6 +42,26 @@ def main() -> int:
     if result.returncode != 0 or "APPROVAL_PLAN_ROUTE_PREFLIGHT_RUNTIME=PASS" not in result.stdout:
         print(result.stdout[-2000:] + result.stderr[-2000:], file=sys.stderr)
         return 1
+
+    # The route preflight and its NHI provider eligibility are a single
+    # lifecycle: require the exact core-only pair in both environments, while
+    # proving that the eligibility policy neither mints a grant nor approves
+    # a ticket. Run the existing hermetic PHP policy regression, not a grep.
+    grant_policy = ROOT / "staging-write-grant-reviewed-inventory-runtime.php"
+    if not grant_policy.is_file() or grant_policy.resolve().parent != ROOT:
+        print("APPROVAL_PLAN_ROUTE_EXECUTOR: missing grant-policy regression", file=sys.stderr)
+        return 2
+    try:
+        grant_result = subprocess.run(
+            [binary, str(grant_policy)], cwd=ROOT, capture_output=True,
+            text=True, timeout=40, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        print("APPROVAL_PLAN_ROUTE_EXECUTOR: grant-policy test: " + str(exc), file=sys.stderr)
+        return 2
+    if grant_result.returncode != 0 or "exact core grants only; no Production expansion" not in grant_result.stdout:
+        print(grant_result.stdout[-2000:] + grant_result.stderr[-2000:], file=sys.stderr)
+        return 1
     print("APPROVAL_PLAN_ROUTE_WRAPPED_BEHAVIOR=PASS")
     return 0
 

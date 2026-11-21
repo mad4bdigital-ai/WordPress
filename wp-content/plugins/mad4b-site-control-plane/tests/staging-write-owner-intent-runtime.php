@@ -19,6 +19,14 @@ function current_user_can( $c ) { return $GLOBALS['admin'] && 'manage_options' =
 function is_admin() { return ! empty( $GLOBALS['is_admin_request'] ); }
 function is_user_logged_in() { return true; }
 function get_current_user_id() { return $GLOBALS['user']; }
+final class MAD4B_Fixture_Current_WP_User {
+    public function exists() { return get_current_user_id() > 0; }
+}
+function wp_get_current_user() { return new MAD4B_Fixture_Current_WP_User(); }
+function user_can( $user, $capability ) {
+    return $user instanceof MAD4B_Fixture_Current_WP_User && $user->exists()
+        && current_user_can( $capability );
+}
 function get_option( $k, $default = false ) { return isset( $GLOBALS['options'][$k] ) ? $GLOBALS['options'][$k] : $default; }
 function delete_option( $k ) {
     if ( ! array_key_exists( $k, $GLOBALS['options'] ) ) return false;

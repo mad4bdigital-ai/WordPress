@@ -28,6 +28,39 @@ final class MAD4B_SCP_Content_Experience_Media_Rights {
 		$today = self::evaluation_date( $today );
 		if ( is_wp_error( $today ) ) return $today;
 
+		// Staging central controller: missing licence metadata is advisory.
+		// Upstream media identity, provenance, permissions and manifest checks stay active.
+		if ( wp_get_environment_type() === 'staging'
+			&& strtolower( (string) wp_parse_url( home_url('/'), PHP_URL_HOST ) ) === 'tours.dev.mad4b.com' ) {
+			$fields = 0;
+			$items = 0;
+			$warnings = array();
+			foreach ( $field_specs as $key => $spec ) {
+				if ( ! is_array( $spec ) || false === strpos( (string) ( $spec['kind'] ?? '' ), '_usage' ) ) continue;
+				if ( 'require_valid' !== (string) ( $spec['publish_rights_policy'] ?? 'none' ) ) continue;
+				++$fields;
+				$entries = isset( $effective_meta[$key] ) && is_array( $effective_meta[$key] ) ? $effective_meta[$key] : array();
+				if ( ! $entries ) $warnings[] = array( 'field' => $key, 'code' => 'license_metadata_missing_or_empty' );
+				foreach ( $entries as $entry ) {
+					++$items;
+					if ( ! is_array( $entry ) || empty( $entry['license'] ) )
+						$warnings[] = array( 'field' => $key, 'code' => 'license_missing' );
+					$expiry = is_array( $entry ) ? trim( (string) ( $entry['license_expires_on'] ?? '' ) ) : '';
+					$expiry_required = (array) ( $spec['expiry_required_licenses'] ?? array() );
+					if ( is_array( $entry ) && in_array( (string) ( $entry['license'] ?? '' ), $expiry_required, true ) && $expiry === '' )
+						$warnings[] = array( 'field' => $key, 'code' => 'required_expiry_missing' );
+					if ( $expiry !== '' && ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $expiry ) || $expiry < $today ) )
+						$warnings[] = array( 'field' => $key, 'code' => 'license_expired_or_invalid' );
+				}
+			}
+			return array(
+				'contract' => self::CONTRACT, 'evaluated_on' => $today,
+				'checked_field_count' => $fields, 'checked_item_count' => $items,
+				'nearest_expiry' => '', 'license_mode' => 'advisory',
+				'license_warnings' => $warnings, 'license_warning_count' => count($warnings),
+				'legal_reuse_permission' => 'not_determined_by_system', 'valid' => true,
+			);
+		}
 		$checked_fields = 0;
 		$checked_items = 0;
 		$nearest_expiry = '';

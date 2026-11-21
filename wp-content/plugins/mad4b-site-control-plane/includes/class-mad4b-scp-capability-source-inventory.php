@@ -82,12 +82,11 @@ final class MAD4B_SCP_Capability_Source_Inventory {
             } catch ( Throwable $error ) { $skills = null; }
         }
         $skills_count = is_array( $skills ) && isset( $skills['skill_count'] ) ? (int) $skills['skill_count'] : null;
-        $skill_scan_max = class_exists( 'MAD4B_SCP_Skill_Registry' )
-            ? MAD4B_SCP_Skill_Registry::MAX_SCAN_SKILLS : 0;
+        // Managed Skills now scan the whole registry; no fixed count ceiling.
+        // Readiness/certification remains an independent lifecycle assertion.
         if ( 'managed_skills' === $selected ) $sources[0] = self::source( 'managed_skills',
-            null === $skills_count ? 'UNAVAILABLE'
-                : ( $skills_count >= $skill_scan_max ? 'TRUNCATED_OR_UNKNOWN' : 'INVENTORIED_NOT_CERTIFIED' ),
-            $skills_count, 'Enabled state and lifecycle certification must be verified separately.' );
+            null === $skills_count ? 'UNAVAILABLE' : 'INVENTORIED_NOT_CERTIFIED',
+            $skills_count, 'Full inventory count only; enabled state and lifecycle certification require separate verification.' );
 
         $remote = null;
         if ( 'remote_operation_parity' === $selected ) {

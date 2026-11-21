@@ -1,6 +1,220 @@
 {
   "contract": "mad4b.wordpress-addon-catalog.v1",
-  "addons": [],
+  "addons": [
+    {
+      "addon_id": "mad4b-company-management",
+      "plugin_file": "mad4b-company-portfolio-manager/mad4b-company-portfolio-manager.php",
+      "source_root": "wp-content/plugins/mad4b-company-portfolio-manager",
+      "base_provider": {
+        "provider_id": "mad4b-site-control-plane",
+        "role": "native_control_plane",
+        "provider_contract_registration_pending": true,
+        "plugin_file": "mad4b-site-control-plane/mad4b-site-control-plane.php"
+      },
+      "compatible_versions": [
+        "0.4.0-rc.118"
+      ],
+      "extension_points": [
+        "mad4b_scp_company_management_bootstrap",
+        "mad4b_scp_dynamic_provider_manifests",
+        "wp_abilities_api_init",
+        "rest_api_init"
+      ],
+      "capabilities": {
+        "company_portfolio": true,
+        "company_strategy": true,
+        "start_company_intake": true,
+        "company_environment_readback": true,
+        "company_reconcile_plan": true,
+        "company_plugin_sync_journal_handoff": true,
+        "production_execution_authorized": false
+      },
+      "data_ownership": {
+        "scope": "company_bound_existing_options_and_wp_posts",
+        "existing_record_migration_required": false,
+        "provider_tokens_owned_by_company_addon": false,
+        "copy_third_party_secrets": false
+      },
+      "authority_impact": {
+        "inherits_production_authority": false,
+        "adds_generic_shell": false,
+        "adds_raw_sql": false,
+        "grants_execution_from_manifest": false,
+        "existing_core_authorization_required": true
+      },
+      "rollback": {
+        "method": "restore_staging_plugin_and_core_catalog_from_prechange_backup",
+        "requires_readback": true,
+        "auto_rollback_certified": false
+      },
+      "certification": {
+        "exact_provider_version_required": true,
+        "exact_addon_version_required": true,
+        "current_state": "native_core_runtime_bound_exact_pair_certification_pending",
+        "no_owner_attestation_inferred": true,
+        "addon_runtime_version": "0.4.0-company-addon"
+      },
+      "tests": {
+        "php_lint": "passed_staging",
+        "company_rest_route_parity": "72_of_72_paths_matched",
+        "launch_rest_route_parity": "29_of_29_paths_matched",
+        "core_without_addon": "operation_registry_and_dynamic_pipeline_preserved",
+        "full_company_lifecycle": "not_certified",
+        "production_tests": "not_run",
+        "module_registry_missing_after_mu_retirement": 0,
+        "module_registry_total_after_mu_retirement": 392,
+        "task_origin_rest_and_security_guards": "passed_staging",
+        "standalone_staging_runtime": "not_yet_verified"
+      },
+      "portability": {
+        "vendor_files_modified": false,
+        "host_binding": "signed_core_site_profile",
+        "hardcoded_site_names_removed_from_addon_entry": true,
+        "all_provider_implementations_portable": false
+      },
+      "supply_chain": {
+        "artifact_source": "live_staging_source",
+        "repository_release_certified": false,
+        "certified_package_sha256": null,
+        "release_package_state": "build_pending"
+      },
+      "network_access": {
+        "allowed_hosts": [],
+        "network_policy": "original_provider_admission_only",
+        "inventory_certification_pending": true
+      },
+      "multisite": {
+        "supported": false,
+        "not_evaluated": true
+      },
+      "performance_budget": {
+        "provider_manifest_soft_elapsed_ms": 30000,
+        "end_to_end_p95_certified": false
+      },
+      "observability": {
+        "core_journal_and_audit_reused": true,
+        "readback_required": true,
+        "company_alerts_coverage_certified": false
+      },
+      "failure_policy": {
+        "reconcile_before_retry_after_uncertain_write": true,
+        "fail_closed_when_binding_missing": true,
+        "fallback_execution": false
+      },
+      "release_ring": "staging",
+      "certified_pairs": [],
+      "mu_migration": {
+        "state": "legacy_mu_slots_retired_staging",
+        "mapped_module_count": 376,
+        "map_requires_387_entries": false,
+        "reconciled_inert_slots": [
+          {
+            "legacy_mu_map_entry": "220-mad4b-company-launch-orchestrator.php",
+            "compatibility_path": "mad4b-platform/modules/compat/220-mad4b-company-launch-orchestrator.php",
+            "addon_file": "includes/class-mad4b-vps-company-launch.php",
+            "legacy_entry_inert": true,
+            "live_legacy_entry_retired": true,
+            "live_compatibility_file_removed": true,
+            "backup_location": "company-management-mu-retire-20261103/retired-mu-stubs/modules/compat/220-mad4b-company-launch-orchestrator.php"
+          },
+          {
+            "legacy_mu_map_entry": "225-mad4b-company-launch-setup.php",
+            "compatibility_path": "mad4b-platform/modules/operations/225-mad4b-company-launch-setup.php",
+            "addon_file": "includes/class-mad4b-company-launch-setup.php",
+            "legacy_entry_inert": true,
+            "live_legacy_entry_retired": true,
+            "live_compatibility_file_removed": true,
+            "backup_location": "company-management-mu-retire-20261103/retired-mu-stubs/modules/operations/225-mad4b-company-launch-setup.php"
+          },
+          {
+            "legacy_mu_map_entry": "241-mad4b-company-brand-readiness-hub.php",
+            "compatibility_path": "mad4b-platform/modules/operations/241-mad4b-company-brand-readiness-hub.php",
+            "addon_file": "includes/class-mad4b-company-brand-readiness-hub.php",
+            "legacy_entry_inert": true,
+            "live_legacy_entry_retired": true,
+            "live_compatibility_file_removed": true,
+            "backup_location": "company-management-mu-retire-20261103/retired-mu-stubs/modules/operations/241-mad4b-company-brand-readiness-hub.php"
+          },
+          {
+            "legacy_mu_map_entry": "243-mad4b-company-start-reconcile-completeness.php",
+            "compatibility_path": "mad4b-platform/modules/compat/243-mad4b-company-start-reconcile-completeness.php",
+            "addon_file": "includes/class-mad4b-company-start-reconcile-completeness.php",
+            "legacy_entry_inert": true,
+            "live_legacy_entry_retired": true,
+            "live_compatibility_file_removed": true,
+            "backup_location": "company-management-mu-retire-20261103/retired-mu-stubs/modules/compat/243-mad4b-company-start-reconcile-completeness.php"
+          },
+          {
+            "legacy_mu_map_entry": "250-mad4b-company-plugin-sync-operation.php",
+            "compatibility_path": "mad4b-platform/modules/operations/250-mad4b-company-plugin-sync-operation.php",
+            "addon_file": "includes/class-mad4b-company-plugin-sync-operation.php",
+            "legacy_entry_inert": true,
+            "live_legacy_entry_retired": true,
+            "live_compatibility_file_removed": true,
+            "backup_location": "company-management-mu-retire-20261103/retired-mu-stubs/modules/operations/250-mad4b-company-plugin-sync-operation.php"
+          },
+          {
+            "legacy_mu_map_entry": "251-mad4b-company-bootstrap-contract.php",
+            "compatibility_path": "mad4b-platform/modules/operations/251-mad4b-company-bootstrap-contract.php",
+            "addon_file": "includes/class-mad4b-company-bootstrap-contract.php",
+            "legacy_entry_inert": true,
+            "live_legacy_entry_retired": true,
+            "live_compatibility_file_removed": true,
+            "backup_location": "company-management-mu-retire-20261103/retired-mu-stubs/modules/operations/251-mad4b-company-bootstrap-contract.php"
+          },
+          {
+            "legacy_mu_map_entry": "294-mad4b-company-strategy-management.php",
+            "compatibility_path": "mad4b-platform/modules/operations/294-mad4b-company-strategy-management.php",
+            "addon_file": "includes/class-mad4b-company-strategy-management.php",
+            "legacy_entry_inert": true,
+            "live_legacy_entry_retired": true,
+            "live_compatibility_file_removed": true,
+            "backup_location": "company-management-mu-retire-20261103/retired-mu-stubs/modules/operations/294-mad4b-company-strategy-management.php"
+          },
+          {
+            "legacy_mu_map_entry": "316-mad4b-company-environment-portfolio-evidence.php",
+            "compatibility_path": "mad4b-platform/modules/operations/316-mad4b-company-environment-portfolio-evidence.php",
+            "addon_file": "includes/class-mad4b-company-environment-portfolio-evidence.php",
+            "legacy_entry_inert": true,
+            "live_legacy_entry_retired": true,
+            "live_compatibility_file_removed": true,
+            "backup_location": "company-management-mu-retire-20261103/retired-mu-stubs/modules/operations/316-mad4b-company-environment-portfolio-evidence.php"
+          },
+          {
+            "legacy_mu_map_entry": "379-company-market-portfolio.php",
+            "compatibility_path": "mad4b-platform/modules/operations/379-company-market-portfolio.php",
+            "addon_file": "includes/class-mad4b-company-market-portfolio.php",
+            "legacy_entry_inert": true,
+            "live_legacy_entry_retired": true,
+            "live_compatibility_file_removed": true,
+            "backup_location": "company-management-mu-retire-20261103/retired-mu-stubs/modules/operations/379-company-market-portfolio.php"
+          },
+          {
+            "legacy_mu_map_entry": "mad4b-scp-cloudflare-staging-bridge.php",
+            "compatibility_path": "mad4b-platform/modules/services/mad4b-scp-cloudflare-staging-bridge.php",
+            "addon_file": "includes/class-mad4b-scp-company-domain-cloudflare.php",
+            "legacy_entry_inert": true,
+            "live_legacy_entry_retired": true,
+            "live_compatibility_file_removed": true,
+            "backup_location": "company-management-mu-retire-20261103/retired-mu-stubs/modules/services/mad4b-scp-cloudflare-staging-bridge.php"
+          },
+          {
+            "legacy_mu_map_entry": "299-mad4b-company-task-origin-card.php",
+            "compatibility_path": "mad4b-platform/modules/compat/299-mad4b-company-task-origin-card.php",
+            "addon_file": "includes/class-mad4b-company-task-origin-card.php",
+            "legacy_entry_inert": true,
+            "live_legacy_entry_retired": true,
+            "live_compatibility_file_removed": true,
+            "backup_location": "company-management-task-origin-20261103/task-origin-original.php"
+          }
+        ],
+        "retire_slots_only_after_loader_and_module_registry_acceptance": true,
+        "core_provider_and_executor_owned_by_control_plane": true,
+        "map_validated_by_structural_and_load_checks": true,
+        "module_registry_dynamic_map_count": true
+      }
+    }
+  ],
   "defaults": {
     "multisite_support": "unsupported_unless_manifest_explicit",
     "production_authorized": false,
