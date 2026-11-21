@@ -231,6 +231,44 @@ def verifier_only_recheck_candidates(site,catalog,state,ledger,root,rows,now=Non
     return [x[2] for x in sorted(result)]
 
 
+def published_v2_generation_drift(catalog,state,published):
+    """Report why immutable v2 files are not current CSS source proofs.
+
+    This reports only catalog/generation metadata. An aligned certificate
+    is NOT considered visitor-delivered without a separate 422 readback.
+    """
+    routes={(r['language'],r['path']):r for r in catalog['routes']}
+    reasons=collections.Counter()
+    for (language,path,market,currency),cert in published.items():
+        if (not isinstance(cert,dict)
+            or cert.get('contract')!=v2.CONTRACT
+            or cert.get('status')!='certified'):
+            continue
+        route=routes.get((language,path))
+        deps=cert.get('dependencies') if isinstance(cert.get('dependencies'),dict) else {}
+        if route is None:
+            why='route_removed_or_unpublished'
+        elif (cert.get('css_epoch')!=state.get('css_epoch')
+              or cert.get('runtime_sha')!=state.get('runtime_sha')):
+            why='runtime_or_css_epoch_changed'
+        elif deps.get('global_generation')!=catalog.get('global_generation'):
+            why='global_generation_changed'
+        elif deps.get('route_generation')!=route.get('revision'):
+            why='route_revision_changed'
+        elif ((deps.get('contains_dynamic_listing')
+               or route['type'] not in ('page','post','tours-and-activities')
+               or (route['type']=='tours-and-activities' and
+                   deps.get('listing_generation') is not None))
+              and deps.get('listing_generation')!=catalog.get('listing_generation')):
+            why='listing_generation_changed'
+        else:
+            why='generation_aligned_not_live_readback'
+        reasons[why]+=1
+    return {'certified_file_count':sum(reasons.values()),
+            'reasons':dict(sorted(reasons.items())),
+            'generation_aligned_is_not_delivery_proof':True}
+
+
 def build(site,catalog,state,ledger,root=None,variant_index=None):
     if site not in ROOTS or catalog.get('host')!=ROOTS[site][1] or ledger.get('site')!=site:
         raise ValueError('source-company-scope-mismatch')
@@ -245,6 +283,7 @@ def build(site,catalog,state,ledger,root=None,variant_index=None):
     catalogrows=[r for r in queue.safe_catalog(catalog,site)
                  if not queue.independently_certified_home(r)]
     published=load_certs(root)
+    published_context=published_v2_generation_drift(catalog,state,published)
     verifier_retries=verifier_only_recheck_candidates(
         site,catalog,state,ledger,root,catalogrows)
     by_route=collections.defaultdict(list)
@@ -451,6 +490,7 @@ def build(site,catalog,state,ledger,root=None,variant_index=None):
       'css_epoch':state['css_epoch'],'global_generation':catalog.get('global_generation'),
       'listing_generation':catalog.get('listing_generation'),
       'source_groups_total':len(rows),'source_groups_by_status':dict(sorted(qcounts.items())),
+      'published_v2_generation_drift':published_context,
       'source_canary_qualified_groups':qcounts['source_canary_qualified'],
       'source_context_canary_proofs':sum(len(f['proven_market_profiles']) for f in rows),
       'source_context_divergent':sum(len(f['divergent_market_profiles']) for f in rows),
@@ -466,7 +506,9 @@ def build(site,catalog,state,ledger,root=None,variant_index=None):
       'verifier_only_recheck_candidates':len(verifier_retries),
       'next_verifier_only_recheck_route_key':verifier_retries[0] if verifier_retries else None,
       'next_canary_route_key':wants[0]['next_canary'] if wants else None,
+      'next_canary_route_keys':[f['next_canary'] for f in wants[:64]],
       'next_individual_css_route_key':css_work[0]['next_individual_css'] if css_work else None,
+      'next_individual_css_route_keys':[f['next_individual_css'] for f in css_work[:64]],
       'qualified_families_with_css_routes_pending':len(css_work),
       'qualified_families_individual_routes_unproven':sum(
           r['source_routes_not_individually_certified'] for r in rows
@@ -509,6 +551,36 @@ def plan_next_css_issuance(report,sequence,verified_drift_route_key=None):
         raise ValueError('untrusted-verifier-only-retry-key')
     # A single original retry slot per four worker opportunities. Do not
     # displace the existing 1/4 exact-route CSS coverage lane.
+    # New bounded, source-derived candidates permit fair independent family
+    # canaries without weakening original per-route source verification.
+    # Legacy one-key receipts preserve their exact prior admission policy.
+    family_keys=report.get('next_canary_route_keys')
+    individual_keys=report.get('next_individual_css_route_keys')
+    modern=family_keys is not None or individual_keys is not None
+    if modern:
+        for lane in (family_keys,individual_keys):
+            if (lane is not None and (not isinstance(lane,list) or len(lane)>64
+                or len(set(lane))!=len(lane)
+                or any(not isinstance(k,str) or not re.fullmatch('[a-f0-9]{64}',k)
+                       for k in lane))):
+                raise ValueError('invalid-original-source-family-rotation-lane')
+        family_lane=family_keys or ([family] if family else [])
+        individual_lane=individual_keys or ([individual] if individual else [])
+        # A bounded old-QA retry uses at most one slot per eight attempts.
+        # The 1/4 exact-route lane stays untouched. Unlike a fixed first
+        # family, this never repeatedly tests Arabic while leaving
+        # independent English/Spanish/other source templates unsampled.
+        retry_slot=bool(retry and sequence%8==0)
+        if retry and (not family_lane and not individual_lane or retry_slot):
+            return retry
+        if individual_lane and (not family_lane or sequence%4==3):
+            cursor=sequence//4 if family_lane else sequence
+            return individual_lane[cursor%len(individual_lane)]
+        if family_lane:
+            consumed_retry=(sequence+7)//8 if retry else 0
+            family_index=sequence-sequence//4-consumed_retry
+            return family_lane[family_index%len(family_lane)]
+        return individual_lane[0] if individual_lane else retry
     if retry and (not family and not individual or sequence%4==0):
         return retry
     if individual and (not family or sequence%4==3):
