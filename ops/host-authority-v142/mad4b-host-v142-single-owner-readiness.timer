@@ -1,0 +1,12 @@
+[Unit]
+Description=Check first-party Original313/Owner/305/312 readiness every 30 minutes
+
+[Timer]
+OnCalendar=*-*-* *:00/30:00
+Persistent=true
+RandomizedDelaySec=45
+AccuracySec=1min
+Unit=mad4b-host-v142-single-owner-readiness.service
+
+[Install]
+WantedBy=timers.target
