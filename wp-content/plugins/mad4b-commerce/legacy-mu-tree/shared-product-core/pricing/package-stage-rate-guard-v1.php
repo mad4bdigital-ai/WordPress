@@ -251,6 +251,10 @@ final class MAD4B_Package_Stage_Rate_Guard_V1 {
                 if(in_array($sourceEvidence['status'],
                     ['invalid_stage_night_geometry','itinerary_destination_conflict'],true))
                     $flag('stage_itinerary_destination_conflict');
+                elseif(!empty($sourceEvidence['requires_editor_review']))
+                    // An unclear overnight remains an editorial candidate
+                    // in Pricing Lab, but never authorizes a commercial Rate.
+                    $flag('stage_itinerary_overnight_review_required');
                 if($scope['status']!=='mapped')$flag('stage_destination_unmapped');
                 $raw=(array)($saved['room_candidate_refs'][(string)$tier]??[]);
                 $eligible=[];$links=[];$rejections=[];
