@@ -36,6 +36,13 @@ opts(p,packages);
 const t=el('select','regular-text');
 t.id='mad4b-pcl-select-tier';t.setAttribute('aria-label','Package level');
 opts(t,tiers);
+// Deep links only select an item from the already-authorized server catalog.
+// The AJAX provider independently checks both Tour edit permission and tier.
+const query=new URLSearchParams(window.location.search);
+const linkedTour=query.get('mad4b_package_tour');
+const linkedTier=query.get('mad4b_package_tier');
+if(linkedTour&&packages.some(x=>String(x.id)===linkedTour))p.value=linkedTour;
+if(linkedTier&&tiers.some(x=>String(x.id)===linkedTier))t.value=linkedTier;
 const b=el('button','button button-primary','Inspect original sources');
 b.type='submit';
 const form=el('form','mad4b-pcl-form');
