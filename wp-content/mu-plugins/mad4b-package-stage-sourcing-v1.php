@@ -92,7 +92,10 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
             ?MAD4B_Package_Stage_Rate_Guard_V1::canonicalTour($tour):$tour;
         $raw=get_post_meta($source,'itinerary_item',true);
         $day=(int)($stage['source_day_start']??0);
-        $entry=is_array($raw)?(array)($raw[$day-1]??[]):[];
+        // JetEngine repeaters are keyed by "item-0", "item-1", not by
+        // integer day. Preserve original order before day-index lookup.
+        $days=is_array($raw)?array_values($raw):[];
+        $entry=(array)($days[$day-1]??[]);
         $title=html_entity_decode(wp_strip_all_tags((string)($entry['title']??'')),ENT_QUOTES,'UTF-8');
         $body=html_entity_decode(wp_strip_all_tags((string)($entry['description']??'')),ENT_QUOTES,'UTF-8');
         $short=mb_substr(preg_replace('/\s+/u',' ',$title.' '.$body),0,1500);
