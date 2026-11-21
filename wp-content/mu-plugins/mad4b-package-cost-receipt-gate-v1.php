@@ -96,6 +96,9 @@ final class MAD4B_Package_Cost_Receipt_Gate_V1 {
                 (int)get_post_meta($train,'trans_from_station_id',true)!==(int)($receipt['boarding_station_id']??0) ||
                 (int)get_post_meta($train,'trans_to_station_id',true)!==(int)($receipt['arrival_station_id']??0))
                 $fail('receipt_train_boarding_station_invalid');
+            if (($receipt['departure_time']??'')!==(string)get_post_meta($train,'trans_departure_time',true) ||
+                ($receipt['arrival_time']??'')!==(string)get_post_meta($train,'trans_arrival_time',true))
+                $fail('receipt_train_timetable_invalid');
         }
         $stock=$receipt['availability']??null;
         $now=time();
