@@ -218,6 +218,16 @@ final class MAD4B_Package_Supplier_Admission_V1 {
                 'train_id'=>(int)($stage['selected_train_id']??0),
                 'train_number'=>(string)($stage['selected_train_number']??''),
             ];
+            if($kind==='sleeper_train'){
+                $segment=class_exists('MAD4B_Package_Stage_Sourcing_V1',false)
+                    ?MAD4B_Package_Stage_Sourcing_V1::stageTrainSegment($tour,$stage)
+                    :null;
+                if(is_array($segment)){
+                    $context['boarding_station_id']=(int)$segment['boarding_station_id'];
+                    $context['arrival_station_id']=(int)$segment['arrival_station_id'];
+                }
+                $context['cabin_class']=(string)($stage['selected_train_cabin_class']??'');
+            }
             $verification=class_exists('MAD4B_Package_Cost_Receipt_Gate_V1',false)
                 ?MAD4B_Package_Cost_Receipt_Gate_V1::validate($receipt,$context)
                 :['qualified'=>false,'blockers'=>['cost_receipt_validator_missing']];

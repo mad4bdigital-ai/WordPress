@@ -255,6 +255,39 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
                 foreach((array)($pos[$route['to']]??[]) as $to)
                     if($from<$to)$valid=true;
             if(!$valid)continue;
+            // A route candidate is NOT a booked train. Extract a unique segment
+            // from the original native stop order, including intermediate boarding.
+            // The source itinerary can board 87 in Luxor although its origin is Aswan.
+            $origins=[];$destinations=[];
+            foreach((array)$stops as $stop){
+                if(!is_array($stop))continue;
+                $station=(int)($stop['station_id']??0);
+                $order=$stop['sort_num']??null;
+                $time=(string)($stop['time']??'');
+                if($station<=0 || !is_numeric($order) || (int)$order<=0 ||
+                   !preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/D',$time) ||
+                   get_post_type($station)!=='stations' ||
+                   get_post_status($station)!=='publish')continue;
+                $item=['station_id'=>$station,'sort_num'=>(int)$order,'time'=>$time];
+                $cities=self::stationCities($station);
+                if(in_array($route['from'],$cities,true))$origins[]=$item;
+                if(in_array($route['to'],$cities,true))$destinations[]=$item;
+            }
+            $segments=[];
+            foreach($origins as $from)foreach($destinations as $to)
+                if($from['sort_num']<$to['sort_num'])
+                    $segments[]=[
+                        'boarding_station_id'=>$from['station_id'],
+                        'arrival_station_id'=>$to['station_id'],
+                        'boarding_time'=>$from['time'],
+                        'arrival_time'=>$to['time'],
+                        'boarding_stop_order'=>$from['sort_num'],
+                        'arrival_stop_order'=>$to['sort_num'],
+                        'source'=>'native_train_stops_and_original_itinerary',
+                        'commercially_assigned'=>false,
+                        'supplier_timetable_confirmed'=>false
+                    ];
+            $segment=count($segments)===1?$segments[0]:null;
             $rates=get_posts(['post_type'=>'transport-rates','post_status'=>'publish',
                 'fields'=>'ids','posts_per_page'=>20,'meta_key'=>'source_post_id',
                 'meta_value'=>(string)$id,'suppress_filters'=>true]);
@@ -269,6 +302,8 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
                 'id'=>$id,'title'=>wp_strip_all_tags(html_entity_decode(get_the_title($id),ENT_QUOTES,'UTF-8')),
                 'number'=>$number,
                 'native_route_order_verified'=>true,
+                'proposed_travel_segment'=>$segment,
+                'proposed_segment_ambiguous'=>count($segments)!==1,
                 'native_terminal_needs_schedule_revalidation'=>$staleTerminal,
                 'native_terminal_source_station_id'=>isset($nativeStationIds[54231])?54231:0,
                 'public_timetable_terminal_station_id'=>$bashtil,
@@ -283,6 +318,29 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
             ];
         }
         return $out;
+    }
+    /**
+     * The one source-owned lookup used by rate admission and readiness alerts.
+     * A travel-leg candidate is NOT a commercial Rate or booking assignment.
+     * Never infer a selected train from itinerary text alone.
+     */
+    public static function stageTrainSegment(int $tour,array $binding):?array {
+        $train=(int)($binding['selected_train_id']??0);
+        $key=(string)($binding['stage_key']??'');
+        if($train<=0 || $key==='' ||
+            ($binding['lodging_kind']??'')!=='sleeper_train')return null;
+        $plan=get_post_meta($tour,'_mad4b_package_accommodation_source_plan_v1',true);
+        $results=[];
+        foreach((array)($plan['stages']??[]) as $stage){
+            if(!is_array($stage)||($stage['stage_key']??'')!==$key ||
+                ($stage['lodging_kind']??'')!=='sleeper_train')continue;
+            $source=self::inspect($tour,$stage,0);
+            foreach((array)($source['train_candidates']??[]) as $candidate)
+                if((int)($candidate['id']??0)===$train &&
+                   is_array($candidate['proposed_travel_segment']??null))
+                    $results[]=$candidate['proposed_travel_segment'];
+        }
+        return count($results)===1?$results[0]:null;
     }
     public static function inspect(int $tour,array $stage,int $tier):array {
         $kind=sanitize_key((string)($stage['lodging_kind']??''));

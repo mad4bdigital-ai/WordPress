@@ -80,6 +80,16 @@ final class MAD4B_CP4_Cost_Alerts_V1 {
            'train_id'=>(int)($stage['selected_train_id']??0),
            'train_number'=>(string)($stage['selected_train_number']??''),
        ];
+       if($kind==='sleeper_train'){
+           $segment=class_exists('MAD4B_Package_Stage_Sourcing_V1',false)
+               ?MAD4B_Package_Stage_Sourcing_V1::stageTrainSegment($tour,$stage)
+               :null;
+           if(is_array($segment)){
+               $ctx['boarding_station_id']=(int)$segment['boarding_station_id'];
+               $ctx['arrival_station_id']=(int)$segment['arrival_station_id'];
+           }
+           $ctx['cabin_class']=(string)($stage['selected_train_cabin_class']??'');
+       }
        $result=MAD4B_Package_Cost_Receipt_Gate_V1::validate($receipt,$ctx);
        return ['qualified'=>($result['qualified']??false)===true,
                'reasons'=>array_slice((array)($result['blockers']??[]),0,14)];
