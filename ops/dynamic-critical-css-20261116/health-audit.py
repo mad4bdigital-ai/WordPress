@@ -38,6 +38,7 @@ runner=load(D/'run-public-route.py','ccss_health_runner')
 source_family=load(D/'public-source-families.py','ccss_health_source_families')
 source_variants=load(D/'public-template-variant-index.py','ccss_health_template_variants')
 route_resume=load(D/'public-route-resume.py','ccss_health_route_resume')
+delivery=load(D/'public-fastcgi-delivery-contract.py','ccss_html_delivery_contract')
 def command(args,timeout=25):
     return subprocess.run(args,capture_output=True,text=True,check=True,timeout=timeout).stdout.strip()
 def sha(path):
@@ -506,6 +507,15 @@ def run_site(site,run_http=True):
                             continue
                 else:variant['certificate_for_observed_market']=False
                 variant['active_in_observed_market']=(probe['ready_public']=='1')
+                # Cache HIT is not CCSS proof: inspect the *delivered HTML*.
+                # Advisory-only, at most the original two source-current
+                # certified routes. Never grants a certificate or blocks QA.
+                try:
+                    variant['html_delivery_contract']=delivery.fetch(
+                        host,route['path'])
+                except (OSError,ValueError,TypeError,UnicodeError) as exc:
+                    variant['html_delivery_contract']={
+                        'delivery':'PROBE_DEFERRED','reason':type(exc).__name__}
                 result['public_route_readback'].append(variant)
                 if not probe['http'].endswith('200'):warnings.append('certified_route_http_not_200:'+route['path'])
                 if variant['certificate_for_observed_market'] and not variant['active_in_observed_market']:
@@ -521,6 +531,17 @@ def run_site(site,run_http=True):
                 warnings.append('public_route_probe_failed:'+route['path']+':'+str(exc)[:80])
     result['active_route_samples']=sum(int(p['active_in_observed_market'])
                                        for p in result.get('public_route_readback',[]))
+    # These are counts of bounded HTML samples, NEVER extrapolated to all
+    # discovered WordPress routes, WPML contexts or FastCGI cache keys.
+    delivery_samples=[p.get('html_delivery_contract',{})
+                      for p in result.get('public_route_readback',[])]
+    result['html_delivery_contract_sample_count']=len(delivery_samples)
+    result['html_delivery_contract_counts']={
+        status:sum(v.get('delivery')==status for v in delivery_samples)
+        for status in ('CACHE_HIT_NATIVE','CACHE_HIT_CCSS',
+                       'PRIVATE_SAFE','ORIGIN_CCSS_READY',
+                       'CACHE_MISS_NATIVE','DELIVERY_UNKNOWN',
+                       'HTTP_NOT_200','PROBE_DEFERRED')}
     result['status']=('degraded' if warnings else
                       'healthy_with_safe_fallback' if (
                           result.get('safe_profile_fallbacks')
