@@ -68,6 +68,14 @@ function renderReport(data){
   const sub=el('p','','Duration: '+data.day_count+' days / '+data.night_count+
     ' nights · '+data.plan_status+' · Source only / not a supplier quote');
   h.append(sub);
+  const history=[];
+  if(data.source_plan_policy_error)
+    history.push('Recorded source-plan policy warning: '+data.source_plan_policy_error);
+  if(Array.isArray(data.source_plan_warnings)&&data.source_plan_warnings.length)
+    history.push('Source review: '+data.source_plan_warnings.join(', '));
+  if(history.length)
+    h.append(el('p','mad4b-pcl-warning',history.join(' · ')+
+      ' (as recorded in saved source data; not a new live policy verdict)'));
   const kpis=el('div','mad4b-pcl-kpis');
   kpis.append(
     metric(String(s.stages||0),'Stay / travel stages'),
@@ -75,7 +83,8 @@ function renderReport(data){
     metric(String(s.units_referenced||0),'Unique linked units in this tier'),
     metric(String(s.unit_occupancy_recorded||0),'Units with recorded occupancy'),
     metric(String(s.unit_cost_role_positive_prices||0),'Units with declared cost source'),
-    metric(String(s.unit_available||0),'Units marked available')
+    metric(String(s.unit_available||0),'Units marked available'),
+    metric(String(s.stages_without_candidates||0),'Hotel stages without candidates')
   );
   h.append(kpis);
   const warn=el('p','mad4b-pcl-warning','No approved Package Cost total. Missing unit rates, supplier receipts, inventory, and stage assignments must not be treated as zero.');
@@ -91,7 +100,7 @@ function renderReport(data){
     el('span','','Guide days: '+(guide?
       (String(guide.reviewed_days||0)+' of '+String(guide.day_count||0)+' reviewed'):'Not evaluated')),
     el('span','','Rate transport stages: '+(transport?String(transport.native_rate_stage_count||0):'Not evaluated')),
-    el('span','','Published Tour Rates used: 0 (excluded from this supplier-cost audit)')
+    el('span','','Existing non-published linked Rates: '+String(data.linked_original_rate_count||0)+' (never treated as supplier cost)')
   );
   h.append(components);
   result.append(h);
