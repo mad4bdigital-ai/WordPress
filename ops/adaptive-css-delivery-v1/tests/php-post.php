@@ -23,6 +23,12 @@ try{$c::bucket('lcp',-1);throw new Exception('not rejected');}
 catch(InvalidArgumentException $e){check(true,'negative telemetry denied');}
 try{$c::bucket('invalid',20);throw new Exception('not rejected');}
 catch(InvalidArgumentException $e){check(true,'unknown metric denied');}
+check($c::p75_bound('lcp',[4=>5,5=>3])===3000,
+      'LCP sitewide p75 is conservative histogram bucket upper');
+check($c::p75_bound('inp',[0=>3,1=>10])===100,
+      'INP sitewide p75 is not claimed beyond bucket precision');
+check($c::p75_bound('cls',[])===null,
+      'missing CLS samples stay unknown, not zero');
 check($c::install_schema()===false,'public path cannot execute schema migration');
-echo 'PASS 12 PHP policy and integrity invariants'.PHP_EOL;
+echo 'PASS 15 PHP policy and integrity invariants'.PHP_EOL;
 ?>

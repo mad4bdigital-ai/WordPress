@@ -60,3 +60,6 @@ Vendor web-vitals IIFE is from Google's Apache-2.0 project, pinned to version 6.
 - Public CSS Canary: zero percent; both real Nginx profiles fail cache partition and first-party cohort attestation. No unqualified CSS reaches public visitors.
 - The 30-day histograms are observational, not anti-spoofed evidence of a controlled A/B test until the signed serving arm is added at the edge.
 - The original worker and the existing 5-viewport synthetic QA continue to hold the source-based certificate authority.
+
+## Hourly Core Web Vitals readback
+The site-owned hourly REST-health option exposes the conservative p75 histogram upper bounds and sample count for each arm and LCP/INP/CLS; no values are invented for a metric without samples. This shadow report is observational across source routes and cannot promote or revoke CSS certificates. An authenticated manager can inspect /wp-json/mad4b-css/v1/status. The field public_rollout_percent_changed is always false.

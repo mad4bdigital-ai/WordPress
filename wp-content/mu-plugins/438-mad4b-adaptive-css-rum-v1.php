@@ -144,6 +144,25 @@ final class MAD4B_Adaptive_CSS_RUM_V1 {
             if ($value<=$max)return $i;
         return count(self::LIMITS[$metric]);
     }
+    public static function p75_bound(string $metric,array $hist):?int {
+        if (!isset(self::LIMITS[$metric]))return null;
+        $total=0;
+        foreach ($hist as $bucket=>$count) {
+            if (!is_numeric($bucket) || (int)$bucket<0
+                || (int)$bucket>count(self::LIMITS[$metric])
+                || !is_int($count) || $count<0)return null;
+            $total+=$count;
+        }
+        if ($total===0)return null;
+        $threshold=(int)ceil($total*0.75);
+        $observed=0;
+        foreach (range(0,count(self::LIMITS[$metric])) as $index) {
+            $observed+=(int)($hist[$index]??0);
+            if ($observed>=$threshold)
+                return self::LIMITS[$metric][$index]??60001;
+        }
+        return null;
+    }
     public static function table():string {
         global $wpdb;
         return $wpdb->prefix.'mad4b_css_rum_v1';
@@ -265,12 +284,25 @@ final class MAD4B_Adaptive_CSS_RUM_V1 {
         }
         $fail=(int)($totals['optimized']['css'][0]??0);
         $pass=(int)($totals['optimized']['css'][1]??0);
+        $vitals=[];
+        foreach (['native','optimized'] as $arm) {
+            foreach (['lcp','inp','cls'] as $name) {
+                $hist=$totals[$arm][$name]??[];
+                $vitals[$arm][$name]=[
+                  'samples'=>array_sum($hist),
+                  'p75_upper'=>self::p75_bound($name,$hist)
+                ];
+            }
+        }
+        // Observational site-level metrics are not a randomized A/B trial.
         $state=['contract'=>'mad4b.adaptive-css.health.v1','site'=>self::site(),
           'observed_utc'=>gmdate('Y-m-d\TH:i:s\Z'),
           'health_status'=>($fail>=5 && $fail>($pass+$fail)*0.05)
                 ?'css_restore_regression_observed':'shadow_monitoring',
           'css_restore_failed'=>$fail,'css_restore_passed'=>$pass,
-          'totals'=>$totals,'public_rollout_percent_changed'=>false];
+          'vitals'=>$vitals,'totals'=>$totals,
+          'public_rollout_percent_changed'=>false,
+          'performance_warning_is_not_automatic_certificate_authority'=>true];
         update_option('mad4b_css_rum_health_v1',$state,false);
     }
     public static function boot():void {

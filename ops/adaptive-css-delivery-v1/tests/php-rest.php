@@ -19,6 +19,16 @@ class FakeWPDB {
         return $sql;
     }
     public function query($sql){return 1;}
+    public function get_results($sql,$format=null){
+      return [
+       ['arm'=>'optimized','metric'=>'lcp','bucket'=>4,'total'=>20],
+       ['arm'=>'optimized','metric'=>'lcp','bucket'=>5,'total'=>5],
+       ['arm'=>'optimized','metric'=>'inp','bucket'=>2,'total'=>25],
+       ['arm'=>'optimized','metric'=>'cls','bucket'=>4,'total'=>25],
+       ['arm'=>'optimized','metric'=>'css','bucket'=>0,'total'=>1],
+       ['arm'=>'optimized','metric'=>'css','bucket'=>1,'total'=>24]
+      ];
+    }
 }
 $wpdb=new FakeWPDB();
 $GLOBALS['mock_transients']=[];
@@ -55,5 +65,16 @@ $_SERVER['HTTP_ORIGIN']='https://malicious.example';
 $result=$cls::record(new WP_REST_Request($valid));
 check($result instanceof WP_Error && $result->code==='rum_wrong_origin',
       'cross-site POST rejected regardless of token');
-echo 'PASS 7 endpoint, integrity and minimum-data contract checks'.PHP_EOL;
+$cls::retention();
+$health=$GLOBALS['capturedOptionValue']??null;
+check(($GLOBALS['capturedOptionKey']??'')==='mad4b_css_rum_health_v1'
+  &&($health['health_status']??null)==='shadow_monitoring',
+  'site-owned scheduled RUM health persists without public CSS changes');
+check(($health['vitals']['optimized']['lcp']['p75_upper']??null)===2500
+  &&($health['vitals']['optimized']['lcp']['samples']??null)===25,
+  'p75 and 25 total LCP samples read correctly from histogram rows');
+check(($health['public_rollout_percent_changed']??null)===false
+  &&($health['performance_warning_is_not_automatic_certificate_authority']??null)===true,
+  'site RUM cannot automatically issue or promote unqualified CSS');
+echo 'PASS 10 endpoint, health and minimum-data contract checks'.PHP_EOL;
 ?>

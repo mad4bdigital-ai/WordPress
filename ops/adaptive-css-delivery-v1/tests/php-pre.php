@@ -16,5 +16,11 @@ class MAD4B_CCSS_WPCron_Dispatch_V1 {
      'site_host'=>'tours.dev.mad4b.com','environment'=>'staging',
      'tasks'=>['public'=>300]];}
 }
+if (!defined('ARRAY_A'))define('ARRAY_A','ARRAY_A');
+function update_option($key,$value,$autoload=false) {
+ $GLOBALS['capturedOptionKey']=$key;
+ $GLOBALS['capturedOptionValue']=$value;
+ return true;
+}
 function add_action(...$args){}
 ?>
