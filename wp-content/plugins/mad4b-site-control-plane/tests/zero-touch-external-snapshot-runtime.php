@@ -80,6 +80,9 @@ class MAD4B_SCP_External_Handshake_Evidence {
 	}
 }
 
+// The production Skill observer delegates exact legacy/scoped CIMD identity
+// checks to the first-party Local OAuth Server; load the same runtime here.
+require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-local-oauth-server.php';
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-skill-abilities.php';
 
 MAD4B_SCP_Skill_Abilities::register_abilities();
