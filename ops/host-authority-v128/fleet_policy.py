@@ -168,10 +168,20 @@ def plan_new_site_enrollment(binding: SiteBinding, effective: dict, *,
         policy_sha256=binding.policy_sha256,
         revision=revision, nonce=nonce, issued_epoch=issued_epoch,
         mode=effective["connection_mode"])
+    # Proposed standing Write is ON by default for new enrolled sites,
+    # but cannot issue authority: Original305 + independent 313 signatures
+    # are still required and mutations retain exact operation grants.
+    from standing_write import new_capability_proposal
+    standing = new_capability_proposal(binding,revision,nonce,issued_epoch)
     return {
         "contract": "mad4b.host-v3-enrollment-source-plan.v1",
         "site_scope": (binding.company, binding.environment),
         "unsigned_enrollment": unsigned,
+        "standing_write_mode_default": standing["write_mode"],
+        "unsigned_standing_write_capability": standing,
+        "standing_write_owner305_signature_required": True,
+        "standing_write_independent313_highwater_required": True,
+        "standing_write_exact_operation_grant_required": True,
         "release_qualification": effective["release_qualification"],
         "approved_owner_signature_required": True,
         "current_signed_revision_preflight_required": True,

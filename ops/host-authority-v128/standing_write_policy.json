@@ -1,0 +1,20 @@
+{
+  "contract": "mad4b.host-v130.standing-write-defaults.v1",
+  "default_connection_mode": "persistent",
+  "default_write_mode": "persistent",
+  "default_write_enabled_after_signed_enrollment": true,
+  "write_entitlement_expires_epoch": null,
+  "supported_actions": [
+    "site.code.atomic.install",
+    "site.code.atomic.rollback"
+  ],
+  "independent_highwater_required": true,
+  "exact_operation_grant_required": true,
+  "live_current_preimage_required": true,
+  "verified_private_rollback_required": true,
+  "postwrite_live_readback_required": true,
+  "production_requires_independent_authorization": true,
+  "site_override_can_disable": true,
+  "auto_activate_unsigned_grants": false,
+  "auto_publish_code": false
+}
