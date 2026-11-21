@@ -252,6 +252,47 @@ final class MAD4B_Accommodation_Weight_Policies_V1 {
         $grade=sanitize_key((string)($data['room_grade']??''));
         if(!in_array($occupancy,self::OCC,true)||!in_array($grade,self::GRADE,true))
             return new WP_Error('accommodation_weight_preview_dimensions_invalid');
+        // A supplier category is not interchangeable with a hotel grade.
+        // Use the original Unit source receipt or native classification;
+        // never infer a "Standard" room merely from a rate-sheet group.
+        $gradeEvidence=['status'=>'no_unit_selected','source_category'=>null,
+            'recognized_grade'=>null,'verified'=>false];
+        $unitCapacity=null;
+        if($unit>0){
+            $capacityRaw=get_post_meta($unit,'unit_max_occupancy',true);
+            if(is_numeric($capacityRaw)&&(int)$capacityRaw>0)
+                $unitCapacity=(int)$capacityRaw;
+            $headcount=match($occupancy){'single'=>1,'double'=>2,'triple'=>3};
+            if($unitCapacity!==null && $headcount>$unitCapacity)
+                return new WP_Error('accommodation_weight_occupancy_exceeds_native_unit_capacity');
+            $receipt=get_post_meta($unit,'_mad4b_room_source_receipt_v1',true);
+            $sourceCategory=is_array($receipt)&&
+                (int)($receipt['property_id']??0)===$property
+                    ?trim((string)($receipt['room_category']??'')):'';
+            $origin=$sourceCategory!==''?'original_source_receipt':'native_unit_fields';
+            if($sourceCategory===''){
+                $nativeRoom=get_post_meta($unit,'room_type',true);
+                if(is_string($nativeRoom)&&$nativeRoom!=='')
+                    $sourceCategory=$nativeRoom;
+                else{
+                    $terms=wp_get_object_terms($unit,'unit-type',['fields'=>'names']);
+                    if(!is_wp_error($terms)&&count($terms)===1)
+                        $sourceCategory=(string)$terms[0];
+                }
+            }
+            $found=[];
+            foreach(self::GRADE as $item)
+                if($sourceCategory!=='' &&
+                   preg_match('/\\b'.preg_quote($item,'/').'\\b/iu',$sourceCategory))
+                    $found[]=$item;
+            $gradeEvidence=['status'=>count($found)===1?'classified_from_'.$origin:
+                (count($found)>1?'ambiguous_source_room_class':'room_class_unclassified'),
+                'source_category'=>$sourceCategory?:null,
+                'recognized_grade'=>count($found)===1?$found[0]:null,
+                'verified'=>count($found)===1];
+            if(count($found)===1 && $found[0]!==$grade)
+                return new WP_Error('accommodation_weight_unit_room_grade_mismatch');
+        }
         $basis=sanitize_key((string)($data['price_unit']??''));
         if(!in_array($basis,['per_person','per_person_night','per_room_night','per_cabin_night','per_stay'],true))
             return new WP_Error('accommodation_weight_preview_basis_invalid');
@@ -264,6 +305,10 @@ final class MAD4B_Accommodation_Weight_Policies_V1 {
         $amount=(float)$raw;
         $occupancyPercent=(float)$effective['weights'][$occupancy.'_pct'];
         $roomPercent=(float)$effective['weights'][$grade.'_pct'];
+        // Unknown or composite source room types must not receive a
+        // positive/negative grade adjustment from a manually chosen label.
+        if($unit>0 && !$gradeEvidence['verified'] && $roomPercent!==0.0)
+            return new WP_Error('accommodation_weight_room_class_unverified_for_nonzero_adjustment');
         $occFactor=1+$occupancyPercent/100;
         $roomFactor=1+$roomPercent/100;
         $origin=sanitize_key((string)($data['origin']??'manual_preview'));
@@ -279,6 +324,8 @@ final class MAD4B_Accommodation_Weight_Policies_V1 {
             'reference_amount'=>number_format($amount,4,'.',''),
             'reference_basis'=>$basis,'currency'=>$currency,
             'occupancy'=>$occupancy,'room_grade'=>$grade,
+            'unit_capacity'=>$unitCapacity,
+            'room_grade_evidence'=>$gradeEvidence,
             'occupancy_weight_percent'=>$occupancyPercent,
             'room_weight_percent'=>$roomPercent,
             'occupancy_factor'=>number_format($occFactor,4,'.',''),
