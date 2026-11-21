@@ -1,0 +1,31 @@
+--- a/shared-product-core/pricing/rate-planner.php
++++ b/shared-product-core/pricing/rate-planner.php
+@@ -45,7 +45,11 @@
+    if(in_array(strtolower((string)get_post_meta($rid,'stop_sale',true)),['1','true','yes','on'],true)||(string)get_post_meta($rid,'avilabile_status',true)==='0')continue;
+    if(function_exists('shared_product_rate_locale_decision')&&!shared_product_rate_locale_decision((int)$rid,$tour)['allowed'])continue;
+    if($package&&self::canonical((int)get_post_meta($rid,'related_package_term_id',true),'package_levels')!==$package)continue;
+-   $a=(int)get_post_meta($rid,'tour_rate_start_date',true);$b=(int)get_post_meta($rid,'tour_rate_end_date',true);if(!$window['from']||!$a||!$b||gmdate('Y-m-d',$a)>$window['from']||gmdate('Y-m-d',$b)<$window['to'])continue;
++   // The native calendar helper owns explicit period and Season inheritance.
++   if(!$window['from']||!$window['to']||
++     !function_exists('shared_product_booking_v2_rate_covers_date')||
++     !shared_product_booking_v2_rate_covers_date($rid,$window['from'])||
++     !shared_product_booking_v2_rate_covers_date($rid,$window['to']))continue;
+    if(get_post_meta($rid,'unit_type',true)!=='per_person')continue;$money=[];foreach(['single','double','triple'] as $key){$v=get_post_meta($rid,$key.'_price',true);if(is_numeric($v)&&(float)$v>0)$money[$key]=(string)$v;}
+    $cc=(string)get_post_meta($rid,'base_currency',true);if(!isset(get_woocommerce_currencies()[$cc])||!$money)continue;$base=$money['double']??reset($money);$f=[];foreach($money as $key=>$v)$f[$key]=number_format((float)$v/(float)$base,4,'.','');
+    $rateChoices[]=['kind'=>'existing_rate_retail','id'=>(int)$rid,'amount'=>$base,'currency'=>$cc,'factors'=>$f,'known_prices'=>$money,'occupancy_cost_verified'=>false];
+@@ -96,8 +100,13 @@
+        $prepared=Shared_Product_Rate_Generation::prepare($input);if(is_wp_error($prepared)){self::issue($p,$tour,'native_prepare','Native draft preparation needs review: '.$prepared->get_error_code(),$key,'pricing','high',$key);$c['reasons'][]=$prepared->get_error_code();}else{if($source['kind']==='existing_rate_retail')foreach($source['known_prices'] as $tier=>$expected)if(abs((float)$prepared['meta'][$tier.'_price']-(float)$expected)>0.00001){self::issue($p,$tour,'occupancy_precision','Occupancy ratio precision would change a source price; preserving exact known prices in a proposal.',$key,'pricing','high',$key);$input=null;break;}$c['input']=$input;$c['state']=$input?'priced_draft':'proposal';$c['prepared_fingerprint']=$prepared['fingerprint'];$owned=get_posts(['post_type'=>'tour-rates','post_status'=>'any','fields'=>'ids','posts_per_page'=>1,'suppress_filters'=>true,'meta_key'=>'_mad4b_rate_plan_key','meta_value'=>$key]);$overlap=Shared_Product_Rate_Generation::overlap_review($prepared,(int)($owned[0]??0));if(is_wp_error($overlap)){self::issue($p,$tour,'overlap_unknown','Existing Rate overlap could not be fully checked.',$key,'pricing','high',$key);$c['reasons'][]='overlap_unknown';}else $c['overlap_ids']=array_map('intval',array_column($overlap['matches'],'rate_id'));}
+       }
+      }
+-     foreach($rates as $rid){$rid=(int)$rid;$rp=(int)get_post_meta($rid,'related_package_term_id',true);$rp=$rp?self::canonical($rp,'package_levels'):0;$a=(int)get_post_meta($rid,'tour_rate_start_date',true);$b=(int)get_post_meta($rid,'tour_rate_end_date',true);
+-      if($rp===$package&&$a&&$b&&$w['from']&&gmdate('Y-m-d',$a)<=$w['from']&&gmdate('Y-m-d',$b)>=$w['to']&&($o['locale_mode']==='inherit'||(int)get_post_meta($rid,'related_tour_id',true)===$tour))$c['existing_ids'][]=$rid;
++     foreach($rates as $rid){$rid=(int)$rid;$rp=(int)get_post_meta($rid,'related_package_term_id',true);$rp=$rp?self::canonical($rp,'package_levels'):0;
++      if($rp===$package&&$w['from']&&$w['to']&&
++         function_exists('shared_product_booking_v2_rate_covers_date')&&
++         shared_product_booking_v2_rate_covers_date($rid,$w['from'])&&
++         shared_product_booking_v2_rate_covers_date($rid,$w['to'])&&
++         ($o['locale_mode']==='inherit'||(int)get_post_meta($rid,'related_tour_id',true)===$tour))
++        $c['existing_ids'][]=$rid;
+      }
+      if($c['existing_ids'])$c['state']='existing_review';elseif($c['overlap_ids']){self::issue($p,$tour,'overlap','Existing Rates overlap this proposed period; no existing Rate will be overwritten.',$key,'pricing','high',$key);$c['reasons'][]='overlap';}
+      if(!in_array($c['assignment']['status'],['ready','not_requested'],true))self::issue($p,$tour,'stay_'.sanitize_key($c['assignment']['status']),'Accommodation needs review: '.$c['assignment']['status'],$scope,'operations','high',$key);

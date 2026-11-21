@@ -543,10 +543,11 @@ function renderPackageReadinessBoard(value){
   for(const [name,tier] of Object.entries(tour.levels)){
    const tr=document.createElement('tr');
    const hotelCount=tier.stages.reduce((n,x)=>n+x.eligible_properties,0);
+   const excluded=tier.stages.reduce((n,x)=>n+Number(x.season_excluded_properties||0),0);
    const draftUnitRefs=tier.stages.reduce((n,x)=>n+Number(x.unbookable_draft_unit_candidates||0),0);
    const winterQuotes=tier.stages.reduce((n,x)=>n+Number(x.sheet_winter_quote_values||0),0);
    for(const text of [name,String(tier.blocking_count),
-     String(hotelCount)+' stage-level alternatives',
+     String(hotelCount)+' stage-level alternatives'+(excluded?' · '+excluded+' season-excluded alternatives':''),
      String(winterQuotes)+' quoted values, dates unverified',
      String(draftUnitRefs)+' unbookable candidate references',
      tier.price_ready?'Cost proof ready':'Missing verified supplier receipts']){
@@ -557,7 +558,8 @@ function renderPackageReadinessBoard(value){
    cell.colSpan=6;
    const keys=tier.stages.map(s=>{
     return s.key+' ['+s.kind+', '+s.destination+']: '+
-      (s.issues.length?s.issues.join(', '):'component proof recorded');
+      (s.issues.length?s.issues.join(', '):'component proof recorded')+
+      (s.season_excluded_properties?' · season excluded #'+s.season_excluded_property_ids.join(', #'):'');
    });
    const details=document.createElement('details');
    const sum=document.createElement('summary');
@@ -574,6 +576,66 @@ function renderPackageReadinessBoard(value){
  footer.textContent='Draft room categories are editorial options only, not bookable inventory. The review window does not confirm inventory, dates, cabins, supplier contracts, guiding, tax, FX, payment, or checkout. Published Tour Rates were not changed.';
  host.append(footer);
 }
+
+
+let seasonalSnapshot=null;
+const selectedSeasonCandidate=()=>seasonalSnapshot?.options.find(
+ c=>[c.stage_key,c.tier_id,c.property_id].join(':')===q('season-candidate').value);
+function showSeasonMode(){
+ const c=selectedSeasonCandidate(),slug=q('season-term').value;
+ const rule=seasonalSnapshot?.rules.find(x=>c&&x.stage_key===c.stage_key&&
+  x.tier_id===c.tier_id&&x.property_id===c.property_id&&x.season===slug);
+ q('season-rule').value=rule?.mode||'inherit';
+ const host=q('season-result');
+ if(c&&slug){
+  host.textContent='Selected '+c.name+' in '+c.destination+' · '+c.nights+
+   ' overnight(s). Current policy '+(rule?.mode||'inherit')+
+   '. Assignment eligibility does not prove room availability or supplier cost.';
+ }
+}
+async function loadSeasonalTours(){
+ const res=await api('seasonal-tours');
+ select(q('season-tour'),res.tours.map(t=>[t.id,t.title+' · #'+t.id]),'Choose a package');
+}
+async function loadSeasonalAssignments(){
+ const id=Number(q('season-tour').value||0);
+ if(!id)throw Error('Select the package Tour first.');
+ const result=await api('seasonal-catalog',{tour_id:id});
+ seasonalSnapshot=result;
+ select(q('season-candidate'),result.options.map(c=>
+  [[c.stage_key,c.tier_id,c.property_id].join(':'),
+   c.stage_key+' · Level #'+c.tier_id+' · '+c.name]),'Select a stage and hotel');
+ select(q('season-term'),result.seasons.map(s=>[s.slug,s.name+
+  ' · native Season Term #'+s.term_id]),'Choose a season');
+ q('season-result').textContent='Loaded '+result.options.length+
+  ' qualified candidate assignments. Revision '+result.revision+
+  ', explicit exceptions '+result.rules.length+
+  '. No changes have been applied.';
+}
+async function saveSeasonalAssignment(){
+ if(!seasonalSnapshot)throw Error('Load the saved seasonal assignments first.');
+ const candidate=selectedSeasonCandidate(),season=q('season-term').value;
+ if(!candidate||!season)throw Error('Choose a specific stage, hotel and season.');
+ const mode=q('season-rule').value;
+ const prior=seasonalSnapshot.rules.filter(x=>!(
+  x.stage_key===candidate.stage_key&&x.tier_id===candidate.tier_id&&
+  x.property_id===candidate.property_id&&x.season===season));
+ if(mode!=='inherit')prior.push({
+  stage_key:candidate.stage_key,tier_id:candidate.tier_id,
+  property_id:candidate.property_id,season,mode
+ });
+ const result=await api('seasonal-save',{tour_id:seasonalSnapshot.tour_id,
+  revision:seasonalSnapshot.revision,rules:JSON.stringify(prior)});
+ await loadSeasonalAssignments();
+ const current=seasonalSnapshot.options.find(c=>c.stage_key===candidate.stage_key&&
+  c.tier_id===candidate.tier_id&&c.property_id===candidate.property_id);
+ if(current)q('season-candidate').value=[current.stage_key,current.tier_id,current.property_id].join(':');
+ q('season-term').value=season;
+ showSeasonMode();
+ q('season-result').textContent='Revision '+result.revision+
+  ' · '+result.status+'. Seasonal assignment saved; no price or inventory was modified.';
+}
+
 
 function bind(){
  mount.querySelectorAll('[data-tab]').forEach(button=>{
@@ -739,6 +801,28 @@ function bind(){
   }catch(error){host.textContent='Quotation review blocked: '+error.message;}
   finally{button.disabled=false;}
  });
+ q('season-load').addEventListener('click',async()=>{
+  const b=q('season-load');b.disabled=true;
+  q('season-result').textContent='Loading native stage candidates…';
+  try{await loadSeasonalAssignments();}
+  catch(e){q('season-result').textContent='Cannot load rules: '+e.message;}
+  finally{b.disabled=false;}
+ });
+ q('season-save').addEventListener('click',async()=>{
+  const b=q('season-save');b.disabled=true;
+  try{await saveSeasonalAssignment();}
+  catch(e){q('season-result').textContent='No save: '+e.message+
+   '. Reload before retrying a stale revision.';}
+  finally{b.disabled=false;}
+ });
+ q('season-candidate').addEventListener('change',showSeasonMode);
+ q('season-term').addEventListener('change',showSeasonMode);
+ q('season-tour').addEventListener('change',()=>{
+  seasonalSnapshot=null;
+  select(q('season-candidate'),[],'Load candidate hotels');
+  select(q('season-term'),[],'Load native Seasons');
+  q('season-result').textContent='Choose Load to view saved rules for this Tour.';
+ });
  q('readiness-run').addEventListener('click',async()=>{
   const button=q('readiness-run'),host=q('readiness-result');
   button.disabled=true;host.textContent='Reading current package stages and supplier proof…';
@@ -773,6 +857,7 @@ async function load(){
  q('status').textContent='Loading existing company draft settings…';
  try{
   const result=await api('catalog');hydrate(result);
+  try{await loadSeasonalTours();}catch(e){q('season-result').textContent='Seasonal list unavailable: '+e.message;}
   q('status').textContent='EGP · Self Provider · Verified PDF cost source · simulated route factors only.';
  }catch(error){
   q('status').textContent='Could not load cost model: '+error.message;

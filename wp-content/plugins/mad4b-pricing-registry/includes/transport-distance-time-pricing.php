@@ -617,6 +617,25 @@ final class MAD4B_Transport_Distance_Time_V1 {
        sanitize_key((string)($_POST['tab']??'hotels')),
        sanitize_key((string)($_POST['period']??'winter_2026_27'))):
      new WP_Error('quote_sheet_module_missing');
+  }elseif($mode==='seasonal-tours'){
+   $result=class_exists('MAD4B_Package_Seasonal_Assignment_V1',false)?
+    MAD4B_Package_Seasonal_Assignment_V1::tours():
+    new WP_Error('seasonal_assignment_provider_missing');
+  }elseif($mode==='seasonal-catalog'){
+   $result=class_exists('MAD4B_Package_Seasonal_Assignment_V1',false)?
+    MAD4B_Package_Seasonal_Assignment_V1::catalog(absint($_POST['tour_id']??0)):
+    new WP_Error('seasonal_assignment_provider_missing');
+  }elseif($mode==='seasonal-save'){
+   $json=is_string($_POST['rules']??null)?wp_unslash($_POST['rules']):'';
+   if(strlen($json)>26000)wp_send_json_error(['code'=>'seasonal_rules_too_long'],400);
+   $rules=json_decode($json,true);
+   $rev=filter_var($_POST['revision']??null,FILTER_VALIDATE_INT,
+    ['options'=>['min_range'=>0]]);
+   $result=is_array($rules)&&$rev!==false&&$rev!==null&&
+    class_exists('MAD4B_Package_Seasonal_Assignment_V1',false)?
+    MAD4B_Package_Seasonal_Assignment_V1::save(
+     absint($_POST['tour_id']??0),$rules,(int)$rev):
+    new WP_Error('seasonal_assignment_save_invalid');
   }elseif($mode==='package-readiness'){
    $result=class_exists('MAD4B_Package_Component_Readiness_V1')?
     MAD4B_Package_Component_Readiness_V1::report(

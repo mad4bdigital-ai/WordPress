@@ -1,0 +1,67 @@
+{
+  "contract": "mad4b.seasonal-assignment-live-patchset.v1",
+  "date_utc": "2026-11-21T13:09:49.582939+00:00",
+  "sites": {
+    "Tours.dev": "plugin + legacy commerce pricing",
+    "Wayfatours": "plugin + shared MU pricing"
+  },
+  "full_git_runtime_parity": false,
+  "price_currency_or_inventory_mutations": false,
+  "paths": {
+    "source/guard": {
+      "before_sha256": "75c540f725b0adc2c1c84a2131b1b5111bf9bb8dc75aba78d37406ee2dddec0c",
+      "after_sha256": "082d9ee15aaac48988689f2cb52a2547934d6347fb34ec802ce63ce189b1b76c"
+    },
+    "source/rate-date": {
+      "before_sha256": "21428ebc5f7cf83afc00c00c55ce942b7656c9ec8964a98603730a79f4fa643f",
+      "after_sha256": "20d23db2eb890ef950b136b64dd1420395419c36ba7eafbc056625708656c72f"
+    },
+    "source/price-resolver": {
+      "before_sha256": "304f111a87681989649d50af66b0da5ce7d2d2b73fdc1e409b02cc708b93aea9",
+      "after_sha256": "8d13e248f3660e10edfd052c9d84df3bc9813f19989ca8cc8ca63c09c31f6583"
+    },
+    "source/audience-resolver": {
+      "before_sha256": "d9d8346bd455ae7321a7f77223075b1b0eadbcbb48bd0bbf666da6ff19dd9a7f",
+      "after_sha256": "2340afcd5d82f41c36650ab27bdb583bfa81ed780d6bcae84761f4aa5bcbdc23"
+    },
+    "source/booking-addons": {
+      "before_sha256": "41240a14778ea7deeaa5e0b1e15c6c134c519ae789dfffe86a82b141a8897d0e",
+      "after_sha256": "241fd6b5e416c77574beca7f75604d97746dca04143215c2fcc93f1fbc6f1d57"
+    },
+    "source/rate-planner": {
+      "before_sha256": "f21200c5d055cf691bc0f7f7073086f42a8e21d979082b444501d327cb46f30e",
+      "after_sha256": "406cbfb8b588b98713766dcc0cd21a00e70f37dbe955d703928881c76aff574d"
+    },
+    "wayfa/guard": {
+      "before_sha256": "75c540f725b0adc2c1c84a2131b1b5111bf9bb8dc75aba78d37406ee2dddec0c",
+      "after_sha256": "082d9ee15aaac48988689f2cb52a2547934d6347fb34ec802ce63ce189b1b76c"
+    },
+    "wayfa/rate-date": {
+      "before_sha256": "21428ebc5f7cf83afc00c00c55ce942b7656c9ec8964a98603730a79f4fa643f",
+      "after_sha256": "20d23db2eb890ef950b136b64dd1420395419c36ba7eafbc056625708656c72f"
+    },
+    "wayfa/price-resolver": {
+      "before_sha256": "304f111a87681989649d50af66b0da5ce7d2d2b73fdc1e409b02cc708b93aea9",
+      "after_sha256": "8d13e248f3660e10edfd052c9d84df3bc9813f19989ca8cc8ca63c09c31f6583"
+    },
+    "wayfa/audience-resolver": {
+      "before_sha256": "d9d8346bd455ae7321a7f77223075b1b0eadbcbb48bd0bbf666da6ff19dd9a7f",
+      "after_sha256": "2340afcd5d82f41c36650ab27bdb583bfa81ed780d6bcae84761f4aa5bcbdc23"
+    },
+    "wayfa/booking-addons": {
+      "before_sha256": "41240a14778ea7deeaa5e0b1e15c6c134c519ae789dfffe86a82b141a8897d0e",
+      "after_sha256": "241fd6b5e416c77574beca7f75604d97746dca04143215c2fcc93f1fbc6f1d57"
+    },
+    "wayfa/rate-planner": {
+      "before_sha256": "f21200c5d055cf691bc0f7f7073086f42a8e21d979082b444501d327cb46f30e",
+      "after_sha256": "406cbfb8b588b98713766dcc0cd21a00e70f37dbe955d703928881c76aff574d"
+    }
+  },
+  "tests": {
+    "controlled_staging": "24/24",
+    "admin_rest": "source & Wayfa 200, anonymous 401",
+    "admin_ajax": "source & Wayfa success",
+    "published_rate_sample_source": "35 baseline parity",
+    "read_only_regression": "13/13 each site"
+  }
+}

@@ -114,6 +114,23 @@
    </div>
    <button type="button" class="button" data-id="readiness-run">Review package readiness</button>
    <div data-id="readiness-result" class="mad4b-kinetic-results" role="status" aria-live="polite">Select a date window and run the review. No changes will be saved.</div>
+   <h4>Seasonal hotel assignment · stage-level exceptions</h4>
+   <p class="mad4b-kinetic-muted">The base Property + Package Level selection stays intact. Set Inherit to use it unchanged, Eligible to explicitly keep a choice, or Excluded to remove the candidate for the selected Season. These are assignment rules, not room availability. Seasons inherit their calendar from live Term Meta.</p>
+   <div class="mad4b-kinetic-grid">
+    <label>Package Tour<select data-id="season-tour"><option value="">Load package tours…</option></select></label>
+    <label>Stage / level / candidate hotel<select data-id="season-candidate"><option value="">Choose a stage</option></select></label>
+    <label>Season<select data-id="season-term"><option value="">Choose a season</option></select></label>
+    <label>Assignment rule<select data-id="season-rule">
+     <option value="inherit">Inherit base assignment (default)</option>
+     <option value="eligible">Eligible for this Season · not guaranteed room</option>
+     <option value="excluded">Exclude from this Season</option>
+    </select></label>
+   </div>
+   <div class="mad4b-kinetic-inline">
+    <button type="button" class="button" data-id="season-load">Load saved seasonal rules</button>
+    <button type="button" class="button button-primary" data-id="season-save">Save seasonal assignment</button>
+   </div>
+   <div class="mad4b-kinetic-results" data-id="season-result" role="status" aria-live="polite">Select a Package Tour and load its candidate hotels.</div>
    <h4>Supplier quote sheet · reference only</h4>
    <p class="mad4b-kinetic-muted">Read the connected quotation sheet beside the saved Company Properties. Values keep their original occupancy, meal plan, currency, row and seasonal label. Neither Winter nor Peak confirms a valid travel date or supplier contract.</p>
    <div class="mad4b-kinetic-grid">

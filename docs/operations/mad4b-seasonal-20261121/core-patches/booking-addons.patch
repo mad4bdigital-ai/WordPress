@@ -1,0 +1,16 @@
+--- a/shared-product-core/pricing/booking-addons.php
++++ b/shared-product-core/pricing/booking-addons.php
+@@ -41,8 +41,11 @@
+         if($date!==null && (!is_string($date)||!preg_match('/^\d{4}-\d{2}-\d{2}$/D',$date)||!checkdate((int)substr($date,5,2),(int)substr($date,8,2),(int)substr($date,0,4))))return new WP_Error('invalid_addon_date');
+         if(!empty($item['require_date'])&&$date===null)return new WP_Error('addon_date_required');
+         if($date!==null){
+-            $timestamp=strtotime($date.' 12:00:00 UTC');$start=(int)get_post_meta($parent_rate_id,'tour_rate_start_date',true);$end=(int)get_post_meta($parent_rate_id,'tour_rate_end_date',true);
+-            if(!$timestamp||($start&&$timestamp<$start)||($end&&$timestamp>$end))return new WP_Error('addon_date_outside_parent_rate');
++            // Extras inherit the parent Rate's effective, verified calendar.
++            // Never treat missing raw dates as an unrestricted booking period.
++            if(!function_exists('shared_product_booking_v2_rate_covers_date')||
++               !shared_product_booking_v2_rate_covers_date($parent_rate_id,$date))
++              return new WP_Error('addon_date_outside_parent_effective_rate');
+         }
+         $total_source=(float)$amount*$quantity;
+         $converted=$total_source===0?0:pricing_currency_convert($total_source,$source,$target);

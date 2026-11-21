@@ -107,6 +107,8 @@ final class MAD4B_Package_Component_Readiness_V1 {
       'unbookable_draft_unit_candidates'=>$unitCandidateDraft,
       'published_but_unavailable_unit_candidates'=>$unitCandidatePublished,
       'nights'=>(int)$s['nights'],'eligible_properties'=>count((array)($s['eligible_property_ids']??[])),
+      'season_excluded_properties'=>count((array)($s['season_rejected_property_ids']??[])),
+      'season_excluded_property_ids'=>array_values((array)($s['season_rejected_property_ids']??[])),
       'selected_property_id'=>(int)($s['selected_property_id']??0),
       'selected_units_count'=>count((array)($s['selected_unit_ids']??[])),
       'issues'=>array_values((array)($s['blocked']??[]))];

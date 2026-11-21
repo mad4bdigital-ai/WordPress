@@ -99,3 +99,4 @@ require_once __DIR__ . '/includes/transport-cost-bridge.php';
 require_once __DIR__ . '/includes/transport-package-workflow.php';
 require_once __DIR__ . '/includes/supplier-sheet-reference.php';
 require_once __DIR__ . '/includes/package-component-readiness.php';
+require_once __DIR__ . '/includes/package-seasonal-assignment.php';
