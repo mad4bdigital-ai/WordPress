@@ -76,9 +76,13 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
         $out=[];
         foreach((array)$wpdb->get_results($sql,ARRAY_A) as $r){
             $pid=(int)$r['property_id'];$rate=(int)$r['rate_id'];
-            $out[$pid]['published'] = ($out[$pid]['published']??0)+1;
+            if(!get_post_meta($rate,'_booking_experience_qa_pricing_fixture',true) &&
+                !get_post_meta($rate,'_qa_disallow_public_checkout',true))
+                $out[$pid]['published'] = ($out[$pid]['published']??0)+1;
             $amount=get_post_meta($rate,'base_amount',true);
-            if(is_numeric($amount)&&(float)$amount>0 &&
+            if(!get_post_meta($rate,'_booking_experience_qa_pricing_fixture',true) &&
+                !get_post_meta($rate,'_qa_disallow_public_checkout',true) &&
+                is_numeric($amount)&&(float)$amount>0 &&
                 (string)get_post_meta($rate,'mad4b_rate_price_kind_v1',true)==='cost')
                 $out[$pid]['cost_entries']=($out[$pid]['cost_entries']??0)+1;
         }
@@ -226,9 +230,9 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
                         'id'=>$id,'title'=>wp_strip_all_tags(html_entity_decode(get_the_title($id),ENT_QUOTES,'UTF-8')),
                         'status'=>$status,'available'=>$availability,'capacity'=>$capacityOk?(int)$capacity:null,
                         'source_relation_match'=>$propertyMatch,
-                        // Direct retail starting prices are NOT package supplier cost.
+                        // A cost-kind direct amount is a recorded field, NOT an approved supplier receipt.
                         'indicative_direct_price_entered'=>$direct,
-                        'verified_unit_cost_source'=>$cost,
+                        'declared_unit_cost_field'=>$cost,
                         'edit_url'=>self::editLink($id)
                     ];
                 }
@@ -242,7 +246,7 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
                     'unit_capacity_known'=>$capNum,
                     'unit_available'=>$availableNum,
                     'unit_direct_prices_entered'=>$directNum,
-                    'unit_cost_sources'=>$costNum,
+                    'unit_cost_fields'=>$costNum,
                     'published_property_rate_count'=>(int)($rates['published']??0),
                     'published_property_cost_rate_count'=>(int)($rates['cost_entries']??0),
                     'approved_unit_refs_count'=>count($candidate['review_approved_unit_ids']),
