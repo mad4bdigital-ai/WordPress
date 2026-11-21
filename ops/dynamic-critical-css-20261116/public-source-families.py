@@ -159,6 +159,66 @@ def split_observed_variants(site,catalog,state,ledger,published,rows,variant_ind
             known[fkey]=route_facts
     return known,original
 
+def verifier_only_recheck_candidates(site,catalog,state,ledger,root,rows,now=None):
+    """One bounded, exact-context retry lane for obsolete post-release readbacks.
+
+    This returns ONLY WordPress catalog route keys. It does not validate or
+    restore a reverted certificate, change a ledger, or bypass post-release QA.
+    Failed REAL performance checks such as the Hurghada LCP regression are
+    never admitted. A previous retry is consumed once the ledger is updated.
+    """
+    if site!='wayfa' or catalog.get('host')!=ROOTS['wayfa'][1]:return []
+    now=int(time.time()) if now is None else int(now)
+    folder=Path(root)/'mad4b-public-critical-css-v1/certs-v2'
+    if (folder.is_symlink() or not folder.is_dir()
+        or folder.stat().st_mode&0o022):return []
+    eligible={r['path']:r for r in rows if r.get('type')=='destinations'}
+    result=[]
+    for certfile in sorted(folder.iterdir()):
+        if (certfile.is_symlink() or not certfile.is_file()
+            or not v2.FILE.fullmatch(certfile.name)
+            or certfile.stat().st_size>180000):continue
+        try:cert=json.loads(certfile.read_text())
+        except (ValueError,TypeError,UnicodeError,OSError):continue
+        if (not isinstance(cert,dict) or cert.get('contract')!=v2.CONTRACT
+            or cert.get('status')!='reverted_post_release_qa'
+            or cert.get('host')!=catalog['host']
+            or cert.get('type')!='destinations'
+            or cert.get('market_country')!='base'
+            or cert.get('currency')!=state.get('base_currency')
+            or cert.get('css_epoch')!=state.get('css_epoch')
+            or cert.get('runtime_sha')!=state.get('runtime_sha')):continue
+        route=eligible.get(cert.get('path'))
+        if (not route or route.get('id')!=cert.get('object_id')
+            or route.get('language')!=cert.get('language')):continue
+        key=hashlib.sha256((catalog['host']+'|'+route['language']+'|'+
+            route['path']+'|base|'+cert['currency']).encode()).hexdigest()
+        if certfile.name!=key+'.json':continue
+        evidence=cert.get('evidence')
+        if (not isinstance(evidence,dict)
+            or evidence.get('decision')!='failed_public_post_release_readback'
+            or type(evidence.get('verified_at')) is not int):continue
+        rec=ledger.get('routes',{}).get(route['route_key'])
+        if (not isinstance(rec,dict) or rec.get('status')!='hold'
+            or type(rec.get('attempted_at')) is not int
+            or rec['attempted_at']!=evidence['verified_at']
+            or type(rec.get('retry_after')) is not int
+            or now<rec['retry_after']
+            or type(rec.get('failures')) is not int
+            or not 1<=rec['failures']<=2):continue
+        if rec.get('source_key')!=queue.source_key(
+                catalog,route,state,bool(rec.get('depends_on_listings'))):continue
+        # Native version/revision must remain exact. The original publisher
+        # will independently recapture full HTML, source CSS and WPML context.
+        deps=cert.get('dependencies')
+        if (not isinstance(deps,dict)
+            or deps.get('route_generation')!=route.get('revision')
+            or deps.get('global_generation')!=catalog.get('global_generation')
+            or deps.get('listing_generation')!=catalog.get('listing_generation')):continue
+        result.append((rec['attempted_at'],route['path'],route['route_key']))
+    return [x[2] for x in sorted(result)]
+
+
 def build(site,catalog,state,ledger,root=None,variant_index=None):
     if site not in ROOTS or catalog.get('host')!=ROOTS[site][1] or ledger.get('site')!=site:
         raise ValueError('source-company-scope-mismatch')
@@ -173,6 +233,8 @@ def build(site,catalog,state,ledger,root=None,variant_index=None):
     catalogrows=[r for r in queue.safe_catalog(catalog,site)
                  if not queue.independently_certified_home(r)]
     published=load_certs(root)
+    verifier_retries=verifier_only_recheck_candidates(
+        site,catalog,state,ledger,root,catalogrows)
     by_route=collections.defaultdict(list)
     for (lang,path,market,currency),cert in published.items():
         by_route[(lang,path)].append((market,currency,cert))
@@ -388,7 +450,10 @@ def build(site,catalog,state,ledger,root=None,variant_index=None):
       'country_market_scope':'dynamic_not_enumerated' if state.get('wcml_multi_currency') else 'base',
       'routes_discovered':len(catalogrows),'routes_with_exact_current_certificate':qualified_routes,
       'routes_on_native_or_unproven_css':len(catalogrows)-qualified_routes,
-      'source_families':rows,'next_canary_route_key':wants[0]['next_canary'] if wants else None,
+      'source_families':rows,
+      'verifier_only_recheck_candidates':len(verifier_retries),
+      'next_verifier_only_recheck_route_key':verifier_retries[0] if verifier_retries else None,
+      'next_canary_route_key':wants[0]['next_canary'] if wants else None,
       'next_individual_css_route_key':css_work[0]['next_individual_css'] if css_work else None,
       'qualified_families_with_css_routes_pending':len(css_work),
       'qualified_families_individual_routes_unproven':sum(
@@ -420,15 +485,23 @@ def plan_next_css_issuance(report,sequence,verified_drift_route_key=None):
         return verified_drift_route_key
     family=report.get('next_canary_route_key')
     individual=report.get('next_individual_css_route_key')
+    retry=report.get('next_verifier_only_recheck_route_key')
     if (family is not None and (not isinstance(family,str)
         or not re.fullmatch('[a-f0-9]{64}',family))):
         raise ValueError('untrusted-css-family-canary')
     if (individual is not None and (not isinstance(individual,str)
         or not re.fullmatch('[a-f0-9]{64}',individual))):
         raise ValueError('untrusted-css-individual-route')
+    if (retry is not None and (not isinstance(retry,str)
+        or not re.fullmatch('[a-f0-9]{64}',retry))):
+        raise ValueError('untrusted-verifier-only-retry-key')
+    # A single original retry slot per four worker opportunities. Do not
+    # displace the existing 1/4 exact-route CSS coverage lane.
+    if retry and (not family and not individual or sequence%4==0):
+        return retry
     if individual and (not family or sequence%4==3):
         return individual
-    return family or individual
+    return family or individual or retry
 
 
 def main():

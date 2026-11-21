@@ -28,4 +28,18 @@ for candidate in [{**report,'next_canary_route_key':'../other'},
  else:
   if not candidate:ok(m.plan_next_css_issuance(candidate,0) is None,'empty report native fallback')
   else:raise AssertionError('bad input accepted')
+# A stale readback retry is a nomination, not a certificate. Never replace
+# the original 1/4 independent CSS lane or an authenticated source drift.
+retry='e'*64
+retry_report={**report,'next_verifier_only_recheck_route_key':retry}
+for i in range(12):
+ expected=retry if i%4==0 else r if i%4==3 else c
+ ok(m.plan_next_css_issuance(retry_report,i)==expected,'bounded old-verifier retry lane '+str(i))
+ok(m.plan_next_css_issuance(retry_report,4,d)==d,
+   'exact original CSS drift outranks obsolete readback recheck')
+ok(m.plan_next_css_issuance({'next_verifier_only_recheck_route_key':retry},7)==retry,
+   'sole due verifier retry progresses through unchanged original source admission')
+try:m.plan_next_css_issuance({**report,'next_verifier_only_recheck_route_key':'bad'},0)
+except ValueError:checked+=1;print('PASS bad verifier retry key denied')
+else:raise AssertionError('untrusted verifier retry accepted')
 print('PASS',checked,'source-fairness and independent CSS route planner tests')
