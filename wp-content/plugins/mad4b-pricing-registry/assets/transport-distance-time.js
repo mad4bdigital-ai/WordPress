@@ -22,6 +22,8 @@ const profileFields=[
 ];
 let policy=null,saved=null,calibration=null,revision=0,terms=[];
 let nativeSources=[],nativeRates=[];
+let eligibleResults=null;
+let packageLines=[];
 const display=s=>String(s).replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
 const num=v=>Number(v).toLocaleString('en-US',{maximumFractionDigits:2});
 const clone=o=>JSON.parse(JSON.stringify(o));
@@ -239,12 +241,21 @@ function hydrate(d){
  select(q('native-source'),nativeSources.map(x=>[x.id,x.source_key+' · '+x.title]),'Company model only');
  select(q('native-rate'),nativeRates.map(x=>[x.id,x.title+' · '+display(x.vehicle)]),'No native Transport Rate');
  q('native-tour-rate').value='';
+ packageLines=[];renderPackageLines();
+ q('package-result').textContent='';
  q('native-rate').disabled=nativeRates.length===0;
  select(q('profile-vehicle'),vehicles.map(k=>[k,display(k)]));
  select(q('quote-vehicle'),vehicles.map(k=>[k,display(k)]));
  select(q('quote-service'),services.map(k=>[k,display(k)]));
  select(q('service-key'),services.map(k=>[k,display(k)]));
  select(q('quote-road'),roads.map(k=>[k,display(k)]));
+ const originTerms=terms.filter(t=>['cairo','aswan-gov','luxor'].includes(t.slug));
+ select(q('eligible-from'),originTerms.map(t=>[t.id,t.name]),'Choose PDF origin city');
+ select(q('eligible-to'),terms.map(t=>[t.id,t.name]),'Choose destination');
+ select(q('eligible-lang'),(d.languages||['en']).map(lang=>[lang,lang.toUpperCase()]),'Choose language');
+ if((d.languages||[]).includes('en'))q('eligible-lang').value='en';
+ eligibleResults=null;
+ q('eligibility-result').textContent='Select origin, destination and language to evaluate routes.';
  const destinations=terms.map(t=>[t.id,t.name+
   (t.has_coordinates?'':' · location needs confirmation')]);
  select(q('from'),destinations,'Choose origin');
@@ -256,6 +267,154 @@ function hydrate(d){
  q('service-key').value='transfer';
  showProfile();showFactors();drawCalibration();updateNativeSelection();dirty();
 }
+
+function showEligibilityResult(result){
+ const host=q('eligibility-result');host.replaceChildren();
+ const heading=document.createElement('p');heading.className='mad4b-kinetic-muted';
+ heading.textContent='Draft candidates: '+result.draft_eligible.length+
+  ' · Needs route/data review: '+result.needs_route_review.length+
+  ' · Excluded operations: '+result.excluded_count+
+  ' · None is approved for checkout.';host.append(heading);
+ for(const [title,items,selectable] of [
+   ['Draft candidates (not yet commercially approved)',result.draft_eligible,true],
+   ['Needs route or source review',result.needs_route_review,false]
+ ]){
+  const section=document.createElement('section');
+  const h=document.createElement('h4');h.textContent=title;section.append(h);
+  if(!items.length){const empty=document.createElement('p');
+   empty.className='mad4b-kinetic-muted';empty.textContent='No candidates';section.append(empty);}
+  for(const item of items){
+   const card=document.createElement('div');card.className='mad4b-kinetic-rule';
+   const body=document.createElement('div');
+   const strong=document.createElement('strong');strong.textContent=item.title+' · '+item.source_key;
+   const sub=document.createElement('p');sub.className='mad4b-kinetic-muted';
+   sub.textContent='Vehicle PDF reference costs (EGP): '+
+     Object.entries(item.available_vehicle_pdf_costs_egp||{}).map(
+       ([key,value])=>display(key)+' '+num(value)).join(' · ');
+   const reasons=document.createElement('p');reasons.className='mad4b-kinetic-muted';
+   reasons.textContent='Open checks: '+item.blocking_reasons.join(', ');
+   body.append(strong,sub,reasons);card.append(body);
+   if(selectable){
+    const use=document.createElement('button');use.className='button';
+    use.type='button';use.textContent='Use in route calculator';
+    use.addEventListener('click',()=>{
+     if(!nativeSources.some(s=>s.id===item.post_id)){
+      q('status').textContent='This source is not in the loaded simulator catalog; open its Transportation post for review.';
+      return;
+     }
+     q('native-source').value=String(item.post_id);
+     q('native-rate').value='';
+     const vehicles=Object.keys(item.available_vehicle_pdf_costs_egp||{});
+     const calibrated=vehicles.find(v=>Number(policy?.profiles?.[v]?.per_km)>0||
+       Number(policy?.profiles?.[v]?.per_drive_min)>0);
+     if(calibrated)q('quote-vehicle').value=calibrated;
+     q('from').value=String(q('eligible-from').value);
+     q('to').value=String(q('eligible-to').value);
+     updateNativeSelection();
+     mount.querySelector('[data-tab="route"]')?.click();
+     q('status').textContent='Selected draft source · complete actual km/min and validate modeled cost.';
+    });
+    card.append(use);
+   }
+   section.append(card);
+  }
+  host.append(section);
+ }
+}
+function currentPackageLine(){
+ const source=Number(q('native-source').value||0);
+ if(!source)throw Error('Select a verified PDF Transportation source first.');
+ const rate=Number(q('native-rate').value||0);
+ const coords=['from-lat','from-lon','to-lat','to-lon'].map(k=>q(k).value.trim());
+ const present=coords.filter(Boolean).length;
+ if(present!==0&&present!==4)throw Error('Supply all four coordinate values together.');
+ const qty=q('package-quantity').value.trim();
+ if(!/^[1-9][0-9]*$/.test(qty)||Number(qty)>20)
+  throw Error('Vehicle quantity must be a whole number from 1 to 20.');
+ const stage=q('package-stage').value.trim().toLowerCase();
+ if(stage&&!/^[a-z0-9_-]{2,60}$/.test(stage))
+  throw Error('Stage key: 2–60 letters, numbers, dash or underscore.');
+ const line={
+  transportation_id:source,transport_rate_id:rate,
+  vehicle:q('quote-vehicle').value,service:q('quote-service').value,
+  road:q('quote-road').value,
+  from_term_id:Number(q('from').value||0),to_term_id:Number(q('to').value||0),
+  from_label:q('custom-from').value.trim(),to_label:q('custom-to').value.trim(),
+  km:q('km').value,drive_min:q('drive').value,
+  wait_min:q('wait').value,overnight_units:q('overnight-units').value,
+  tolls:q('tolls').value,parking:q('parking').value,
+  extras:q('extras').value,night:q('night').checked,peak:q('peak').checked,
+  quantity:Number(qty)
+ };
+ if(stage)line.stage_key=stage;
+ if(present===4){
+  line.from_lat_lon=[Number(coords[0]),Number(coords[1])];
+  line.to_lat_lon=[Number(coords[2]),Number(coords[3])];
+ }
+ return line;
+}
+function renderPackageLines(){
+ const host=q('package-list');host.replaceChildren();
+ if(!packageLines.length){host.textContent='No selected components yet.';return;}
+ const table=document.createElement('table');table.className='widefat striped';
+ const head=document.createElement('tr');
+ for(const name of ['Selected source / stage','Vehicle','Qty','Remove']){
+  const th=document.createElement('th');th.textContent=name;head.append(th);
+ }
+ table.append(head);
+ packageLines.forEach((line,i)=>{
+  const tr=document.createElement('tr');
+  const source=nativeSources.find(x=>x.id===line.transportation_id);
+  for(const value of [(line.stage_key||('Stage '+(i+1)))+' · '+(source?.source_key||('#'+line.transportation_id)),display(line.vehicle),line.quantity]){
+   const td=document.createElement('td');td.textContent=String(value);tr.append(td);
+  }
+  const td=document.createElement('td'),remove=document.createElement('button');
+  remove.type='button';remove.className='button';remove.textContent='Remove';
+  remove.setAttribute('aria-label','Remove selected component '+(i+1));
+  remove.addEventListener('click',()=>{packageLines.splice(i,1);renderPackageLines();q('package-result').textContent='';});
+  td.append(remove);tr.append(td);table.append(tr);
+ });
+ host.append(table);
+}
+function drawPackageResult(value){
+ const host=q('package-result');host.replaceChildren();
+ const headline=document.createElement('h4');
+ headline.textContent='PDF 2026 SELF company-cost reference: '+num(value.total_pdf_reference_company_cost_egp)+' EGP';
+ host.append(headline);
+ const note=document.createElement('p');note.className='mad4b-kinetic-warning';
+ note.textContent='Indicative scenario: '+num(value.total_indicative_scenario_egp)+
+  ' EGP · Modeled distance/time estimate '+num(value.total_modeled_operating_cost_egp)+
+  ' EGP · Variance '+num(value.total_pdf_reference_less_modeled_variance_egp)+
+  ' EGP · Reference not date/supplier availability confirmed · NOT a published selling price.';
+ host.append(note);
+ const meta=document.createElement('p');meta.className='mad4b-kinetic-muted';
+ meta.textContent=value.package_relation_verified?
+  'Verified relationship with saved Tour Rate #'+value.tour_rate_id+
+  ' · Cost profile inheritance applied.' :
+  'Planning only: no saved Tour Rate assignment is claimed. Save native Transportation links in JetEngine, then use verified mode.';
+ host.append(meta);
+ const table=document.createElement('table');table.className='widefat striped';
+ const head=document.createElement('tr');
+ for(const name of ['Stage','Source / vehicle','PDF SELF cost EGP','Modeled EGP','Proposed EGP','Markup source']){
+  const th=document.createElement('th');th.textContent=name;head.append(th);
+ }
+ table.append(head);
+ for(const line of value.lines){
+  const tr=document.createElement('tr');
+  for(const cell of [line.stage_key,line.source_key+' · '+display(line.vehicle)+' · '+line.quantity_vehicles+' vehicle(s)',
+    num(line.pdf_reference_line_cost_egp),num(line.modeled_line_cost_egp),num(line.indicative_line_scenario_egp),
+    line.markup_pct+'% · '+line.markup_rule]){
+    const td=document.createElement('td');td.textContent=String(cell);tr.append(td);
+  }
+  table.append(tr);
+ }
+ host.append(table);
+ const footer=document.createElement('p');footer.className='mad4b-kinetic-muted';
+ footer.textContent='Receipt (read-only): '+value.receipt_sha256+
+  ' · Optional Transport Rate, never auto-created · Alternatives explicitly selected · No database write.';
+ host.append(footer);
+}
+
 function bind(){
  mount.querySelectorAll('[data-tab]').forEach(button=>{
   button.addEventListener('click',()=>{
@@ -377,6 +536,51 @@ function bind(){
   }catch(error){
    q('quote-result').textContent='Unable to calculate: '+error.message;
   }finally{q('quote').disabled=false;}
+ });
+
+ q('eligibility-find').addEventListener('click',async()=>{
+  const button=q('eligibility-find'),host=q('eligibility-result');
+  button.disabled=true;host.textContent='Checking live Tour Component and route qualification…';
+  try{
+   const origin=Number(q('eligible-from').value||0),destination=Number(q('eligible-to').value||0);
+   if(!origin||!destination)throw Error('Choose origin and destination');
+   const stage={key:'package-preview',label:'Package transport selection',
+    day_offset:0,origin_term_id:origin,destination_term_id:destination,
+    service_kind:q('eligible-kind').value,join:'OR',required:true,
+    return_to_origin:false,price_policy:'inquiry',transport_ids:[]};
+   const result=await api('eligibility',{payload:JSON.stringify({
+     stage,lang:q('eligible-lang').value||'en'
+   })});
+   eligibleResults=result;showEligibilityResult(result);
+  }catch(error){host.textContent='Eligibility check blocked: '+error.message;}
+  finally{button.disabled=false;}
+ });
+ q('package-add').addEventListener('click',()=>{
+  try{
+   if(packageLines.length>=30)throw Error('Maximum 30 selected journeys.');
+   const line=currentPackageLine();
+   const key=line.stage_key||('source_'+line.transportation_id);
+   if(packageLines.some(x=>(x.stage_key||('source_'+x.transportation_id))===key))
+    throw Error('This stage is already selected. Use a different stage key for another journey.');
+   packageLines.push(line);renderPackageLines();
+   q('package-result').textContent='Selected component added. Review Package & Rates to calculate.';
+   q('status').textContent='Selected '+packageLines.length+' journey(s); nothing saved or approved.';
+  }catch(error){q('status').textContent='Cannot add component: '+error.message;}
+ });
+ q('package-clear').addEventListener('click',()=>{
+  packageLines=[];renderPackageLines();q('package-result').textContent='';});
+ q('package-preview').addEventListener('click',async()=>{
+  const button=q('package-preview'),host=q('package-result');
+  button.disabled=true;host.textContent='Calculating explicit selected components…';
+  try{
+   if(!packageLines.length)throw Error('Add a selected component from the Route calculator first.');
+   const payload={context:q('package-context').value,
+    tour_rate_id:Number(q('native-tour-rate').value||0),
+    travel_date:q('package-date').value,lines:packageLines};
+   const result=await api('bridge',{payload:JSON.stringify(payload)});
+   drawPackageResult(result);
+  }catch(error){host.textContent='Cost preview blocked: '+error.message;}
+  finally{button.disabled=false;}
  });
 }
 async function load(){

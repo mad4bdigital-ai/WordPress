@@ -7,6 +7,7 @@
    <button type="button" data-tab="factors">Factors &amp; markups</button>
    <button type="button" data-tab="calibrate">PDF calibration</button>
    <button type="button" data-tab="route">Route calculator</button>
+   <button type="button" data-tab="package">Package &amp; Rates</button>
   </nav>
   <section data-view="profiles">
    <h4>Vehicle operating profile</h4>
@@ -58,7 +59,6 @@
     <div class="mad4b-kinetic-grid">
      <label>Transportation source<select data-id="native-source"></select></label>
      <label>Existing Transport Rate<select data-id="native-rate"></select></label>
-     <label>Tour Rate ID (linked only)<input type="number" data-id="native-tour-rate" min="1" step="1" placeholder="Optional existing Tour Rate ID"></label>
     </div>
     <p class="mad4b-kinetic-muted" data-id="native-context-info">Select a PDF Transportation service. Vehicle profile and optional native cost overrides are then inherited; any Transport Rate must actually belong to that source.</p>
    </fieldset><p class="mad4b-kinetic-muted">Choose destinations, provide both coordinate pairs, or enter custom labels with manual distance and driving minutes. This estimate never verifies road-network distance.</p>
@@ -87,7 +87,39 @@
     <label><input type="checkbox" data-id="peak"> Peak period</label>
    </div>
    <button class="button button-primary" type="button" data-id="quote">Calculate draft scenario</button>
+   <div class="mad4b-kinetic-grid">
+    <label>Package stage key (optional; unique if reusing a vehicle)<input data-id="package-stage" type="text" maxlength="60" placeholder="day1_transfer"></label>
+    <label>Number of vehicles<input data-id="package-quantity" type="number" min="1" max="20" step="1" value="1"></label>
+   </div>
+   <button type="button" class="button" data-id="package-add">Add selected route to Package preview</button>
+   <p class="mad4b-kinetic-muted">Add a single explicitly selected option per OR stage. To cost multiple journeys, add each stage separately; use a different stage key. Do not enter passenger counts as vehicle quantity.</p>
    <div data-id="quote-result" aria-live="polite" class="mad4b-kinetic-results">Select a vehicle and route, then calculate.</div>
+  </section>
+  <section data-view="package" hidden>
+   <h4>Qualified Transportation sources for Tour Rate Drafts</h4>
+   <p class="mad4b-kinetic-muted">Use the existing route and Tour Component eligibility engine. A city-level draft candidate may still lack pickup confirmation, supplier availability and commercial Rate approval. A missing availability flag never means a service is currently bookable.</p>
+   <div class="mad4b-kinetic-grid">
+    <label>Origin city<select data-id="eligible-from"></select></label>
+    <label>Destination<select data-id="eligible-to"></select></label>
+    <label>Service category<select data-id="eligible-kind"><option value="any">All types</option><option value="transfer">Transfer</option><option value="facility">Airport or station</option><option value="sightseeing">Sightseeing</option><option value="extra">Operational extra</option></select></label>
+    <label>Content language<select data-id="eligible-lang"></select></label>
+   </div>
+   <button type="button" class="button button-primary" data-id="eligibility-find">Find Draft-ready Transportation candidates</button>
+   <div data-id="eligibility-result" role="status" aria-live="polite" class="mad4b-kinetic-results">Select origin, destination and language to evaluate routes.</div>
+   <h4>Package component cost preview</h4>
+   <p class="mad4b-kinetic-muted">Create each selected vehicle journey in the <strong>Route calculator</strong>, then use <strong>Add selected component</strong>. This list lives in your browser until you leave the page. It is not a stored Rate, supplier booking, or itinerary assignment.</p>
+   <div class="mad4b-kinetic-grid">
+    <label>Preview workflow<select data-id="package-context"><option value="planning">Planning · assignments not yet saved</option><option value="package">Verify saved Tour Rate relationship</option><option value="standalone">Standalone · explicit Transport Rate required</option></select></label>
+    <label>Existing Tour Rate ID (package only)<input type="number" data-id="native-tour-rate" min="1" step="1" placeholder="Tour Rate ID · optional for planning"></label>
+    <label>Travel date (reference only)<input type="date" data-id="package-date"></label>
+   </div>
+   <p class="mad4b-kinetic-warning">Default package costs are derived directly from the Cost Engine. Transport Rates are optional for packages and only used for source-bound contract overrides. Published prices, inventory, tax, supplier availability and checkout are <strong>never approved</strong> by this preview. No alternative is automatically selected or double-counted.</p>
+   <div data-id="package-list" class="mad4b-kinetic-results" role="status" aria-live="polite">No selected components yet.</div>
+   <div class="mad4b-kinetic-inline">
+    <button type="button" class="button button-primary" data-id="package-preview">Calculate selected components</button>
+    <button type="button" class="button" data-id="package-clear">Clear selected components</button>
+   </div>
+   <div data-id="package-result" class="mad4b-kinetic-results" role="status" aria-live="polite"></div>
   </section>
   <footer class="mad4b-kinetic-footer">
    <span data-id="dirty" role="status" aria-live="polite">Loading saved draft model…</span>

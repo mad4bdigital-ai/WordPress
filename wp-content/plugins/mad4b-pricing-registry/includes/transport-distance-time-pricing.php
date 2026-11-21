@@ -573,6 +573,7 @@ final class MAD4B_Transport_Distance_Time_V1 {
   }
   return ['policy'=>self::current(),
    'calibration'=>self::calibrate(),'terms'=>$terms,
+   'languages'=>array_keys((array)apply_filters('wpml_active_languages',null,['skip_missing'=>0])),
    'native_context'=>class_exists('MAD4B_Transport_Native_Cost_Inheritance_V1')?
     MAD4B_Transport_Native_Cost_Inheritance_V1::catalog_options():[],
    'mode'=>'simulation_only','no_checkout'=>true];
@@ -589,6 +590,23 @@ final class MAD4B_Transport_Distance_Time_V1 {
    $raw=json_decode($json,true);
    $result=is_array($raw)?self::calculate($raw):
     new WP_Error('transport_quote_invalid_json');
+  }elseif($mode==='eligibility'){
+   $json=is_string($_POST['payload']??null)?wp_unslash($_POST['payload']):'';
+   if(strlen($json)>6500)wp_send_json_error(['code'=>'payload_too_long'],400);
+   $raw=json_decode($json,true);
+   $result=is_array($raw)&&is_array($raw['stage']??null)&&
+    class_exists('MAD4B_Transport_Package_Workflow_V1')?
+     MAD4B_Transport_Package_Workflow_V1::candidates(
+       $raw['stage'],sanitize_key((string)($raw['lang']??'en'))):
+     new WP_Error('transport_eligibility_input_invalid');
+  }elseif($mode==='bridge'){
+   $json=is_string($_POST['payload']??null)?
+    wp_unslash($_POST['payload']):'';
+   if(strlen($json)>26000)wp_send_json_error(['code'=>'payload_too_long'],400);
+   $raw=json_decode($json,true);
+   $result=is_array($raw)&&class_exists('MAD4B_Transport_Cost_Bridge_V1')?
+    MAD4B_Transport_Cost_Bridge_V1::evaluate($raw):
+    new WP_Error('transport_bridge_invalid_json_or_unavailable');
   }elseif($mode==='save'){
    $json=is_string($_POST['policy']??null)?
     wp_unslash($_POST['policy']):'';

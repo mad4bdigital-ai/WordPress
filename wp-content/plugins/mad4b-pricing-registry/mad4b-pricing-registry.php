@@ -95,3 +95,5 @@ require_once __DIR__ . '/includes/pricing-workspace-unified.php';
 require_once __DIR__ . '/includes/transport-vehicle-term-profiles.php';
 require_once __DIR__ . '/includes/transport-distance-time-pricing.php';
 require_once __DIR__ . '/includes/transport-native-cost-inheritance.php';
+require_once __DIR__ . '/includes/transport-cost-bridge.php';
+require_once __DIR__ . '/includes/transport-package-workflow.php';
