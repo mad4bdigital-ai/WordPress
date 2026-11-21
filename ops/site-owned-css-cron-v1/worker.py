@@ -6,7 +6,7 @@ it calls only the already enrolled first-party CSS workers. One task per site
 per invocation. Cross-company locks, source QA and CSS integrity remain owned
 by their original consumers.
 """
-import hashlib,json,os,re,runpy,stat,subprocess,sys,time,datetime
+import fcntl,hashlib,json,os,re,runpy,stat,subprocess,sys,time,datetime
 from pathlib import Path
 
 ROOT=Path('/opt/mad4b-company-provisioning')
@@ -201,6 +201,7 @@ def available_candidates(site,data,history,now):
         rows.append((priority,issued_at,ordering[job],job,jid,key))
     rows.sort()
     return rows
+
 def source_recovery_public_turn(site,candidates,strict_cpu_admitted,now,report_path=None):
     """One original public WP ticket gets the next safe browser opportunity.
 
@@ -234,12 +235,21 @@ def source_recovery_public_turn(site,candidates,strict_cpu_admitted,now,report_p
             or doc.get('contract')!='mad4b.public-css.source-family-registry.v1'
             or doc.get('site')!=site or doc.get('host')!=host):
             return candidates[0]
+        # Source-derived recovery and fresh unproven CSS both deserve a
+        # bounded public browser opportunity after this *same source ticket*
+        # was covered by an independently completed family report.
+        # Neither path authorizes CSS, a stale catalog or a browser CPU bypass.
+        def checked_lane(count,keys):
+            return (type(count) is int and 0<=count<=64
+                    and isinstance(keys,list) and len(keys)==count
+                    and len(set(keys))==count
+                    and all(isinstance(x,str) and re.fullmatch('[a-f0-9]{64}',x)
+                            for x in keys))
         count=doc.get('recoverable_listing_generation_count')
         keys=doc.get('recoverable_listing_generation_route_keys')
-        if (type(count) is not int or not 1<=count<=64
-            or not isinstance(keys,list) or len(keys)!=count
-            or len(set(keys))!=count or any(not isinstance(x,str)
-               or not re.fullmatch('[a-f0-9]{64}',x) for x in keys)):
+        runtime_count=doc.get('recoverable_same_epoch_runtime_count',0)
+        runtime_keys=doc.get('recoverable_same_epoch_runtime_route_keys',[])
+        if not checked_lane(count,keys) or not checked_lane(runtime_count,runtime_keys):
             return candidates[0]
         stamped=doc.get('refreshed_at_utc')
         if (not isinstance(stamped,str)
@@ -249,6 +259,20 @@ def source_recovery_public_turn(site,candidates,strict_cpu_admitted,now,report_p
             tzinfo=datetime.timezone.utc).timestamp()
         if not 0<=now-epoch<=600 or abs(st.st_mtime-epoch)>90:
             return candidates[0]
+        # A changed public WP source AFTER the family report needs a fresh
+        # root-owned family refresh first. A report without any old CSS
+        # certificates can still nominate a new source canary for full QA.
+        source_request=requested[1]
+        if (type(source_request) is not int or source_request<=0
+            or source_request>epoch or source_request>now):
+            return candidates[0]
+        if not count and not runtime_count:
+            groups=doc.get('source_groups_total')
+            routes=doc.get('routes_discovered')
+            if (type(groups) is not int or groups<1
+                or type(routes) is not int or routes<groups
+                or now-source_request<180):
+                return candidates[0]
         # Original public browser runner independently re-reads WP catalog
         # and only then applies its original per-route/market/Chrome gates.
         return requested
@@ -544,6 +568,208 @@ def observe_source_home_without_browser():
     except (OSError,subprocess.TimeoutExpired) as error:
         print('WPCSS_SOURCE_HOME_OBSERVATION_RETRY',type(error).__name__,flush=True)
 
+# Original site-owned first-fold Chrome observation, not a CSS certificate.
+# Its report owner already rejects >90m Chromium records and never promotes
+# CSS. The existing event gate can skip unchanged CSS for days, so proof
+# renewal must be independent from CSS generation, under this SAME worker.
+_SOURCE_OBSERVER_LANGS=('en','es','de','fr','ar','it')
+_SOURCE_OBSERVER_KEY='source:original_browser_evidence_refresh'
+_SOURCE_OBSERVER_REPORT=ROOT/'reports/dynamic-critical-css-20261116/source'
+_SOURCE_OBSERVER_LOCK=Path('/run/lock/mad4b-native-lazy-browser-global.lock')
+_SOURCE_OBSERVER_IMAGE='mad4b-firecrawl-playwright:20261107-lifecycle-v3'
+
+def source_browser_evidence_due(variance,history,now):
+    """No new task queue, no false expiration extension or browser stamp."""
+    row=history.get(_SOURCE_OBSERVER_KEY,{})
+    if isinstance(row,dict) and now<int(row.get('next_attempt',0)):
+        return False,'readback_cooldown'
+    if not isinstance(variance,dict) or variance.get('contract')!='mad4b.source-css-profile-variance.v1':
+        return False,'untrusted_variance'
+    if variance.get('host')!='tours.dev.mad4b.com':
+        return False,'foreign_variance'
+    checked=variance.get('checked_at')
+    if type(checked)!=int or not 0<=now-checked<=900:
+        return False,'stale_variance'
+    missing=variance.get('browser_profiles_missing_or_expired')
+    if not isinstance(missing,list) or any(x not in _SOURCE_OBSERVER_LANGS for x in missing):
+        return False,'invalid_missing_languages'
+    if not missing:
+        # The report is still valid, but proactively renew on the first
+        # original Cron tick after 45 minutes. Waiting until the 90-minute
+        # expiry would create a recurrent evidence gap even on an idle VPS.
+        last=row.get('last_completed') if isinstance(row,dict) else None
+        if type(last)==int and 0<last<=now and now-last>=2700:
+            return True,'proactive_browser_proof_renewal'
+        return False,'existing_browser_proof_fresh'
+    return True,'browser_evidence_expired'
+
+def source_browser_evidence_checkpoint(history,now,delay,completed_at=None):
+    """Preserve the last valid Chrome proof through FAILED and BUSY attempts.
+
+    Attempt cooldowns cannot pretend the old proof was renewed, and a failed
+    browser/lock/resource retry must not erase its prior completion timestamp.
+    The actual original browser SHA/90-minute classifier remains authoritative.
+    Pure state transition; the original worker alone owns persistence.
+    """
+    if (not isinstance(history,dict) or type(now)!=int or now<=0
+        or type(delay)!=int or delay not in (240,600,2700)):
+        raise ValueError('invalid_original_browser_checkpoint')
+    prior=history.get(_SOURCE_OBSERVER_KEY,{})
+    old=prior.get('last_completed') if isinstance(prior,dict) else None
+    if type(old)!=int or old<1 or old>now:old=None
+    if completed_at is not None:
+        if type(completed_at)!=int or completed_at<now or completed_at>now+240:
+            raise ValueError('invalid_actual_browser_completion')
+        old=completed_at
+    row={'last_attempt':now,'next_attempt':now+delay}
+    if old is not None:row['last_completed']=old
+    history[_SOURCE_OBSERVER_KEY]=row
+    return row
+
+def source_browser_evidence_resource_ok(record,now,load):
+    """Same conservative native host CPU bounds, no new browser exception."""
+    if not isinstance(record,dict) or record.get('contract')!='mad4b.host-cpu-budget.v1' or record.get('cores')!=8:
+        return False
+    stamped=record.get('sampled_epoch')
+    if type(stamped)!=int or not -5<=now-stamped<=105:return False
+    bounds={'cpu_idle_pct':(35,100),'host_cpu_pct':(0,60),
+            'load_1m':(0,5.9),'cpu_psi_some_avg10':(0,10),
+            'cpu_steal_pct':(0,4),'wpcli_processes':(0,2)}
+    for name,(low,high) in bounds.items():
+        value=record.get(name)
+        if isinstance(value,bool) or not isinstance(value,(int,float)) or not low<=value<=high:
+            return False
+    return not isinstance(load,bool) and isinstance(load,(int,float)) and 0<=load<=5.9
+
+def source_browser_evidence_refresh(history,now):
+    """Recapture the *existing* six-locale Chromium source identity only.
+
+    Uses the already enrolled source renderer's original probe-public.js,
+    original global browser lock, original source QA report layout, current
+    WPML/epoch/HTTP identity and host CPU budget. Never certifies, publishes,
+    purges, edits WP, acknowledges a ticket or relaxes V2 source-family rules.
+    """
+    if SITE!='source':return False
+    variance=_SOURCE_OBSERVER_REPORT/'source-css-profile-variance.json'
+    if variance.is_symlink() or not variance.is_file() or variance.stat().st_size>65536:
+        return False
+    try:
+        evidence=json.loads(variance.read_text())
+        due,why=source_browser_evidence_due(evidence,history,now)
+        if not due:return False
+        sitejson=_SOURCE_OBSERVER_REPORT/'current-site.json'
+        httpjson=_SOURCE_OBSERVER_REPORT/'home-current-css-source.json'
+        if any(p.is_symlink() or not p.is_file() or p.stat().st_size>65536 for p in (sitejson,httpjson)):
+            print('WPCSS_SOURCE_BROWSER_READBACK_DEFERRED untrusted_source_snapshot',flush=True)
+            return False
+        site=json.loads(sitejson.read_text());http=json.loads(httpjson.read_text())
+        if (site.get('contract')!='mad4b.critical-css.site-source.v1'
+            or site.get('site_host')!='tours.dev.mad4b.com'
+            or site.get('environment')!='staging'
+            or site.get('critical_css')!='on'
+            or not isinstance(site.get('wpml_languages'),list)
+            or len(site['wpml_languages'])!=6
+            or set(site['wpml_languages'])!=set(_SOURCE_OBSERVER_LANGS)
+            or site.get('default_language')!='en'
+            or type(site.get('css_epoch'))!=int or site['css_epoch']<1
+            or http.get('contract')!='mad4b.source-home-css-change-observation.v1'
+            or http.get('host')!='tours.dev.mad4b.com'
+            or not isinstance(http.get('sources'),dict)
+            or set(http['sources'])!=set(_SOURCE_OBSERVER_LANGS)
+            or not re.fullmatch('[a-f0-9]{64}',str(http.get('fingerprint','')))):
+            print('WPCSS_SOURCE_BROWSER_READBACK_DEFERRED source_identity_untrusted',flush=True)
+            return False
+        # Use only a recent authenticated native source and CPU snapshot.
+        if now-max(sitejson.stat().st_mtime,httpjson.stat().st_mtime)>3600:
+            print('WPCSS_SOURCE_BROWSER_READBACK_DEFERRED stale_source_state',flush=True)
+            return False
+        sensor=Path('/run/mad4b-cpu-budget/status.json')
+        fd=os.open(sensor,os.O_RDONLY|os.O_CLOEXEC|os.O_NOFOLLOW)
+        try:
+            st=os.fstat(fd)
+            if not(stat.S_ISREG(st.st_mode) and st.st_uid==0
+                   and not st.st_mode&0o022 and 50<=st.st_size<=8192):
+                return False
+            budget=json.loads(os.read(fd,8193))
+        finally:os.close(fd)
+        if not source_browser_evidence_resource_ok(budget,now,os.getloadavg()[0]):
+            print('WPCSS_SOURCE_BROWSER_READBACK_DEFERRED host_budget',flush=True)
+            return False
+        # Attempt throttle: once every 45 min upon full proof success,
+        # a 10-min backoff otherwise. Neither state fabricates any proof.
+        source_browser_evidence_checkpoint(history,now,600)
+        save_state(history)
+        lockfd=os.open(_SOURCE_OBSERVER_LOCK,os.O_CREAT|os.O_RDWR|os.O_CLOEXEC,0o600)
+        try:
+            try:fcntl.flock(lockfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            except BlockingIOError:
+                # The V2 publisher has precedence. Retry at the next
+                # original five-minute Cron window, never start a peer.
+                source_browser_evidence_checkpoint(history,now,240)
+                save_state(history)
+                print('WPCSS_SOURCE_BROWSER_READBACK_DEFERRED original_browser_busy',flush=True)
+                return False
+            if _SOURCE_OBSERVER_REPORT.is_symlink() or not _SOURCE_OBSERVER_REPORT.is_dir():
+                return False
+            path=_SOURCE_OBSERVER_REPORT/time.strftime('%Y%m%dT%H%M%SZ',time.gmtime(now))
+            if path.exists():
+                print('WPCSS_SOURCE_BROWSER_READBACK_DEFERRED existing_original_run',flush=True)
+                return False
+            path.mkdir(mode=0o700);(path/'observed').mkdir(mode=0o700)
+            (path/'site.json').write_text(json.dumps(site,sort_keys=True)+'\n')
+            (path/'locales.txt').write_text('\n'.join(_SOURCE_OBSERVER_LANGS)+'\n')
+            os.chmod(path/'site.json',0o600);os.chmod(path/'locales.txt',0o600)
+            # This is EXACT original source first-fold browser capture script.
+            # Host egress is pinned to staging; no parallel execution.
+            tools=SOURCE/'tools'
+            if not tools.is_dir() or (tools/'probe-public.js').is_symlink():
+                raise ValueError('untrusted_original_browser_probe')
+            cmd=['docker','run','--rm','--network','host','--cap-drop','ALL',
+                 '--group-add','33','--user','0:0','--memory=1024m',
+                 '--cpus=1.3','--pids-limit=250',
+                 '--security-opt=no-new-privileges',
+                 '-v',str(tools)+':/tools:ro','-v',str(path)+':/out',
+                 '-e','NODE_PATH=/usr/src/app/node_modules',
+                 '-e','MAD4B_SOURCE_SITE=https://tours.dev.mad4b.com',
+                 '-e','MAD4B_PROBE_OUTPUT=/out/observed',
+                 '-e','MAD4B_PROBE_LANGS='+','.join(_SOURCE_OBSERVER_LANGS),
+                 '-e','MAD4B_DEFAULT_LANG=en',_SOURCE_OBSERVER_IMAGE,
+                 'node','/tools/probe-public.js']
+            outcome=run(cmd,timeout=230)
+            log=path/'probe-initial.log'
+            log.write_text((outcome.stdout+'\n'+outcome.stderr)[-18000:])
+            os.chmod(log,0o600)
+            holds=path/'observed/locale-holds.json'
+            if not holds.is_file() or holds.is_symlink():raise ValueError('original_browser_receipt_missing')
+            result=json.loads(holds.read_text())
+            expected=result.get('contract')=='mad4b.chromium-locale-holds.v1'
+            all_seen=(type(result.get('successful'))==int and result['successful']==6
+                      and result.get('held')==[])
+            # Revalidate HTTP source and epoch after Chrome. A changing source
+            # can never inherit fresh QA captured from the prior generation.
+            after=json.loads(httpjson.read_text())
+            generation=json.loads(sitejson.read_text())
+            unchanged=(after.get('fingerprint')==http.get('fingerprint')
+                       and generation.get('css_epoch')==site.get('css_epoch')
+                       and generation.get('runtime_versions')==site.get('runtime_versions'))
+            success=outcome.returncode==0 and expected and all_seen and unchanged
+            source_browser_evidence_checkpoint(
+                history,now,2700 if success else 600,
+                completed_at=int(time.time()) if success else None)
+            save_state(history)
+            print('WPCSS_SOURCE_BROWSER_READBACK',
+                  'six_locale_observed_no_certificate' if success else 'partial_or_changed_source',
+                  'successful',result.get('successful'),'original_chrome_exit',outcome.returncode,
+                  'source_unchanged',unchanged,flush=True)
+            return success
+        finally:
+            fcntl.flock(lockfd,fcntl.LOCK_UN);os.close(lockfd)
+    except (OSError,ValueError,TypeError,KeyError,subprocess.TimeoutExpired,
+            json.JSONDecodeError) as exc:
+        print('WPCSS_SOURCE_BROWSER_READBACK_DEFERRED',
+              type(exc).__name__,str(exc)[:115],flush=True)
+        return False
+
 def observe_source_css_profiles():
     # Separate live HTTP and independently Chromium-certified CSS identities.
     # Read-only observation: never certify, edit CSS, flush cache or ack WP.
@@ -671,6 +897,10 @@ def main():
     if '--inspect' not in sys.argv and SITE=='source':
         observe_source_home_without_browser()
         observe_source_css_profiles()
+        if source_browser_evidence_refresh(history,now):
+            # Read back through the ORIGINAL epoch/SHA/Elementor identity
+            # classifier. Fresh Chrome HTML is not a certificate.
+            observe_source_css_profiles()
     headroom,reason=cpu_window()
     for site in (SITE,):
         state=snapshot(site)
