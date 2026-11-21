@@ -7,6 +7,8 @@
  * checkout policies. Existing prices and site pricing settings remain intact.
  */
 defined('ABSPATH') || exit;
+// Native slot for the read-only Package Cost inspector. MU retains legacy fallback.
+if(!defined('MAD4B_PRICING_LAB_NATIVE_SLOT_READY'))define('MAD4B_PRICING_LAB_NATIVE_SLOT_READY',true);
 final class MAD4B_JetEngine_Pricing_Lab_V1 {
     public const ACTION='mad4b_jetengine_pricing_lab_v1';
     private const OPTION='mad4b_jetengine_pricing_lab_presets_v1';
@@ -173,6 +175,7 @@ final class MAD4B_JetEngine_Pricing_Lab_V1 {
         if(current_user_can('manage_options')){
             echo '<p><a class="button button-secondary" href="#mad4b-pricing-lab-quote-testing">Open Quote Testing · Tour / Accommodation</a></p>';
         }
+        do_action('mad4b/pricing-lab/before-root');
         echo '<div id="mad4b-pricing-lab-root" aria-live="polite"><p>Loading Pricing Lab…</p></div>';
         // Diagnostics live in Pricing Lab, never outside the JetEngine options
         // Workspace or below its original Save button.
