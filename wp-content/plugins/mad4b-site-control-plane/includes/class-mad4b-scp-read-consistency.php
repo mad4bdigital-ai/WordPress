@@ -710,19 +710,26 @@ final class MAD4B_SCP_Read_Consistency {
 			$actions[] = 'repair_adapter_ability_lifecycle_registration';
 			$blocking = true;
 		}
+		// Route the same exact-site write blockers to the review contract for
+		// the site's enrolled environment. Staging convergence is never a
+		// Production grant, permission or approval workflow.
+		$write_authority_action = class_exists( 'MAD4B_SCP_Site_Profile' )
+			&& 'production' === MAD4B_SCP_Site_Profile::current_environment()
+			? 'review_exact_production_write_authority'
+			: 'reconcile_exact_staging_write_authority';
 		if ( false === $write_ready ) {
 			$reasons[] = 'write_authority_not_current';
-			$actions[] = 'reconcile_exact_staging_write_authority';
+			$actions[] = $write_authority_action;
 			$blocking = true;
 		}
 		if ( false === $candidate_match ) {
 			$reasons[] = 'runtime_authority_candidate_not_reconciled';
-			$actions[] = 'reconcile_exact_staging_write_authority';
+			$actions[] = $write_authority_action;
 			$blocking = true;
 		}
 		if ( false === $grant_snapshot_ready ) {
 			$reasons[] = 'exact_write_grants_not_current';
-			$actions[] = 'reconcile_exact_staging_write_authority';
+			$actions[] = $write_authority_action;
 			$blocking = true;
 		}
 		foreach ( isset( $write['current_readiness_blockers'] ) && is_array( $write['current_readiness_blockers'] ) ? $write['current_readiness_blockers'] : array() as $reason ) {
@@ -1681,6 +1688,7 @@ final class MAD4B_SCP_Read_Consistency {
 			'repair_query_monitor_db_attribution_then_retry',
 			'inspect_operational_readiness',
 			'repair_adapter_ability_lifecycle_registration',
+			'review_exact_production_write_authority',
 			'reconcile_exact_staging_write_authority',
 			'reconcile_managed_skills',
 		), $operator_actions ) );
@@ -1718,6 +1726,17 @@ final class MAD4B_SCP_Read_Consistency {
 					'automatic_apply_allowed' => false,
 				);
 			}
+			if ( 'review_exact_production_write_authority' === $action ) {
+				return array(
+					'action' => 'inspect_exact_production_write_authority_policy',
+					'ability' => 'mad4b/write-authority-reconciliation-plan',
+					'why' => 'production_requires_certified_candidate_exact_owner_review_and_ability_grants',
+					'read_only' => true,
+					'explicit_authority_required' => true,
+					'automatic_apply_allowed' => false,
+					'persistent_mutation_allowed' => false,
+				);
+			}
 			if ( 'reconcile_exact_staging_write_authority' === $action ) {
 				return array(
 					'action' => 'request_staging_write_authority_handshake',
@@ -1743,6 +1762,18 @@ final class MAD4B_SCP_Read_Consistency {
 		// Backward-compatible fallback for clients that receive a report produced
 		// without the richer operator summary.
 		if ( in_array( 'write_authority_not_effective', $subject_blockers, true ) ) {
+			if ( class_exists( 'MAD4B_SCP_Site_Profile' )
+				&& 'production' === MAD4B_SCP_Site_Profile::current_environment() ) {
+				return array(
+					'action' => 'inspect_exact_production_write_authority_policy',
+					'ability' => 'mad4b/write-authority-reconciliation-plan',
+					'why' => 'production_requires_certified_candidate_exact_owner_review_and_ability_grants',
+					'read_only' => true,
+					'explicit_authority_required' => true,
+					'automatic_apply_allowed' => false,
+					'persistent_mutation_allowed' => false,
+				);
+			}
 			return array(
 				'action' => 'request_staging_write_authority_handshake',
 				'ability' => 'mad4b/staging-write-authority-convergence-handshake',
