@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wpml-config>
+  <!-- Rates are translatable editorial records. Missing translations may use the default
+       language; commercial amounts and market policy remain single canonical values. -->
+  <custom-types>
+    <custom-type translate="1" display-as-translated="1">transport-rates</custom-type>
+  </custom-types>
+  <taxonomies>
+    <taxonomy translate="0">transport-vehicle-types</taxonomy>
+  </taxonomies>
+  <custom-fields>
+    <custom-field action="copy">trans_vehicle_category_key</custom-field>
+    <custom-field action="copy">trans_service_kind</custom-field>
+    <custom-field action="copy">trans_route_pattern</custom-field>
+    <custom-field action="copy">trans_schedule_model</custom-field>
+    <custom-field action="copy">trans_inventory_model</custom-field>
+    <custom-field action="copy">trans_service_arrangement</custom-field>
+    <custom-field action="copy">trans_price_role</custom-field>
+    <custom-field action="copy">trans_cost_amount</custom-field>
+    <custom-field action="copy">trans_supplier_discount_pct</custom-field>
+    <custom-field action="copy">trans_source_row_key</custom-field>
+    <custom-field action="copy">trans_review_status</custom-field>
+    <!-- Actual EGP operating-cost configuration, never selling-price fields. -->
+    <custom-field action="copy">trans_vehicle_cost_overrides_v1</custom-field>
+    <custom-field action="copy">trans_cost_model_mode</custom-field>
+    <custom-field action="copy">trans_dispatch_mode</custom-field>
+    <custom-field action="copy">trans_cost_fixed_override</custom-field>
+    <custom-field action="copy">trans_cost_per_km_override</custom-field>
+    <custom-field action="copy">trans_cost_per_drive_min_override</custom-field>
+    <custom-field action="copy">trans_cost_per_wait_min_override</custom-field>
+    <custom-field action="copy">trans_cost_overnight_override</custom-field>
+    <custom-field action="copy">trans_cost_min_fare_override</custom-field>
+    <custom-field action="copy">trans_cost_deadhead_pct_override</custom-field>
+    <custom-field action="copy">trans_cost_markup_override_pct</custom-field>
+    <custom-field action="copy">transport_markup_override_pct</custom-field>
+    <!-- Keep approved market profile prices, extras, and hashes identical in every language.
+         Customer-facing title, description, and note remain language-specific. -->
+    <custom-field action="copy">_booking_experience_transport_market_rates_v1</custom-field>
+    <custom-field action="copy">_booking_experience_transport_extras_v1</custom-field>
+  </custom-fields>
+</wpml-config>

@@ -4,6 +4,7 @@ require_once __DIR__.'/rate-authoring-policy.php';
 if(!defined('ABSPATH')||!mad4b_rate_authoring_enabled())return;
 
 require_once __DIR__.'/accommodation-assignment.php';
+require_once __DIR__.'/package-stage-rate-guard-v1.php';
 
 final class Shared_Product_Rate_Generation {
  const SCHEMA='shared-rate-generation.v1';
@@ -125,6 +126,14 @@ final class Shared_Product_Rate_Generation {
    }
    $package=absint($input['package_term_id']??0);
    if($package && !term_exists($package,'package_levels'))return new WP_Error('rate_generator_package_term_invalid');
+   // Mandatory for every Package Tour, including manual/auto/none stay modes.
+   // Fail closed before the generic Tour-city assignment can mask missing
+   // or wrong-destination individual stay stages.
+   $stageProof=MAD4B_Package_Stage_Rate_Guard_V1::assertReady(
+     (int)$id,(int)$package,(string)$from,(string)$to);
+   if(is_wp_error($stageProof))return $stageProof;
+   if(!empty($stageProof['applies']))
+     $params['package_stage_source_digest']=$stageProof['source_digest'];
    $params['factors']=$factors;$params['package_term_id']=$package;
    // Optional relations from the Tour CPT Seed. Native rate discovery reads the
    // Program ID from postmeta and Season from the actual WordPress taxonomy.
@@ -730,6 +739,21 @@ final class Shared_Product_Rate_Generation {
    return new WP_Error('rate_generator_source_busy');
   }
   try {
+  // Revalidate after acquiring the generation lock. Even a re-used Draft
+  // needs the SAME stage source digest; no time-of-check bypass is allowed.
+  if(($plan['kind']??'')==='tour' &&
+     MAD4B_Package_Stage_Rate_Guard_V1::applies((int)$plan['parent_id'])){
+    $proof=MAD4B_Package_Stage_Rate_Guard_V1::assertReady(
+      (int)$plan['parent_id'],
+      (int)($plan['parameters']['package_term_id']??0),
+      (string)($plan['parameters']['valid_from']??''),
+      (string)($plan['parameters']['valid_to']??''));
+    if(is_wp_error($proof))return $proof;
+    if(!is_string($plan['parameters']['package_stage_source_digest']??null) ||
+       !hash_equals((string)$plan['parameters']['package_stage_source_digest'],
+                    (string)($proof['source_digest']??'')))
+      return new WP_Error('rate_generator_package_stage_source_changed');
+  }
   // Same input, same Rate; do not replicate CPT records on retries.
   $existing=get_posts(['post_type'=>$plan['post_type'],'post_status'=>'any','numberposts'=>2,
    'suppress_filters'=>true,'fields'=>'ids','meta_key'=>self::META,'meta_value'=>$plan['fingerprint']]);

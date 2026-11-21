@@ -787,6 +787,12 @@
     const rateGroupWasOpen=previousTourId===item.id &&
       !!detail.querySelector('.mad4b-tour-inspector__rate-section[open]');
     state.selected=item.id;
+    // Shared, read-only Tour context for Pricing Controls cost inspection.
+    // No native JetEngine field, Rate, or form value is changed.
+    root.dataset.mad4bPreviewTourId=String(item.id);
+    root.dispatchEvent(new CustomEvent('mad4b:tour-preview-selection',{
+      bubbles:true,detail:{tourId:item.id,title:item.title}
+    }));
     detail.setAttribute('aria-label',item.title+' pricing and services');
     detail.replaceChildren();
     syncSlider(item);
@@ -797,6 +803,15 @@
     const detailsHeading=create('strong','mad4b-tour-inspector__detail-subheading',
       'Rates, extras & transport');
     detail.append(detailsHeading);
+    const supplierLink=create('button','button button-small mad4b-tour-inspector__supplier-link',
+      'Review supplier costs');
+    supplierLink.type='button';
+    supplierLink.addEventListener('click',()=>{
+      root.dispatchEvent(new CustomEvent('mad4b:open-supplier-inspector',{
+        bubbles:true,detail:{tourId:item.id}
+      }));
+    });
+    detail.append(supplierLink);
     if(cfg?.affectedStrategy?.action && cfg?.affectedStrategy?.nonce){
       const strategy=create('section','mad4b-tour-inspector__strategy');
       const head=create('div','mad4b-tour-inspector__strategy-heading');
@@ -1246,6 +1261,10 @@
     if(selected)showDetail(selected);
     else{
       state.selected=0;
+      delete root.dataset.mad4bPreviewTourId;
+      root.dispatchEvent(new CustomEvent('mad4b:tour-preview-selection',{
+        bubbles:true,detail:{tourId:0,title:''}
+      }));
       sliderCount.textContent='0 matches';
       slidePrevious.disabled=slideNext.disabled=true;
       detail.replaceChildren();
