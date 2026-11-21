@@ -1,0 +1,3 @@
+# Exactly-once site-owned RUM activation, resource-guarded and self-disabling.
+# Does not run Chrome or change HTML/CSS. Expires in 24 hours.
+3-58/5 * * * * root /usr/bin/python3 /opt/mad4b-company-provisioning/operations/adaptive-css-rum-v1/activate-wayfa-once.py >> /var/lib/mad4b/company-code-release/receipts/adaptive-css-rum-wayfa-once-20261121/attempts.log 2>&1

@@ -63,3 +63,6 @@ Vendor web-vitals IIFE is from Google's Apache-2.0 project, pinned to version 6.
 
 ## Hourly Core Web Vitals readback
 The site-owned hourly REST-health option exposes the conservative p75 histogram upper bounds and sample count for each arm and LCP/INP/CLS; no values are invented for a metric without samples. This shadow report is observational across source routes and cannot promote or revoke CSS certificates. An authenticated manager can inspect /wp-json/mad4b-css/v1/status. The field public_rollout_percent_changed is always false.
+
+## Exactly-once guarded Wayfa schema activation
+A root-owned one-time cron entry is installed for the production RUM schema initialization only; it checks the original host CPU budget and acquires the shared WordPress CSS worker lock. It verifies the exact enrolled company, checksums of the PHP/JS source, WP schema readback, and the observe-mode sample basis points. On success it saves a root receipt and disables itself. Any non-resource failure disables future attempts. The configuration expires after 24h. This task **does not** run CSS or Chromium, purge FastCGI, or enable a public canary. It is a schema/observe enrollment and not a proof of CSS source authority.
