@@ -394,11 +394,26 @@ final class MAD4B_Accommodation_Weight_Policies_V1 {
             'status'=>!$fields?'stored_inherit_only':
                 ($nonzero?'configured_adjustments':'configured_neutral')];
     }
+    private static function originalUnitParent(int $unit):?int {
+        if($unit<1||get_post_type($unit)!=='units'||!function_exists('jet_engine'))
+            return null;
+        $relation=jet_engine()->relations->get_active_relations()[223]??null;
+        if(!$relation)return null;
+        $parents=$relation->get_parents($unit);
+        $candidates=[];
+        foreach((array)$parents as $entry){
+            $id=(int)(is_array($entry)?($entry['parent_object_id']??0):
+                (is_object($entry)?($entry->parent_object_id??0):0));
+            if($id>0&&get_post_type($id)==='properties')$candidates[$id]=true;
+        }
+        return count($candidates)===1?(int)array_key_first($candidates):null;
+    }
     private static function layer(string $scope,int $id,string $label) {
         $source=self::read($scope,$id);
         if(is_wp_error($source))return $source;
         $details=self::policyDetails($source['policy']);
         return ['scope'=>$scope,'target_id'=>$id,'label'=>$label,
+            'related_property_id'=>$scope==='unit'?self::originalUnitParent($id):null,
             'configured'=>$source['configured'],'has_override'=>$source['has_override'],
             'can_write'=>$source['can_write'],
             'status'=>$source['configured']?$details['status']:'not_configured',
@@ -525,7 +540,8 @@ final class MAD4B_Accommodation_Weight_Policies_V1 {
             'suppress_filters'=>true,'no_found_rows'=>true];
         $result=get_posts($args);$out=[];
         foreach($result as $id)if(current_user_can('edit_post',(int)$id))
-            $out[]=['id'=>(int)$id,'title'=>get_the_title($id)];
+            $out[]=['id'=>(int)$id,'title'=>get_the_title($id),
+                'related_property_id'=>$scope==='unit'?self::originalUnitParent((int)$id):null];
         return $out;
     }
     public static function ajax():void {
