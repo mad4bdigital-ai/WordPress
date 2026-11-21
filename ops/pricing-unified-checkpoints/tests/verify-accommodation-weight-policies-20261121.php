@@ -93,6 +93,42 @@ $ok(is_array($qa)&&($qa['policy']['reference']??null)==='inherit',
  'qa_reference_reverted');
 $ok(is_array($qa)&&array_key_exists('single_pct',$qa['policy']['weights'])&&
     $qa['policy']['weights']['single_pct']===null,'qa_weights_reverted');
+
+$inventory=$cls::inventory();
+$ok(is_array($inventory)&&$inventory['status']==='configured_policy_inventory_readonly',
+ 'inventory_is_original_storage');
+$ok(is_array($inventory)&&($inventory['counts']['configured_neutral']??-1)===1,
+ 'neutral_global_distinct_from_adjusted_rules');
+$ok(is_array($inventory)&&($inventory['counts']['configured_adjustments']??-1)===0,
+ 'no_nonzero_policy_claimed');
+$ok(is_array($inventory)&&($inventory['counts']['stored_inherit_only']??-1)>=1,
+ 'qa_inherit_only_not_counted_as_active_rule');
+$ok(is_array($inventory)&&$inventory['truncated']===false,'inventory_read_is_complete');
+$base=$cls::effective(['property_id'=>$property,'unit_id'=>0]);
+$ok(is_array($base)&&count($base['fields']??[])===6,
+ 'six_effective_weights_per_property');
+$ok(is_array($base)&&($base['reference']??'')==='double','effective_reference_shown');
+$ok(is_array($base)&&($base['reference_source']??'')==='global:0',
+ 'effective_reference_source_shown');
+$ok(is_array($base)&&($base['fields'][0]['source']??'')==='global:0',
+ 'effective_field_source_shown');
+$ok(is_array($base)&&count($base['layers']??[])>=3,
+ 'taxonomy_property_and_global_layers_visible');
+$ok(is_array($base)&&($base['configured_layer_count']??0)===1,
+ 'one_configured_global_layer');
+$unitPolicy=$cls::effective(['property_id'=>$property,'unit_id'=>$suite]);
+$ok(is_array($unitPolicy)&&$unitPolicy['unit_id']===$suite,
+ 'native_selected_unit_policy_visible');
+$ok(is_array($unitPolicy)&&in_array('unit',array_column($unitPolicy['layers'],'scope'),true),
+ 'native_unit_override_layer_visible');
+$error($cls::effective(['property_id'=>36084,'unit_id'=>$suite]),
+ 'accommodation_weight_property_unit_relation_invalid');
+$error($cls::effective(['property_id'=>0]),
+ 'accommodation_weight_property_required');
+$ok(is_array($global)&&$global['has_override']===true,
+ 'global_explicit_neutral_is_configured');
+$ok(is_array($qa)&&$qa['has_override']===false,
+ 'qa_stored_inherit_only_is_not_override');
 $rateCountsAfter=wp_count_posts('property-rates');
 $tourRateCountsAfter=wp_count_posts('tour-rates');
 foreach(['publish','draft','pending'] as $status){
