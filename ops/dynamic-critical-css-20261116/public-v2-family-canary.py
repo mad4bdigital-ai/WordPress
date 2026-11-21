@@ -12,6 +12,21 @@ from pathlib import Path
 CONTRACT='mad4b.public-critical-css.route-certificate.v2'
 SHA=re.compile(r'^[0-9a-f]{64}$')
 FILE=re.compile(r'^[0-9a-f]{64}\.json$')
+PUBLIC_TYPES=frozenset({
+    'page','post','tours-and-activities','properties','destinations',
+    'tour-types','property-types','tour-categories','category',
+    'archive:tours-and-activities','archive:properties'})
+def expected_market_scope(route,cert):
+    if not isinstance(route,dict) or not isinstance(cert,dict):
+        return None
+    if route.get('type') not in PUBLIC_TYPES:
+        return None
+    deps=cert.get('dependencies')
+    if not isinstance(deps,dict) or not isinstance(deps.get('contains_dynamic_listing'),bool):
+        return None
+    if route['type'] in ('page','post') and not deps['contains_dynamic_listing']:
+        return 'static'
+    return 'base'
 BASE=Path(__file__).resolve().parent
 
 def digest(data):
@@ -57,7 +72,7 @@ def validate(root,host,route,state,catalog,ledger,cert,source_key):
         or not isinstance(ledger,dict) or ledger.get('status')!='certified'
         or ledger.get('source_key')!=source_key
         or cert.get('host')!=host or cert.get('type')!=route['type']
-        or route['type']!='tours-and-activities'
+        or route['type'] not in PUBLIC_TYPES
         or cert.get('language')!=route['language']
         or cert.get('path')!=route['path']
         or cert.get('object_id')!=route['id']
@@ -65,7 +80,6 @@ def validate(root,host,route,state,catalog,ledger,cert,source_key):
         or cert.get('runtime_sha')!=state.get('runtime_sha')
         or cert.get('native_mobile_breakpoint')!=767
         or cert.get('critical_cap_px')!=767
-        or cert.get('market_country')!='base'
         or cert.get('currency')!=state.get('base_currency')
         or state.get('wcml_multi_currency') is not False
         or state.get('enabled_currencies')!=[state.get('base_currency')]
@@ -79,8 +93,12 @@ def validate(root,host,route,state,catalog,ledger,cert,source_key):
     if (not isinstance(d,dict)
         or d.get('route_generation')!=route.get('revision')
         or d.get('global_generation')!=catalog.get('global_generation')
-        or (d.get('contains_dynamic_listing')
+        or ((d.get('contains_dynamic_listing')
+             or route['type'] not in ('page','post','tours-and-activities'))
             and d.get('listing_generation')!=catalog.get('listing_generation'))):
+        return False
+    expected_market=expected_market_scope(route,cert)
+    if expected_market is None or cert.get('market_country')!=expected_market:
         return False
     evidence=cert.get('evidence')
     if (not isinstance(evidence,dict)

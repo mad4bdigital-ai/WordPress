@@ -54,4 +54,27 @@ with tempfile.TemporaryDirectory() as d:
  near['market_country']='EG'
  ok(not module.validate(root,host,route,state,catalog,ledger,near,'source'),
     'different country context cannot qualify base USD family')
+# The family read adapter must agree with the original v2 issuer and 422
+# consumer on enrolled non-tour routes, without weakening market isolation.
+ok(module.expected_market_scope({'type':'destinations'},
+     {'dependencies':{'contains_dynamic_listing':True}})=='base',
+   'destination exact base market may qualify after full certificate proof')
+ok(module.expected_market_scope({'type':'properties'},
+     {'dependencies':{'contains_dynamic_listing':True}})=='base',
+   'property exact base market may qualify after full certificate proof')
+ok(module.expected_market_scope({'type':'page'},
+     {'dependencies':{'contains_dynamic_listing':False}})=='static',
+   'plain page uses static market, not copied tour pricing context')
+ok(module.expected_market_scope({'type':'page'},
+     {'dependencies':{'contains_dynamic_listing':True}})=='base',
+   'market-sensitive page uses base market, never static')
+ok(module.expected_market_scope({'type':'destinations'},
+     {'dependencies':{'contains_dynamic_listing':False}})=='base',
+   'destination cannot be downgraded to static market')
+ok(module.expected_market_scope({'type':'private-object'},
+     {'dependencies':{'contains_dynamic_listing':True}}) is None,
+   'unenrolled content types remain ineligible')
+ok(module.expected_market_scope({'type':'page'},
+     {'dependencies':{'contains_dynamic_listing':'false'}}) is None,
+   'non-boolean source market indicator fails closed')
 print(f'PASS {count}/{count} v2 family-source fail-closed tests')
