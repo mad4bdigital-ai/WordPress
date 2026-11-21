@@ -834,6 +834,37 @@ def reviewed_cwv_site_admission_bootstrap_successor(repo:Path,path:str,contents:
         return None
 
 
+
+def reviewed_scp_public_kernel_bootstrap_successor(repo:Path,path:str,contents:bytes):
+    """Separate SHA-bound CI-only successor, never an approved live release.
+
+    Both previous CWV/Original305 source and the exact new eight-line
+    addition must be independently reconstructible and reviewed.
+    """
+    if path!='mad4b-site-control-plane.php' or not isinstance(contents,bytes):
+        return None
+    blob=hashlib.sha1(b'blob '+str(len(contents)).encode('ascii')+b'\0'+contents).hexdigest()
+    if blob!='4029009f5e621ae30b705d46b675220cd657c0c9':
+        return None
+    import importlib.util
+    path_to_helper=repo/'tests/scp_public_kernel_exact_source_overlay.py'
+    if not path_to_helper.is_file() or path_to_helper.is_symlink():
+        return None
+    try:
+        spec=importlib.util.spec_from_file_location('scp_exact_public_kernel_review',path_to_helper)
+        if spec is None or spec.loader is None:return None
+        module=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        previous=module.strip_exact_public_kernel(contents)
+        if module.blob(previous)!=module.PREVIOUS:
+            return None
+        if reviewed_cwv_site_admission_bootstrap_successor(repo,path,previous) is None:
+            return None
+        return 'tests/test_scp_public_kernel_exact_source_overlay.py'
+    except (AssertionError,OSError,ValueError,TypeError,KeyError,ImportError):
+        return None
+
+
 def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     """Accept exact, reviewed Git blobs for CI inventory only; never parity.
     Static legacy entries remain valid; rc129 successors are independently
@@ -846,7 +877,9 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     source=root/path
     if source.is_symlink() or not source.is_file() or source.read_bytes()!=contents:
         return False
-    requested=reviewed_followup_company_email_readonly_successor(repo,path,contents)
+    requested=reviewed_scp_public_kernel_bootstrap_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_followup_company_email_readonly_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_followup_context_readonly_plan_successor(repo,path,contents)
     if requested is None:
