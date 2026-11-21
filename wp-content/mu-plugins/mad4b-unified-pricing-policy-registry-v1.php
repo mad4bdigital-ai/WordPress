@@ -345,6 +345,53 @@ final class MAD4B_Unified_Pricing_Policy_Registry_V1 {
                 'runtime'=>'supplier_source_not_checkout']));
         }
 
+        // Accommodation stay-length margin is a native financial policy family.
+        // Read the original scoped stores through their owner; do not create
+        // another price ledger or imply that a supplier cost is approved.
+        $sources['accommodation_stay_margin']=[
+            'option'=>'mad4b_accommodation_stay_margin_global_v1',
+            'meta'=>'_mad4b_accommodation_stay_margin_v1',
+            'source_kind'=>'native_scoped_stay_financial_policy',
+            'configured'=>false,
+        ];
+        if(class_exists('MAD4B_Accommodation_Stay_Margin_V1',false)){
+            $inventory=MAD4B_Accommodation_Stay_Margin_V1::inventory();
+            if(is_wp_error($inventory)){
+                $warnings[]='accommodation_stay_margin_inventory_unavailable';
+            }else{
+                $sources['accommodation_stay_margin']['configured']=
+                    (int)($inventory['configured_count']??0)>0;
+                $sources['accommodation_stay_margin']['truncated']=
+                    ($inventory['truncated']??false)===true;
+                if($inventory['truncated']??false)
+                    $warnings[]='accommodation_stay_margin_inventory_truncated';
+                foreach((array)($inventory['items']??[]) as $entry){
+                    if(!is_array($entry))continue;
+                    $active=($entry['configured']??false)===true;
+                    $kind=(string)($entry['pricing_rule_kind']??'inherit');
+                    $bands=array_values((array)($entry['bands']??[]));
+                    $effect=$active
+                        ?($kind==='target_margin_percent'?'Target gross margin':'Cost markup').
+                          ' · '.count($bands).' duration bands'
+                        :'Inherit only · no financial effect';
+                    $add(self::record('accommodation_stay_margin',
+                        (string)($entry['scope']??'scope').':'.
+                        (int)($entry['target_id']??0),
+                        'Accommodation · '.(string)($entry['label']??'scope'),
+                        'mad4b_accommodation_stay_margin_global_v1 / '.
+                        '_mad4b_accommodation_stay_margin_v1',
+                        'accommodation:length_of_stay',
+                        $active?'configured_preview_only':'stored_inherit_only',
+                        $effect,
+                        ['scope'=>$entry['scope']??null,'target_id'=>(int)($entry['target_id']??0),
+                         'pricing_rule_kind'=>$kind,'bands'=>$bands,
+                         'runtime'=>'native_financial_cost_preview_only',
+                         'supplier_cost_approval_required'=>true,
+                         'commercial_authority'=>false]));
+                }
+            }
+        }
+
         $counts=[];
         $byDimension=[];
         foreach($rows as $entry){
@@ -353,7 +400,8 @@ final class MAD4B_Unified_Pricing_Policy_Registry_V1 {
         }
         ksort($counts);
         $financial=array_values(array_filter($rows,static fn($row)=>
-           in_array($row['family'],['tour_type','package_level','pricing_lab','native_preset'],true)));
+           in_array($row['family'],['tour_type','package_level','pricing_lab','native_preset',
+               'accommodation_stay_margin'],true)));
         $fingerprint=hash('sha256',wp_json_encode([$rows,$sources]));
         return [
             'schema'=>self::SCHEMA,'read_only'=>true,
@@ -370,6 +418,7 @@ final class MAD4B_Unified_Pricing_Policy_Registry_V1 {
                 'package_level_native_preview',
                 'native_price_source_and_mode_policies',
                 'company_component_costs_separately',
+                'accommodation_night_margin_preview_requires_approved_supplier_cost',
                 'approved_native_checkout_eligibility_not_certified',
             ],
             'sources'=>$sources,
