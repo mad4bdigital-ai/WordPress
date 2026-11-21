@@ -33,6 +33,23 @@ def lane(c=catalog,s=state,l=ledger,p=pub,r=[route]):
 assert lane()==[route['route_key']]
 print('PASS genuine previous Chrome and old WordPress source key are eligible for RE-TEST only')
 assert lane(c=oldcat)==[]
+# Repeated tour edits may move the mutable queue source key after a successful
+# intermediate Chrome certification, while the older published v2 certificate
+# still proves a previous generation. Recovery is for NEW QA only.
+latercat={**catalog,'listing_generation':1516}
+intermediate=copy.deepcopy(ledger)
+intermediate['routes'][route['route_key']]['source_key']=f.queue.source_key(
+    catalog,route,state,True)
+intermediate['routes'][route['route_key']]['attempted_at']=now-5
+assert lane(c=latercat,l=intermediate)==[route['route_key']]
+assert lane(c=latercat)==[route['route_key']]
+assert lane(c={**catalog,'listing_generation':1606})==[]
+unrelated=copy.deepcopy(intermediate)
+unrelated['routes'][route['route_key']]['source_key']='f'*64
+assert lane(c=latercat,l=unrelated)==[]
+unrelated['routes'][route['route_key']]['status']='hold'
+assert lane(c=latercat,l=unrelated)==[]
+print('PASS bounded intermediate certified listing-source lineage only schedules new QA')
 assert lane(c={**catalog,'global_generation':680})==[]
 assert lane(s={**state,'css_epoch':253})==[]
 assert lane(s={**state,'consumer_v2_sha':'f'*64})==[]
