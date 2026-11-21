@@ -144,8 +144,9 @@ function renderReport(data){
       const dayLabel=itineraryOk?'Explicit overnight destinations match the saved stage':
         evidence.status==='itinerary_destination_conflict'?'Itinerary conflicts with the saved stage destination':
         'Saved stage needs more itinerary overnight evidence; no automatic confirmation';
-      section.append(row('p',[status(itineraryOk,'',''),el('span','',dayLabel)],
-        'mad4b-pcl-stage-itinerary'));
+      section.append(el('p',
+        itineraryOk?'mad4b-pcl-stage-itinerary mad4b-pcl-confirmed':'mad4b-pcl-stage-itinerary mad4b-pcl-needs-review',
+        dayLabel));
       const nights=Array.isArray(evidence.night_days)?evidence.night_days:[];
       if(nights.length){
         const details=el('details','mad4b-pcl-night-evidence');
