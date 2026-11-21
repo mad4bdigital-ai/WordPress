@@ -5,6 +5,7 @@ on:
       - 'tests/test_package_commercial_source_intake_non_regression.py'
       - 'tests/rate-season-effective-window-hermetic.php'
       - 'tests/test_accommodation_stay_margin_forward_nonregression.py'
+      - 'tests/accommodation-rate-source-fallback-hermetic.php'
       - 'ops/pricing-unified-checkpoints/tests/verify-accommodation*'
       - 'wp-content/mu-plugins/mad4b-accommodation-weight-policies-v1.php'
       - 'wp-content/mu-plugins/mad4b-unified-pricing-policy-registry-v1.php'
@@ -38,6 +39,8 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: python3 tests/test_package_commercial_source_intake_non_regression.py
+      - name: Verify Unit first, Property fallback, and receipt-denial policy
+        run: php tests/accommodation-rate-source-fallback-hermetic.php
       - name: Verify live-forward accommodation margin stays preview-only
         run: python3 tests/test_accommodation_stay_margin_forward_nonregression.py
       - name: Check accommodation PHP and admin JavaScript syntax
