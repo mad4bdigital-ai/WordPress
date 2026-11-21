@@ -12,6 +12,10 @@ on:
       - "ops/dynamic-critical-css-20261116/tools/lcp-observation-window.js"
       - "ops/dynamic-critical-css-20261116/tests/test-lcp-network-jitter-replay.js"
       - ".github/workflows/mad4b-native-source-lcp-jitter-qa.yml"
+concurrency:
+  group: mad4b-native-source-lcp-jitter-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
 jobs:
   native-source-320-lcp-qa:
     runs-on: ubuntu-latest
