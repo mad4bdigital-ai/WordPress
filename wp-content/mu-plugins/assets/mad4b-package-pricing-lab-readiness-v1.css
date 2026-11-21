@@ -1,0 +1,52 @@
+/* Package Cost Lab: native WordPress admin context; a separate read-only
+   source-inspection section alongside Pricing Lab strategy authoring. */
+.mad4b-package-cost-lab-v1{border:1px solid #c3c4c7;background:#fff;
+  border-radius:6px;padding:18px 20px;margin:18px 0 24px;max-width:100%;
+  box-sizing:border-box;font-size:13px;line-height:1.55;color:#1d2327}
+.mad4b-pcl-heading h2{font-size:18px;margin:0 0 5px}
+.mad4b-pcl-heading p{margin:0 0 15px;color:#50575e;max-width:920px}
+.mad4b-pcl-form{display:flex;align-items:end;gap:10px 16px;flex-wrap:wrap;
+  padding:12px;background:#f6f7f7;border-radius:5px}
+.mad4b-pcl-label{display:flex;flex-direction:column;gap:5px;min-width:180px;flex:1}
+.mad4b-pcl-label span{font-weight:600}
+.mad4b-pcl-label select{max-width:100%;width:100%;min-height:36px}
+.mad4b-pcl-form .button{min-height:36px}
+.mad4b-pcl-note{color:#50575e;margin:12px 0 4px}
+.mad4b-pcl-status{margin:4px 0 12px;font-weight:500}
+.mad4b-pcl-summary{border-top:1px solid #dcdcde;padding:14px 0 10px}
+.mad4b-pcl-summary h3{font-size:17px;margin:0}
+.mad4b-pcl-summary>p{margin:8px 0;color:#50575e}
+.mad4b-pcl-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.mad4b-pcl-metric{border:1px solid #dcdcde;border-radius:5px;padding:10px}
+.mad4b-pcl-metric strong{font-size:21px;display:block;line-height:1.4}
+.mad4b-pcl-metric span{font-size:12px;color:#50575e}
+.mad4b-pcl-warning{border-left:3px solid #b32d2e;padding:9px 12px;
+  color:#1d2327!important;background:#fff9f7}
+.mad4b-pcl-components{display:flex;flex-wrap:wrap;gap:6px 16px;color:#50575e}
+.mad4b-pcl-stage{border:1px solid #dcdcde;margin:12px 0;border-radius:5px;padding:12px}
+.mad4b-pcl-stage h4{font-size:15px;margin:0 0 8px}
+.mad4b-pcl-stage-status,.mad4b-pcl-property-flags{display:flex;
+  flex-wrap:wrap;gap:5px 10px;margin:4px 0 12px!important}
+.mad4b-pcl-missing,.mad4b-pcl-good{font-size:12px;padding:2px 6px;
+  border-radius:3px;white-space:normal}
+.mad4b-pcl-missing{color:#7c2d12;background:#fff4eb}
+.mad4b-pcl-good{color:#166534;background:#f0fdf4}
+.mad4b-pcl-properties{display:grid;gap:8px}
+.mad4b-pcl-property{border:1px solid #c3c4c7;border-radius:4px}
+.mad4b-pcl-property summary{cursor:pointer;display:flex;flex-wrap:wrap;
+  justify-content:space-between;gap:6px 15px;padding:9px 12px}
+.mad4b-pcl-property summary:hover{background:#f6f7f7}
+.mad4b-pcl-property summary:focus-visible{outline:2px solid #2271b1;outline-offset:2px}
+.mad4b-pcl-property summary span{color:#50575e}
+.mad4b-pcl-property-body{padding:10px 12px;border-top:1px solid #dcdcde}
+.mad4b-pcl-table{width:100%;table-layout:auto}
+.mad4b-pcl-table th,.mad4b-pcl-table td{font-size:12px;padding:6px 8px}
+.mad4b-pcl-empty{background:#f6f7f7;padding:10px;margin:0}
+.mad4b-pcl-footer{margin:14px 0 0;color:#50575e}
+@media(max-width:782px){.mad4b-pcl-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .mad4b-package-cost-lab-v1{padding:14px}
+ .mad4b-pcl-property-body{overflow-x:auto}
+ .mad4b-pcl-table{min-width:540px}}
+@media(max-width:440px){.mad4b-pcl-kpis{grid-template-columns:1fr}
+ .mad4b-pcl-form{display:block}
+ .mad4b-pcl-label{margin-bottom:10px}}
