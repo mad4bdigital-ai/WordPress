@@ -10,6 +10,18 @@ on:
       - '.github/mad4b-release-qualification-mode.json'
       - '.github/workflows/host-v128-persistent-mode.yml'
       - '.github/workflows/mad4b-release-verdict.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'ops/host-authority-v128/**'
+      - 'tests/host-v128/**'
+      - 'tests/release-qualification/**'
+      - 'tools/mad4b_release_qualification_mode.py'
+      - 'docs/host-v128/**'
+      - '.github/mad4b-release-qualification-mode.json'
+      - '.github/workflows/host-v128-persistent-mode.yml'
+      - '.github/workflows/mad4b-release-verdict.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -18,6 +30,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   host-mode-contract:
+    name: Host v128 lifecycle contract
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:

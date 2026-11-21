@@ -22,6 +22,42 @@ RETAINED = (
 class ReleaseQualificationDenied(ValueError):
     pass
 
+# Only release qualification artifacts become advisory in manual Staging.
+# Repository governance, signed authority, feature boundaries and functional
+# host contracts are never included in this list.
+ARTIFACT_QUALIFICATION_CHECKS = frozenset((
+    "Build reviewed General Distribution installation kit",
+    "Live evidence contracts + exact artifact",
+    "Content Hub exact-head package",
+))
+
+def partition_checks(required: list[str], mode: str) -> tuple[list[str], list[str]]:
+    if mode not in MODES or not isinstance(required, list) or any(
+        type(name) is not str or not name for name in required
+    ):
+        raise ReleaseQualificationDenied("REQUIRED_CHECKS_POLICY_INVALID")
+    if mode == "required":
+        return list(required), []
+    remaining = [name for name in required
+                 if name not in ARTIFACT_QUALIFICATION_CHECKS]
+    advisory = [name for name in required
+                if name in ARTIFACT_QUALIFICATION_CHECKS]
+    # Existing reviewed bootstrap and master-push scopes are intentionally
+    # different from ordinary PR scopes. Keep their native control-plane
+    # contract or repository governance gate; never strip any non-artifact job.
+    governance_baselines = {
+        "Repository governance policy", "Control-plane contract guard",
+    }
+    if not set(required).intersection(governance_baselines):
+        raise ReleaseQualificationDenied("CRITICAL_REPOSITORY_GOVERNANCE_MISSING")
+    if not set(remaining).intersection(governance_baselines):
+        raise ReleaseQualificationDenied("CRITICAL_REPOSITORY_GOVERNANCE_REMOVED")
+    if any(name not in ARTIFACT_QUALIFICATION_CHECKS
+           for name in set(required).difference(remaining)):
+        raise ReleaseQualificationDenied("NON_ARTIFACT_CHECK_REMOVAL_DENIED")
+    return remaining, advisory
+
+
 def load_policy(path: Path) -> dict[str, Any]:
     row = json.loads(path.read_text(encoding="utf-8"))
     if (type(row) is not dict

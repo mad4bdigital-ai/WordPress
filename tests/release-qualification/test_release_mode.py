@@ -64,6 +64,42 @@ class ReleaseQualificationTests(unittest.TestCase):
             with self.assertRaisesRegex(v.ReleaseQualificationDenied,"POLICY_INVALID"):
                 v.load_policy(path)
 
+    def test_optional_downgrades_only_release_artifact_jobs(self):
+        required = [
+            "Repository governance policy", "Repository feature boundary",
+            "Root trust and Recovery Plane",
+            "Build reviewed General Distribution installation kit",
+            "Live evidence contracts + exact artifact",
+            "Content Hub exact-head package",
+            "Host v128 lifecycle contract",
+        ]
+        kept, advisory = v.partition_checks(required, "optional")
+        self.assertIn("Root trust and Recovery Plane", kept)
+        self.assertIn("Host v128 lifecycle contract", kept)
+        self.assertIn("Repository governance policy", kept)
+        self.assertIn("Repository feature boundary", kept)
+        self.assertEqual(set(advisory), v.ARTIFACT_QUALIFICATION_CHECKS)
+        self.assertEqual(v.partition_checks(required, "required"), (required, []))
+
+    def test_master_push_without_feature_boundary_is_supported(self):
+        required = ["Repository governance policy", "Root trust and Recovery Plane",
+                    "Build reviewed General Distribution installation kit"]
+        preserved, advisory = v.partition_checks(required, "optional")
+        self.assertEqual(preserved, required[:2])
+        self.assertEqual(advisory, [required[2]])
+
+    def test_legacy_approved_bootstrap_narrow_scope_remains_supported(self):
+        self.assertEqual(
+            v.partition_checks(["Control-plane contract guard"], "optional"),
+            (["Control-plane contract guard"], []),
+        )
+
+    def test_optional_fails_if_repository_governance_absent(self):
+        with self.assertRaisesRegex(
+                v.ReleaseQualificationDenied, "CRITICAL_REPOSITORY_GOVERNANCE_MISSING"):
+            v.partition_checks(["Build reviewed General Distribution installation kit"],
+                               "optional")
+
     def test_workflow_never_autopublishes_under_optional_mode(self):
         source=(ROOT/".github/workflows/mad4b-release-verdict.yml").read_text()
         self.assertIn("needs.verdict.outputs.qualification_mode == 'required'",source)

@@ -987,7 +987,27 @@ jobs:
               required = list(required) + ['Content Hub exact-head package']
               if mode == 'repository_non_runtime':
                   mode = 'content_hub_runtime_release'
+          host_v128_affecting = any(
+              path.startswith(("ops/host-authority-v128/", "tests/host-v128/",
+                               "tests/release-qualification/", "docs/host-v128/"))
+              or path in (
+                  "tools/mad4b_release_qualification_mode.py",
+                  ".github/mad4b-release-qualification-mode.json",
+                  ".github/workflows/host-v128-persistent-mode.yml",
+              )
+              for path in changed
+          )
+          if host_v128_affecting and os.environ.get('GITHUB_EVENT_NAME') in ('pull_request', 'push'):
+              required.append('Host v128 lifecycle contract')
           required = list(dict.fromkeys(required))
+          from tools.mad4b_release_qualification_mode import load_policy, partition_checks
+          qualification_policy = load_policy(
+              Path('.github/mad4b-release-qualification-mode.json')
+          )
+          qualification_mode = qualification_policy['qualification_mode']
+          required, advisory_release_checks = partition_checks(
+              required, qualification_mode
+          )
 
           Path('/tmp/mad4b-critical-checks.txt').write_text('\n'.join(required) + '\n', encoding='utf-8')
           Path('/tmp/mad4b-release-verdict-scope.json').write_text(
@@ -998,6 +1018,8 @@ jobs:
                   'content_hub_artifact_required': content_hub_required,
                   'changed_files': changed,
                   'required_checks': required,
+                  'release_qualification_mode': qualification_mode,
+                  'advisory_release_checks': advisory_release_checks,
                   'bootstrap_exception': bootstrap_exception,
                   'bootstrap_root_branch': bootstrap_root_branch if bootstrap_exception else '',
                   'governance_apply_repair_bootstrap': governance_apply_repair_bootstrap,
