@@ -60,6 +60,11 @@ $ok(is_array($preview)&&$preview['checkout_ready']===false,'no_checkout_write');
 $ok(is_array($preview)&&$preview['priced_season']===null,'season_not_fabricated');
 $ok(is_array($preview)&&$preview['supplier_contract_approved']===false,'supplier_not_fabricated');
 $ok(is_array($preview)&&$preview['base_board_included_verified']===false,'board_not_fabricated');
+$ok(is_array($preview)&&($preview['meal_base_policy']['base_board']??'')==='bed-breakfast','aswan_base_bb');
+$coast=$cls::preview(array_replace($input,['property_id'=>36084,'unit_id'=>0,'room_grade'=>'standard']));
+$ok(is_array($coast)&&($coast['meal_base_policy']['base_board']??'')==='all-inclusive','sharm_base_ai');
+$cruise=$cls::preview(array_replace($input,['property_id'=>35935,'unit_id'=>0,'room_grade'=>'standard']));
+$ok(is_array($cruise)&&($cruise['meal_base_policy']['base_board']??'')==='full-board','cruise_base_fb');
 $error($cls::preview(array_replace($input,['room_grade'=>'standard'])),
  'accommodation_weight_unit_room_grade_mismatch');
 $error($cls::preview(array_replace($input,['property_id'=>36084,'unit_id'=>$superior,
