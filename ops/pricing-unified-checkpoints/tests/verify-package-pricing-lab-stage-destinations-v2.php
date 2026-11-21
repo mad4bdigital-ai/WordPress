@@ -165,11 +165,19 @@ if($wayfa){
     $observed['unique_props']=count($observed['unique_props']);
     $observed['unique_units']=count($observed['unique_units']);
 }else{
-    $ok($class::packages()===[],'source has no saved package source plan at this checkpoint');
+    $sourcePackages=$class::packages();
+    $ok(is_array($sourcePackages),'source Package list is dynamically readable');
+    foreach($sourcePackages as $p){
+        $sourceTour=(int)$p['id'];
+        $v=$class::inspect($sourceTour,2354);
+        $ok(is_array($v) && $v['supplier_cost_total']===null &&
+            $v['generated_rate_ready']===false,
+            'saved source Package remains read-only and not commercially priced');
+    }
     $scope=$class::stageDestinationScope(60629,[
         'destination_key'=>'luxor','lodging_kind'=>'hotel']);
     $ok($scope['status']==='mapped','generalized exact destination mapping on source');
-    $observed=['source_no_plan'=>true,'scope'=>$scope];
+    $observed=['source_package_count'=>count($sourcePackages),'scope'=>$scope];
 }
 if($fail)WP_CLI::error(wp_json_encode(['failed'=>$fail,'passed'=>$assertions-count($fail),
     'total'=>$assertions,'observed'=>$observed],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
