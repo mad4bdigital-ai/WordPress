@@ -594,6 +594,73 @@ def reviewed_rc129_company_staff_ceiling_successor(repo:Path,path:str,contents:b
         return None
 
 
+def reviewed_pr995_wayfa_skill_cimd_source(repo:Path,path:str,contents:bytes):
+    """Exact source-only first-party ChatGPT CIMD/Skill observer compatibility."""
+    name='includes/class-mad4b-scp-skill-abilities.php'
+    if path!=name or not isinstance(contents,bytes):return None
+    evidence=repo/'governance/release-parity/qa31-pr995-wayfa-skill-cimd-source-20261121.json'
+    parent='18f4d734558b82d12ce436dd05fcd23efcd9e4a0'
+    previous='governance/release-parity/qa31-pr990-wayfa-selective-operator-selfupdate-source-20261121.json'
+    previous_sha='f3a40adaa33ebd49a83d0876f995066070d9b0a6987b42ab192f1fbb8b35d6b4'
+    original_blob='e2fcd06a87017f40706c9a31da083ad81ee80264'
+    reviewed_blob='ade041467c097f1a0b3d7c322a698f403388a177'
+    original_sha='59debec476bff113a6e149a2702c0d8a22696c21d8e7265f22a2c8a24eb4709a'
+    reviewed_sha='1de9fb010b98a5db7dc95c5e2f6b8608bb58aede0f0e2a8ab32fa72e76237508'
+    regression='wp-content/plugins/mad4b-site-control-plane/tests/skill-external-cimd-binding-hermetic.php'
+    negative='tests/qa31_wayfa_skill_external_cimd_source_contract.py'
+    controls=['SECURITY-01','EXECUTION-01','MCP-01','AUTOMATION-01','PLATFORM-01','PERFORMANCE-01']
+    try:
+        m=json.loads(evidence.read_text())
+        known={x['id'] for x in json.loads((repo/'governance/production-readiness/controls.json').read_text()).get('controls',[]) if isinstance(x,dict)}
+        if (m.get('contract')!='mad4b.qa31-pr995-wayfa-skill-cimd-client-source.v1'
+            or m.get('base_head_sha')!=parent
+            or m.get('prior_source_review_path')!=previous
+            or m.get('prior_source_review_sha256')!=previous_sha
+            or hashlib.sha256((repo/previous).read_bytes()).hexdigest()!=previous_sha
+            or m.get('source_path')!=name
+            or m.get('original_parent_blob_sha')!=original_blob
+            or m.get('original_parent_sha256')!=original_sha
+            or m.get('reviewed_blob_sha')!=reviewed_blob
+            or m.get('reviewed_sha256')!=reviewed_sha
+            or m.get('required_regression')!=regression
+            or m.get('negative_contract')!=negative
+            or m.get('control_ids')!=controls or not set(controls)<=known
+            or m.get('source_only') is not True
+            or m.get('reviewed_for_ci_only') is not True
+            or m.get('live_host_evidence_required') is not True
+            or m.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or len(m.get('review_rationale',''))<450
+            or any(m.get(k) is not False for k in (
+                'authority_issued','production_authorized','release_approved',
+                'grants_created','oauth_client_registered','external_snapshot_persisted',
+                'live_wordpress_modified'))
+            or not (repo/regression).is_file() or (repo/regression).is_symlink()
+            or not (repo/negative).is_file() or (repo/negative).is_symlink()
+            or subprocess.run(['git','merge-base','--is-ancestor',parent,'HEAD'],
+                cwd=repo,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,
+                timeout=8).returncode!=0):return None
+        original=subprocess.check_output(
+            ['git','show',parent+':wp-content/plugins/mad4b-site-control-plane/'+name],
+            cwd=repo,stderr=subprocess.DEVNULL,timeout=8)
+        if (hashlib.sha256(original).hexdigest()!=original_sha
+            or hashlib.sha1(b'blob '+str(len(original)).encode()+b'\0'+original).hexdigest()!=original_blob
+            or hashlib.sha256(contents).hexdigest()!=reviewed_sha
+            or hashlib.sha1(b'blob '+str(len(contents)).encode()+b'\0'+contents).hexdigest()!=reviewed_blob):return None
+        code=contents.decode('utf-8')
+        for mark in (
+            'MAD4B_SCP_Local_OAuth_Server::trusted_chatgpt_client_ids_match(',
+            'MAD4B_SCP_Local_OAuth_Server::trusted_chatgpt_client_id(',
+            "'external_client_server_binding_mismatch'",
+            'self::SERVER_ID !==',
+            'public static function finalize_external_snapshot_observation()',
+            'public static function dynamic_snapshot_status()'):
+            if mark not in code:return None
+        return regression
+    except (OSError,ValueError,KeyError,TypeError,UnicodeError,
+            subprocess.CalledProcessError,subprocess.TimeoutExpired):
+        return None
+
+
 def reviewed_pr990_wayfa_selective_operator_selfupdate_source(repo:Path,path:str,contents:bytes):
     """Two exact source-only differences; never an Operator/Release authorization."""
     prefix='wp-content/plugins/mad4b-site-control-plane/'
@@ -1427,6 +1494,8 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     requested=reviewed_rc129_dormant_ollama_bootstrap_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_rc129_wayfa_source_followup_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_pr995_wayfa_skill_cimd_source(repo,path,contents)
     if requested is None:
         requested=reviewed_pr990_wayfa_selective_operator_selfupdate_source(repo,path,contents)
     if requested is None:

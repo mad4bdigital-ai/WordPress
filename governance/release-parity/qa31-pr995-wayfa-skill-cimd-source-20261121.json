@@ -1,0 +1,33 @@
+{
+  "contract": "mad4b.qa31-pr995-wayfa-skill-cimd-client-source.v1",
+  "base_head_sha": "18f4d734558b82d12ce436dd05fcd23efcd9e4a0",
+  "prior_source_review_path": "governance/release-parity/qa31-pr990-wayfa-selective-operator-selfupdate-source-20261121.json",
+  "prior_source_review_sha256": "f3a40adaa33ebd49a83d0876f995066070d9b0a6987b42ab192f1fbb8b35d6b4",
+  "source_path": "includes/class-mad4b-scp-skill-abilities.php",
+  "original_parent_blob_sha": "e2fcd06a87017f40706c9a31da083ad81ee80264",
+  "original_parent_sha256": "59debec476bff113a6e149a2702c0d8a22696c21d8e7265f22a2c8a24eb4709a",
+  "reviewed_blob_sha": "ade041467c097f1a0b3d7c322a698f403388a177",
+  "reviewed_sha256": "1de9fb010b98a5db7dc95c5e2f6b8608bb58aede0f0e2a8ab32fa72e76237508",
+  "required_regression": "wp-content/plugins/mad4b-site-control-plane/tests/skill-external-cimd-binding-hermetic.php",
+  "negative_contract": "tests/qa31_wayfa_skill_external_cimd_source_contract.py",
+  "control_ids": [
+    "SECURITY-01",
+    "EXECUTION-01",
+    "MCP-01",
+    "AUTOMATION-01",
+    "PLATFORM-01",
+    "PERFORMANCE-01"
+  ],
+  "source_only": true,
+  "reviewed_for_ci_only": true,
+  "authority_issued": false,
+  "production_authorized": false,
+  "release_approved": false,
+  "grants_created": false,
+  "oauth_client_registered": false,
+  "external_snapshot_persisted": false,
+  "live_wordpress_modified": false,
+  "release_gate": "BLOCKED_SOURCE_RECONCILIATION",
+  "live_host_evidence_required": true,
+  "review_rationale": "Retain original live Wayfatours external Skill snapshot validation against the authoritative first-party OAuth ChatGPT CIMD client allowlist. The source previously compared only a static legacy ChatGPT metadata URL even though the enrolled Local OAuth Server also explicitly supports per-connector CIMD identities. The finalizer now requires both verified handshake and independent observer to report the same exact trusted client plus original server ID. The readiness projection accepts only the existing Local OAuth trusted single-client predicate and retains independent session, inventory, build and source evidence checks. All unknown hosts, arbitrary paths, mismatched clients, noncanonical metadata URLs, wrong servers and missing enrollment still deny. This is a manual source-only compatibility fix, not a client registration, snapshot authorization, OAuth grant, source deployment, owner approval, release, or change to the WordPress Production files. PHP 7.4/8.5 first-party client policy and synthetic binding witness cases must pass. Historical frozen source and all existing Gate policies stay independently immutable."
+}

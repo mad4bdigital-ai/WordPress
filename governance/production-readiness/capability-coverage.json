@@ -24628,6 +24628,28 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-abilities.php",
+      "source_blob_sha": "ade041467c097f1a0b3d7c322a698f403388a177",
+      "control_ids": [
+        "SECURITY-01",
+        "EXECUTION-01",
+        "MCP-01",
+        "AUTOMATION-01",
+        "PLATFORM-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/skill-external-cimd-binding-hermetic.php"
+      ],
+      "owner_role": "MAD4B Skills first-party OAuth identity and current Source reviewer; live Owner and Host remain independent",
+      "review_rationale": "SOURCE-ONLY EXACT MANUAL WAYFA SCOPED CIMD: Retain original live Wayfatours external Skill snapshot validation against the authoritative first-party OAuth ChatGPT CIMD client allowlist. The source previously compared only a static legacy ChatGPT metadata URL even though the enrolled Local OAuth Server also explicitly supports per-connector CIMD identities. The finalizer now requires both verified handshake and independent observer to report the same exact trusted client plus original server ID. The readiness projection accepts only the existing Local OAuth trusted single-client predicate and retains independent session, inventory, build and source evidence checks. All unknown hosts, arbitrary paths, mismatched clients, noncanonical metadata URLs, wrong servers and missing enrollment still deny. This is a manual source-only compatibility fix, not a client registration, snapshot authorization, OAuth grant, source deployment, owner approval, release, or change to the WordPress Production files. PHP 7.4/8.5 first-party client policy and synthetic binding witness cases must pass. Historical frozen source and all existing Gate policies stay independently immutable.",
+      "coverage_reuse_rationale": "Uses the existing first-party Local OAuth trusted ChatGPT CIMD predicates, source SHA and independent external handshake/source/session/provenance validation; neither extends the client allowlist nor adds any grant or release capability.",
+      "execution_note": "Hermetic PHP 7.4/8.5 original Local OAuth trust runtime and exact two Skill Abilities call-site witnesses; no OAuth credentials, local WordPress process or Production writes.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
