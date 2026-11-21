@@ -162,7 +162,8 @@ const names={
  stay_supplier_cost_receipt_missing:'Accommodation supplier contract and date-specific cost are not certified.',
  transport_supplier_cost_role_missing:'Transport supplier-cost role has not been approved.',
  transport_original_source_missing:'The transport source is unavailable.',
- transport_route_cost_unapproved:'Transport route, vehicle and minimum base cost need an approved supplier receipt.',
+ transport_route_stage_binding_missing:'Assign the itinerary transport legs to explicit native route stages first.',
+ transport_route_cost_unapproved:'For each transport leg, confirm the vehicle, date, route and approved Self supplier COST receipt.',
  extra_supplier_rate_not_certified:'Optional extras supplier costs and included quantities are not certified.',
  guide_cost_source_not_certified:'Guide daily coverage and cost source require review.',
  child_infant_component_costs_not_certified:'Children and infant occupancy/cost policies are not certified.',
@@ -214,10 +215,27 @@ const render=(result,editUrl)=>{
    card.append(el('small',(item.binding_count||0)+' original itinerary stage(s)'));
   }
   if(kind==='transportation'){
-   card.append(el('small','Source role: '+(item.source_role||'unassigned')+
-     ', currency '+(item.currency||'not approved')));
+   card.append(el('small','Self source: '+(item.original_source_row_count||0)+
+     ' operations · '+(item.explicit_route_stage_count||0)+
+     ' assigned itinerary legs · '+(item.currency||'currency pending')));
+   card.append(el('small','Vehicle profiles: '+
+     (item.model_candidate_vehicle_keys?.length||0)+' cost-model candidates, '+
+     (item.vehicle_profiles_needing_review?.length||0)+
+     ' require review. An estimate is not a certified route cost.'));
+   card.append(el('small','Route status: '+(item.route_component_status||'not reviewed')));
   }
-  if(kind==='guide')card.append(el('small','Status: '+(item.status||'missing')));
+  if(kind==='guide'){
+   card.append(el('small','Self guide policy: '+
+     (item.company_self_cost_configured?'configured':'unavailable')+
+     ' · '+(item.source_day_count||0)+' itinerary day(s)'));
+   card.append(el('small','Day coverage: '+
+     (item.coverage_review_status||'not reviewed')+
+     ' · '+(item.status||'unknown')));
+   if(item.cost_qualified && Number.isFinite(Number(item.source_cost_egp)))
+     card.append(el('small','Verified internal guide cost: EGP '+
+       Number(item.source_cost_egp).toLocaleString()+
+       ' (not added to selling price).'));
+  }
   if(kind==='extras')card.append(el('small','Status: '+(item.runtime_status||'missing')));
   components.append(card);
  }
