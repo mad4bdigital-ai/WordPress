@@ -513,6 +513,29 @@ def source_browser_evidence_due(variance,history,now):
         return False,'existing_browser_proof_fresh'
     return True,'browser_evidence_expired'
 
+def source_browser_evidence_checkpoint(history,now,delay,completed_at=None):
+    """Preserve the last valid Chrome proof through FAILED and BUSY attempts.
+
+    Attempt cooldowns cannot pretend the old proof was renewed, and a failed
+    browser/lock/resource retry must not erase its prior completion timestamp.
+    The actual original browser SHA/90-minute classifier remains authoritative.
+    Pure state transition; the original worker alone owns persistence.
+    """
+    if (not isinstance(history,dict) or type(now)!=int or now<=0
+        or type(delay)!=int or delay not in (240,600,2700)):
+        raise ValueError('invalid_original_browser_checkpoint')
+    prior=history.get(_SOURCE_OBSERVER_KEY,{})
+    old=prior.get('last_completed') if isinstance(prior,dict) else None
+    if type(old)!=int or old<1 or old>now:old=None
+    if completed_at is not None:
+        if type(completed_at)!=int or completed_at<now or completed_at>now+240:
+            raise ValueError('invalid_actual_browser_completion')
+        old=completed_at
+    row={'last_attempt':now,'next_attempt':now+delay}
+    if old is not None:row['last_completed']=old
+    history[_SOURCE_OBSERVER_KEY]=row
+    return row
+
 def source_browser_evidence_resource_ok(record,now,load):
     """Same conservative native host CPU bounds, no new browser exception."""
     if not isinstance(record,dict) or record.get('contract')!='mad4b.host-cpu-budget.v1' or record.get('cores')!=8:
@@ -584,7 +607,7 @@ def source_browser_evidence_refresh(history,now):
             return False
         # Attempt throttle: once every 45 min upon full proof success,
         # a 10-min backoff otherwise. Neither state fabricates any proof.
-        history[_SOURCE_OBSERVER_KEY]={'last_attempt':now,'next_attempt':now+600}
+        source_browser_evidence_checkpoint(history,now,600)
         save_state(history)
         lockfd=os.open(_SOURCE_OBSERVER_LOCK,os.O_CREAT|os.O_RDWR|os.O_CLOEXEC,0o600)
         try:
@@ -592,7 +615,7 @@ def source_browser_evidence_refresh(history,now):
             except BlockingIOError:
                 # The V2 publisher has precedence. Retry at the next
                 # original five-minute Cron window, never start a peer.
-                history[_SOURCE_OBSERVER_KEY]={'last_attempt':now,'next_attempt':now+240}
+                source_browser_evidence_checkpoint(history,now,240)
                 save_state(history)
                 print('WPCSS_SOURCE_BROWSER_READBACK_DEFERRED original_browser_busy',flush=True)
                 return False
@@ -640,9 +663,9 @@ def source_browser_evidence_refresh(history,now):
                        and generation.get('css_epoch')==site.get('css_epoch')
                        and generation.get('runtime_versions')==site.get('runtime_versions'))
             success=outcome.returncode==0 and expected and all_seen and unchanged
-            history[_SOURCE_OBSERVER_KEY]={'last_attempt':now,
-                'last_completed':int(time.time()) if success else 0,
-                'next_attempt':now+(2700 if success else 600)}
+            source_browser_evidence_checkpoint(
+                history,now,2700 if success else 600,
+                completed_at=int(time.time()) if success else None)
             save_state(history)
             print('WPCSS_SOURCE_BROWSER_READBACK',
                   'six_locale_observed_no_certificate' if success else 'partial_or_changed_source',

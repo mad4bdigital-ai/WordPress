@@ -5,14 +5,16 @@ candidate=Path(__file__).resolve().parents[1]/'site-owned-source-wpcron-worker.p
 source=ast.parse(candidate.read_text())
 # Import only the two pure admission functions without loading or mutating
 # the live site-owner profile, renderer, WordPress, or Cron.
-needed={'source_browser_evidence_due','source_browser_evidence_resource_ok'}
+needed={'source_browser_evidence_due','source_browser_evidence_resource_ok',
+        'source_browser_evidence_checkpoint'}
 nodes=[x for x in source.body if isinstance(x,ast.FunctionDef) and x.name in needed]
-assert len(nodes)==2
+assert len(nodes)==3
 m={'_SOURCE_OBSERVER_KEY':'source:original_browser_evidence_refresh',
    '_SOURCE_OBSERVER_LANGS':('en','es','de','fr','ar','it')}
 exec(compile(ast.Module(body=nodes,type_ignores=[]),str(candidate),'exec'),m)
 due=m['source_browser_evidence_due']
 resources=m['source_browser_evidence_resource_ok']
+checkpoint=m['source_browser_evidence_checkpoint']
 now=int(time.time())
 base={'contract':'mad4b.source-css-profile-variance.v1',
       'host':'tours.dev.mad4b.com',
@@ -52,4 +54,29 @@ assert "'node','/tools/probe-public.js'" in candidate.read_text()
 assert "_SOURCE_OBSERVER_LOCK=Path('/run/lock/mad4b-native-lazy-browser-global.lock')" in candidate.read_text()
 assert 'CSS_NETWORK_PROFILE' not in m
 print('PASS original renderer probe and shared browser lock, no second runtime')
-print('CSS_ORIGINAL_BROWSER_FRESHNESS_TESTS_13_OF_13_PASS')
+h={'source:original_browser_evidence_refresh':{
+  'last_completed':now-2700,'next_attempt':now-5}}
+assert due(fresh,h,now)==(True,'proactive_browser_proof_renewal')
+assert checkpoint(h,now,600)=={'last_attempt':now,'next_attempt':now+600,
+                              'last_completed':now-2700}
+assert due(fresh,h,now+600)==(True,'proactive_browser_proof_renewal')
+print('PASS failed retry keeps last real successful proof and proactive eligibility')
+assert checkpoint(h,now+600,240)=={
+ 'last_attempt':now+600,'next_attempt':now+840,'last_completed':now-2700}
+print('PASS original Chromium busy backoff preserves successful proof')
+assert checkpoint(h,now+840,600)=={
+ 'last_attempt':now+840,'next_attempt':now+1440,'last_completed':now-2700}
+print('PASS timeout/non-200 retry preserves original previous success')
+assert checkpoint(h,now+1440,2700,completed_at=now+1472)=={
+ 'last_attempt':now+1440,'next_attempt':now+4140,'last_completed':now+1472}
+assert due({**fresh,'checked_at':now+1472},h,now+1472)==(False,'readback_cooldown')
+print('PASS new authenticated completion advances last_completed after actual success')
+h={'source:original_browser_evidence_refresh':{'next_attempt':now-1}}
+assert checkpoint(h,now,600)=={'last_attempt':now,'next_attempt':now+600}
+print('PASS unproven source evidence never inherits a fabricated success timestamp')
+for bad in (now-1,now+241,False,'invalid'):
+ try:checkpoint({},now,600,completed_at=bad)
+ except ValueError:pass
+ else:raise AssertionError('invalid original browser completion accepted')
+print('PASS forged/future/invalid proof completion rejected fail closed')
+print('CSS_ORIGINAL_BROWSER_FRESHNESS_TESTS_19_OF_19_PASS')
