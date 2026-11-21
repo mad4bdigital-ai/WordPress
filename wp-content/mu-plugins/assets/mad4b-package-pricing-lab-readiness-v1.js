@@ -84,7 +84,10 @@ state.setAttribute('role','status');
 const result=el('div','mad4b-pcl-result');
 inner.replaceChildren(form,responsibilities,note,state,result);
 if(!packages.length||!tiers.length){
-  b.disabled=true;state.textContent='No package source plans and levels are available for review on this company.';
+  b.disabled=true;
+  state.textContent=!packages.length
+    ? 'No editable Package tours with saved stage plans are available to this signed-in WordPress user. Check Package tour type, source plan and edit permissions; do not interpret this as an empty company catalog.'
+    : 'Package Level terms are missing. Check the original Silver, Gold and Diamond taxonomy terms.';
   return;
 }
 let requestToken=0;
