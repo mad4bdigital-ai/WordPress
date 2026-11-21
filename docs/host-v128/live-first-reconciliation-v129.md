@@ -27,8 +27,8 @@ or stale high-water fails closed, even if an older desired signature verifies.
 
 The `desired` record signs: company/environment/site/host, Host key and
 policy hashes, revision and source commit, approved base file hashes, desired
-file hashes, and named atomic deployment groups. Every file is in exactly one
-group. Source accepts only MAD4B code files, not wp-config, site credentials,
+file hashes, and named atomic deployment groups and their explicit dependency edges. Every file is in exactly one
+group; unknown, cyclic or missing group dependencies are rejected. Source accepts only MAD4B code files, not wp-config, site credentials,
 uploads, third-party plugins, private keys or arbitrary host paths.
 
 ## State machine, not a binary Git-vs-live comparison
@@ -43,6 +43,9 @@ Each independently approved atomic group is classified:
   the approved baseline and Desired. Preserve all files in this group.
   Generate a review proposal so the live hotfix can be assessed, tested,
   and integrated into Git/Desired via a new separate approval.
+- `WAITING_FOR_DEPENDENCY`: a declared prerequisite group is not yet
+  verified in the installed Current. Do not install this group until its
+  dependency has been independently read back as in sync.
 - `CANDIDATE_NOT_APPROVED`: Candidate head or content does not match
   the independently signed Desired. Do not schedule any install.
 

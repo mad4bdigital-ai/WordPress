@@ -105,7 +105,7 @@ def validate_deployment_groups(raw: object, paths: set[str]) -> tuple:
     seen=set()
     for group in raw:
         need(type(group) is dict
-             and set(group)=={"group_id","paths"}
+             and set(group)=={"group_id","paths","depends_on"}
              and type(group["group_id"]) is str
              and GROUP.fullmatch(group["group_id"]) is not None
              and type(group["paths"]) is list
@@ -114,13 +114,36 @@ def validate_deployment_groups(raw: object, paths: set[str]) -> tuple:
              and group["paths"]==sorted(set(group["paths"])),
              "ATOMIC_GROUPS_INVALID")
         names=group["paths"]
+        deps=group["depends_on"]
+        need(type(deps) is list
+             and all(type(x) is str and GROUP.fullmatch(x) is not None
+                     for x in deps)
+             and deps==sorted(set(deps))
+             and group["group_id"] not in deps,
+             "ATOMIC_GROUP_DEPENDENCIES_INVALID")
         need(all(path in paths and path not in seen for path in names),
              "ATOMIC_GROUPS_OVERLAP_OR_UNKNOWN_PATH")
         seen.update(names)
-        normalized.append((group["group_id"],tuple(names)))
+        normalized.append((group["group_id"],tuple(names),tuple(deps)))
     need(seen==paths and normalized==sorted(normalized)
          and len({x[0] for x in normalized})==len(normalized),
          "ATOMIC_GROUPS_INCOMPLETE_OR_DUPLICATED")
+    dependency_map={name:set(deps) for name,_,deps in normalized}
+    need(all(dep in dependency_map for deps in dependency_map.values()
+             for dep in deps),
+         "ATOMIC_GROUP_DEPENDENCY_UNKNOWN")
+    visited=set()
+    active=set()
+    def visit(name: str) -> None:
+        need(name not in active,"ATOMIC_GROUP_DEPENDENCY_CYCLE")
+        if name in visited:return
+        active.add(name)
+        for dep in sorted(dependency_map[name]):
+            visit(dep)
+        active.remove(name)
+        visited.add(name)
+    for name in sorted(dependency_map):
+        visit(name)
     return tuple(normalized)
 
 
@@ -207,7 +230,7 @@ def reconcile(current: Current, desired: Desired, candidate: dict,
         and candidate_files==desired.files
     )
     records=[]
-    for group_name,paths in desired.groups:
+    for group_name,paths,deps in desired.groups:
         changes=[]
         conflicts=[]
         live_changes=[]
@@ -238,12 +261,26 @@ def reconcile(current: Current, desired: Desired, candidate: dict,
             "preserved_live_paths":live_changes,
             "conflicts":conflicts,
             "requires_atomic_install":True,
+            "depends_on":list(deps),
         })
+    # A dependent update is not ready until its prerequisites are already
+    # installed and verified, even if their proposed changes are approved.
+    by_group={row["group_id"]:row for row in records}
+    for row in records:
+        if row["verdict"]=="EXACT_GROUP_CHANGE_PENDING_AUTHORIZATION":
+            unmet=[dep for dep in row["depends_on"]
+                   if by_group[dep]["verdict"]!="IN_SYNC"]
+            if unmet:
+                row["verdict"]="WAITING_FOR_DEPENDENCY"
+                row["change_paths"]=[]
+                row["unmet_dependencies"]=unmet
     eligible=[r["group_id"] for r in records
               if r["verdict"]=="EXACT_GROUP_CHANGE_PENDING_AUTHORIZATION"]
     blocked=[r["group_id"] for r in records
              if r["verdict"] in ("PRESERVE_LIVE_DRIFT_REVIEW",
                                 "CANDIDATE_NOT_APPROVED")]
+    waiting=[r["group_id"] for r in records
+             if r["verdict"]=="WAITING_FOR_DEPENDENCY"]
     return {
         "contract":"mad4b.host-v129.live-first-reconciliation-plan.v1",
         "current_source":"verified_live_installed_code",
@@ -259,6 +296,7 @@ def reconcile(current: Current, desired: Desired, candidate: dict,
         "groups":records,
         "eligible_atomic_groups":eligible,
         "blocked_atomic_groups":blocked,
+        "dependency_waiting_groups":waiting,
         "all_desired_realized":current.files==desired.files,
         "previous":{
             "source":"current_live_preimage",

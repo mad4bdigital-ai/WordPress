@@ -52,8 +52,9 @@ class LiveFirstReconcileTests(unittest.TestCase):
             "base_files":current_files,"files":copy.deepcopy(target),
             "deployment_groups":[
                 {"group_id":"authority","paths":[live_tests.PATH_LOADER,
-                                                  live_tests.PATH_READER]},
-                {"group_id":"site","paths":[SITE_FILE]},
+                                                  live_tests.PATH_READER],
+                 "depends_on":[]},
+                {"group_id":"site","paths":[SITE_FILE],"depends_on":[]},
             ],
         }
         self.sign_desired()
@@ -138,6 +139,41 @@ class LiveFirstReconcileTests(unittest.TestCase):
         self.live_change(SITE_FILE,"f"*64)
         self.assertEqual(self.plan()["groups"][1]["verdict"],
                          "PRESERVE_LIVE_DRIFT_REVIEW")
+
+    def test_dependency_requires_upstream_already_live(self):
+        self.row["deployment_groups"][1]["depends_on"]=["authority"]
+        self.sign_desired()
+        p=self.plan()
+        self.assertEqual(p["eligible_atomic_groups"],["authority"])
+        self.assertEqual(p["dependency_waiting_groups"],["site"])
+        self.assertEqual(p["groups"][1]["unmet_dependencies"],["authority"])
+        with self.assertRaisesRegex(ConnectionDenied,"ATOMIC_GROUP_NOT_ELIGIBLE"):
+            self.atomic(group_id="site")
+        # After the full upstream atomic group becomes live, only the
+        # dependent group is eligible. Never execute them out of order.
+        live=[dict(x) for x in self.l.receipt["files"]]
+        for item in live:
+            if item["relative_path"] in (
+                live_tests.PATH_LOADER,live_tests.PATH_READER):
+                proposed=next(p for p in self.row["files"]
+                              if p["relative_path"]==item["relative_path"])
+                item.update(proposed)
+        self.l.receipt=self.l.sign({**self.l.receipt,"files":live})
+        self.current=self.l.current()
+        newer=self.plan()
+        self.assertEqual(newer["groups"][0]["verdict"],"IN_SYNC")
+        self.assertEqual(newer["eligible_atomic_groups"],["site"])
+
+    def test_unknown_group_dependency_denied(self):
+        self.row["deployment_groups"][1]["depends_on"]=["nonexistent"]
+        with self.assertRaisesRegex(ConnectionDenied,"ATOMIC_GROUP_DEPENDENCY_UNKNOWN"):
+            self.desired()
+
+    def test_cyclic_group_dependency_denied(self):
+        self.row["deployment_groups"][0]["depends_on"]=["site"]
+        self.row["deployment_groups"][1]["depends_on"]=["authority"]
+        with self.assertRaisesRegex(ConnectionDenied,"ATOMIC_GROUP_DEPENDENCY_CYCLE"):
+            self.desired()
 
     def test_sibling_files_remain_atomic(self):
         self.live_change(live_tests.PATH_READER,"f"*64)
