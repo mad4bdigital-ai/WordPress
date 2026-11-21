@@ -632,6 +632,46 @@ def emit_local_alerts(rows):
                            timeout=5,check=False)
         except (OSError,subprocess.TimeoutExpired):pass
 
+def recent_company_health_snapshot(site,root,now):
+    """Read exact company-owned, current audit only; never trust stale status."""
+    if site not in SITES:raise ValueError('invalid-health-company')
+    path=root/('latest-'+site+'.json')
+    deferred={'status':'deferred','issues':[],
+              'warnings':['site_owned_health_report_missing_or_stale']}
+    if path.is_symlink() or not path.is_file():return deferred
+    info=path.stat()
+    if (info.st_uid!=0 or info.st_mode&0o022
+        or not 32<=info.st_size<=2000000):return deferred
+    try:
+        payload=json.loads(path.read_text())
+        if (payload.get('contract')!='mad4b.critical-css.integrity-audit.v1'
+            or set(payload.get('sites',{}))!={site}):
+            return deferred
+        at=payload.get('at_utc')
+        if not isinstance(at,str):return deferred
+        stamp=calendar.timegm(time.strptime(at,'%Y-%m-%dT%H:%M:%SZ'))
+        if not -60<=now-stamp<=3600:return {**deferred,'last_report_at_utc':at}
+        row=payload['sites'][site]
+        if (not isinstance(row,dict) or row.get('status') not in
+            ('healthy','healthy_with_safe_fallback','degraded','error','deferred')):
+            return deferred
+        if row.get('site',site)!=site:return deferred
+        if row.get('host',SITES[site]['host'])!=SITES[site]['host']:return deferred
+        return {**row,'observed_at_utc':at}
+    except (OSError,ValueError,KeyError,TypeError,UnicodeError):
+        return deferred
+
+
+def aggregate_company_health(root=REPORT,now=None):
+    """Read-only merge of the two site records, no second WP-CLI or browser."""
+    now=int(time.time()) if now is None else int(now)
+    rows={site:recent_company_health_snapshot(site,root,now) for site in SITES}
+    return {'contract':'mad4b.critical-css.integrity-audit.v1',
+            'at_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime(now)),
+            'sites':rows,'source':'site_owned_company_reports',
+            'contains_new_css_certification':False}
+
+
 def main():
     if len(sys.argv)!=2 or sys.argv[1] not in ('source','wayfa','all'):
         raise ValueError('usage: health-audit.py source|wayfa|all')
@@ -643,8 +683,14 @@ def main():
     state={'contract':'mad4b.critical-css.integrity-audit.v1',
            'at_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),
            'sites':rows}
-    write(REPORT/'latest.json',state)
-    write(REPORT/(time.strftime('%Y%m%dT%H%M%SZ',time.gmtime())+'.json'),state)
+    suffix=('' if sys.argv[1]=='all' else '-'+sys.argv[1])
+    write(REPORT/('latest'+suffix+'.json'),state)
+    write(REPORT/(time.strftime('%Y%m%dT%H%M%SZ',time.gmtime())+suffix+'.json'),state)
+    if suffix:
+        # Each site independently reports its own health; the aggregate
+        # is a lightweight read-only snapshot. Never run another company's
+        # WordPress/Chromium job from this site-owned cron.
+        write(REPORT/'latest.json',aggregate_company_health())
     print('PUBLIC_CCSS_INTEGRITY',json.dumps(state,ensure_ascii=False,separators=(',',':')))
     # A safe CSS fallback is still operator-visible at warning priority.
     emit_local_alerts(rows)
