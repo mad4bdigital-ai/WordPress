@@ -19,6 +19,17 @@ This is a read-only source audit, not a pricing approval. Eight canonical Packag
 
 Production has linked and published hotel Units for eligible properties; Staging needs reconciliation against original source receipts and publishing policy rather than copying Production IDs. Program term identity is present for all 7 Production cruise stages but not in the staging bindings; site-local term and WPML mappings need source-level review. Neither site has a selected vessel/cabin or signed sail-date supplier invoice.
 
+
+## Exact source cause for the nine empty tier-stage reviews
+
+The original Stage Sourcing reader confirms that native Properties are present, but they are unclassified in the package_levels taxonomy across the three Package tiers. The same result was independently read on both tenants:
+
+- Tour 60437, stage hotel-aswan-02 (day 3): 5 original Property candidates are all tier_unclassified, including Obelisk Nile Hotel. Three nonlocal Aswan-area properties are separately rejected by the original locality guard.
+- Tour 60627, stage hotel-luxor-02 (day 3): 11 discovered Property candidates are all tier_unclassified, including Sonesta St George Luxor and Hilton Luxor.
+- Tour 60629, stage resort-sharm-03 (day 8): 43 discovered Properties are all tier_unclassified, including Steigenberger Alcazar and Baron Resort Sharm.
+
+Each stage is checked at Silver, Gold and Diamond, yielding 3 × 3 = 9 empty tier-stage decisions. **These are classification/assignment gaps, not proof that the destination has no Property inventory.** Filling them requires an authorized source-level Package tier assignment and valid Unit/meal-plan evidence; do not auto-map luxury brands or star ratings to Diamond/Gold/Silver, and do not relax destination checks. No taxonomy posts or terms were modified in this checkpoint.
+
 ## Verified native sleeper candidates
 
 Package 60623 has independent train stages. The original stage-sourcing module now resolves a unique, ordered passenger segment from itinerary text and native train-stops, without declaring booking approval.
