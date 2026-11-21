@@ -32,6 +32,7 @@ if any(x in SOURCE for x in ("subprocess.", "os.system(", "shell=True", "bash -c
 if set(runner.OPERATIONS) != {
     "runtime.status.read",
     "filesystem.hash.read",
+    "site.code.current.read",
     "package.integrity.verify",
     "workspace.file.replace",
     "workspace.file.rollback",
@@ -289,12 +290,14 @@ with tempfile.TemporaryDirectory() as td:
         "integrity_key_file": str(key),
         "expected_runner_sha256": runner.sha256_file(Path(runner.__file__).resolve()),
         "receipt_root": str(wp / "wp-content" / "mad4b-runner" / "receipts"),
-        # Generic kernel fixtures intentionally do not enroll the exceptional
-        # environment edit operations: they require independent Host-private
-        # backup AND Ed25519 signer enrollment, tested in their own fixture.
+        # Generic kernel fixtures intentionally do not enroll exceptional
+        # environment mutations OR the new read-only signed live-source op:
+        # each requires a separately enrolled Host-private signing key and
+        # exact site binding, tested by dedicated contract fixtures.
         "allowed_operations": sorted(
             op for op in runner.OPERATIONS
-            if op not in {"wordpress_environment_sync", "wordpress_environment_rollback"}
+            if op not in {"wordpress_environment_sync", "wordpress_environment_rollback",
+                          "site.code.current.read"}
         ),
     }), encoding="utf-8")
     profile = runner.load_profile(profile_path)

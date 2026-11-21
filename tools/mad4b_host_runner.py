@@ -66,6 +66,11 @@ OPERATIONS: dict[str, dict[str, Any]] = {
         "risk": "read_only",
         "zones": ["wordpress_root", "plugin_root"],
     },
+    "site.code.current.read": {
+        "version": 1,
+        "risk": "read_only",
+        "zones": ["wordpress_root"],
+    },
     "package.integrity.verify": {
         "version": 1,
         "risk": "read_only",
@@ -430,6 +435,7 @@ def load_profile(path: Path) -> dict[str, Any]:
         "host_environment_backup_root": str(profile.get("host_environment_backup_root") or ""),
         "host_environment_receipt_signing_key_file": str(profile.get("host_environment_receipt_signing_key_file") or ""),
         "host_environment_receipt_signing_public_key_b64": str(profile.get("host_environment_receipt_signing_public_key_b64") or ""),
+        "live_current_binding": profile.get("live_current_binding"),
     }
     receipt_root = Path(normalized["receipt_root"])
     if not _is_within(receipt_root, expected_workspace):
@@ -451,6 +457,25 @@ def load_profile(path: Path) -> dict[str, Any]:
         "wordpress_root": str(root),
         "wp_config_sha256": wp_config_sha256,
     }))
+    if "site.code.current.read" in allowed:
+        # Enrolled first-party Host profile is the site-binding authority.
+        # Never derive these fields from a submitted job or Git metadata.
+        bind=normalized["live_current_binding"]
+        expected={"company","environment","site_uuid","target_host_id",
+                  "host_key_sha256","policy_sha256","origin"}
+        if not isinstance(bind,dict) or set(bind)!=expected:
+            raise ValueError("Live current read requires exact enrolled site binding")
+        if (bind["site_uuid"]!=site_uuid or bind["environment"]!=environment
+            or not isinstance(bind["company"],str)
+            or not re.fullmatch(r"[a-z][a-z0-9-]{2,47}",bind["company"])
+            or not isinstance(bind["target_host_id"],str)
+            or not re.fullmatch(r"[A-Za-z0-9._-]{3,120}",bind["target_host_id"])
+            or not all(isinstance(bind[k],str) and re.fullmatch(r"[a-f0-9]{64}",bind[k])
+                       for k in ("host_key_sha256","policy_sha256"))
+            or not isinstance(bind["origin"],str)
+            or not re.fullmatch(r"https://[a-z0-9.-]+(?::[0-9]{2,5})?(?:/[A-Za-z0-9._~%-]+)*/?",bind["origin"])):
+            raise ValueError("Live current enrolled site identity invalid")
+        _wp_environment_receipt_signing_key(normalized)
     normalized["_integrity_key"] = key
     return normalized
 
@@ -2344,6 +2369,143 @@ def _rollback_write_result(operation_id: str, result: dict[str, Any]) -> bool:
     return False
 
 
+# The live-first observer can read only MAD4B code; it never reads options,
+# uploads, credentials, wp-config, other vendors or arbitrary filesystem paths.
+_LIVE_CURRENT_MU_FILES = frozenset((
+    "wp-content/mu-plugins/410-mad4b-original318-v3-readback.php",
+    "wp-content/mu-plugins/class-mad4b-original318-host-v3-reader.php",
+))
+_LIVE_CURRENT_DOMAIN = b"MAD4B_HOST_LIVE_CURRENT_SOURCE_V1\n"
+_LIVE_CURRENT_MAX_FILES = 48
+_LIVE_CURRENT_MAX_FILE_BYTES = 8 * 1024 * 1024
+_LIVE_CURRENT_MAX_TOTAL_BYTES = 32 * 1024 * 1024
+
+
+def _host_live_code_path(relative: str) -> bool:
+    if not isinstance(relative,str) or not 3<=len(relative)<=250:
+        return False
+    if not re.fullmatch(r"[A-Za-z0-9._/-]+",relative) or relative.startswith("/"):
+        return False
+    if any(part in ("",".","..") for part in relative.split("/")):
+        return False
+    if relative in _LIVE_CURRENT_MU_FILES:
+        return True
+    return (relative.startswith("wp-content/plugins/mad4b-")
+            and len(relative.split("/"))>=4
+            and relative.endswith((".php",".js",".css",".json")))
+
+
+def _host_read_live_code_file(root: Path, relative: str) -> dict[str, Any]:
+    """Use openat+O_NOFOLLOW per component; missing files are safe ABSENT.
+
+    Prevents a symlink swap from tricking the reader into hashing secrets
+    outside the site's pinned WordPress root.
+    """
+    if not _host_live_code_path(relative):
+        raise ValueError("Host live current code path outside allowlist")
+    dir_flags = os.O_RDONLY | getattr(os,"O_CLOEXEC",0)
+    nofollow=getattr(os,"O_NOFOLLOW",0)
+    directory=getattr(os,"O_DIRECTORY",0)
+    if not nofollow or not directory:
+        raise ValueError("Host live source read needs openat O_NOFOLLOW/O_DIRECTORY")
+    dirfd=os.open(str(root), dir_flags | nofollow | directory)
+    filefd=None
+    try:
+        parts=relative.split("/")
+        try:
+            for part in parts[:-1]:
+                nextfd=os.open(part,dir_flags | nofollow | directory,dir_fd=dirfd)
+                os.close(dirfd)
+                dirfd=nextfd
+            filefd=os.open(parts[-1],dir_flags | nofollow |
+                           getattr(os,"O_NONBLOCK",0),dir_fd=dirfd)
+        except FileNotFoundError:
+            return {"relative_path":relative,"state":"ABSENT",
+                    "sha256":"ABSENT","size_bytes":0}
+        before=os.fstat(filefd)
+        if not stat.S_ISREG(before.st_mode) or before.st_size<0 or before.st_size>_LIVE_CURRENT_MAX_FILE_BYTES:
+            raise ValueError("Host live current source must be a bounded regular file")
+        digest=hashlib.sha256()
+        read=0
+        while True:
+            chunk=os.read(filefd,1024*1024)
+            if not chunk:break
+            read+=len(chunk)
+            if read>_LIVE_CURRENT_MAX_FILE_BYTES:
+                raise ValueError("Host live current file exceeded byte budget")
+            digest.update(chunk)
+        after=os.fstat(filefd)
+        state=lambda st:(st.st_dev,st.st_ino,st.st_size,st.st_mtime_ns,st.st_ctime_ns)
+        if state(before)!=state(after) or read!=before.st_size:
+            raise ValueError("Host live code changed during secure file read")
+        return {"relative_path":relative,"state":"PRESENT",
+                "sha256":digest.hexdigest(),"size_bytes":read}
+    finally:
+        if filefd is not None:os.close(filefd)
+        os.close(dirfd)
+
+
+def execute_site_code_current(profile: dict[str, Any],
+                              verified: dict[str, Any]) -> dict[str, Any]:
+    """Signed read-only Current for one enrolled Host Runner site.
+
+    Requires explicit operation enrollment and existing private Host Ed25519
+    signer. Nothing in this result approves Git, Desired or a WordPress write.
+    """
+    if verified.get("operation_id")!="site.code.current.read":
+        raise ValueError("Host current reader exact operation required")
+    if "site.code.current.read" not in profile.get("allowed_operations",[]):
+        raise ValueError("Host current read is not enrolled in profile")
+    binding=profile.get("live_current_binding")
+    expected={"company","environment","site_uuid","target_host_id",
+              "host_key_sha256","policy_sha256","origin"}
+    if not isinstance(binding,dict) or set(binding)!=expected:
+        raise ValueError("Host current trusted site binding absent")
+    if profile.get("environment")!="staging" or binding.get("environment")!="staging":
+        raise ValueError("Host current read is Staging-only")
+    if profile.get("site_uuid")!=binding["site_uuid"] or profile.get("environment")!=binding["environment"]:
+        raise ValueError("Host current site identity drift")
+    inputs=verified.get("input")
+    if not isinstance(inputs,dict) or set(inputs)!={"paths"}:
+        raise ValueError("Host current operation takes only exact path set")
+    paths=inputs["paths"]
+    if not isinstance(paths,list) or not 1<=len(paths)<=_LIVE_CURRENT_MAX_FILES:
+        raise ValueError("Host current path count invalid")
+    if any(not _host_live_code_path(x) for x in paths) or paths!=sorted(set(paths)):
+        raise ValueError("Host current paths not allowlisted/sorted/unique")
+    root=Path(profile["wordpress_root"])
+    if _is_link_like(root) or not root.is_dir():
+        raise ValueError("Host current WordPress root is not pinned")
+    signer=_wp_environment_receipt_signing_key(profile)
+    first=[_host_read_live_code_file(root,path) for path in paths]
+    if sum(x["size_bytes"] for x in first)>_LIVE_CURRENT_MAX_TOTAL_BYTES:
+        raise ValueError("Host current aggregate read exceeds byte budget")
+    # A stable double read detects mid-snapshot concurrent edits. True
+    # commit-atomicity is rechecked later by the separate executor CAS.
+    second=[_host_read_live_code_file(root,path) for path in paths]
+    if first!=second:
+        raise ValueError("Host current files changed during snapshot")
+    signed={
+        "contract":"mad4b.host-v128.live-current-source.v1",
+        **binding,
+        "observed_epoch":int(datetime.now(timezone.utc).timestamp()),
+        "snapshot_nonce":os.urandom(16).hex(),
+        "read_only":True,
+        "state":"VERIFIED_LIVE_INSTALLED_CODE",
+        "files":second,
+    }
+    source_bytes=_LIVE_CURRENT_DOMAIN+canonical_json(signed)
+    signed["signature"]=base64.b64encode(signer.sign(source_bytes)).decode("ascii")
+    return {
+        "contract":"mad4b.host-v129.host-runner-live-current-read.v1",
+        "source":"enrolled_host_runner_installed_site",
+        "signed_current":signed,
+        "readback_verdict":"PASS",
+        "write_authorized":False,
+        "mutation_performed":False,
+    }
+
+
 def execute_operation(profile: dict[str, Any], verified: dict[str, Any]) -> dict[str, Any]:
     operation_id = verified["operation_id"]
     inputs = verified["input"]
@@ -2383,6 +2545,9 @@ def execute_operation(profile: dict[str, Any], verified: dict[str, Any]) -> dict
             "sha256": sha256_file(target),
             "mutation_performed": False,
         }
+
+    if operation_id == "site.code.current.read":
+        return execute_site_code_current(profile, verified)
 
     if operation_id == "package.integrity.verify":
         if inputs:
