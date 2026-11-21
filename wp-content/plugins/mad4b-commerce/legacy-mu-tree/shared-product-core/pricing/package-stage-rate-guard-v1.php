@@ -90,6 +90,12 @@ final class MAD4B_Package_Stage_Rate_Guard_V1 {
             $abu = get_term_by('slug', 'abu-simbel-temples', 'destinations');
             if ($abu instanceof WP_Term && in_array((int) $abu->term_id, $actual, true))
                 return ['eligible'=>false,'reason'=>'property_in_abu_simbel_not_aswan_city'];
+            // Governorate is not exact city proof. An Aswan hotel needs its
+            // native aswan-city taxonomy before supplier Rate qualification.
+            $city=get_term_by('slug','aswan-city','destinations');
+            if(!$city instanceof WP_Term ||
+                !in_array((int)$city->term_id,$actual,true))
+                return ['eligible'=>false,'reason'=>'aswan_city_location_unverified'];
         }
         if (!array_intersect($actual, $scope['accepted_term_ids']))
             return ['eligible'=>false,'reason'=>'property_destination_mismatch'];
