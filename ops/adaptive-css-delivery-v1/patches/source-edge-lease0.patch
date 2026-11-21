@@ -1,0 +1,23 @@
+--- a/stack/nginx.conf
++++ b/stack/nginx.conf
+@@ -1,12 +1,18 @@
+ # MAD4B EDGE CANARY CACHE SEPARATION v1 — edge-owned request split.
+ # No visitor-controlled cookie or header selects a candidate.
++# Fail-closed release lease: edge cohort selection alone never exposes
++# an unqualified CSS candidate or causes needless origin-only TTFB.
++# Update this gate only through a source-bound release receipt.
++map $host $mad4b_css_candidate_release_lease_v1 {
++    default 0;
++}
+ split_clients "$request_id|mad4b-css-v2-canary-20261121" $mad4b_css_split_seed {
+     1% canary;
+     * control;
+ }
+-map "$mad4b_css_split_seed|$mad4b_device_class|$company_perf_skip" $mad4b_css_rollout_cohort {
++map "$mad4b_css_candidate_release_lease_v1|$mad4b_css_split_seed|$mad4b_device_class|$company_perf_skip" $mad4b_css_rollout_cohort {
+     default "";
+-    "canary|mobile|0" canary;
++    "1|canary|mobile|0" canary;
+ }
+ map $mad4b_css_rollout_cohort $mad4b_css_rollout_origin_attested_v1 {
+     default 0;

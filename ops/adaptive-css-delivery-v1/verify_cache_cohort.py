@@ -38,6 +38,11 @@ def verify(site,config,host):
  source_verified='mad4b_css_rollout_origin_attested_v1' in text
  safe=bool(forwarded and source_verified and
            (all_keys or (all_bypass and all_no_cache)))
+ # A technically isolated cohort is not equivalent to a released
+ # unqualified public CSS candidate. Check the exact first-party lease.
+ gate=re.findall(r'map\s+\$host\s+\$mad4b_css_candidate_release_lease_v1\s*\{\s*default\s+(0|1)\s*;',text)
+ if len(gate)>1:raise ValueError('ambiguous_candidate_release_lease')
+ lease=(gate[0]=='1') if len(gate)==1 else None
  return {'contract':'mad4b.adaptive-css.fastcgi-cohort-admission.v1',
          'site':site,'host':host,'active_cache_key_count':len(keys),
          'cache_key_partitioned':all_keys,
@@ -45,6 +50,9 @@ def verify(site,config,host):
          'origin_param_forwarded':forwarded,
          'signed_source_cohort_verified':source_verified,
          'canary_public_delivery_admitted':safe,
+         'source_candidate_release_lease_active':lease,
+         'source_candidate_edge_exposure_enabled':safe and lease is True,
+         'source_candidate_css_published_proven':False,
          'decision':'ADMIT' if safe else 'HOLD_CACHE_ISOLATION',
          'nginx_sha256':hashlib.sha256(config.encode()).hexdigest()}
 if __name__=='__main__':

@@ -110,3 +110,16 @@ The original first-party Git blob for wp-content/mu-plugins/422-mad4b-public-cri
 - A one-shot admission under /etc/cron.d/mad4b-css-rum-sample-once is installed to raise eligible consented sampling from 100bps to 1000bps, while preserving all original CSS and FastCGI files.
 - It checks exact company/environment and source PHP SHA, locks the CSS worker, checks host CPU policy, and permits no conflicting option. It expires after 24 hours and self-disables after exact readback success or fatal drift.
 - Only claim the 10% change active if css-rum-consented-10pct-20261121/success.json exists; otherwise it remains deferred. Real sufficient cohorts require genuine traffic, not synthetic tests.
+
+## 2026-11-21 fail-closed public candidate release lease
+The edge split initially sent 1% of eligible visitors through FastCGI BYPASS even though no separate provisional CSS was publicly available. This could hurt TTFB with no useful candidate comparison. The release-lease patch adds mad4b_css_candidate_release_lease_v1 default 0, leaving the tested 1% cohort selection infrastructure but making effective candidate exposure 0% until a separately approved source-bound candidate is admitted.
+- Source Nginx SHA accb96666fe3817749134bcea42d63e694c4dda88a53744cbf1d4dc06acb24dd.
+- Wayfa Nginx SHA 32a511554d198db91f574b9e4a85b3fdd8fd3930bfba4f85a8102725c6b40885.
+- Both configs passed independent and active nginx -t. Receipts at /var/lib/mad4b/company-code-release/receipts/css-edge-release-lease0-20261121/.
+- A private Wayfa clone with the exact lease=0 config returned a public/cacheable HTTP200 and current certified CSS, RUM source cohort control, not a bypassed canary.
+- Two patches are in patches/source-edge-lease0.patch and patches/wayfa-edge-lease0.patch.
+- The read-only scanner reports cache isolation technical ADMIT separately from public candidate edge exposure (false for both). Do not confuse these fields.
+- A private staged candidate by itself does not grant a lease or turn on public CSS. WordPress 422 certificate authority and Chrome source/interaction QA remain independent.
+
+## Staging source 320px LCP root-cause trace
+Chrome source route QA showed original FCP 3224ms and optimized FCP 972ms, but original LCP 8748ms and optimized LCP 9796ms: 1048ms regression beyond allowed budget. The observed last LCP is an Elementor DIV ef55af8 background-image 18_01_2023_9999_186-F2.webp (166218 bytes), inside dynamic Elementor template 42208. Critical CSS had 18 slots, 238186 bytes; full CSS parity passed all five widths. The 320px performance hold is correct. A private resource preload experiment was initiated in a root-only sandbox, without publication; wait for both AB and BA source comparisons before any frontend mutation, and do not accept an FCP-only pass.
