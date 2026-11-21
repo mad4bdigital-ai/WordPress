@@ -112,3 +112,41 @@ held under the authorized VPS path
 Do not blindly copy plans, terms, IDs or rates to another company. This PR
 contains source code, not the site-specific live postmeta migrations.
 
+### Follow-up: Draft Room Category Staging — 21 November 2026
+
+Safely reconciled **35 officially sourced, non-bookable Room Category Drafts**
+into Tours.dev for four ID-verified Cairo Properties:
+Tolip Gardens (4), Triumph Plaza (8), Triumph Luxury (10), and
+Sofitel Cairo Downtown Nile (13). All target Unit IDs were newly generated,
+not copied from Wayfatours. Created 35 native JetEngine Property→Unit
+relationships (rel_id=223) and verified source receipts, identity fingerprints,
+stage statuses and WPML English assignment. None are published or available.
+No rates, inventory, occupancy, media, or checkout approvals were copied.
+
+Two Hilton Grand Nile Tower room labels were **excluded** because their
+source was a gallery/image label with category_review_required rather than
+an approved official room category page. The other eight nonmatching
+Wayfatours-only Cairo hotel identities were not recreated by guessing IDs.
+
+The 35 Draft unit category IDs are now listed in Cairo stay stage
+room_candidate_refs[package_level].unit_ids_en for the eight canonical
+English source package Tours (16 Cairo stage rows). No actual
+selected_property_id or bookable_unit_ids was set. Each stage
+offers 12 Silver / 10 Gold / 13 Diamond unbookable candidate references;
+Gold includes Hilton as Property alternative without Units until confirmed.
+These are references to 35 unique category records, not 560 distinct
+rooms or saleable inventory.
+
+The live Package & Rates readiness board now reports unbookable Draft
+Room Category counts per stage and tier, separately from eligible
+Properties and commercial price readiness. New read-only regression
+checks: **18/18 PASS per site**, all prior Transport checks **19/19 PASS**.
+It still finds **zero price-ready combinations** because provider contracts,
+dated occupancy / inventory and Approved Supplier Cost Receipts are missing.
+
+Detailed source audits, full before-images, cross-site mapping and
+rollback records are on the authorized VPS under
+/opt/mad4b-package-checkpoints/2026-11-21-stage-components/.
+Do not include these site-specific postmeta records in a source code
+release or assume the same IDs on new sites.
+

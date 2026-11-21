@@ -18,6 +18,13 @@ if(is_array($report)){
  $expect('no_new_rate',$report['rate_created']===false);
  $expect('eight_topologies',count(array_filter($report['tours'],static fn($p)=>$p['topology_ready']))===8);
 }
+$first=$report['tours'][0]['levels']['Silver']['stages'][0]??[];
+$expect('unit_candidate_status_in_contract',
+ is_array($first)&&array_key_exists('unbookable_draft_unit_candidates',$first)&&
+ array_key_exists('published_but_unavailable_unit_candidates',$first));
+$expectedDraft=str_contains(home_url(),'tours.dev.mad4b.com')?12:0;
+$expect('unbookable_unit_staging_readback',
+ (int)($first['unbookable_draft_unit_candidates']??-1)===$expectedDraft);
 $invalid=MAD4B_Package_Component_Readiness_V1::report('2026-02-30','2027-01-01');
 $expect('invalid_date_rejected',is_wp_error($invalid)&&$invalid->get_error_code()==='package_readiness_date_window_invalid');
 $window=MAD4B_Package_Component_Readiness_V1::report('2026-12-01','2029-12-01');

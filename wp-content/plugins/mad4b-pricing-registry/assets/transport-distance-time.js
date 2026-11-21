@@ -449,21 +449,23 @@ function renderPackageReadinessBoard(value){
   section.append(edit);
   const table=document.createElement('table');table.className='widefat striped';
   const header=document.createElement('tr');
-  for(const label of ['Level','Commercial stage blockers','Candidate hotels','Cost status']){
+  for(const label of ['Level','Commercial stage blockers','Candidate hotels','Draft room categories','Cost status']){
    const th=document.createElement('th');th.textContent=label;header.append(th);
   }
   table.append(header);
   for(const [name,tier] of Object.entries(tour.levels)){
    const tr=document.createElement('tr');
    const hotelCount=tier.stages.reduce((n,x)=>n+x.eligible_properties,0);
+   const draftUnitRefs=tier.stages.reduce((n,x)=>n+Number(x.unbookable_draft_unit_candidates||0),0);
    for(const text of [name,String(tier.blocking_count),
      String(hotelCount)+' stage-level alternatives',
+     String(draftUnitRefs)+' unbookable candidate references',
      tier.price_ready?'Cost proof ready':'Missing verified supplier receipts']){
     const td=document.createElement('td');td.textContent=text;tr.append(td);
    }
    table.append(tr);
    const issueRow=document.createElement('tr'),cell=document.createElement('td');
-   cell.colSpan=4;
+   cell.colSpan=5;
    const keys=tier.stages.map(s=>{
     return s.key+' ['+s.kind+', '+s.destination+']: '+
       (s.issues.length?s.issues.join(', '):'component proof recorded');
@@ -480,7 +482,7 @@ function renderPackageReadinessBoard(value){
  }
  host.append(rows);
  const footer=document.createElement('p');footer.className='mad4b-kinetic-warning';
- footer.textContent='The review window does not confirm inventory, dates, cabins, supplier contracts, guiding, tax, FX, payment, or checkout. Published Tour Rates were not changed.';
+ footer.textContent='Draft room categories are editorial options only, not bookable inventory. The review window does not confirm inventory, dates, cabins, supplier contracts, guiding, tax, FX, payment, or checkout. Published Tour Rates were not changed.';
  host.append(footer);
 }
 

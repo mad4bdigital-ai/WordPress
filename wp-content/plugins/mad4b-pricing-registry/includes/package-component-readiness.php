@@ -67,13 +67,34 @@ final class MAD4B_Package_Component_Readiness_V1 {
    }
    $out['totals']['tour_rates_active']+=count($rates);
    $out['totals']['transport_assignments']+=$assigned;
+   $byStage=[];
+   foreach((array)($bindings['bindings']??[]) as $stageBinding)
+    if(is_array($stageBinding)&&!empty($stageBinding['stage_key']))
+     $byStage[(string)$stageBinding['stage_key']]=$stageBinding;
    $levels=[];
    foreach(self::TIERS as $tier=>$name){
     $review=MAD4B_Package_Stage_Rate_Guard_V1::review($tour,$tier,$from,$to);
     $blockers=(array)($review['blockers']??[]);
     $rows=[];
     foreach((array)($review['stages']??[]) as $s){
+     $unitCandidateDraft=0;$unitCandidatePublished=0;$unitIdsSeen=[];
+     $sourceStage=$byStage[(string)$s['key']]??[];
+     foreach((array)($sourceStage['room_candidate_refs'][(string)$tier]??[]) as $ref){
+      if(!is_array($ref)||!in_array((int)($ref['property_id_en']??0),
+          (array)($s['eligible_property_ids']??[]),true))continue;
+      foreach((array)($ref['unit_ids_en']??[]) as $rawUnit){
+       $uid=absint($rawUnit);
+       if(!$uid||isset($unitIdsSeen[$uid])||get_post_type($uid)!=='units')continue;
+       $unitIdsSeen[$uid]=true;
+       if(get_post_status($uid)==='draft'&&get_post_meta($uid,'unit_available',true)==='false')
+        $unitCandidateDraft++;
+       elseif(get_post_status($uid)==='publish'&&get_post_meta($uid,'unit_available',true)==='false')
+        $unitCandidatePublished++;
+      }
+     }
      $rows[]=['key'=>$s['key'],'kind'=>$s['kind'],'destination'=>$s['destination'],
+      'unbookable_draft_unit_candidates'=>$unitCandidateDraft,
+      'published_but_unavailable_unit_candidates'=>$unitCandidatePublished,
       'nights'=>(int)$s['nights'],'eligible_properties'=>count((array)($s['eligible_property_ids']??[])),
       'selected_property_id'=>(int)($s['selected_property_id']??0),
       'selected_units_count'=>count((array)($s['selected_unit_ids']??[])),
