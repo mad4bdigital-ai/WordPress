@@ -316,6 +316,71 @@ final class MAD4B_Package_Component_Readiness_V1 {
    'commercial_approval_granted'=>false,'checkout_authorized'=>false,
    'write_performed'=>false];
  }
+ /**
+  * Context only, NEVER included in Guard eligibility or source Rate pricing.
+  * The original Aswan-city hotel source drafts have independent WP IDs per
+  * company and do not satisfy publication / stock / supplier approval gates.
+  */
+ private static function pendingAswanCityEditorialDrafts(int $tour,int $tier,string $stageKey):array {
+  $original=apply_filters('wpml_current_language',null);
+  $default=apply_filters('wpml_default_language',null);
+  if(is_string($original)&&$original!==''&&is_string($default)&&
+     $default!==''&&$original!==$default){
+    do_action('wpml_switch_language',$default);
+    try{return self::pendingAswanCityDraftsInSourceLocale($tour,$tier,$stageKey);}
+    finally{do_action('wpml_switch_language',$original);}
+  }
+  return self::pendingAswanCityDraftsInSourceLocale($tour,$tier,$stageKey);
+ }
+ private static function pendingAswanCityDraftsInSourceLocale(int $tour,int $tier,string $stageKey):array {
+  if($tour!==60437||$stageKey!=='hotel-aswan-02'||
+     !in_array($tier,[2354,2356],true))return [];
+  $originIds=[71495,71501];
+  $site=parse_url(home_url('/'),PHP_URL_HOST);
+  if(!in_array($site,['tours.dev.mad4b.com','wayfatours.com'],true))return [];
+  $items=[];
+  foreach($originIds as $sourceId){
+   if($site==='tours.dev.mad4b.com'){
+    $target=(int)$sourceId;
+   }else{
+    $ids=get_posts(['post_type'=>'properties','post_status'=>['draft','publish'],
+      'fields'=>'ids','posts_per_page'=>3,'suppress_filters'=>true,
+      'meta_query'=>[['key'=>'_mad4b_company_source_aswan_property_id_v1',
+                      'value'=>(string)$sourceId,'compare'=>'=']]]);
+    if(count($ids)!==1)continue;
+    $target=(int)$ids[0];
+   }
+   if(get_post_type($target)!=='properties')continue;
+   $source=get_post_meta($target,'_mad4b_property_official_site_source_v1',true);
+   if(!is_array($source)||empty($source['overview_url']))continue;
+   $levels=wp_get_object_terms($target,'package_levels',['fields'=>'slugs']);
+   if(is_wp_error($levels))continue;
+   $wanted=$tier===2354?'gold-package':'diamond-package';
+   if(!in_array($wanted,(array)$levels,true))continue;
+   $types=wp_get_object_terms($target,'property-types',['fields'=>'slugs']);
+   $location=wp_get_object_terms($target,'destinations',['fields'=>'slugs']);
+   if(is_wp_error($types)||is_wp_error($location))continue;
+   $status=get_post_status($target);
+   $reasons=[];
+   if($status!=='publish')$reasons[]='draft_not_published';
+   if(!in_array('aswan-city',$location,true))$reasons[]='city_location_not_assigned';
+   if(!in_array('hotel',(array)$types,true))$reasons[]='stage_is_hotel_and_property_is_resort';
+   if(!$source['commercial_tier_approved'])$reasons[]='commercial_tier_not_approved';
+   if(!get_post_thumbnail_id($target))$reasons[]='no_cleared_featured_image';
+   if($sourceId===71501)$reasons[]='island_transfer_not_verified';
+   $reasons[]='supplier_cost_receipt_missing';
+   $reasons[]='unit_stock_and_occupancy_missing';
+   $items[]=['id'=>$target,'canonical_source_id'=>$sourceId,
+     'name'=>html_entity_decode(wp_strip_all_tags(get_the_title($target)),ENT_QUOTES,'UTF-8'),
+     'post_status'=>$status,'official_source_url'=>(string)$source['overview_url'],
+     'edit_url'=>get_edit_post_link($target,'')?:null,
+     'proposed_tier'=>$wanted,'stage_property_kind'=>'hotel',
+     'property_kind'=>in_array('hotel',(array)$types,true)?'hotel':'resort',
+     'reasons'=>$reasons,'qualified'=>false,'assigned'=>false,
+     'cost_approved'=>false,'unit_authorized'=>false,'checkout_authorized'=>false];
+  }
+  return $items;
+ }
  public static function report($from,$to){
   if(!class_exists('MAD4B_Package_Stage_Rate_Guard_V1'))
    return new WP_Error('package_readiness_source_guard_unavailable');
@@ -443,6 +508,8 @@ final class MAD4B_Package_Component_Readiness_V1 {
          (array)($bySourceStage[(string)$s['key']]??[]),$quotePolicies):null;
      $rows[]=['key'=>$s['key'],'kind'=>$s['kind'],'destination'=>$s['destination'],
       'unassigned_property_diagnostics'=>$candidateDiagnostics,
+      'aswan_editorial_draft_review'=>self::pendingAswanCityEditorialDrafts(
+        (int)$tour,(int)$tier,(string)$s['key']),
       'sheet_quote_period'=>$quotePeriod,'sheet_quote_scope'=>$scope,
       'sheet_quote_properties'=>$sheetQuoteProperties,
       'sheet_quote_values'=>$sheetQuoteMatches,

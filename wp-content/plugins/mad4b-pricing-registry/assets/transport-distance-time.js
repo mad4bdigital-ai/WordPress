@@ -739,7 +739,32 @@ function renderPackageReadinessBoard(value){
    details.append(sum);
    const list=document.createElement('ul');
    for(const text of keys){const li=document.createElement('li');li.textContent=text;list.append(li);}
-   details.append(list);cell.append(details);issueRow.append(cell);table.append(issueRow);
+   details.append(list);
+   const draftList=tier.stages.filter(s=>s.aswan_editorial_draft_review?.length);
+   if(draftList.length){
+    const section=document.createElement('details');
+    const heading=document.createElement('summary');
+    heading.textContent='Aswan Gold/Diamond — original hotel drafts awaiting qualification';
+    section.append(heading);
+    const intro=document.createElement('p');
+    intro.textContent='These Properties are source-backed editorial proposals only. They are not eligible hotels for Package Rate generation or booking.';
+    section.append(intro);
+    const ul=document.createElement('ul');
+    for(const stage of draftList)for(const draft of stage.aswan_editorial_draft_review){
+     const li=document.createElement('li');
+     li.textContent=stage.key+' · '+draft.name+
+       ' (local #'+draft.id+', source #'+draft.canonical_source_id+') · '+
+       draft.post_status+' · '+draft.reasons.map(display).join(', ')+'. ';
+     if(draft.edit_url){
+      const edit=document.createElement('a');
+      edit.href=draft.edit_url;edit.target='_blank';edit.rel='noopener noreferrer';
+      edit.textContent='Review Property Draft';li.append(edit);
+     }
+     ul.append(li);
+    }
+    section.append(ul);details.append(section);
+   }
+   cell.append(details);issueRow.append(cell);table.append(issueRow);
   }
   section.append(table);rows.append(section);
  }
