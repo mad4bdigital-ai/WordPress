@@ -544,7 +544,7 @@ function renderPackageReadinessBoard(value){
   section.append(edit);
   const table=document.createElement('table');table.className='widefat striped';
   const header=document.createElement('tr');
-   for(const label of ['Level','Commercial stage blockers','Candidate hotels','Winter sheet quote refs','Draft room categories','Cost status']){
+   for(const label of ['Level','Commercial stage blockers','Candidate hotels','Stage-season quote refs','Draft room categories','Cost status']){
    const th=document.createElement('th');th.textContent=label;header.append(th);
   }
   table.append(header);
@@ -553,10 +553,13 @@ function renderPackageReadinessBoard(value){
    const hotelCount=tier.stages.reduce((n,x)=>n+x.eligible_properties,0);
    const excluded=tier.stages.reduce((n,x)=>n+Number(x.season_excluded_properties||0),0);
    const draftUnitRefs=tier.stages.reduce((n,x)=>n+Number(x.unbookable_draft_unit_candidates||0),0);
-   const winterQuotes=tier.stages.reduce((n,x)=>n+Number(x.sheet_winter_quote_values||0),0);
+   const seasonQuotes=tier.stages.reduce((n,x)=>n+Number(x.sheet_quote_values||0),0);
+   const periodLabels=[...new Set(tier.stages.filter(x=>
+     x.kind==='hotel'||x.kind==='resort').map(x=>x.sheet_quote_period||'unquoted/mixed'))];
    for(const text of [name,String(tier.blocking_count),
      String(hotelCount)+' stage-level alternatives'+(excluded?' · '+excluded+' season-excluded alternatives':''),
-     String(winterQuotes)+' quoted values, dates unverified',
+     String(seasonQuotes)+' quote refs · '+periodLabels.join(' / ')+
+       ' · supplier validity not approved',
      String(draftUnitRefs)+' unbookable candidate references',
      tier.price_ready?'Cost proof ready':'Missing verified supplier receipts']){
     const td=document.createElement('td');td.textContent=text;tr.append(td);
@@ -567,7 +570,9 @@ function renderPackageReadinessBoard(value){
    const keys=tier.stages.map(s=>{
     return s.key+' ['+s.kind+', '+s.destination+']: '+
       (s.issues.length?s.issues.join(', '):'component proof recorded')+
-      (s.season_excluded_properties?' · season excluded #'+s.season_excluded_property_ids.join(', #'):'');
+      (s.season_excluded_properties?' · season excluded #'+s.season_excluded_property_ids.join(', #'):'')+
+      (['hotel','resort'].includes(s.kind)?' · sheet period: '+
+        (s.sheet_quote_period||'none · mixed/outside quoted year'):'');
    });
    const details=document.createElement('details');
    const sum=document.createElement('summary');

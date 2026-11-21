@@ -28,9 +28,23 @@ final class MAD4B_Package_Component_Readiness_V1 {
   $window=self::window($from,$to);
   if(is_wp_error($window))return $window;
   [$from,$to]=$window;
-  $quoteIndex=class_exists('MAD4B_Supplier_Sheet_Reference_V1')?
-   MAD4B_Supplier_Sheet_Reference_V1::countsByProperty('winter_2026_27'):[];
-  if(is_wp_error($quoteIndex))return $quoteIndex;
+  // Never use Winter supplier quotes for a Summer or mixed-season stage.
+  // Quoted validity is still unapproved; this is scope matching only.
+  $quotePolicies=[];
+  if(class_exists('MAD4B_Supplier_Sheet_Reference_V1')){
+   foreach(['summer','winter_2026_27'] as $season){
+    $index=MAD4B_Supplier_Sheet_Reference_V1::countsByProperty($season);
+    $catalog=MAD4B_Supplier_Sheet_Reference_V1::catalog('hotels',$season);
+    if(is_wp_error($index))return $index;
+    if(is_wp_error($catalog))return $catalog;
+    $base=$catalog['base_season']??[];
+    if(!is_string($base['window_start']??null)||
+       !is_string($base['window_end']??null))
+     return new WP_Error('package_readiness_supplier_season_missing');
+    $quotePolicies[$season]=['index'=>$index,
+      'start'=>$base['window_start'],'end'=>$base['window_end']];
+   }
+  }
   $out=['contract'=>self::CONTRACT,'site'=>home_url('/'),
    'travel_from'=>$from,'travel_to'=>$to,
    'levels'=>self::TIERS,'tour_count'=>count(self::TOURS),
@@ -95,14 +109,38 @@ final class MAD4B_Package_Component_Readiness_V1 {
         $unitCandidatePublished++;
       }
      }
-     $sheetQuoteMatches=0;$sheetQuoteProperties=0;
-     foreach((array)($s['eligible_property_ids']??[]) as $property){
-      $qCount=(int)($quoteIndex[(int)$property]['quotation_count']??0);
-      if($qCount>0){$sheetQuoteMatches+=$qCount;$sheetQuoteProperties++;}
+     $sheetQuoteMatches=0;$sheetQuoteProperties=0;$quotePeriod=null;
+     $scope='not_hotel_or_resort';
+     if(in_array((string)$s['kind'],['hotel','resort'],true)){
+      $scope='out_of_sheet_season_or_cross_season';
+      $offset=max(0,(int)($s['day_start']??0)-1);
+      $nightCount=(int)($s['nights']??0);
+      $baseFrom=DateTimeImmutable::createFromFormat('!Y-m-d',$from,new DateTimeZone('UTC'));
+      $baseTo=DateTimeImmutable::createFromFormat('!Y-m-d',$to,new DateTimeZone('UTC'));
+      if($baseFrom&&$baseTo&&$nightCount>=1&&$nightCount<=40){
+       $stageFirst=$baseFrom->modify('+'.$offset.' days')->format('Y-m-d');
+       $stageLast=$baseTo->modify('+'.($offset+$nightCount-1).' days')->format('Y-m-d');
+       foreach($quotePolicies as $season=>$period){
+        if($period['start']<=$stageFirst&&$stageLast<=$period['end']){
+         $quotePeriod=$season;$scope='base_sheet_period_match_unapproved';break;
+        }
+       }
+      }
+     }
+     if($quotePeriod!==null){
+      $index=$quotePolicies[$quotePeriod]['index'];
+      foreach((array)($s['eligible_property_ids']??[]) as $property){
+       $qCount=(int)($index[(int)$property]['quotation_count']??0);
+       if($qCount>0){$sheetQuoteMatches+=$qCount;$sheetQuoteProperties++;}
+      }
      }
      $rows[]=['key'=>$s['key'],'kind'=>$s['kind'],'destination'=>$s['destination'],
-      'sheet_winter_quote_properties'=>$sheetQuoteProperties,
-      'sheet_winter_quote_values'=>$sheetQuoteMatches,
+      'sheet_quote_period'=>$quotePeriod,'sheet_quote_scope'=>$scope,
+      'sheet_quote_properties'=>$sheetQuoteProperties,
+      'sheet_quote_values'=>$sheetQuoteMatches,
+      // Deprecated aliases remain truthful and only represent Winter.
+      'sheet_winter_quote_properties'=>$quotePeriod==='winter_2026_27'?$sheetQuoteProperties:0,
+      'sheet_winter_quote_values'=>$quotePeriod==='winter_2026_27'?$sheetQuoteMatches:0,
       'sheet_price_valid_for_dates'=>false,
       'unbookable_draft_unit_candidates'=>$unitCandidateDraft,
       'published_but_unavailable_unit_candidates'=>$unitCandidatePublished,
