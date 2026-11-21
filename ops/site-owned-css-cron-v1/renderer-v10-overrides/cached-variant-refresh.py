@@ -62,7 +62,16 @@ def snapshot(root,site,queue,now=None):
         return folder,cat,st,int(now-oldest)
     raise ValueError('no-recent-root-owned-wordpress-catalog')
 
-def refresh():
+def selected_sites(arguments):
+    # Company-owned Cron must not mutate another tenant's variant index.
+    if not arguments:return ('source','wayfa')
+    if len(arguments)!=1 or arguments[0] not in HOSTS:
+        raise ValueError('untrusted-company-variant-observation-target')
+    return (arguments[0],)
+
+
+def refresh(site_args=()):
+    sites=selected_sites(site_args)
     budget=load('cached_variant_cpu','public-route-cpu-guard.py')
     okay,reason=budget.examine()
     # The first-party 8-vCPU budget independently validates load/steal/PSI
@@ -72,7 +81,7 @@ def refresh():
         return
     families=load('cached_variant_families','public-source-families.py')
     variants=load('cached_variant_index','public-template-variant-index.py')
-    for site in ('source','wayfa'):
+    for site in sites:
         root=REPORTS/site
         try:
             folder,cat,st,age=snapshot(root,site,families.queue)
@@ -99,4 +108,7 @@ def refresh():
                   str(exc)[:160],flush=True)
 
 if __name__=='__main__':
-    refresh()
+    try:refresh(tuple(sys.argv[1:]))
+    except (ValueError,TypeError,KeyError) as exc:
+        print('HOLD_LIGHT_VARIANTS_SITE_SCOPE',str(exc)[:130],file=sys.stderr)
+        raise SystemExit(4)

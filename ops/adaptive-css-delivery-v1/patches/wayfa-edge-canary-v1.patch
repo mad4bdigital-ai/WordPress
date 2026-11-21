@@ -1,0 +1,57 @@
+--- a/stack/nginx.conf
++++ b/stack/nginx.conf
+@@ -2,6 +2,27 @@
+ # Scope request-body buffers to worker-writable per-site tempfs cache.
+ client_body_temp_path /var/cache/nginx/client_temp;
+ map_hash_bucket_size 128;
++# MAD4B EDGE CANARY CACHE SEPARATION v1 (origin-generated, no cookie/header opt-in).
++# split_clients uses Nginx $request_id, not a user-supplied request header.
++# Canary requests are FastCGI BYPASS+NO_CACHE, never written to shared keys.
++split_clients "$request_id|mad4b-css-v2-canary-20261121" $mad4b_css_split_seed {
++    1% canary;
++    * control;
++}
++map "$mad4b_css_split_seed|$wayfa_html_device|$wayfa_html_no_cache_request|$wayfa_html_no_cache_path" $mad4b_css_rollout_cohort {
++    default "";
++    "canary|mobile|0|0" canary;
++}
++map $mad4b_css_rollout_cohort $mad4b_css_rollout_origin_attested_v1 {
++    default 0;
++    canary 1;
++}
++map $mad4b_css_rollout_cohort $mad4b_css_browser_policy {
++    default $wayfa_browser_html_policy;
++    canary "private, no-store, max-age=0";
++}
++# END MAD4B EDGE CANARY CACHE SEPARATION v1
++
+ # MAD4B_PUBLIC_HTML_GLOBAL_EPOCH_V1 BEGIN
+ map $host $mad4b_public_html_global_epoch {
+     default "|g9afd92c02f69";
+@@ -418,6 +439,8 @@
+     fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+     fastcgi_param HTTPS on;
+     fastcgi_param MAD4B_TRUSTED_DEVICE_CLASS $wayfa_html_device;
++    fastcgi_param MAD4B_CSS_ROLLOUT_COHORT $mad4b_css_rollout_cohort;
++    fastcgi_param MAD4B_CSS_ROLLOUT_ORIGIN_ATTESTED $mad4b_css_rollout_origin_attested_v1;
+     fastcgi_param HTTP_X_LSCACHE_VARY_VALUE $wayfa_litespeed_origin_vary;
+     fastcgi_pass $wayfa_selected_php;
+     # Keep normal PHP access logs; append one privacy-safe timing record only
+@@ -447,13 +470,14 @@
+     fastcgi_cache_use_stale off;
+     fastcgi_cache_background_update off;
+     fastcgi_cache_valid 200 1800s; # MAD4B public pages: 30 minutes; sensitive paths retain bypass
+-    fastcgi_cache_bypass $wayfa_html_no_cache_path $wayfa_html_no_cache_request;
+-    fastcgi_no_cache $wayfa_html_no_cache_path $wayfa_html_no_cache_request $wayfa_not_public_response $wayfa_upstream_cache_veto $wayfa_response_sets_cookie $mad4b_mobile_home_css_veto $mad4b_signed_home_upstream_veto_v1;
++    fastcgi_cache_bypass $wayfa_html_no_cache_path $wayfa_html_no_cache_request $mad4b_css_rollout_cohort;
++    fastcgi_no_cache $wayfa_html_no_cache_path $wayfa_html_no_cache_request $mad4b_css_rollout_cohort $wayfa_not_public_response $wayfa_upstream_cache_veto $wayfa_response_sets_cookie $mad4b_mobile_home_css_veto $mad4b_signed_home_upstream_veto_v1;
+     # The edge owns the complete browser-facing Cache-Control policy.
+     # Keep $upstream_http_cache_control available for the private/no-store
+     # origin veto above, but do not send two conflicting cache policies.
+     fastcgi_hide_header Cache-Control;
+-    add_header Cache-Control $wayfa_browser_html_policy always;
++    add_header Cache-Control $mad4b_css_browser_policy always;
++    add_header X-MAD4B-CSS-Canary $mad4b_css_rollout_cohort always;
+     add_header Vary $wayfa_browser_vary_cookie;
+     add_header Vary User-Agent always;
+     add_header X-Wayfa-Origin-Cache $upstream_cache_status always;

@@ -16,6 +16,11 @@ ROOTS={
 }
 CONTRACT='mad4b.public-css.source-family-registry.v1'
 CERT='mad4b.public-critical-css.route-certificate.v1'
+v2spec=importlib.util.spec_from_file_location(
+    'mad4b_source_family_certified_v2_adapter',
+    BASE/'public-v2-family-canary.py')
+v2=importlib.util.module_from_spec(v2spec)
+v2spec.loader.exec_module(v2)
 MARKET_RE=re.compile(r'^(?:[A-Z]{2}|base|static)\|(?:[A-Z]{3}|NONE)$')
 PROFILE_RE=re.compile(r'^(?:shared-template|elementor-document|taxonomy|archive):[A-Za-z0-9:/_-]{1,140}$')
 
@@ -53,6 +58,13 @@ def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 
 def valid_canary(root,host,route,state,catalog,ledger_record,cert):
     if not isinstance(cert,dict) or not isinstance(ledger_record,dict):return False
+    if cert.get('contract')==v2.CONTRACT:
+        try:
+            return v2.validate(root,host,route,state,catalog,ledger_record,cert,
+                queue.source_key(catalog,route,state,
+                    bool(ledger_record.get('depends_on_listings'))))
+        except (ValueError,OSError,KeyError,TypeError,UnicodeError):
+            return False
     if ledger_record.get('status')!='certified':return False
     if ledger_record.get('source_key')!=queue.source_key(catalog,route,state,bool(ledger_record.get('depends_on_listings'))):return False
     for name,value in (
@@ -92,7 +104,7 @@ def valid_canary(root,host,route,state,catalog,ledger_record,cert):
 def load_certs(root):
     rows={};base=root/'mad4b-public-critical-css-v1/certs'
     if base.is_symlink():raise ValueError('unsafe-source-certificate-directory')
-    if not base.exists():return rows
+    if not base.exists():return v2.load_into(root,rows)
     for p in base.glob('*.json'):
         if p.is_symlink() or p.stat().st_size>8192 or not re.fullmatch(r'[a-f0-9]{64}\.json',p.name):continue
         try:
@@ -100,7 +112,7 @@ def load_certs(root):
             if route in rows:raise ValueError('multiple-current-market-certificates')
             rows[route]=cert
         except (OSError,ValueError,KeyError,TypeError,json.JSONDecodeError):continue
-    return rows
+    return v2.load_into(root,rows)
 
 def split_observed_variants(site,catalog,state,ledger,published,rows,variant_index):
     """Split only actual first-party Elementor DOM variants.
@@ -147,6 +159,116 @@ def split_observed_variants(site,catalog,state,ledger,published,rows,variant_ind
             known[fkey]=route_facts
     return known,original
 
+def verifier_only_recheck_candidates(site,catalog,state,ledger,root,rows,now=None):
+    """One bounded, exact-context retry lane for obsolete post-release readbacks.
+
+    This returns ONLY WordPress catalog route keys. It does not validate or
+    restore a reverted certificate, change a ledger, or bypass post-release QA.
+    Failed REAL performance checks such as the Hurghada LCP regression are
+    never admitted. A previous retry is consumed once the ledger is updated.
+    """
+    if site!='wayfa' or catalog.get('host')!=ROOTS['wayfa'][1]:return []
+    now=int(time.time()) if now is None else int(now)
+    folder=Path(root)/'mad4b-public-critical-css-v1/certs-v2'
+    if (folder.is_symlink() or not folder.is_dir()
+        or folder.stat().st_mode&0o022):return []
+    eligible={r['path']:r for r in rows if r.get('type')=='destinations'}
+    result=[]
+    for certfile in sorted(folder.iterdir()):
+        if (certfile.is_symlink() or not certfile.is_file()
+            or not v2.FILE.fullmatch(certfile.name)
+            or certfile.stat().st_size>180000):continue
+        try:cert=json.loads(certfile.read_text())
+        except (ValueError,TypeError,UnicodeError,OSError):continue
+        if (not isinstance(cert,dict) or cert.get('contract')!=v2.CONTRACT
+            or cert.get('status')!='reverted_post_release_qa'
+            or cert.get('host')!=catalog['host']
+            or cert.get('type')!='destinations'
+            or cert.get('market_country')!='base'
+            or cert.get('currency')!=state.get('base_currency')
+            or cert.get('css_epoch')!=state.get('css_epoch')
+            or cert.get('runtime_sha')!=state.get('runtime_sha')):continue
+        route=eligible.get(cert.get('path'))
+        if (not route or route.get('id')!=cert.get('object_id')
+            or route.get('language')!=cert.get('language')):continue
+        key=hashlib.sha256((catalog['host']+'|'+route['language']+'|'+
+            route['path']+'|base|'+cert['currency']).encode()).hexdigest()
+        if certfile.name!=key+'.json':continue
+        evidence=cert.get('evidence')
+        if (not isinstance(evidence,dict)
+            or evidence.get('decision') not in (
+                'failed_public_post_release_readback','failed_post_release')
+            or type(evidence.get('verified_at')) is not int):continue
+        actual_perf_failed=evidence['decision']=='failed_post_release'
+        rec=ledger.get('routes',{}).get(route['route_key'])
+        if (not isinstance(rec,dict) or rec.get('status')!='hold'
+            or type(rec.get('attempted_at')) is not int
+            or rec['attempted_at']!=evidence['verified_at']
+            or type(rec.get('retry_after')) is not int
+            or now<rec['retry_after']
+            or type(rec.get('failures')) is not int
+            or not 1<=rec['failures']<=2):continue
+        # Unlike an obsolete public readback rejection, a measured failure
+        # is retried ONLY after the actual Chromium QA implementation
+        # changes. Never treat a repeat run of identical QA as recovery.
+        if actual_perf_failed:
+            old_policy=rec.get('qa_policy_sha')
+            new_policy=state.get('qa_policy_sha')
+            if (not isinstance(old_policy,str) or not isinstance(new_policy,str)
+                or not re.fullmatch('[a-f0-9]{64}',old_policy)
+                or not re.fullmatch('[a-f0-9]{64}',new_policy)
+                or old_policy==new_policy):continue
+        if rec.get('source_key')!=queue.source_key(
+                catalog,route,state,bool(rec.get('depends_on_listings'))):continue
+        # Native version/revision must remain exact. The original publisher
+        # will independently recapture full HTML, source CSS and WPML context.
+        deps=cert.get('dependencies')
+        if (not isinstance(deps,dict)
+            or deps.get('route_generation')!=route.get('revision')
+            or deps.get('global_generation')!=catalog.get('global_generation')
+            or deps.get('listing_generation')!=catalog.get('listing_generation')):continue
+        result.append((rec['attempted_at'],route['path'],route['route_key']))
+    return [x[2] for x in sorted(result)]
+
+
+def published_v2_generation_drift(catalog,state,published):
+    """Report why immutable v2 files are not current CSS source proofs.
+
+    This reports only catalog/generation metadata. An aligned certificate
+    is NOT considered visitor-delivered without a separate 422 readback.
+    """
+    routes={(r['language'],r['path']):r for r in catalog['routes']}
+    reasons=collections.Counter()
+    for (language,path,market,currency),cert in published.items():
+        if (not isinstance(cert,dict)
+            or cert.get('contract')!=v2.CONTRACT
+            or cert.get('status')!='certified'):
+            continue
+        route=routes.get((language,path))
+        deps=cert.get('dependencies') if isinstance(cert.get('dependencies'),dict) else {}
+        if route is None:
+            why='route_removed_or_unpublished'
+        elif (cert.get('css_epoch')!=state.get('css_epoch')
+              or cert.get('runtime_sha')!=state.get('runtime_sha')):
+            why='runtime_or_css_epoch_changed'
+        elif deps.get('global_generation')!=catalog.get('global_generation'):
+            why='global_generation_changed'
+        elif deps.get('route_generation')!=route.get('revision'):
+            why='route_revision_changed'
+        elif ((deps.get('contains_dynamic_listing')
+               or route['type'] not in ('page','post','tours-and-activities')
+               or (route['type']=='tours-and-activities' and
+                   deps.get('listing_generation') is not None))
+              and deps.get('listing_generation')!=catalog.get('listing_generation')):
+            why='listing_generation_changed'
+        else:
+            why='generation_aligned_not_live_readback'
+        reasons[why]+=1
+    return {'certified_file_count':sum(reasons.values()),
+            'reasons':dict(sorted(reasons.items())),
+            'generation_aligned_is_not_delivery_proof':True}
+
+
 def build(site,catalog,state,ledger,root=None,variant_index=None):
     if site not in ROOTS or catalog.get('host')!=ROOTS[site][1] or ledger.get('site')!=site:
         raise ValueError('source-company-scope-mismatch')
@@ -161,6 +283,9 @@ def build(site,catalog,state,ledger,root=None,variant_index=None):
     catalogrows=[r for r in queue.safe_catalog(catalog,site)
                  if not queue.independently_certified_home(r)]
     published=load_certs(root)
+    published_context=published_v2_generation_drift(catalog,state,published)
+    verifier_retries=verifier_only_recheck_candidates(
+        site,catalog,state,ledger,root,catalogrows)
     by_route=collections.defaultdict(list)
     for (lang,path,market,currency),cert in published.items():
         by_route[(lang,path)].append((market,currency,cert))
@@ -201,7 +326,8 @@ def build(site,catalog,state,ledger,root=None,variant_index=None):
             for market,currency,cert in by_route.get((r['language'],r['path']),[]):
                 if not valid_canary(root,catalog['host'],r,state,catalog,record,cert):continue
                 candidates.append({'path':r['path'],'route_key':r['route_key'],'market':market,
-                    'currency':currency,'css_sha':cert['css_sha'],'doc_sha':cert['elementor_doc_fingerprint']})
+                    'currency':currency,'css_sha':cert.get('css_sha') or cert.get('source_manifest_sha256'),
+                    'doc_sha':cert['elementor_doc_fingerprint']})
                 seen.add(r['route_key'])
         # Two distinct real browser QA canaries, same shared template DOM
         # and market, establish *source behavior*, not route CSS equivalence.
@@ -286,6 +412,12 @@ def build(site,catalog,state,ledger,root=None,variant_index=None):
         # Different conditional Theme Builder documents are different true
         # sources even when WordPress calls them the same CPT/archive type.
         # Never spend 1,000 route QA runs chasing a false shared family.
+        # After the source family is proven, the site still needs independent
+        # exact-route CSS issuance for every unsampled WordPress object.
+        # A family certificate NEVER authorizes a CSS file or READY header
+        # for its sibling routes. Offer bounded one-route candidates to the
+        # same original issuance -> post-release QA -> fallback runner.
+        next_route_css=None
         if status in ('source_variants_need_split','source_variant_mapping_pending',
                        'source_graph_unresolved','source_native_optimizer_unavailable',
                        'source_native_optimizer_market_partial'):
@@ -306,6 +438,8 @@ def build(site,catalog,state,ledger,root=None,variant_index=None):
                 choices.append((0 if not rec else 1,int(rec.get('failures',0)),r['path'],r['route_key']))
             choices.sort()
             next_route=choices[0][3] if status!='source_canary_qualified' and choices else None
+            next_route_css=(choices[0][3]
+                if status=='source_canary_qualified' and choices else None)
         qcounts[status]+=1;qualified_routes+=len(seen)
         rows.append({'family_key':key,'source_profile':source_profile(head),'route_type':head['type'],
           # Always-on compilation and dependency scheduling are policies;
@@ -339,6 +473,7 @@ def build(site,catalog,state,ledger,root=None,variant_index=None):
               for doc in sorted({c['doc_sha'] for c in permarket[market]})],
           'sample_paths':[c['path'] for c in candidates[:5]],
           'source_routes_not_individually_certified':len(members)-len(seen),
+          'next_individual_css':next_route_css,
           'next_canary':next_route})
     # The source coverage is not a claim that unsampled pages now receive
     # route-specific mobile Critical CSS. Those use unchanged native CSS.
@@ -348,10 +483,14 @@ def build(site,catalog,state,ledger,root=None,variant_index=None):
     wants=[r for r in rows if r['next_canary']]
     wants.sort(key=lambda r:(0 if r['status']=='source_canary_pending' else 1,
       order.get(r['route_type'],12),r['language'],r['source_profile']))
+    css_work=[r for r in rows if r['next_individual_css']]
+    css_work.sort(key=lambda r:(order.get(r['route_type'],12),
+                               r['language'],r['source_profile']))
     return {'contract':CONTRACT,'site':site,'host':catalog['host'],
       'css_epoch':state['css_epoch'],'global_generation':catalog.get('global_generation'),
       'listing_generation':catalog.get('listing_generation'),
       'source_groups_total':len(rows),'source_groups_by_status':dict(sorted(qcounts.items())),
+      'published_v2_generation_drift':published_context,
       'source_canary_qualified_groups':qcounts['source_canary_qualified'],
       'source_context_canary_proofs':sum(len(f['proven_market_profiles']) for f in rows),
       'source_context_divergent':sum(len(f['divergent_market_profiles']) for f in rows),
@@ -363,13 +502,148 @@ def build(site,catalog,state,ledger,root=None,variant_index=None):
       'country_market_scope':'dynamic_not_enumerated' if state.get('wcml_multi_currency') else 'base',
       'routes_discovered':len(catalogrows),'routes_with_exact_current_certificate':qualified_routes,
       'routes_on_native_or_unproven_css':len(catalogrows)-qualified_routes,
-      'source_families':rows,'next_canary_route_key':wants[0]['next_canary'] if wants else None,
+      'source_families':rows,
+      'verifier_only_recheck_candidates':len(verifier_retries),
+      'next_verifier_only_recheck_route_key':verifier_retries[0] if verifier_retries else None,
+      'next_canary_route_key':wants[0]['next_canary'] if wants else None,
+      'next_canary_route_keys':[f['next_canary'] for f in wants[:64]],
+      # Finish already independently started families without forcing every
+      # untouched template to await an entire 55-family rotation. This is
+      # planning only, never a certificate or sibling-CSS reuse authority.
+      'near_qualified_route_keys':[f['next_canary'] for f in wants
+          if f['canary_count']>0 and
+             f['status'] in ('source_canary_pending','source_canary_market_partial')][:64],
+      'next_individual_css_route_key':css_work[0]['next_individual_css'] if css_work else None,
+      'next_individual_css_route_keys':[f['next_individual_css'] for f in css_work[:64]],
+      'qualified_families_with_css_routes_pending':len(css_work),
+      'qualified_families_individual_routes_unproven':sum(
+          r['source_routes_not_individually_certified'] for r in rows
+          if r['status']=='source_canary_qualified'),
       'policy_contract':'mad4b.public-css.template-aware-policy.v1',
       'policy_state':'active',
       'quality_checks':'observational_nonblocking_for_policy',
       'variant_mapping_pending_routes':sum(r['member_count'] for r in rows
                                           if r['status']=='source_variant_mapping_pending'),
       'source_lineage_note':'Source behavior proof requires two exact five-viewport canaries (or singleton); unsampled routes do not inherit CSS assets or route-ready headers.'}
+
+
+def plan_next_css_issuance(report,sequence,verified_drift_route_key=None):
+    """One original source candidate per Cron tick; no inherited CSS grant.
+
+    Prefer newly unproven template families for 3 of every 4 source
+    admissions. Reserve the fourth slot for independently rendering
+    and issuing CSS on an unsampled object in an ALREADY proven family.
+    Both lanes still pass the original WordPress catalog and route
+    source-key admission before a source certificate can be issued.
+    """
+    if not isinstance(report,dict) or not isinstance(sequence,int) or sequence<0:
+        raise ValueError('invalid-original-source-css-planner')
+    if verified_drift_route_key is not None:
+        if (not isinstance(verified_drift_route_key,str)
+            or not re.fullmatch('[a-f0-9]{64}',verified_drift_route_key)):
+            raise ValueError('untrusted-source-css-drift-route')
+        return verified_drift_route_key
+    family=report.get('next_canary_route_key')
+    individual=report.get('next_individual_css_route_key')
+    retry=report.get('next_verifier_only_recheck_route_key')
+    if (family is not None and (not isinstance(family,str)
+        or not re.fullmatch('[a-f0-9]{64}',family))):
+        raise ValueError('untrusted-css-family-canary')
+    if (individual is not None and (not isinstance(individual,str)
+        or not re.fullmatch('[a-f0-9]{64}',individual))):
+        raise ValueError('untrusted-css-individual-route')
+    if (retry is not None and (not isinstance(retry,str)
+        or not re.fullmatch('[a-f0-9]{64}',retry))):
+        raise ValueError('untrusted-verifier-only-retry-key')
+    # A single original retry slot per four worker opportunities. Do not
+    # displace the existing 1/4 exact-route CSS coverage lane.
+    # New bounded, source-derived candidates permit fair independent family
+    # canaries without weakening original per-route source verification.
+    # Legacy one-key receipts preserve their exact prior admission policy.
+    family_keys=report.get('next_canary_route_keys')
+    individual_keys=report.get('next_individual_css_route_keys')
+    near_keys=report.get('near_qualified_route_keys')
+    modern=family_keys is not None or individual_keys is not None
+    if modern:
+        for lane in (family_keys,individual_keys):
+            if (lane is not None and (not isinstance(lane,list) or len(lane)>64
+                or len(set(lane))!=len(lane)
+                or any(not isinstance(k,str) or not re.fullmatch('[a-f0-9]{64}',k)
+                       for k in lane))):
+                raise ValueError('invalid-original-source-family-rotation-lane')
+        family_lane=family_keys or ([family] if family else [])
+        individual_lane=individual_keys or ([individual] if individual else [])
+        # A near-qualified family is eligible only if it is also in the
+        # original admitted source-family lane. An external report cannot
+        # nominate a foreign route by using the short completion lane.
+        if (near_keys is not None and (not isinstance(near_keys,list)
+            or len(near_keys)>64 or len(set(near_keys))!=len(near_keys)
+            or any(not isinstance(k,str) or not re.fullmatch('[a-f0-9]{64}',k)
+                   for k in near_keys)
+            or not set(near_keys).issubset(set(family_lane)))):
+            raise ValueError('invalid-original-source-family-completion-lane')
+        near_lane=near_keys or []
+        # A bounded old-QA retry uses at most one slot per eight attempts.
+        # The 1/4 exact-route lane stays untouched. Unlike a fixed first
+        # family, this never repeatedly tests Arabic while leaving
+        # independent English/Spanish/other source templates unsampled.
+        retry_slot=bool(retry and sequence%8==0)
+        if retry and (not family_lane and not individual_lane or retry_slot):
+            return retry
+        if individual_lane and (not family_lane or sequence%4==3):
+            cursor=sequence//4 if family_lane else sequence
+            return individual_lane[cursor%len(individual_lane)]
+        # One of every four original admission opportunities completes a
+        # partially evidenced, exact-context family. Unseen families retain
+        # the other available slots, and retry/individual lanes keep their
+        # bounded original priority and independent QA requirements.
+        if near_lane and sequence%4==1:
+            return near_lane[(sequence//4)%len(near_lane)]
+        if family_lane:
+            consumed_retry=(sequence+7)//8 if retry else 0
+            consumed_near=(sequence+2)//4 if near_lane else 0
+            family_index=sequence-sequence//4-consumed_retry-consumed_near
+            return family_lane[family_index%len(family_lane)]
+        return individual_lane[0] if individual_lane else retry
+    if retry and (not family and not individual or sequence%4==0):
+        return retry
+    if individual and (not family or sequence%4==3):
+        return individual
+    return family or individual or retry
+
+
+
+PROGRESS_REPORT_ROOT=Path('/opt/mad4b-company-provisioning/reports/public-critical-css-v1')
+
+def rollup_after_certified_event(site,catalog,state,ledger_path,wp,route,variant_index,output):
+    """Event-driven *report* readback, not CSS certificate issuance.
+
+    The original WordPress V2 consumer, QA, and queue independently issue
+    the certification before this routine runs. A first-party, exact route
+    can then refresh the family progress display from the same verified
+    source snapshots, without another WP-CLI or Chromium admission.
+    """
+    if (site not in ROOTS or Path(wp)!=Path(ROOTS[site][0])
+        or Path(output)!=PROGRESS_REPORT_ROOT/site/'source-families-latest.json'):
+        raise ValueError('cross-site-family-progress-boundary')
+    if route not in queue.safe_catalog(catalog,site):
+        raise ValueError('family-progress-route-not-enrolled')
+    current=queue.read_ledger(Path(ledger_path),site)
+    row=current['routes'].get(route['route_key'],{})
+    if not isinstance(row,dict) or row.get('status')!='certified':
+        raise ValueError('family-progress-requires-original-certified-ledger')
+    dependency=row.get('depends_on_listings')
+    if type(dependency) is not bool:
+        raise ValueError('family-progress-missing-dependency-proof')
+    if row.get('source_key')!=queue.source_key(catalog,route,state,dependency):
+        raise ValueError('family-progress-original-source-key-changed')
+    summary=build(site,catalog,state,current,Path(wp),variant_index=variant_index)
+    summary['refreshed_at_utc']=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime())
+    summary['refresh_trigger']='original_certified_route_event'
+    queue.atom(Path(output),summary)
+    return {'families':summary['source_groups_total'],
+        'qualified':summary['source_canary_qualified_groups'],
+        'current':summary['routes_with_exact_current_certificate']}
 
 
 def main():

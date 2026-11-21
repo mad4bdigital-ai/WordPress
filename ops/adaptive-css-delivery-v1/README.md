@@ -1,0 +1,140 @@
+# MAD4B Adaptive CSS Delivery — v1
+
+Source: PR #989; site-owned, company-scoped CSS architecture.
+
+## Deployed slice
+- Reuse the site-owned MAD4B_CCSS_WPCron_Dispatch_V1::profile() for enrolled company, host and environment.
+- First-party Google web-vitals v6.2.3 IIFE pinned by SHA-256; no remote analytics dependency.
+- Only after MAD4BConsent analytics opt-in, GPC/DNT checks, and sampled measurement.
+- No IP, user identity, raw URL, query, referrer, cookie, browser fingerprint or raw metric records stored.
+- Signed REST POST for one site, route SHA, source epoch and device with 2-hour TTL, same-origin and replay caps.
+- Histograms for LCP, INP, CLS, and restoration of the complete CSS.
+- No changes to existing 421/422 certificates, HTML, FastCGI or visitor CSS.
+- Pure source-aware decision engine: no real unqualified CSS promotion merely from user telemetry.
+- Per-company WordPress Cron hourly health rollup with daily-window CSS restoration monitoring and 30-day retention; read-only admin REST status. No additional systemd CSS executor.
+
+## Modes
+- off (default): no RUM client, beacon or data collection.
+- observe: consenting sampled public sessions only, no CSS changes.
+- Progressive public canary: not enabled until signed CSS source, verified cache separation, and stable synthetic QA pass. Staged private candidate is not real visitor canary.
+
+## Privacy and data quality
+- Metric units: LCP/INP milliseconds, CLS thousandths. Histograms only, 30-day UTC retention.
+- CSS restore state metric records 0 for failure and 1 for successful restore.
+- The opt-in gateway's analytics choice is checked again immediately before sending.
+- A missing consent gateway, private session, query string, checkout or untrusted site context is excluded.
+- Site RUM cannot override the original five-view QA or release admission controls.
+
+## Rollout decisions
+- Controlled steps: 0, 1, 5, 25 and 100%.
+- Require signed source identity, 5-view browser QA, cache cohort isolation and origin release proof.
+- Comparable sample minima for ramps to 5, 25, 100%: 400, 800, 1200 per metric and arm.
+- Incomplete INP, CLS or LCP populations cannot automatically promote.
+- p75 regressions over baseline+25% can recommend reversal after 50 events. A recommendation does not mutate public CSS.
+
+## Acceptance path
+1. Syntax and unit tests in the enrolled source and site profile.
+2. Install SQL histogram table explicitly through enrolled WP-CLI; never auto-create on public requests.
+3. Enable observe at sample_bps=100 (=1% consenting sessions), first on Tours.dev, then on Wayfatours.
+4. Verify REST rejects forged/expired source tokens and never collects raw personal data.
+5. Verify FastCGI HTML stays Native or certified under previous authority; no cache purge.
+6. Only enable public traffic split after an independent, signed cache-cohort/rollback test succeeds.
+
+## Tests
+- python3 tests/test_adaptive_policy.py
+- node tests/test_rum_js.js assets/mad4b-css-rum-client.js
+- php -l 438-mad4b-adaptive-css-rum-v1.php
+- cat tests/php-pre.php 438-mad4b-adaptive-css-rum-v1.php tests/php-post.php tests/php-rest.php | php
+
+Vendor web-vitals IIFE is from Google's Apache-2.0 project, pinned to version 6.2.3 and SHA256 1e5e9b9af6b8d71cfef508e5a869c53b4cf2bbccad8c9b5ac664c34e93f6151a.
+
+## Independent adaptive rollout status
+- RUM JS URL versioning uses the first-party file mtime so corrected client code is not confused with a stale browser cache.
+- Cohort hash includes the trusted mobile/desktop device, CSS epoch, Elementor/global and JetEngine listing generation, and individual post revision; no cross-language or market aggregation.
+- The cache isolation scanner is a mandatory fail-closed read-only preflight. On 21 Nov both source and Wayfa report HOLD_CACHE_ISOLATION: active Nginx has no signed public CSS cohort cache separation. User traffic canary=0%; only existing certified Native/CCSS delivery is unchanged.
+- The site's public-css authoritative 421/422 files are never modified by the RUM plugin. RUM never creates or issues certificates.
+
+## Verified deployment checkpoint (2026-11-21)
+- Tours.dev Staging: mode observe, 100 basis points, signed REST HTTP202 -> actual MariaDB histogram 4 counters, synthetic fixture deleted in a finally clause; source's 421/422 and FastCGI remain untouched.
+- Wayfatours Production: additive plugin and pinned local JS installed, sample mode off until independently admitted source WP-CLI schema installation (CPU/WP-CLI guard and worker lock).
+- Public CSS Canary: zero percent; both real Nginx profiles fail cache partition and first-party cohort attestation. No unqualified CSS reaches public visitors.
+- The 30-day histograms are observational, not anti-spoofed evidence of a controlled A/B test until the signed serving arm is added at the edge.
+- The original worker and the existing 5-viewport synthetic QA continue to hold the source-based certificate authority.
+
+## Hourly Core Web Vitals readback
+The site-owned hourly REST-health option exposes the conservative p75 histogram upper bounds and sample count for each arm and LCP/INP/CLS; no values are invented for a metric without samples. This shadow report is observational across source routes and cannot promote or revoke CSS certificates. An authenticated manager can inspect /wp-json/mad4b-css/v1/status. The field public_rollout_percent_changed is always false.
+
+## Exactly-once guarded Wayfa schema activation
+A root-owned one-time cron entry is installed for the production RUM schema initialization only; it checks the original host CPU budget and acquires the shared WordPress CSS worker lock. It verifies the exact enrolled company, checksums of the PHP/JS source, WP schema readback, and the observe-mode sample basis points. On success it saves a root receipt and disables itself. Any non-resource failure disables future attempts. The configuration expires after 24h. This task **does not** run CSS or Chromium, purge FastCGI, or enable a public canary. It is a schema/observe enrollment and not a proof of CSS source authority.
+
+
+## Source-fresh telemetry token
+The v2 short-lived HMAC proof binds the actual site, route SHA, variant SHA,
+device, CSS epoch, JetEngine listing generation, Elementor global generation
+and timestamp. Both generations are re-checked on every RUM POST against the
+current WordPress source; a stale HTML token fails closed on source changes.
+Previously cached v1 tokens are rejected and can simply skip observations.
+
+## Verified production RUM activation and E2E receipt (2026-11-21)
+- Wayfatours: exactly-once resource-guarded schema activation succeeded at 12:08:26 UTC. The temporary activation cron self-disabled and retained a root receipt. Observe samples 100bps of eligible consenting visits; live CSS canary remains 0%.
+- Wayfatours: signed v2 token POST to the real first-party WordPress REST endpoint returned HTTP202, inserted four histogram counts; synthetic route+variant counters were deleted and verified absent. Test code: tests/e2e-wayfa-rum-v2.sh.
+- WordPress runtime files 421/422, v2 certificates, FastCGI cache keys and public CSS remained unchanged by adaptive RUM deployment.
+- A few WP-CLI stderr entries about missing FluentCRM/FluentBoards abilities are unrelated to RUM; they do not authorize any change to Fluent components.
+
+## 2026-11-21 CSS native-source pin reconciliation
+The original first-party Git blob for wp-content/mu-plugins/422-mad4b-public-critical-css-runtime.php (current PR #989) has SHA-256 13e98efebaef87918d38c1d5be30bd6cf45c9f40c0e3264a31beca79b4663a36, accompanied by V2 consumer 249083d5aa0124ea1280a88f5062945cdff2885eca63b36ba5c66682b0faf3d1 and 421 coverage ae7936c7ad09b059375e1960d4c59144af0b4325933db34bcfa63c26e49233bb. The live host runner was rejecting the first-party Git runtime because its immutable allowlist was behind the approved source. The fix adds the exact Git V2 pair to the original Python runner allowlist, retains legacy approved release pins, and tests refusal of all altered components. Wayfatours preserves local renderer-specific behavior and receives only the surgical patch in patches/wayfa-v2-source-pin.patch. Both site-owned renderer digests and their profiles must be switched atomically behind the existing source/site/shared locks; never replace the live PHP, waive origin QA, or treat observed source bytes as permission.
+
+
+## CSS actual delivery / source revision audit (2026-11-21)
+- Production site-owned CSS driver had rejected first-party PR #989's PHP runtime 13e98... because the immutable original source allowlist still recognized only historic Wayfa 597a...; fixed by exact Git-pinned pair and companion, retaining old approved rollbacks.
+- Atomic two-company engine admission on the VPS: source renderer 8f72d6ddb294..., Wayfa renderer 804b3243afa3...; rollback preimages recorded under the root-only code release receipts directory. The release script is ops/adaptive-css-delivery-v1/release-css-source-pair.py and uses expected preflight files, locks and exact digests.
+- Wayfa passed the real site-owned health audit with healthy_with_safe_fallback; WordPress Cron subsequently completed families ticket 169 at 12:42Z, verifying the previously blocked source path. No CSS certificates were forged or status-upgraded.
+- Existing Wayfa V2 certificate files: 24 certified, 3 reverted, pinned to historic runtime SHA 597a...; new live source runtime is 13e98..., so consumer correctly refuses those certificates on real frontend HTML. The group registry now has 18 groups with zero context-qualified. These are NOT 24 actively delivered public CCSS pages.
+- Source listing generation moved from 1436 to 1505 by the 12:42Z refresh. Blindly updating certificate runtime SHA would not reconcile this dependency. Requalification needs fresh exact source + QA or legitimate per-template inheritance; the worker and family scheduler own that workflow.
+- Public production canary remains at 0% because Nginx's verified CSS cohort cache split is absent. Existing optimized home CSS is a separate certified runtime.
+
+## Manager-only RUM source-variant readback
+`GET /wp-json/mad4b-css/v1/cohort?route_sha=<sha256>&variant_sha=<sha256>` returns seven-day histogram p75 upper bounds and sample totals split by the current trusted site, device, observed native/optimized arm, and CSS-restoration counts. The route requires WordPress `manage_options` and validates both exact 64-hex source fingerprints. It reveals no raw URL, personal identity, referrer or unaggregated performance events. It explicitly marks arm_source=client_dom_observed_not_randomized and eligible_to_promote_css=false. The original REST /status endpoint remains manager-only. A fully signed Nginx-controlled canary assignment and cache split are still prerequisites for a causal A/B rollout decision.
+## Live edge cache partition on 2026-11-21
+- Nginx v1 uses its own $request_id for the 1% eligible mobile-public random cohort. No client header or cookie can select the cohort.
+- Canary bypasses both FastCGI read/write and gets private, no-store. Control keeps existing public cache key. Auth, query, personalized, currency and unsafe requests remain excluded.
+- Source and Wayfa configs passed nginx -t before and after installation. Patches: patches/source-edge-canary-v1.patch and patches/wayfa-edge-canary-v1.patch.
+- Source Coolify Nginx originally held an old bind-mount inode. The original running Compose hash matched source Compose; only source Nginx was recreated (no PHP or DB restart), re-binding its config db6fc079.... Wayfa config 4df4c3c0.... Both report healthy.
+- An ephemeral independent Wayfa Nginx clone with test-only 100% canary returned 200, X-MAD4B-CSS-Canary=canary, X-Wayfa-Origin-Cache=BYPASS, Cache-Control=private,no-store, and verified V2 Ready=1 for the Nile Dinner Cruise. Production is still 1%, and the disposable clone was stopped.
+- A source clone without trusted Traefik origin context remained fail-closed control with private/no-store; a synthetic forced result must not bypass this.
+- RUM v3 now signs edge cohort into per-device/per-source HMAC variant, keeping control and canary measurement hashes distinct. DOM-observed CSS arm alone is not causal A/B evidence.
+- This edge isolation does NOT activate candidate CSS for visitors. Private staged CSS still cannot be read by consumer 422. A separate canary-aware consumer/publisher must be qualified before public provisional delivery.
+
+## CPU-governed RUM 10% consenting sample enrollment
+- Early measurement reported zero real RUM histogram samples. The late analytics-consent JS bug was fixed on both sites.
+- A one-shot admission under /etc/cron.d/mad4b-css-rum-sample-once is installed to raise eligible consented sampling from 100bps to 1000bps, while preserving all original CSS and FastCGI files.
+- It checks exact company/environment and source PHP SHA, locks the CSS worker, checks host CPU policy, and permits no conflicting option. It expires after 24 hours and self-disables after exact readback success or fatal drift.
+- Only claim the 10% change active if css-rum-consented-10pct-20261121/success.json exists; otherwise it remains deferred. Real sufficient cohorts require genuine traffic, not synthetic tests.
+
+## 2026-11-21 fail-closed public candidate release lease
+The edge split initially sent 1% of eligible visitors through FastCGI BYPASS even though no separate provisional CSS was publicly available. This could hurt TTFB with no useful candidate comparison. The release-lease patch adds mad4b_css_candidate_release_lease_v1 default 0, leaving the tested 1% cohort selection infrastructure but making effective candidate exposure 0% until a separately approved source-bound candidate is admitted.
+- Source Nginx SHA accb96666fe3817749134bcea42d63e694c4dda88a53744cbf1d4dc06acb24dd.
+- Wayfa Nginx SHA 32a511554d198db91f574b9e4a85b3fdd8fd3930bfba4f85a8102725c6b40885.
+- Both configs passed independent and active nginx -t. Receipts at /var/lib/mad4b/company-code-release/receipts/css-edge-release-lease0-20261121/.
+- A private Wayfa clone with the exact lease=0 config returned a public/cacheable HTTP200 and current certified CSS, RUM source cohort control, not a bypassed canary.
+- Two patches are in patches/source-edge-lease0.patch and patches/wayfa-edge-lease0.patch.
+- The read-only scanner reports cache isolation technical ADMIT separately from public candidate edge exposure (false for both). Do not confuse these fields.
+- A private staged candidate by itself does not grant a lease or turn on public CSS. WordPress 422 certificate authority and Chrome source/interaction QA remain independent.
+
+## Staging source 320px LCP root-cause trace
+Chrome source route QA showed original FCP 3224ms and optimized FCP 972ms, but original LCP 8748ms and optimized LCP 9796ms: 1048ms regression beyond allowed budget. The observed last LCP is an Elementor DIV ef55af8 background-image 18_01_2023_9999_186-F2.webp (166218 bytes), inside dynamic Elementor template 42208. Critical CSS had 18 slots, 238186 bytes; full CSS parity passed all five widths. The 320px performance hold is correct. A private resource preload experiment was initiated in a root-only sandbox, without publication; wait for both AB and BA source comparisons before any frontend mutation, and do not accept an FCP-only pass.
+
+## Private 320px preload AB/BA evidence and limitation
+The isolated captured-HTML preloader experiment finished without public WordPress/CSS mutation:
+- Original-first: source FCP 3200ms, candidate FCP 1124ms (gain 2076ms); source LCP 10008ms, candidate+preload LCP 9728ms (regression -280ms).
+- Critical-first: FCP gain 2080ms; source LCP 9788ms, candidate+preload LCP 9880ms (regression +92ms).
+- Both test orders passed the 320px CSS restoration and peer-order QA bounds, 100 source CSS links restored. This is NOT a five-viewport certificate.
+- Absolute image LCP remains 9.7-9.9 seconds and did not materially improve from the previous candidate; preload alone is NOT a root-cause fix. Do not publish it as a sitewide solution or mark source CSS qualified.
+- Captured HTML contains late LCP DIV elementor-element-ef55af8 under nested Elementor template 42208 within the tour hero of post 64869. Another late resource in the same template is Amazing-5-Days-Cairo-and-Luxor-Discovery-Tour-allroyalegypt-91.jpg.webp. Inspect animation / dynamic visibility and media association before a source-only change. A read-only browser diagnostic probe was staged but initially deferred on the existing global browser lock. No Elementor data was modified.
+
+## Real visitor sampling and cached HTML propagation
+- The original 2026-11-21 13:18Z one-shot RUM receipt confirms 1000bps (10%) source and Wayfa site-owned WordPress options. The one-shot self-disabled.
+- Tours.dev /contact-us/ public HTML now showed sampleBps 1000 and control cohort. Wayfa /contact-us/ uncacheable HTTP showed 1000 as well.
+- Wayfa certified Nile Dinner Cruise page was a FastCGI HIT from earlier HTML: sampleBps 100 and absent edgeCohort config, despite serving V2 Ready=1 correctly. This is a stale public HTML shell, NOT a failed option update.
+- Do not flush all FastCGI HTML to raise RUM sampling. The original source-bound public-route-cache-release.py provides exact-path socket versioning; a selective refresh attempt was deferred because original CSS worker held the global lock. Other public route HTML can naturally refresh through its 1800-second cache TTL.
+- Adequate cohorts require genuine consented visitors. Observational RUM histograms do not permit public provisional CSS or global rollout by themselves.

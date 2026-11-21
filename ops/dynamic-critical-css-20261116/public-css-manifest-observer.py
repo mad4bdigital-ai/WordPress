@@ -28,10 +28,18 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self,*_args,**_kwargs):return None
 
 def public_fetch(host,path):
-    if not re.fullmatch(r'[a-z0-9.-]{3,200}',host) or not re.fullmatch(r'/[a-zA-Z0-9/_%.-]{0,345}',path) or '//' in path or '..' in path:
+    if (host not in ('wayfatours.com','tours.dev.mad4b.com')
+        or not re.fullmatch(r'/[a-zA-Z0-9/_%.-]{0,345}',path)
+        or '//' in path or '..' in path):
         raise ValueError('untrusted-catalog-public-route')
+    # The source site has an independent Preset Cache and the target has
+    # FastCGI. BOTH can return a stale Elementor/stylesheet graph.
+    # Always request exact first-party, uncached WordPress origin HTML;
+    # never issue a certificate from a fast cache response.
+    request_headers={'User-Agent':UA,'Accept':ACCEPT,'Accept-Encoding':'identity',
+                     'X-MAD4B-Bypass-Cache':'1'}
     req=urllib.request.Request('https://'+host+path,method='GET',
-       headers={'User-Agent':UA,'Accept':ACCEPT,'Accept-Encoding':'identity'})
+       headers=request_headers)
     with urllib.request.build_opener(NoRedirect()).open(req,timeout=9) as response:
         if response.status!=200 or 'text/html' not in response.headers.get('Content-Type',''):
             raise ValueError('public-html-not-200')
@@ -42,8 +50,22 @@ def public_fetch(host,path):
         safe={name:response.headers.get(name,'') for name in (
           'X-MAD4B-Public-CCSS-Ready',
           'X-MAD4B-Public-CCSS-Currency',
-          'X-MAD4B-Public-CCSS-Market')}
+          'X-MAD4B-Public-CCSS-Market',
+          'X-Wayfa-Origin-Cache','X-MAD4B-Preset-Cache','Cache-Control')}
+        if not original_proven_fresh(host,safe):
+            raise ValueError('site-original-wordpress-html-not-origin-bypass')
         return body.decode('utf-8'),safe
+
+def original_proven_fresh(host,headers):
+    if not isinstance(headers,dict) or 'no-store' not in (
+        headers.get('Cache-Control','').lower()):
+        return False
+    if host=='wayfatours.com':
+        return headers.get('X-Wayfa-Origin-Cache')=='BYPASS'
+    if host=='tours.dev.mad4b.com':
+        return headers.get('X-MAD4B-Preset-Cache')=='BYPASS'
+    return False
+
 
 def observe(catalog,route,root,*,expected_host,fetch=public_fetch,include_html=False):
     host=catalog.get('host')
@@ -58,6 +80,8 @@ def observe(catalog,route,root,*,expected_host,fetch=public_fetch,include_html=F
     if not isinstance(path,str) or path in ('/','/'+route.get('language','')+'/'):
         raise ValueError('independent-home-controller-not-a-public-route')
     html,headers=fetch(host,path)
+    if not original_proven_fresh(host,headers):
+        raise ValueError('source-original-wordpress-html-not-proven-uncached')
     if headers.get('X-MAD4B-Public-CCSS-Ready')=='1':
         raise ValueError('original-html-already-ccss-transformed')
     # Preserve real server-resolved WCML country and currency. Missing source

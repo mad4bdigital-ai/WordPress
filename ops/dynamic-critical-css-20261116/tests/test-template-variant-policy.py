@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """No QA approval can veto policy activation or cause sibling CSS inheritance."""
-import hashlib,importlib.util,json,pathlib,tempfile,time,sys
+import hashlib,importlib.util,json,pathlib,tempfile,time,sys,urllib.error
 from pathlib import Path
 D=Path(sys.argv[1])
 def load(name,file):
@@ -150,4 +150,88 @@ with tempfile.TemporaryDirectory(prefix='mad4b-css-template-policy-test-') as tm
        'policy activated with no successful Chromium certificates')
  check(emptyreport['routes_with_exact_current_certificate']==0,
        'unverified routes never become visitor-facing certificates')
+ # Under a reserved WP-CLI slot, prefer source-key-drift recovery while
+ # keeping a bounded unseen turn. This never grants CSS.
+ stale_index=v.empty('wayfa')
+ stale_index['observations'][routes[1]['route_key']]={
+     'source_key':'old-source-key','path':routes[1]['path']}
+ stale_hits=[]
+ def stale_fetch(host,path):
+     stale_hits.append(path)
+     return None
+ checked=v.refresh('wayfa',cat,state,ledger,root,report,stale_index,
+                   budget=1,fetch=stale_fetch,now=9000)
+ check(stale_hits==[routes[1]['path']] and checked['last_scanned']==1,
+       'reserved one-probe fallback prioritizes stale source-key evidence')
+ stale_index['cursor']=3
+ unseen_hits=[]
+ def unseen_fetch(host,path):
+     unseen_hits.append(path)
+     return None
+ v.refresh('wayfa',cat,state,ledger,root,report,stale_index,
+           budget=1,fetch=unseen_fetch,now=9000)
+ check(len(unseen_hits)==1 and unseen_hits[0]!=routes[1]['path'],
+       'every fourth attempt preserves unseen route discovery')
+ original=v.origin.public_fetch
+ try:
+     v.origin.public_fetch=lambda host,path:(html,{
+         'X-Wayfa-Origin-Cache':'BYPASS','Cache-Control':'private, no-store',
+         'X-MAD4B-Public-CCSS-Ready':'0',
+         'X-MAD4B-Public-CCSS-Market':'base',
+         'X-MAD4B-Public-CCSS-Currency':'USD'})
+     check(v.fresh_original_source('wayfa','wayfatours.com',routes[3]['path'])==response,
+           'Wayfa observations use uncached first-party WordPress HTML')
+     v.origin.public_fetch=lambda host,path:(html,{
+         'X-Wayfa-Origin-Cache':'HIT','Cache-Control':'public, max-age=1800',
+         'X-MAD4B-Public-CCSS-Ready':'0',
+         'X-MAD4B-Public-CCSS-Market':'base',
+         'X-MAD4B-Public-CCSS-Currency':'USD'})
+     check(v.fresh_original_source('wayfa','wayfatours.com',routes[3]['path']) is None,
+           'public FastCGI HIT cannot become a template source proof')
+     v.origin.public_fetch=lambda host,path:(html,{
+         'X-Wayfa-Origin-Cache':'BYPASS','Cache-Control':'private, no-store',
+         'X-MAD4B-Public-CCSS-Ready':'1',
+         'X-MAD4B-Public-CCSS-Market':'base',
+         'X-MAD4B-Public-CCSS-Currency':'USD'})
+     check(v.fresh_original_source('wayfa','wayfatours.com',routes[3]['path']) is None,
+           'already transformed CSS HTML cannot be indexed as native CSS')
+ finally:
+     v.origin.public_fetch=original
+ # A verified uncached WordPress 404 is a temporary negative observation,
+ # never a source sample. The page must be retried on expiry/source change.
+ four=v.empty('wayfa');calls=[]
+ def missing_origin(host,path):
+     calls.append(path)
+     raise urllib.error.HTTPError('https://wayfatours.com'+path,404,'Not Found',
+          {'X-Wayfa-Origin-Cache':'BYPASS',
+           'Cache-Control':'private, no-store'},None)
+ first=v.refresh('wayfa',cat,state,ledger,root,report,four,
+                 budget=1,fetch=missing_origin,now=12000)
+ check(first['last_http_404_holds_added']==1
+       and first['last_updated']==0 and len(first['observations'])==0
+       and first['source_http_holds_total']==1,
+       'uncached 404 records negative source hold, never CSS evidence')
+ check(v.current_observation(first,cat,routes[0],state,ledger,12001) is None,
+       '404 hold never qualifies a source template variant')
+ check(v.current_http_404_hold(first,cat,routes[0],state,ledger,12001),
+       'exact route and source-key 404 hold suspends repeated origin fetch')
+ second_calls=[]
+ def second_fetch(host,path):
+     second_calls.append(path);return None
+ second=v.refresh('wayfa',cat,state,ledger,root,report,first,
+                  budget=1,fetch=second_fetch,now=12001)
+ check(second_calls==[routes[1]['path']],
+       '404 cooldown skips rejected route and advances to next sample')
+ check(not v.current_http_404_hold(first,cat,routes[0],state,ledger,15601),
+       '404 hold expires automatically after one hour')
+ changed_source={**cat,'global_generation':cat['global_generation']+1}
+ check(not v.current_http_404_hold(first,changed_source,routes[0],state,ledger,12001),
+       'changed WordPress source key immediately reopens 404 observation')
+ def cached_404(host,path):
+     raise urllib.error.HTTPError('https://wayfatours.com'+path,404,'Not Found',
+          {'X-Wayfa-Origin-Cache':'HIT','Cache-Control':'public, max-age=1800'},None)
+ cached=v.refresh('wayfa',cat,state,ledger,root,report,v.empty('wayfa'),
+                  budget=1,fetch=cached_404,now=12000)
+ check(cached['source_http_holds_total']==0,
+       'FastCGI cached 404 cannot suppress a public route')
  print('TEMPLATE_VARIANT_POLICY_REGRESSIONS',count)

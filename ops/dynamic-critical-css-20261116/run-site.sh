@@ -22,7 +22,7 @@ case "$SITE" in
    HOST=wayfatours.com;ENVIRONMENT=production
    WP=/opt/wayfa-rebuild-20261102/site-copy/wp-content
    PHP=php-guxhp9y6vgh7oouuw8plxrlr;MANIFEST_VERSION=1
-   CONSUMER_SHA=60fc91116affa5faf539cc835e12ce3939d598be68c94a56b21a36f860c5f29e
+   CONSUMER_SHA=75e305345f46af0ec4dbed36f40def63626108de85f938238853b27674c11794
    QA_WIDTHS=320,390,414,768
    CSS_PRIORITY=low;CSS_PRELOAD=0;ADAPTIVE_MAX=767
    ;;
@@ -147,6 +147,13 @@ else
   fi
   echo "HOLD $SITE invalid event-gate state ($rc)"
   exit "$rc"
+fi
+if [[ "${MAD4B_CSS_PROBE_ONLY:-0}" == 1 ]];then
+  # Probe-only can ACK an unchanged previously certified source above.
+  # Changed CSS requires ordinary CPU/Chromium QA; never issue a
+  # certificate, start a browser, or publish a manifest in probe mode.
+  echo "DEFER $SITE CSS source changed; full resource-admitted run required"
+  exit 75
 fi
 GATE_STATUS=hold
 GATE_REASON=source_unavailable
