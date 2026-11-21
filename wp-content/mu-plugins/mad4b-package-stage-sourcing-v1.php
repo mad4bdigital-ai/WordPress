@@ -184,10 +184,12 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
             foreach((array)($binding['bindings']??[]) as $row)
                 if(($row['stage_key']??'')===($stage['stage_key']??''))
                     $program=$row['cruise_program']??null;
+            $programId=(int)($program['program_term_id_en']??0);
+            $term=$programId?get_term($programId,'programs'):null;
             return ['type'=>'cruise_native_program_source',
                 'status'=>'program_only_not_ship_sailing_priced',
-                'program_id'=>(int)($program['program_term_id_en']??0),
-                'program_title'=>(string)get_term_field('name',(int)($program['program_term_id_en']??0),'programs'),
+                'program_id'=>$programId,
+                'program_title'=>$term instanceof WP_Term?(string)$term->name:'',
                 'route_from'=>$program['route_from']??null,
                 'route_to'=>$program['route_to']??null,
                 'program_days'=>(int)($program['native_program_day_count']??0),
