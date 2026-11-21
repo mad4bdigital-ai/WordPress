@@ -167,6 +167,67 @@ class DesiredRegistry:
                 "current_authority_verified":False,
             }
 
+    def read_current_approved(self, binding: SiteBinding,
+                              independent_highwater_reader,
+                              approved_source_public: bytes,
+                              independent_registry_public: bytes,
+                              *, now: int | None = None) -> dict:
+        """Read the CURRENT approved Desired from the Root-private ledger.
+
+        Historical storage is insufficient. Query a fresh first-party
+        independent checkpoint callback for the exact site and confirm its
+        current signed revision/digest matches the transactionally stored
+        head. No data is written or automatically deployed.
+        """
+        observed = int(time.time()) if now is None else now
+        need(type(observed) is int and observed > 0,
+             "DESIRED_REGISTRY_CLOCK_INVALID")
+        need(callable(independent_highwater_reader),
+             "DESIRED_REGISTRY_INDEPENDENT_READER_REQUIRED")
+        need(self.db.exists(), "DESIRED_REGISTRY_CURRENT_MISSING")
+        conn=self._connect()
+        try:
+            conn.execute("BEGIN")
+            revision, digest = self._head(conn,binding.site_uuid)
+            need(revision>0,"DESIRED_REGISTRY_CURRENT_MISSING")
+            record=conn.execute(
+                "SELECT signed_record_json FROM records "
+                "WHERE site_uuid=? AND revision=? AND row_sha256=?",
+                (binding.site_uuid,revision,digest),
+            ).fetchone()
+            need(record is not None,"DESIRED_REGISTRY_HEAD_RECORD_MISSING")
+            signed_row=json.loads(record[0])
+            _verify_persisted_row(signed_row,approved_source_public,
+                                  binding,digest)
+            signed_checkpoint=independent_highwater_reader(binding)
+            desired=verify_desired(
+                signed_row,binding,approved_source_public,
+                signed_checkpoint,independent_registry_public,
+                now=observed,
+            )
+            need(desired.approved_revision==revision
+                 and desired.signed_record_sha256==digest,
+                 "DESIRED_REGISTRY_HEAD_HIGHWATER_DRIFT")
+            conn.execute("COMMIT")
+            return {
+                "contract":"mad4b.host-v129.current-approved-desired-read.v1",
+                "site_uuid":binding.site_uuid,
+                "approved_revision":revision,
+                "approved_source_head_sha":desired.source_head_sha,
+                "approved_record_sha256":digest,
+                "current_authority_verified":True,
+                "independent_current_highwater_verified":True,
+                "desired":desired,
+                "mutations_performed":False,
+                "host_write_authorized":False,
+            }
+        except Exception:
+            if conn.in_transaction:
+                conn.execute("ROLLBACK")
+            raise
+        finally:
+            conn.close()
+
     def admit(self, binding: SiteBinding, signed_row: dict,
               signed_highwater: dict, site_reader, pinned_host_runner_public: bytes,
               expected_origin: str,

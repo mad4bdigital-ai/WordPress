@@ -3,6 +3,7 @@ import copy
 import json
 import sqlite3
 import sys
+import concurrent.futures
 import tempfile
 from pathlib import Path
 import unittest
@@ -76,6 +77,87 @@ class DesiredRegistryStoreTests(unittest.TestCase):
         self.assertEqual(head["approved_record_sha256"],
                          receipt["approved_record_sha256"])
 
+    def read_current(self):
+        return self.registry.read_current_approved(
+            self.site,lambda binding:self.f.checkpoint,
+            pub(self.f.desired_key),pub(self.f.registry_key),now=NOW)
+
+    def test_current_desired_read_requires_fresh_independent_highwater(self):
+        self.admit()
+        active=self.read_current()
+        self.assertEqual(active["approved_revision"],1)
+        self.assertEqual(active["desired"].source_head_sha,
+                         self.f.row["source_head_sha"])
+        self.assertTrue(active["current_authority_verified"])
+        self.assertTrue(active["independent_current_highwater_verified"])
+        self.assertFalse(active["mutations_performed"])
+        self.assertFalse(active["host_write_authorized"])
+
+    def test_historical_head_alone_never_qualifies_as_current(self):
+        self.admit()
+        historic=self.registry.read_historical_head(self.site)
+        self.assertFalse(historic["current_authority_verified"])
+        self.assertNotIn("desired",historic)
+
+    def test_missing_highwater_reader_denied(self):
+        self.admit()
+        with self.assertRaisesRegex(
+                ConnectionDenied,"DESIRED_REGISTRY_INDEPENDENT_READER_REQUIRED"):
+            self.registry.read_current_approved(
+                self.site,None,pub(self.f.desired_key),pub(self.f.registry_key),
+                now=NOW)
+
+    def test_revoked_highwater_invalidates_current_without_rewriting_db(self):
+        self.admit()
+        original=self.registry.read_historical_head(self.site)
+        self.f.checkpoint["state"]="REVOKED"
+        self.f.sign_highwater()
+        with self.assertRaisesRegex(ConnectionDenied,"DESIRED_REGISTRY_NOT_CURRENT"):
+            self.read_current()
+        self.assertEqual(
+            original["approved_record_sha256"],
+            self.registry.read_historical_head(self.site)["approved_record_sha256"])
+
+    def test_fresh_but_wrong_registry_revision_denied(self):
+        self.admit()
+        self.f.checkpoint["revision"]=2
+        self.f.sign_highwater()
+        with self.assertRaisesRegex(ConnectionDenied,"DESIRED_REGISTRY_NOT_CURRENT"):
+            self.read_current()
+
+    def test_stale_highwater_cannot_use_historical_approved_record(self):
+        self.admit()
+        self.f.checkpoint["observed_epoch"]=NOW-45
+        self.f.sign_highwater()
+        with self.assertRaisesRegex(ConnectionDenied,"DESIRED_REGISTRY_NOT_CURRENT"):
+            self.read_current()
+
+    def test_independent_highwater_signature_required_on_every_read(self):
+        self.admit()
+        self.f.checkpoint["signature"]="AA=="
+        with self.assertRaisesRegex(ConnectionDenied,"DESIRED_REGISTRY_SIGNATURE_INVALID"):
+            self.read_current()
+
+    def test_unenrolled_site_cannot_read_another_sites_desired(self):
+        self.admit()
+        outsider=self.site.__class__(**{**self.site.__dict__,
+            "site_uuid":"22222222-2222-4222-8222-222222222222"})
+        with self.assertRaisesRegex(ConnectionDenied,"DESIRED_REGISTRY_CURRENT_MISSING"):
+            self.registry.read_current_approved(
+                outsider,lambda binding:self.f.checkpoint,
+                pub(self.f.desired_key),pub(self.f.registry_key),now=NOW)
+
+    def test_second_revision_read_requires_new_independent_highwater(self):
+        first=self.admit()
+        old_checkpoint=copy.deepcopy(self.f.checkpoint)
+        self.next_revision()
+        self.admit(first["approved_record_sha256"])
+        active=self.read_current()
+        self.assertEqual(active["approved_revision"],2)
+        self.f.checkpoint=old_checkpoint
+        with self.assertRaisesRegex(ConnectionDenied,"DESIRED_REGISTRY_NOT_CURRENT"):
+            self.read_current()
+
     def test_successor_must_advance_exact_revision_and_base(self):
         first=self.admit()
         self.next_revision()
@@ -85,6 +167,23 @@ class DesiredRegistryStoreTests(unittest.TestCase):
         self.assertNotEqual(result["previous_sha256"],
                             result["approved_record_sha256"])
         self.assertEqual(self.registry.read_historical_head(self.site)["revision"],2)
+
+    def test_concurrent_same_revision_exactly_one_commit(self):
+        def worker(_):
+            try:
+                result=self.admit()
+                return ("committed",result["new_revision"])
+            except ConnectionDenied as error:
+                return ("denied",str(error))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+            results=list(pool.map(worker,range(2)))
+        self.assertEqual(sum(x[0]=="committed" for x in results),1)
+        self.assertEqual(sum(x[0]=="denied" for x in results),1)
+        denied=next(x[1] for x in results if x[0]=="denied")
+        self.assertEqual(denied,"DESIRED_LEDGER_CAS_PREIMAGE_MISMATCH")
+        self.assertEqual(self.registry.read_historical_head(self.site)["revision"],1)
+        with sqlite3.connect(str(self.private/store.DB_NAME)) as conn:
+            self.assertEqual(conn.execute("SELECT count(*) FROM records").fetchone()[0],1)
 
     def test_replayed_revision_denied(self):
         first=self.admit()

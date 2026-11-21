@@ -46,7 +46,14 @@ registry; the caller cannot set a new trust anchor by supplying an arbitrary
 public key in a request.
 
 The stored old high-water is historical evidence and becomes stale; it is
-not automatically a current authorizing proof. On every subsequent read
+not automatically a current authorizing proof.
+
+The new \`read_current_approved\` method reads the transactionally stored
+latest revision, obtains a **fresh independent signed checkpoint from an
+enrolled first-party callback**, and verifies the stored approval signature,
+exact site binding, revision, and signed content digest. It returns a read-only
+current Desired result; any mismatch/revocation/staleness fails closed and
+does not alter the historical database. On every subsequent read
 for a deployment decision, obtain and verify a NEW high-water from the
 independent signer. A stored historical head is explicitly marked
 current_authority_verified=false.
