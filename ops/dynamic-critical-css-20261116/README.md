@@ -1003,3 +1003,21 @@ identical CSS-combiner attempts while market coverage remains explicitly
 pending for the independent source-progress SLO. Only a single-currency site
 with no country-dependent WCML profile can close its source as
 `source_native_optimizer_unavailable` from the matching negative evidence.
+
+### Original source-owned WP-Cron: browser evidence freshness (2026-11-21)
+The single enrolled host worker remains at
+/opt/hostinger-migrations/hosting-3/etg-commerce-staging/operations/css-cron-v1/worker.py.
+site-owned-source-wpcron-worker.py is its reviewed source copy, not another
+process, scheduler or executable service. Deploy only after verifying the live
+predecessor SHA, site identity, original renderer tree SHA and original locks.
+Never replace the site-specific Wayfatours worker or V2 company allowlist.
+
+The source host first-fold event gate skips Chrome when CSS is unchanged.
+Separately the existing source-css-profile-variance.py needs an independent
+Chromium observation within 90 minutes. The same original 5-minute WP-Cron
+worker now renews only the anonymous, query-free Chromium/WebP source evidence
+for all six WPML languages, using a 45-minute success cooldown, root-attested
+CPU admission and the same original global browser lock. It reuses
+renderer/tools/probe-public.js and writes into the existing source reports,
+rechecks source generation after capture, and does not issue CSS certificates,
+change cache, acknowledge WordPress jobs or relax V2 market/LCP rules.
