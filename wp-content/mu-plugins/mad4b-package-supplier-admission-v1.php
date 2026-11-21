@@ -13,7 +13,7 @@ final class MAD4B_Package_Supplier_Admission_V1 {
     public const AJAX='mad4b_package_supplier_admission_review_v1';
 
     /**
-     * Accept only the signed native guide/day composition contract.
+     * Accept only the reviewed, fingerprinted native guide/day cost contract.
      * The native provider intentionally has no "ready" field: a successful
      * verified cost receipt is not permission to sell or charge the traveler.
      */
@@ -254,7 +254,11 @@ final class MAD4B_Package_Supplier_Admission_V1 {
             'source_cost_egp'=>$guideReady?(float)$guide['cost']:null,
             'source_cost_fingerprint'=>$guideReady?$guide['cost_fingerprint']:null,
             'cost_qualified'=>$guideReady,
-            'included_in_customer_price'=>false,
+            // Existing Tour Rate may already include the guide; unknown is
+            // NOT equivalent to excluded. Never charge it again by default.
+            'included_in_customer_price'=>null,
+            'rate_inclusion_status'=>'unverified_tour_rate_evidence',
+            'not_added_to_retail_price'=>true,
             'not_price_authority'=>true,
         ];
 
