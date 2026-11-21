@@ -381,7 +381,50 @@ final class MAD4B_SCP_Adaptive_Asset_Intelligence {
    && ($w['site_host']??'')===$identity['host']
    && ($w['status']??'')==='active'
    && $at>=time()-3600 && $at<=time()+120) return 'vps_local_chromium';
-  return self::manifest()?'vps_local_chromium':'not_configured';
+  // Presence of an old manifest is not proof that a VPS worker ran.
+  $native=self::native_css_jobs();
+  return ($native['state']??'')==='recent_verified_ack'
+    ?'native_wpcron_recent_verified_ack':'not_configured';
+ }
+ /**
+  * Read the EXISTING original 429 ticket ledger; do not create a second
+  * queue, infer success from CSS files, or run any worker on admin/REST.
+  * A verified 429 completion proves one native task finished, NOT that
+  * every route/device/market has a CSS certificate.
+  */
+ public static function native_css_jobs(): array {
+  $result=['contract'=>'mad4b.css.native-worker-readback.v1',
+    'state'=>'not_enrolled','pending'=>0,'pending_tasks'=>[],
+    'last_verified_task'=>null,'last_verified_at'=>null];
+  $identity=self::identity();
+  if(!$identity||!class_exists('MAD4B_CCSS_WPCron_Dispatch_V1',false))
+    return $result;
+  $profile=MAD4B_CCSS_WPCron_Dispatch_V1::profile();
+  if(!is_array($profile)
+    || ($profile['site_host']??'')!==$identity['host']
+    || ($profile['environment']??'')!==$identity['environment']
+    || !is_array($profile['tasks']??null))return $result;
+  $state=get_option('mad4b_css_wpcron_dispatch_v1',[]);
+  if(!is_array($state)
+    || ($state['contract']??'')!=='mad4b.css.wpcron.dispatch.v1'
+    || ($state['site']??'')!==($profile['site_id']??'')
+    || ($state['host']??'')!==$identity['host']
+    || !is_array($state['jobs']??null))return $result;
+  $last=0;$lastJob=null;$pending=[];
+  foreach($profile['tasks'] as $task=>$interval) {
+    if(!is_string($task))continue;
+    $row=$state['jobs'][$task]??[];
+    if(!is_array($row))continue;
+    $completed=(int)($row['last_completed']??0);
+    if($completed>0&&$completed<=time()+120&&$completed>$last) {
+      $last=$completed;$lastJob=$task;
+    }
+    if((int)($row['pending_id']??0)>0)$pending[]=$task;
+  }
+  return ['contract'=>$result['contract'],
+    'state'=>$last>=time()-3600?'recent_verified_ack':'no_recent_ack',
+    'pending'=>count($pending),'pending_tasks'=>$pending,
+    'last_verified_task'=>$lastJob,'last_verified_at'=>$last?:null];
  }
  public static function summary(): array {
   $feed=self::notification_feed();$routes=self::manifest();$statuses=[];
@@ -393,7 +436,8 @@ final class MAD4B_SCP_Adaptive_Asset_Intelligence {
    'predictive_css'=>class_exists('MAD4B_Predictive_CSS_Plan_V2',false)?MAD4B_Predictive_CSS_Plan_V2::summary():['present'=>false,'runtime'=>'off','routes'=>[]],
    'js_policies'=>class_exists('MAD4B_Device_JS_Combine_V1',false)?MAD4B_Device_JS_Combine_V1::overview():[],
    'js_cpu'=>class_exists('MAD4B_JS_CPU_Intelligence',false)?MAD4B_JS_CPU_Intelligence::summary():['rows'=>[], 'pending_routes'=>0],
-   'worker'=>self::worker_state(),'litespeed_provider'=>class_exists('MAD4B_LSC_Local_Provider_V1')?MAD4B_LSC_Local_Provider_V1::capabilities():['scope'=>'missing'],'external_delivery'=>false];
+   'worker'=>self::worker_state(),'native_css_jobs'=>self::native_css_jobs(),
+   'litespeed_provider'=>class_exists('MAD4B_LSC_Local_Provider_V1')?MAD4B_LSC_Local_Provider_V1::capabilities():['scope'=>'missing'],'external_delivery'=>false];
  }
  public static function rest(): void {
   register_rest_route('mad4b/v1','/adaptive-assets',['methods'=>'GET',
@@ -438,7 +482,14 @@ final class MAD4B_SCP_Adaptive_Asset_Intelligence {
     ' | Local CSS: '.esc_html($provider['runtime_css_overlay']??'disabled').'</p>';
   echo '<p><small>Cloud CDN, image optimization and VPI follow each company-specific cache/provider configuration; the module does not enable remote services.</small></p>';
 
-  echo '<p><strong>Pending:</strong> '.(int)$s['pending_jobs'].' &nbsp; <strong>Unread alerts:</strong> '.(int)$s['unread_notifications'].' &nbsp; <strong>Policy routes:</strong> '.count($s['routes']).'</p>';
+  echo '<p><strong>Management events pending:</strong> '.(int)$s['pending_jobs'].' &nbsp; <strong>Unread alerts:</strong> '.(int)$s['unread_notifications'].' &nbsp; <strong>Policy routes:</strong> '.count($s['routes']).'</p>';
+  $native=(array)($s['native_css_jobs']??[]);
+  echo '<p><strong>Original 429 CSS worker:</strong> '.esc_html((string)($native['state']??'unavailable')).
+       ' &nbsp; <strong>Native tasks pending:</strong> '.(int)($native['pending']??0).
+       ' &nbsp; <strong>Last verified task:</strong> '.esc_html((string)($native['last_verified_task']??'none')).
+       ' &nbsp; <strong>Verified UTC:</strong> '.esc_html(!empty($native['last_verified_at'])?
+         gmdate('Y-m-d H:i',(int)$native['last_verified_at']):'not yet').'</p>';
+  echo '<p><small>Native task completion is not a CSS certification. Management source-change events remain separate until their exact source tokens are acknowledged.</small></p>';
 
   $discovery=$s['presentation_discovery']??[];
   $counts=$discovery['counts']??[];
