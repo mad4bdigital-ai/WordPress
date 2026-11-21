@@ -295,3 +295,37 @@ payment status, booking orders or live Tour Rates were changed.
 Open after CP3.1: full authenticated browser vendor Save and dual-session
 real form E2E, completion of CSS design-system consolidation, and the
 separate commercial supplier cost/FX/children readiness work.
+
+## CP3.2 — Real native HTML layout and read-only Repeater field contract
+
+Date: 21 November 2026.
+
+The original registered JetEngine Pricing Controls factory was inspected on
+both Tours.dev and Wayfatours (no database mutation). Four original Repeater
+schemas were verified with native child field names:
+shared_mode_policy_rows (21), shared_package_pricing_rows (6),
+shared_gateway_availability_rows (6), mad4b_provider_source_policy_rows (11).
+
+New read-only test verify-native-repeater-readonly-roundtrip.php invokes
+the ORIGINAL Jet_Engine_Options_Page_Factory native sanitizer for
+multi-row field samples, then WordPress serialization/unserialization,
+and verifies every row and child value. The authoritative CAS source
+revision is identical before and after on both live sites. No option,
+Rate, commercial policy, order or checkout state was modified.
+
+New Playwright test verify-rendered-jetengine-native-form-playwright.py
+consumes original vendor native HTML exported by read-only WP-CLI earlier
+(private fixture kept under /tmp, never checked into Git because it
+can contain option values). It applies actual source CSS/JS without
+requesting any remote endpoint. Tested 1440/1024/768/390/320 and all
+six tabs: 45 native owned fields, exactly one original form and Save
+button, no filtered controls resurrected, no significant horizontal
+overflow, desktop keyboard Enter navigation and mobile section menu.
+All five-by-six real-DOM tests passed; authenticated Save is NOT proven.
+
+An ephemeral privileged WordPress authentication session attempt for
+browser testing was blocked by platform access safety checks, and was
+not retried or circumvented. A synthetic transactional writer test
+attempt was also blocked before execution. Original vendor writer
+round-trip, logged-in Save confirmation and two-browser stale response
+remain OPEN. No pricing settings changed.

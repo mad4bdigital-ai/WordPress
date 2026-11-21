@@ -189,3 +189,18 @@ not changed. The logged-in browser Save and commercial E2E remain OPEN.
 - Both sites: original native JetEngine form source check and protected
   CAS markup source tests passed; public pages responded 200. No vendor
   Save action or ecommerce modification was run.
+
+### CP3.2 — 21 Nov real native form and field adapter verification
+
+- Tours.dev and Wayfatours: 4 genuine JetEngine Repeater definitions and
+  44 combined original child fields verified.
+- Tours.dev and Wayfatours: native Repeater sanitization followed by
+  WordPress serialize/unserialize passed on read-only sample rows; original
+  protected source fingerprint remained unchanged. No Save writer invoked.
+- Original captured JetEngine HTML passed five widths x six sections in
+  offline Chromium: one original Save and form, 45 fields with single owners,
+  no hidden fields visible, keyboard and mobile navigation, no overflow.
+  This native HTML snapshot contained 91 original input elements.
+- Authenticated browser Save and native vendor database write remain
+  unverified because the testing access/mutation safety controls blocked
+  the attempts. No fake success or generated login credentials.
