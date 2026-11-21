@@ -410,7 +410,12 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
                 'cruise_program_term'=>(int)(is_array($program)?($program['program_term_id_en']??0):0),
                 // Separate from saved qualified Package candidates; these
                 // are real-site *discovery options*, never price authority.
-                'source_discovery'=>MAD4B_Package_Stage_Sourcing_V1::inspect($tour,$p,$tierId),
+                'source_discovery'=>(!$candidates ||
+                    in_array($kind,['sleeper_train','cruise'],true))
+                    ?MAD4B_Package_Stage_Sourcing_V1::inspect($tour,$p,$tierId)
+                    :['type'=>'already_matched_candidate_stage',
+                      'status'=>'native_selected_tier_candidates_present',
+                      'writes'=>false],
                 'candidates'=>$candidates
             ];
         }
