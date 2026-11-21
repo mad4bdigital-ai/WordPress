@@ -31,6 +31,8 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-governed-ability-overrides.php"
           php -l "$root/tests/runtime-readonly-diagnostics-smoke.php"
           python3 "$root/tests/readonly-diagnostics-contract.py"
+          php -l "$root/includes/class-mad4b-scp-read-consistency.php"
+          python3 "$root/tests/production-write-diagnostic-routing-contract.py"
 
   runtime:
     name: Readonly diagnostics runtime (${{ matrix.wordpress }})
