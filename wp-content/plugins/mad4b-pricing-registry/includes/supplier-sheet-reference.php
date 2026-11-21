@@ -54,6 +54,32 @@ final class MAD4B_Supplier_Sheet_Reference_V1 {
    'supplier_exception_notes_may_override'=>true
   ];
  }
+ /**
+  * Only tag ORIGINAL supplier note text for a human normalization queue.
+  * A tag is neither a parsed date range nor a Cost Receipt.
+  */
+ private static function noteReviewFlags(string $text):array {
+  $tags=[];
+  if(preg_match('/\b\d{1,2}\s*[.\/-]\s*\d{1,2}\b/u',$text)||
+     preg_match('/\b(?:january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|october|oct|november|nov|december|dec)\b/iu',$text)||
+     preg_match('/\b(?:peak|winter|summer|christmas|new\s*year|easter)\b/iu',$text))
+      $tags[]='date_or_season_mentioned';
+  if(preg_match('/\b(?:obligator(?:y|ily)|compulsor(?:y|ily)|mandatory|required)\b/iu',$text))
+      $tags[]='mandatory_item_mentioned';
+  if(preg_match('/\b(?:optional|on\s+request)\b/iu',$text))
+      $tags[]='optional_item_mentioned';
+  if(preg_match('/\b(?:child(?:ren)?|infant(?:s)?|age(?:s)?|years\s+old)\b/iu',$text))
+      $tags[]='child_policy_mentioned';
+  if(preg_match('/\b(?:gala|dinner|lunch|breakfast|meal|supplement|half\s*board|full\s*board|all\s*inclusive)\b/iu',$text)||
+     preg_match('/\bH\.?\s*B\.?\b/iu',$text))
+      $tags[]='meal_or_supplement_mentioned';
+  if(preg_match('/\b(?:stop\s*sale|blackout|sold\s*out|no\s+availability|not\s+available)\b/iu',$text))
+      $tags[]='availability_restriction_mentioned';
+  if(in_array('date_or_season_mentioned',$tags,true)&&
+     !preg_match('/\b20\d{2}\b/u',$text))
+      $tags[]='four_digit_year_not_in_this_cell';
+  return array_values(array_unique($tags));
+ }
  private static function document(){
   if(!current_user_can('manage_options'))
    return new WP_Error('quote_sheet_access_denied');
@@ -94,6 +120,7 @@ final class MAD4B_Supplier_Sheet_Reference_V1 {
   if(is_wp_error($calendar))return $calendar;
   $out=['contract'=>self::CONTRACT,'site'=>home_url('/'),
    'base_season'=>$calendar,'note_cell_count'=>0,
+   'note_review_count'=>0,'note_flag_counts'=>[],
    'tab'=>$tab,'period'=>$period,'source_url'=>$doc['source_url'],
    'matched_entities'=>0,'unmapped_entities'=>0,'tariff_values'=>0,
    'rows'=>[],'unmapped'=>[],'commercial_approved'=>false,
@@ -121,6 +148,26 @@ final class MAD4B_Supplier_Sheet_Reference_V1 {
    $noteCells=array_values(array_filter((array)($record['source_note_cells']??[]),
      static fn($n)=>is_array($n)&&($n['period']??'')===$period));
    $out['note_cell_count']+=count($noteCells);
+   $yearContextCells=[];
+   foreach($noteCells as $note){
+    if(preg_match('/\b20\d{2}\b/u',(string)($note['text']??'')))
+     $yearContextCells[]=(string)$note['cell'];
+   }
+   foreach($noteCells as &$note){
+    $flags=self::noteReviewFlags((string)($note['text']??''));
+    $note['review_flags']=$flags;
+    // Adjacent supplier rows form ONE property-level instruction: preserve
+    // contextual year-cell references, but never silently merge distinct dates.
+    $note['related_explicit_year_cells']=($flags&&
+      !preg_match('/\b20\d{2}\b/u',(string)($note['text']??'')))?
+       $yearContextCells:[];
+    $note['commercial_rule_status']='original_source_requires_review';
+    $note['cost_authority']=false;
+    if($flags)$out['note_review_count']++;
+    foreach($flags as $flag)
+     $out['note_flag_counts'][$flag]=($out['note_flag_counts'][$flag]??0)+1;
+   }
+   unset($note);
    $gid=(int)$record['gid'];
    $row=(int)$record['source_entity_row'];
    $out['rows'][]=[

@@ -425,7 +425,8 @@ function renderSheetQuoteCatalog(value){
  const summary=document.createElement('p');summary.className='mad4b-kinetic-muted';
  summary.textContent=value.matched_entities+' matched Properties · '+
   value.tariff_values+' quoted values for '+value.period+' · '+
-  value.unmapped_entities+' unresolved property identities. Not approved for booking.';
+  value.unmapped_entities+' unresolved property identities · '+
+  (value.note_review_count||0)+' flagged source-note cells for review. Not approved for booking.';
  host.append(summary);
  const calendar=document.createElement('p');calendar.className='mad4b-kinetic-muted';
  if(value.base_season?.status==='base_calendar_from_existing_term_meta'){
@@ -453,12 +454,19 @@ function renderSheetQuoteCatalog(value){
   if(sheetNotes.length){
    const disclosure=document.createElement('details');
    const label=document.createElement('summary');
-   label.textContent='Original sheet notes ('+sheetNotes.length+' cells) · date exceptions, optional and mandatory supplements';
+   const flagged=sheetNotes.filter(x=>(x.review_flags||[]).length).length;
+   label.textContent='Original sheet notes ('+sheetNotes.length+
+    ' cells; '+flagged+' flagged for review) · no automatic Rate updates';
    disclosure.append(label);
    const noteList=document.createElement('ul');
    for(const note of sheetNotes){
     const line=document.createElement('li');
-    line.textContent=note.cell+': '+note.text;noteList.append(line);
+    const flags=(note.review_flags||[]).map(x=>display(x)).join(', ');
+    const context=(note.related_explicit_year_cells||[]).filter(c=>c!==note.cell);
+    line.textContent=note.cell+(flags?' ['+flags+']':'')+
+     (context.length?' [Date context: '+context.join(', ')+' — verify applicability]':'')+
+     ': '+note.text;
+    noteList.append(line);
    }
    disclosure.append(noteList);
    details.append(disclosure);
