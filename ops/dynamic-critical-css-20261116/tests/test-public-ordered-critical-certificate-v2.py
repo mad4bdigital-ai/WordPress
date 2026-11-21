@@ -64,7 +64,8 @@ with tempfile.TemporaryDirectory(prefix='mad4b-v2-issuer-') as tmp:
     'critical_file':sha+'.css'})
  candidate={'contract':'mad4b.public-css.ordered-critical-candidate.v1',
     'manifest_sha256':m['manifest_sha256'],'host':host,'path':'/contact-us/',
-    'viewports':[320,390,414,768],'source_cascade_slots':2,'observation_count':4,
+    'viewports':[320,390,414,767,768],
+    'critical_viewports':[320,390,414,767], 'desktop_validation_viewports':[768],'source_cascade_slots':2,'observation_count':5,
     'critical_total_bytes':sum(x['critical_bytes'] for x in critical),
     'public_route_certificate_issued':False,'critical_slots':critical}
  put('ordered-critical-candidate.json',candidate)
@@ -151,6 +152,21 @@ with tempfile.TemporaryDirectory(prefix='mad4b-v2-issuer-') as tmp:
  previous=os.environ.get('MAD4B_MULTI_CSS_V2_RELEASE_APPROVED')
  os.environ['MAD4B_MULTI_CSS_V2_RELEASE_APPROVED']='1'
  try:
+  private=issuer.stage_candidate(pending,job,wp)
+  privpath=pathlib.Path(private)
+  ok('release first stores candidate outside WordPress public root',
+     privpath.is_file() and not str(privpath).startswith(str(wp))
+     and privpath.stat().st_mode&0o777==0o600
+     and privpath.parent.stat().st_mode&0o777==0o700
+     and not (wp/'mad4b-public-critical-css-v1/certs-v2').exists())
+  ok('private candidate is source-signed but not visitor-serving',
+     issuer.data(private)==pending and issuer.data(private)['status']=='released_pending_qa')
+  hold('candidate cannot promote with missing browser QA',
+       lambda:issuer.promote_staged(pending,job,wp,catalog,route,state,runtime,consumer))
+  ok('failed private QA discards without touching public WordPress',
+     issuer.discard_staged(pending,wp)=='discarded'
+     and not privpath.exists()
+     and not (wp/'mad4b-public-critical-css-v1/certs-v2').exists())
   target=issuer.publish(pending,job,wp)
   ok('source-only pending release is written before performance QA',pathlib.Path(target).is_file()
      and issuer.data(target)['status']=='released_pending_qa')
@@ -186,6 +202,35 @@ with tempfile.TemporaryDirectory(prefix='mad4b-v2-issuer-') as tmp:
      and issuer.data(target)['evidence']['decision']=='failed_public_post_release_readback')
   hold('repeated or stale revocation never overwrites another state',
        lambda:issuer.revoke_delivered_release(final,wp))
+  # A previous public revoked certificate must remain untouched until a
+  # completely new root-private candidate passes post-stage Chromium QA.
+  pending=issuer.certificate(catalog,route,state,job,wp,runtime,consumer,
+                             release_first=True)
+  revoked_bytes=pathlib.Path(target).read_bytes()
+  staged=issuer.stage_candidate(pending,job,wp)
+  ok('private reissue leaves existing visitor-facing certificate untouched',
+     pathlib.Path(target).read_bytes()==revoked_bytes
+     and pathlib.Path(staged).stat().st_mode&0o777==0o600)
+  os.utime(job/'ordered-native-critical-qa.json',(pending['released_at']-100,
+                                                  pending['released_at']-100))
+  hold('old Chromium proof cannot promote the new private candidate',
+       lambda:issuer.promote_staged(pending,job,wp,catalog,route,state,runtime,consumer))
+  ok('old-source failed QA cannot replace previous public certificate',
+     pathlib.Path(target).read_bytes()==revoked_bytes)
+  os.utime(job/'ordered-native-critical-qa.json',None)
+  os.utime(job/'browser-parity.json',None)
+  outcome,promoted=issuer.promote_staged(pending,job,wp,
+                                          catalog,route,state,runtime,consumer)
+  ok('five-width post-staging QA publishes exactly one certified replacement',
+     outcome=='certified' and promoted==target and
+     issuer.data(target)['status']=='certified' and
+     issuer.data(target)['source_manifest_sha256']==pending['source_manifest_sha256'])
+  hold('stale private candidate cannot publish after its source changes',
+       lambda:issuer.promote_staged(dict(pending,source_manifest_sha256='f'*64),
+                   job,wp,catalog,route,state,runtime,consumer))
+  ok('root-only staging receipt can be discarded after confirmed delivery',
+     issuer.discard_staged(pending,wp)=='discarded')
+
  finally:
   if previous is None:os.environ.pop('MAD4B_MULTI_CSS_V2_RELEASE_APPROVED',None)
   else:os.environ['MAD4B_MULTI_CSS_V2_RELEASE_APPROVED']=previous

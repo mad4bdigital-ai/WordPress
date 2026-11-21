@@ -590,10 +590,11 @@ def run_core(site):
                                   route['path'],reason,flush=True)
                             raise
                     if release_first:
-                        # Release the source-bound candidate BEFORE full
-                        # layout/FCP/LCP/CLS/interaction QA. Missing browser QA
-                        # is not a certificate issuance veto. This provisional
-                        # certificate stays no-store and expires in 6 hours.
+                        # Release a source-bound candidate BEFORE browser QA
+                        # into ROOT-PRIVATE agent storage, outside WordPress'
+                        # public document root. The v2 consumer never reads
+                        # unqualified candidates, and previous certified HTML
+                        # remains available until verified replacement.
                         if (os.environ.get('MAD4B_MULTI_CSS_V2_PUBLISH')!='1'
                             or os.environ.get('MAD4B_MULTI_CSS_V2_RELEASE_APPROVED')!='1'):
                             raise ValueError('release-first-publisher-opt-in-missing')
@@ -614,15 +615,11 @@ def run_core(site):
                             str(jobdir),str(wp),
                             str(wp/'mu-plugins/422-mad4b-public-critical-css-runtime.php'),
                             str(wp/'mu-plugins/422-mad4b-public-critical-css-v2-consumer.php')]
-                        print(run(release_args+['release'],timeout=35))
+                        print(run(release_args+['stage'],timeout=35))
                         issued_before_qa=True
-                        print('MULTICSS_V2_RELEASED_PENDING_POST_QA',site,route['path'],flush=True)
-                        # A FastCGI HIT from a prior native rendering must
-                        # never conceal a newly released certificate.
-                        print(run(['python3',str(TOOLS/'public-route-cache-release.py'),
-                            'before_capture',site,str(wp),str(catfile),
-                            str(jobdir/'route.json'),'-',
-                            str(jobdir/'v2-pending-cache-refresh.json')],timeout=28))
+                        print('MULTICSS_V2_PRIVATE_STAGED_PENDING_POST_QA',site,route['path'],flush=True)
+                        # Do NOT purge or reveal unqualified candidate HTML.
+                        # Only a completed QA promotion changes public FastCGI.
                     # Post-release QA begins only after publish above.
                     browser(route,wp,host,env,'verify-ordered-css.js',
                       jobdir/'ordered-full-cascade-qa.log',
@@ -640,7 +637,7 @@ def run_core(site):
                     if issued_before_qa:
                         if (admitted.get('decision')!='qualified_for_delivery_review'
                             or admitted.get('source_manifest_sha256')!=observed['manifest_sha256']):
-                            print(run(release_args+['revert'],timeout=30))
+                            print(run(release_args+['discard_staged'],timeout=30))
                             issued_before_qa=False
                             raise ValueError('MULTICSS_POST_RELEASE_QA_FAILED_AND_REVERTED')
                         # Re-check current WPML/market/runtime generations AFTER
@@ -655,7 +652,7 @@ def run_core(site):
                             if x['route_key']==route['route_key']),None)
                         if fresh!=state or current!=route:
                             raise ValueError('POST_RELEASE_WP_SOURCE_REVISION_CHANGED')
-                        print(run(release_args+['verify'],timeout=40))
+                        print(run(release_args+['promote_staged'],timeout=40))
                         release_promoted=True
                         # Certification is distinct from cache delivery. Only
                         # the exactly attested WordPress route is renewed.
@@ -683,6 +680,14 @@ def run_core(site):
                         else:
                             depends=bool(final['dependencies']['contains_dynamic_listing'])
                         record('certified','listing' if depends else 'no-listing')
+                        # The private issue receipt is now redundant; only the
+                        # published, post-QA certificate participates in HTML.
+                        try:
+                            print(run(release_args+['discard_staged'],timeout=30))
+                        except (subprocess.CalledProcessError,subprocess.TimeoutExpired,
+                                ValueError,OSError) as cleanup_exc:
+                            print('MULTICSS_PRIVATE_STAGE_CLEANUP_DEFERRED',
+                                  site,str(cleanup_exc)[:160],flush=True)
                         print('CERTIFIED_PUBLIC_CCSS',site,lang,route['path'],
                               'V2_POST_RELEASE_VERIFIED',flush=True)
                         return
@@ -724,12 +729,13 @@ def run_core(site):
                         # A failed post-release browser run must never leave an
                         # unqualified certificate in shared public delivery.
                         try:
-                            print(run(release_args+['revoke' if release_promoted else 'revert'],
+                            print(run(release_args+['revoke' if release_promoted else 'discard_staged'],
                                       timeout=30))
-                            print(run(['python3',str(TOOLS/'public-route-cache-release.py'),
-                                'before_capture',site,str(wp),str(catfile),
-                                str(jobdir/'route.json'),'-',
-                                str(jobdir/'v2-reverted-cache-refresh.json')],timeout=28))
+                            if release_promoted:
+                                print(run(['python3',str(TOOLS/'public-route-cache-release.py'),
+                                    'before_capture',site,str(wp),str(catfile),
+                                    str(jobdir/'route.json'),'-',
+                                    str(jobdir/'v2-reverted-cache-refresh.json')],timeout=28))
                         except (subprocess.CalledProcessError,subprocess.TimeoutExpired,
                                 ValueError,OSError) as rollback_exc:
                             print('MULTICSS_POST_RELEASE_REVERT_DEFERRED',site,

@@ -72,8 +72,10 @@ def source_release_proof(job):
         or candidate.get('manifest_sha256')!=key
         or candidate.get('host')!=original.get('host')
         or candidate.get('path')!=original.get('path')
-        or candidate.get('viewports')!=[320,390,414,768]
-        or candidate.get('observation_count')!=4
+        or candidate.get('viewports')!=[320,390,414,767,768]
+        or candidate.get('critical_viewports')!=[320,390,414,767]
+        or candidate.get('desktop_validation_viewports')!=[768]
+        or candidate.get('observation_count')!=5
         or candidate.get('source_cascade_slots')!=original.get('cascade_slots')
         or candidate.get('public_route_certificate_issued') is not False
         or not isinstance(candidate.get('critical_total_bytes'),int)
@@ -284,6 +286,102 @@ def publish(cert,job,wp_content):
     _atomic(final,payload)
     if data(final)!=cert:raise ValueError('certificate-publish-readback-mismatch')
     return str(final)
+def _private_staged_path(cert,wp_content):
+    """No candidate marker or CSS is exposed inside the public document root."""
+    wp=Path(wp_content)
+    if str(wp) not in LIVE_ROOTS or wp.is_symlink():
+        raise ValueError('unenrolled-private-v2-stage')
+    base=wp.parent.parent/'operations/css-cron-v1/candidates-v2'
+    for parent in [base.parent,base]:
+        if parent.is_symlink():raise ValueError('unsafe-staging-parent')
+    base.mkdir(parents=True,mode=0o700,exist_ok=True)
+    st=base.stat()
+    if st.st_uid!=0 or stat.S_IMODE(st.st_mode)!=0o700:
+        raise ValueError('private-stage-must-be-root-only')
+    identity=sha((cert['host']+'|'+cert['language']+'|'+cert['path']+'|'
+         +cert['market_country']+'|'+cert['currency']).encode())
+    return base/(identity+'.json')
+
+
+def _private_atomic(dest,payload):
+    fd,tmp=tempfile.mkstemp(prefix='.mad4b-candidate-',dir=dest.parent)
+    try:
+        with os.fdopen(fd,'wb') as f:
+            os.fchmod(f.fileno(),0o600)
+            f.write(payload);f.flush();os.fsync(f.fileno())
+        os.replace(tmp,dest)
+    finally:
+        if os.path.exists(tmp):os.unlink(tmp)
+
+
+def stage_candidate(cert,job,wp_content):
+    """Release the exact source-bound candidate privately, without public HTML."""
+    if (cert.get('contract')!=CONTRACT
+        or cert.get('status')!='released_pending_qa'
+        or cert.get('evidence',{}).get('decision')!='pending_post_release'
+        or cert.get('post_release_deadline')!=cert.get('released_at',0)+21600):
+        raise ValueError('untrusted-private-release-state')
+    path=_private_staged_path(cert,wp_content)
+    if path.is_symlink():raise ValueError('private-staging-symlink')
+    if path.exists():
+        old=data(path)
+        if old!=cert:
+            if (old.get('post_release_deadline',0)>=int(time.time())
+                and old.get('status')=='released_pending_qa'):
+                raise ValueError('active-source-candidate-conflict')
+            # Expired private receipt cannot block fresh source issuance.
+    runtime=Path(wp_content)/'mu-plugins/422-mad4b-public-critical-css-runtime.php'
+    consumer=Path(wp_content)/'mu-plugins/422-mad4b-public-critical-css-v2-consumer.php'
+    if (runtime.is_symlink() or consumer.is_symlink() or
+        sha(runtime.read_bytes())!=cert['runtime_sha'] or
+        sha(consumer.read_bytes())!=cert['consumer_sha'] or
+        os.environ.get('MAD4B_MULTI_CSS_V2_RELEASE_APPROVED')!='1'):
+        raise ValueError('private-stage-site-runtime-authorization-missing')
+    _private_atomic(path,(json.dumps(cert,sort_keys=True,indent=2)+'\n').encode())
+    if data(path)!=cert:raise ValueError('private-stage-readback-failed')
+    return str(path)
+
+
+def promote_staged(cert,job,wp_content,cat,route,state,runtime,consumer):
+    """Post-stage browser QA is required before public cert replacement."""
+    stage=_private_staged_path(cert,wp_content)
+    if stage.is_symlink() or not stage.is_file() or data(stage)!=cert:
+        raise ValueError('private-staged-receipt-mismatch')
+    if (cert.get('status')!='released_pending_qa'
+        or not isinstance(cert.get('released_at'),int)
+        or not isinstance(cert.get('post_release_deadline'),int)
+        or not cert['released_at']<=int(time.time())<=cert['post_release_deadline']):
+        raise ValueError('private-release-expired-or-invalid')
+    for name in ['ordered-native-critical-qa.json','browser-parity.json']:
+        path=Path(job)/name
+        if (path.is_symlink() or not path.is_file()
+            or path.stat().st_mtime<cert['released_at']
+            or path.stat().st_mtime>time.time()+300):
+            raise ValueError('private-release-fresh-post-stage-QA-required')
+    qualified=certificate(cat,route,state,job,wp_content,runtime,consumer)
+    stable=('host','path','language','type','object_id','market_country',
+            'currency','css_epoch','runtime_sha','consumer_sha',
+            'critical_cap_px','native_mobile_breakpoint','source_manifest',
+            'source_manifest_sha256','critical_slots','critical_total_bytes',
+            'elementor_doc_fingerprint','dependencies')
+    if any(qualified.get(k)!=cert.get(k) for k in stable):
+        raise ValueError('post-stage-current-source-revision-drift')
+    path=publish(qualified,job,wp_content)
+    # Publish is atomic per exact route; leave private receipt for audit
+    # until ACK and public readback finish, but consumer never reads it.
+    if data(path)!=qualified:raise ValueError('staged-promotion-readback-failed')
+    return 'certified',str(path)
+
+
+def discard_staged(cert,wp_content):
+    stage=_private_staged_path(cert,wp_content)
+    if stage.is_symlink():raise ValueError('private-staged-symlink')
+    if not stage.exists():return 'not_present'
+    if data(stage)!=cert:raise ValueError('stale-candidate-cannot-discard-newer')
+    stage.unlink()
+    return 'discarded'
+
+
 def finalize_post_release(cert,job,wp_content,*,failed=False):
     """After publication: QA promotes the SAME source-bound cert or disables it.
 
@@ -401,9 +499,10 @@ def main():
     if len(sys.argv)!=9:
         raise ValueError('USAGE: catalog route state private-job wp-content 422.php companion.php dryrun|publish')
     cat,route,state,job,wp,runtime,consumer,mode=sys.argv[1:]
-    if mode not in ('dryrun','publish','release','verify','revert','revoke'):
+    if mode not in ('dryrun','publish','release','stage','promote_staged',
+                     'discard_staged','verify','revert','revoke'):
         raise ValueError('invalid-issuance-mode')
-    if mode in ('verify','revert','revoke'):
+    if mode in ('verify','revert','revoke','promote_staged','discard_staged'):
         route_entry=data(route);site_state=data(state)
         host=site_state.get('site_host')
         if host not in ('wayfatours.com','tours.dev.mad4b.com'):
@@ -416,18 +515,29 @@ def main():
         key=sha((host+'|'+route_entry['language']+'|'+route_entry['path']+'|'
                  +observer['market_country']+'|'+observer['currency']).encode())
         cert_path=Path(wp)/'mad4b-public-critical-css-v1/certs-v2'/(key+'.json')
-        previous=data(cert_path)
-        if mode=='revoke':
-            outcome,target=revoke_delivered_release(previous,wp)
+        if mode in ('promote_staged','discard_staged'):
+            location=Path(wp).parent.parent/'operations/css-cron-v1/candidates-v2'/(key+'.json')
+            previous=data(location)
+            if mode=='promote_staged':
+                outcome,target=promote_staged(previous,job,wp,data(cat),
+                    route_entry,site_state,runtime,consumer)
+            else:
+                outcome=discard_staged(previous,wp)
+                target='private-staged-candidate-only'
         else:
-            outcome,target=finalize_post_release(previous,job,wp,failed=(mode=='revert'))
+            previous=data(cert_path)
+            if mode=='revoke':
+                outcome,target=revoke_delivered_release(previous,wp)
+            else:
+                outcome,target=finalize_post_release(previous,job,wp,failed=(mode=='revert'))
         print('MULTI_CSS_V2_POST_RELEASE',json.dumps({'outcome':outcome,
             'certificate_path':target,'mode':mode},sort_keys=True))
         return
-    release_first=mode=='release'
+    release_first=mode in ('release','stage')
     cert=certificate(data(cat),data(route),data(state),Path(job),Path(wp),
                      runtime,consumer,release_first=release_first)
-    target=(publish(cert,job,wp) if mode in ('publish','release')
+    target=(stage_candidate(cert,job,wp) if mode=='stage'
+            else publish(cert,job,wp) if mode in ('publish','release')
             else '(dryrun-only)')
     print('MULTI_CSS_V2_CERTIFICATE',json.dumps({'mode':mode,'route':cert['path'],
        'status':cert['status'],'host':cert['host'],'lang':cert['language'],
