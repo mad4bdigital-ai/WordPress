@@ -35,6 +35,7 @@ jobs:
     timeout-minutes: 70
     outputs:
       artifact_required: ${{ steps.emit_verdict.outputs.artifact_required }}
+      qualification_mode: ${{ steps.enforce_verdict.outputs.qualification_mode }}
     steps:
       - name: Checkout exact head
         uses: actions/checkout@v4
@@ -986,7 +987,27 @@ jobs:
               required = list(required) + ['Content Hub exact-head package']
               if mode == 'repository_non_runtime':
                   mode = 'content_hub_runtime_release'
+          host_v128_affecting = any(
+              path.startswith(("ops/host-authority-v128/", "tests/host-v128/",
+                               "tests/release-qualification/", "docs/host-v128/"))
+              or path in (
+                  "tools/mad4b_release_qualification_mode.py",
+                  ".github/mad4b-release-qualification-mode.json",
+                  ".github/workflows/host-v128-persistent-mode.yml",
+              )
+              for path in changed
+          )
+          if host_v128_affecting and os.environ.get('GITHUB_EVENT_NAME') in ('pull_request', 'push'):
+              required.append('Host v128 lifecycle contract')
           required = list(dict.fromkeys(required))
+          from tools.mad4b_release_qualification_mode import load_policy, partition_checks
+          qualification_policy = load_policy(
+              Path('.github/mad4b-release-qualification-mode.json')
+          )
+          qualification_mode = qualification_policy['qualification_mode']
+          required, advisory_release_checks = partition_checks(
+              required, qualification_mode
+          )
 
           Path('/tmp/mad4b-critical-checks.txt').write_text('\n'.join(required) + '\n', encoding='utf-8')
           Path('/tmp/mad4b-release-verdict-scope.json').write_text(
@@ -997,6 +1018,8 @@ jobs:
                   'content_hub_artifact_required': content_hub_required,
                   'changed_files': changed,
                   'required_checks': required,
+                  'release_qualification_mode': qualification_mode,
+                  'advisory_release_checks': advisory_release_checks,
                   'bootstrap_exception': bootstrap_exception,
                   'bootstrap_root_branch': bootstrap_root_branch if bootstrap_exception else '',
                   'governance_apply_repair_bootstrap': governance_apply_repair_bootstrap,
@@ -1497,19 +1520,15 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Enforce release verdict
+      - name: Enforce repository governance and selected release qualification mode
+        id: enforce_verdict
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          import json
-          verdict=json.load(open('MAD4B-RELEASE-VERDICT.json',encoding='utf-8'))
-          if verdict.get('repository_merge_gate_ready') is not True:
-              raise SystemExit('repository merge gate is not ready')
-          if (verdict.get('artifact_required') or verdict.get('content_hub_artifact_required')) and verdict.get('repository_release_ready') is not True:
-              raise SystemExit('repository release artifact identity or repository governance is not ready')
-          print('repository release verdict enforcement: PASS')
-          PY
+          python3 tools/mad4b_release_qualification_mode.py \
+            --policy .github/mad4b-release-qualification-mode.json \
+            --verdict MAD4B-RELEASE-VERDICT.json \
+            --github-output "$GITHUB_OUTPUT"
 
   publish-control-plane-update-channel:
     name: Publish governed Control Plane update channel
@@ -1519,6 +1538,7 @@ jobs:
       github.event_name == 'push' &&
       github.ref == 'refs/heads/master' &&
       needs.verdict.result == 'success' &&
+      needs.verdict.outputs.qualification_mode == 'required' &&
       needs.verdict.outputs.artifact_required == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15

@@ -1,0 +1,14 @@
+{
+  "contract": "mad4b.release-qualification-policy.v1",
+  "site_overrides": {},
+  "mandatory_boundaries": [
+    "exact_site_identity",
+    "independent_signed_host_enrollment",
+    "fresh_independent_highwater",
+    "operation_scoped_execution_grant",
+    "owner_or_operator_authority",
+    "rollback_and_verified_preimage",
+    "production_separate_authorization"
+  ],
+  "default_connection_mode": "persistent"
+}
