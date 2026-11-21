@@ -155,18 +155,16 @@ def current_http_404_hold(index,cat,route,state,ledger,now):
         and at<=now<expiry<=at+HTTP_404_HOLD_S)
 
 def fresh_original_source(site,host,path):
-    """Observe Wayfa's uncached WordPress source; never reuse FastCGI HTML.
+    """Original company WordPress source; never a cached HTML shell.
 
-    Advisory only: no certificate issuance, browser work, or cache mutation.
-    Preserve Source's existing transport until its own source-bound rollout.
+    Advisory only: no CSS certificate issued. Both first-party sites must
+    prove independent, server-reported origin bypass before a source key is
+    eligible to participate in template qualification.
     """
-    if site!='wayfa':
-        return drift.original_request(host,path)
-    if host!=HOSTS['wayfa']:
+    if site not in HOSTS or host!=HOSTS[site]:
         raise ValueError('wrong-company-original-html-observer')
     html,headers=origin.public_fetch(host,path)
-    if (headers.get('X-Wayfa-Origin-Cache')!='BYPASS'
-        or 'no-store' not in headers.get('Cache-Control','').lower()
+    if (not origin.original_proven_fresh(host,headers)
         or headers.get('X-MAD4B-Public-CCSS-Ready')=='1'):
         return None
     return (html,headers.get('X-MAD4B-Public-CCSS-Currency',''),
