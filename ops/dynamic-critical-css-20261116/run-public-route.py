@@ -247,6 +247,12 @@ def approved_native_runtime_sha(site,wp):
         'wayfa':('597a31f0ea962d2700ead68f9856596727a4e07055650705f52ba57bbaf11119',
                  '249083d5aa0124ea1280a88f5062945cdff2885eca63b36ba5c66682b0faf3d1')}
     released_v2_422,released_v2_consumer=released_v2_pairs[site]
+    # Current original Git release at PR #989, first-party PHP V2
+    # runtime/consumer pair validated against an immutable repository tree.
+    # Preserve the legacy pairs for older host rollback receipts.
+    current_git_release=('13e98efebaef87918d38c1d5be30bd6cf45c9f40c0e3264a31beca79b4663a36',
+                         '249083d5aa0124ea1280a88f5062945cdff2885eca63b36ba5c66682b0faf3d1')
+
     # Immutable original source Git objects, verified against GitHub.
     # Previously this trusted branch's 421/422 bytes via an ephemeral
     # /worktrees/pr814-* checkout. Worktree GC is NOT source drift.
@@ -266,10 +272,12 @@ def approved_native_runtime_sha(site,wp):
             raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
         blob=live.read_bytes()
         actual_sha=hashlib.sha256(blob).hexdigest()
-        if name=='422-mad4b-public-critical-css-runtime.php' and actual_sha==released_v2_422:
+        if name=='422-mad4b-public-critical-css-runtime.php' and actual_sha in (released_v2_422,current_git_release[0]):
             companion=wp/'mu-plugins/422-mad4b-public-critical-css-v2-consumer.php'
+            expected_companion=(current_git_release[1] if actual_sha==current_git_release[0]
+                                else released_v2_consumer)
             if (companion.is_symlink() or not companion.is_file() or
-                hashlib.sha256(companion.read_bytes()).hexdigest()!=released_v2_consumer):
+                hashlib.sha256(companion.read_bytes()).hexdigest()!=expected_companion):
                 raise ValueError('MULTI_CSS_V2_RUNTIME_COMPANION_PAIR_DRIFT')
         elif site=='source' and name=='422-mad4b-public-critical-css-runtime.php':
             if actual_sha!=approved_stage_422:
@@ -291,7 +299,12 @@ def approved_v2_consumer_sha(site,wp,runtime_sha):
         'wayfa':('597a31f0ea962d2700ead68f9856596727a4e07055650705f52ba57bbaf11119',
                  '249083d5aa0124ea1280a88f5062945cdff2885eca63b36ba5c66682b0faf3d1')}
     released_runtime,approved=approved_pairs[site]
-    if runtime_sha!=released_runtime:return None
+    current_git_release=('13e98efebaef87918d38c1d5be30bd6cf45c9f40c0e3264a31beca79b4663a36',
+                         '249083d5aa0124ea1280a88f5062945cdff2885eca63b36ba5c66682b0faf3d1')
+    if runtime_sha==current_git_release[0]:
+        approved=current_git_release[1]
+    elif runtime_sha!=released_runtime:
+        return None
     companion=wp/'mu-plugins/422-mad4b-public-critical-css-v2-consumer.php'
     if (companion.is_symlink() or not companion.is_file()
         or hashlib.sha256(companion.read_bytes()).hexdigest()!=approved):
