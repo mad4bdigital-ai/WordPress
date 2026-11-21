@@ -144,6 +144,16 @@ if($wayfa){
         'lodging_kind'=>'hotel','destination_key'=>'luxor']);
     $ok($cairoWrong['status']==='itinerary_destination_conflict',
         'day 3 explicit Luxor hotel overnight conflicts with Cairo stage');
+    $ok($class::stageSourceAllowsCandidates($cairoWrong)===false,
+        'explicit itinerary conflict blocks candidate display');
+    $ok($class::stageSourceAllowsCandidates($luxorActual)===true,
+        'verified overnight stage permits editorial candidates');
+    $overflow=$class::itineraryNightEvidence(60627,[
+        'source_day_start'=>5,'nights'=>3,
+        'lodging_kind'=>'hotel','destination_key'=>'cairo']);
+    $ok($overflow['status']==='invalid_stage_night_geometry' &&
+        $class::stageSourceAllowsCandidates($overflow)===false,
+        'overlong stage beyond itinerary days blocks candidates');
     $ok($luxorActual['status']==='explicit_overnights_matched',
         'day 3 Luxor overnight source match');
     $unconfirmed=$class::itineraryNightEvidence(57562,[
