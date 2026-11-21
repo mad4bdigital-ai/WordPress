@@ -242,7 +242,7 @@ final class MAD4B_Package_Components_Editor_Context_V1 {
              (current_user_can('mad4b_manage_company_operations') &&
               current_user_can('mad4b_work_company_tasks')));
         $costUrl=$canInspectLab
-            ?admin_url('admin.php?page=mad4b-pricing-lab&mad4b_package_tour='.(int)$post->ID):'';
+            ?admin_url('admin.php?page=mad4b-pricing-lab&mad4b_package_tour='.$canonical):'';
         self::line('5. Cost & financial readiness','Not certified by this panel',
             'Check the original provider cost receipts, children/infants, FX, taxes, margin, and customer price inclusion before generation or checkout. This read-only view does not certify or change a selling Rate.',
             $costUrl,'Inspect this Package in Pricing Lab');
