@@ -123,3 +123,18 @@ The edge split initially sent 1% of eligible visitors through FastCGI BYPASS eve
 
 ## Staging source 320px LCP root-cause trace
 Chrome source route QA showed original FCP 3224ms and optimized FCP 972ms, but original LCP 8748ms and optimized LCP 9796ms: 1048ms regression beyond allowed budget. The observed last LCP is an Elementor DIV ef55af8 background-image 18_01_2023_9999_186-F2.webp (166218 bytes), inside dynamic Elementor template 42208. Critical CSS had 18 slots, 238186 bytes; full CSS parity passed all five widths. The 320px performance hold is correct. A private resource preload experiment was initiated in a root-only sandbox, without publication; wait for both AB and BA source comparisons before any frontend mutation, and do not accept an FCP-only pass.
+
+## Private 320px preload AB/BA evidence and limitation
+The isolated captured-HTML preloader experiment finished without public WordPress/CSS mutation:
+- Original-first: source FCP 3200ms, candidate FCP 1124ms (gain 2076ms); source LCP 10008ms, candidate+preload LCP 9728ms (regression -280ms).
+- Critical-first: FCP gain 2080ms; source LCP 9788ms, candidate+preload LCP 9880ms (regression +92ms).
+- Both test orders passed the 320px CSS restoration and peer-order QA bounds, 100 source CSS links restored. This is NOT a five-viewport certificate.
+- Absolute image LCP remains 9.7-9.9 seconds and did not materially improve from the previous candidate; preload alone is NOT a root-cause fix. Do not publish it as a sitewide solution or mark source CSS qualified.
+- Captured HTML contains late LCP DIV elementor-element-ef55af8 under nested Elementor template 42208 within the tour hero of post 64869. Another late resource in the same template is Amazing-5-Days-Cairo-and-Luxor-Discovery-Tour-allroyalegypt-91.jpg.webp. Inspect animation / dynamic visibility and media association before a source-only change. A read-only browser diagnostic probe was staged but initially deferred on the existing global browser lock. No Elementor data was modified.
+
+## Real visitor sampling and cached HTML propagation
+- The original 2026-11-21 13:18Z one-shot RUM receipt confirms 1000bps (10%) source and Wayfa site-owned WordPress options. The one-shot self-disabled.
+- Tours.dev /contact-us/ public HTML now showed sampleBps 1000 and control cohort. Wayfa /contact-us/ uncacheable HTTP showed 1000 as well.
+- Wayfa certified Nile Dinner Cruise page was a FastCGI HIT from earlier HTML: sampleBps 100 and absent edgeCohort config, despite serving V2 Ready=1 correctly. This is a stale public HTML shell, NOT a failed option update.
+- Do not flush all FastCGI HTML to raise RUM sampling. The original source-bound public-route-cache-release.py provides exact-path socket versioning; a selective refresh attempt was deferred because original CSS worker held the global lock. Other public route HTML can naturally refresh through its 1800-second cache TTL.
+- Adequate cohorts require genuine consented visitors. Observational RUM histograms do not permit public provisional CSS or global rollout by themselves.
