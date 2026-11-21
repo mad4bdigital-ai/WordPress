@@ -50,3 +50,29 @@
 @media(max-width:440px){.mad4b-pcl-kpis{grid-template-columns:1fr}
  .mad4b-pcl-form{display:block}
  .mad4b-pcl-label{margin-bottom:10px}}
+
+/* v1.1 — destination-scoped stage evidence; no duplicated editable fields */
+.mad4b-pcl-stage-scope{color:#374151;background:#f6f7f7;padding:9px 12px;
+  border-left:3px solid #2271b1;margin:8px 0;line-height:1.6}
+.mad4b-pcl-info{color:#1d2327;background:#f0f6fc;border:1px solid #c3d9ef;
+  border-radius:3px;padding:9px 12px;margin:8px 0}
+.mad4b-pcl-stage-itinerary{padding:8px 10px;margin:7px 0;border-radius:3px;
+  border-left:3px solid #dba617}
+.mad4b-pcl-stage-itinerary.mad4b-pcl-confirmed{background:#f0fdf4;
+  border-color:#1c7c4a;color:#1d2327}
+.mad4b-pcl-stage-itinerary.mad4b-pcl-needs-review{background:#fff9e6;
+  border-color:#b88c15;color:#1d2327}
+.mad4b-pcl-night-evidence,.mad4b-pcl-excluded{margin:8px 0;
+  padding:7px 10px;background:#f6f7f7;border:1px solid #dcdcde;border-radius:4px}
+.mad4b-pcl-night-evidence summary,.mad4b-pcl-excluded summary{cursor:pointer;
+  font-weight:600}
+.mad4b-pcl-night-evidence summary:focus-visible,
+.mad4b-pcl-excluded summary:focus-visible{outline:2px solid #2271b1;
+  outline-offset:2px}
+.mad4b-pcl-night-evidence ol,.mad4b-pcl-excluded ul{padding-inline-start:20px;
+  margin:8px 0}
+.mad4b-pcl-night-evidence li,.mad4b-pcl-excluded li{margin:3px 0}
+@media(max-width:782px){
+ .mad4b-pcl-stage-scope{overflow-wrap:anywhere}
+ .mad4b-pcl-stage h4{line-height:1.45}
+}
