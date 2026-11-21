@@ -49,7 +49,7 @@ $_SERVER['HTTP_ORIGIN']='https://tours.dev.mad4b.com';
 $_SERVER['HTTP_SEC_FETCH_SITE']='same-origin';
 $_SERVER['CONTENT_LENGTH']='260';
 $cls='MAD4B_Adaptive_CSS_RUM_V1';
-$fields=['source',str_repeat('a',64),str_repeat('b',64),'mobile','14','0','0'];
+$fields=['source',str_repeat('a',64),str_repeat('b',64),'mobile','14','0','0','control'];
 $token=$cls::signed_proof($fields,time());
 $valid=['contract'=>$cls::CONTRACT,'proof'=>$token,'arm'=>'optimized',
         'metrics'=>['lcp'=>2500,'inp'=>130,'cls'=>37],'cssRestored'=>true];

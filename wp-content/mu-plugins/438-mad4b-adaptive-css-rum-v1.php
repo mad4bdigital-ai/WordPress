@@ -87,10 +87,15 @@ final class MAD4B_Adaptive_CSS_RUM_V1 {
         $globalGeneration=(int)get_option('mad4b_ccss_global_generation_v1',0);
         if ($listingGeneration<0||$listingGeneration>1000000000
             ||$globalGeneration<0||$globalGeneration>1000000000)return null;
-        $variant=hash('sha256',implode('|',['v2',$route,$device,$epoch,
-              $globalGeneration,$listingGeneration,$modified]));
+        // Cohort comes ONLY from authenticated Nginx FastCGI parameters.
+        // It cannot be selected by arbitrary HTTP request headers/cookies.
+        $edge=((string)($_SERVER['MAD4B_CSS_ROLLOUT_COHORT']??'')==='canary'
+            &&(string)($_SERVER['MAD4B_CSS_ROLLOUT_ORIGIN_ATTESTED']??'')==='1'
+            &&$device==='mobile')?'canary':'control';
+        $variant=hash('sha256',implode('|',['v3',$route,$device,$epoch,
+              $globalGeneration,$listingGeneration,$modified,$edge]));
         return [$site,$route,$variant,$device,(string)$epoch,
-                (string)$listingGeneration,(string)$globalGeneration];
+                (string)$listingGeneration,(string)$globalGeneration,$edge];
     }
     public static function signed_proof(array $fields,int $created):string {
         $head=implode('|',[...$fields,(string)$created]);
@@ -103,13 +108,15 @@ final class MAD4B_Adaptive_CSS_RUM_V1 {
         $raw=base64_decode(strtr($token,'-_','+/'),true);
         if (!is_string($raw))return null;
         $v=explode('|',$raw);
-        if (count($v)!==9)return null;
-        [$site,$route,$variant,$device,$epoch,$listing,$global,$issued,$mac]=$v;
+        if (count($v)!==10)return null;
+        [$site,$route,$variant,$device,$epoch,$listing,$global,$edge,$issued,$mac]=$v;
         if ($site!==self::site()||!preg_match('/^[a-f0-9]{64}$/D',$route)
             ||!preg_match('/^[a-f0-9]{64}$/D',$variant)
             ||!in_array($device,['mobile','desktop'],true)
             ||!preg_match('/^(0|[1-9][0-9]{0,9})$/D',$epoch)
             ||!preg_match('/^[0-9]{10}$/D',$issued)
+            ||!in_array($edge,['control','canary'],true)
+            ||($edge==='canary'&&$device!=='mobile')
             ||!preg_match('/^[a-f0-9]{64}$/D',$mac)
             ||!preg_match('/^(0|[1-9][0-9]{0,9})$/D',$listing)
             ||!preg_match('/^(0|[1-9][0-9]{0,9})$/D',$global)
@@ -117,9 +124,9 @@ final class MAD4B_Adaptive_CSS_RUM_V1 {
             ||(int)$listing!==(int)get_option('mad4b_ccss_listing_generation_v1',0)
             ||(int)$global!==(int)get_option('mad4b_ccss_global_generation_v1',0)
             ||(int)$issued>time()+120||time()-(int)$issued>7200)return null;
-        if (!hash_equals(hash_hmac('sha256',implode('|',array_slice($v,0,8)),
+        if (!hash_equals(hash_hmac('sha256',implode('|',array_slice($v,0,9)),
                     wp_salt('secure_auth')),$mac))return null;
-        return ['site'=>$site,'route'=>$route,'variant'=>$variant,'device'=>$device];
+        return ['site'=>$site,'route'=>$route,'variant'=>$variant,'device'=>$device,'edge'=>$edge];
     }
     public static function footer():void {
         $policy=self::policy();
@@ -132,6 +139,7 @@ final class MAD4B_Adaptive_CSS_RUM_V1 {
         $cfg=['contract'=>self::CONTRACT,'mode'=>'observe',
           'sampleBps'=>$policy['sample_bps'],
           'proof'=>self::signed_proof($scope,time()),
+          'edgeCohort'=>$scope[7],
           'endpoint'=>rest_url('mad4b-css/v1/rum'),
           'vendor'=>content_url(self::ASSETS.'web-vitals-6.2.3.iife.js').
              '?v='.(string)filemtime($vendor)];

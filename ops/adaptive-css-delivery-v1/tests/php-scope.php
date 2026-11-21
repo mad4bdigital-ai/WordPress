@@ -34,8 +34,21 @@ check($b[2]!==$c[2],'global Elementor generation drift isolates cohorts');
 $GLOBALS['current_market']='US';
 $d=$scope->invoke(null);
 check($c[2]!==$d[2]&&$c[1]!==$d[1],'WCML market identity cannot be aggregated across markets');
+$_SERVER['MAD4B_CSS_ROLLOUT_COHORT']='canary';
+$_SERVER['MAD4B_CSS_ROLLOUT_ORIGIN_ATTESTED']='0';
+$untrusted=$scope->invoke(null);
+check($untrusted[7]==='control' && $untrusted[2]===$d[2],
+      'spoofable canary marker cannot select signed cohort');
+$_SERVER['MAD4B_CSS_ROLLOUT_ORIGIN_ATTESTED']='1';
+$trusted=$scope->invoke(null);
+check($trusted[7]==='canary' && $trusted[2]!==$d[2],
+      'origin FastCGI canary is segregated from control variant');
+$cls='MAD4B_Adaptive_CSS_RUM_V1';
+$h=$cls::signed_proof($trusted,time());
+check(($cls::verify_proof($h)['edge']??null)==='canary',
+      'canary identity cryptographically bound to public-page proof');
 $_SERVER['REQUEST_URI']='/en/tours-and-activities/demo/?sort=price';
 $_SERVER['QUERY_STRING']='sort=price';
 check($scope->invoke(null)===null,'query-driven personalized pages excluded from RUM');
-echo 'PASS 5 site/market/template/epoch and query-source-safety invariants'.PHP_EOL;
+echo 'PASS 8 site/market/template/edge and source-safety invariants'.PHP_EOL;
 ?>

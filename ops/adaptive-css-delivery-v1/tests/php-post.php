@@ -3,7 +3,7 @@ $c='MAD4B_Adaptive_CSS_RUM_V1';
 check($c::site()==='source','site environment and host are enrolled');
 check($c::policy()['mode']==='observe' && $c::policy()['sample_bps']===100,
       'explicit observe mode and 1pct sampling only');
-$values=['source',str_repeat('a',64),str_repeat('b',64),'mobile','14','0','0'];
+$values=['source',str_repeat('a',64),str_repeat('b',64),'mobile','14','0','0','control'];
 $token=$c::signed_proof($values,time());
 check(strlen($token)>180 && $c::verify_proof($token)['site']==='source',
       'first-party signed route and variant proof verifies');
