@@ -361,7 +361,7 @@ function renderReport(data){
       ],'mad4b-pcl-source-line'));
       review.append(el('p','mad4b-pcl-warning',
         'Research-only records. Draft Properties and Draft Units are not bookable, published stock, or an approved supplier cost, even when their room category appears on the official website.'));
-      if(er.content_review)review.append(el('p','mad4b-pcl-warning',String(er.content_review)));
+      if(er.content_review)review.append(el('p',er.content_review_state==='resolved_source_only'?'mad4b-pcl-info':'mad4b-pcl-warning',String(er.content_review)));
       if(er.brand_review)review.append(el('p','mad4b-pcl-warning',String(er.brand_review)));
       for(const prop of draftProps){
         const item=el('div','mad4b-pcl-source-review-property');

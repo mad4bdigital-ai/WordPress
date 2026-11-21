@@ -28,8 +28,11 @@ foreach($checks as [$tour,$tier,$key]){
       count((array)$drafts[1]['draft_units'])!==5))
       throw new RuntimeException('STAGING_ASWAN_DRAFT_SOURCE_REVIEW_NOT_SHOWN');
    if($tour===60629&&(count($units)!==6||
-      empty($review['brand_review'])||empty($review['content_review'])))
-      throw new RuntimeException('STAGING_MARINA_DRAFT_SOURCE_REVIEW_NOT_SHOWN');
+      empty($review['brand_review'])||empty($review['content_review'])||
+      ($review['content_review_state']??'')!=='resolved_source_only'))
+      throw new RuntimeException('STAGING_MARINA_SOURCE_GEO_RESOLUTION_NOT_SHOWN');
+   if(($review['content_review_state']??'')!=='resolved_source_only')
+      throw new RuntimeException('STAGING_ASWAN_SOURCE_GEO_RESOLUTION_NOT_SHOWN');
  }elseif($drafts||$units)
    throw new RuntimeException('CROSS_SITE_DRAFT_SOURCE_LEAK');
  if(!empty($stage['selected_property_id'])||

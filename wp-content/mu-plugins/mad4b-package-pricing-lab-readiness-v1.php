@@ -459,7 +459,10 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
                 }
             }
             $content=$sourceNotes['source_content_qa_v1']??null;
-            if(is_array($content)&&($content['status']??'')==='open_editorial_review'){
+            if(is_array($content)&&($content['status']??'')==='resolved_source_geography_pending_supplier_operations'){
+                $editorialSourceReview['content_review']='Original itinerary destination and overnight evidence reconciled; supplier transport, dated hotel availability and signed rates still require approval';
+                $editorialSourceReview['content_review_state']='resolved_source_only';
+            } elseif(is_array($content)&&($content['status']??'')==='open_editorial_review'){
                 $reason=(string)($content['finding']??'');
                 $editorialSourceReview['content_review']=match($reason){
                     'explicit_hotel_stay_and_aswan_arrival_not_recognized_by_current_night_grammar'=>
