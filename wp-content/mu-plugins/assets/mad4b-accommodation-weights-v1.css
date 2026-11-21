@@ -53,3 +53,8 @@
 .mad4b-aw-important{margin-top:12px;font-size:12px}
 @media(max-width:1000px){.mad4b-aw-target{grid-template-columns:repeat(2,minmax(0,1fr))}.mad4b-aw-target>.button{grid-column:1/-1}}
 @media(max-width:782px){.mad4b-aw-overview,.mad4b-aw-inventory{padding:10px}.mad4b-aw-rule{align-items:flex-start}.mad4b-aw-weight-table th,.mad4b-aw-weight-table td{padding:8px 5px;font-size:12px}.mad4b-aw-target{grid-template-columns:1fr}}
+
+.mad4b-aw-factor{display:inline-block;color:#646970;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mad4b-aw-form .mad4b-aw-target>.mad4b-aw-field:last-child{grid-column:1/-1}
+.mad4b-aw-preview{margin-bottom:4px}
+.mad4b-aw-editor-details[open]>summary{border-bottom:1px solid #dcdcde}
