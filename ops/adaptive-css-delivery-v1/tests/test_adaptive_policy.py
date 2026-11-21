@@ -64,6 +64,10 @@ class TestAdaptive(unittest.TestCase):
  def test_variant_changes_market(self):
   a=self.key;self.c['market']='US'
   self.assertNotEqual(a,p.source_variant(self.c))
+ def test_overflow_histogram_is_finite_and_fail_closed(self):
+  for metric in p.METRICS:
+   hist=[0]*(len(p.BOUNDS[metric])+1);hist[-1]=500
+   self.assertEqual(p.histogram_quantile(hist,metric),60001)
  def test_max_rollout(self):
   self.assertEqual(p.decision(self.c,self.rows(2000,2000),100,self.proof)['action'],'maintain')
 if __name__=='__main__':unittest.main(verbosity=2)

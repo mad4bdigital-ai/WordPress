@@ -54,7 +54,9 @@ def histogram_quantile(counts,metric,p=.75):
     if total==0:return None
     threshold=math.ceil(total*p)
     running=0
-    for value,count in zip((*limits,float('inf')),counts):
+    # Histograms can overflow their last finite bucket. Avoid non-JSON
+    # Infinity and conservatively flag the outlier rather than hiding it.
+    for value,count in zip((*limits,60001),counts):
         running+=count
         if running>=threshold:return value
     raise AssertionError('histogram_quantile_unreachable')
