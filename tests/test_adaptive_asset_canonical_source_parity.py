@@ -9,6 +9,7 @@ ROOT=Path(__file__).resolve().parents[1]
 META=ROOT/'ops/site-company-overlays/wayfatours/adaptive-runtime/source-parity-20261116.json'
 SUCCESSOR=ROOT/'ops/site-company-overlays/wayfatours/adaptive-runtime/source-forward-port-20261116.json'
 FOLLOWUP=ROOT/'ops/site-company-overlays/wayfatours/adaptive-runtime/source-followup-20261121.json'
+TOKEN_BRIDGE=ROOT/'ops/site-company-overlays/wayfatours/adaptive-runtime/source-token-bridge-20261121.json'
 ADAPTIVE='wp-content/plugins/mad4b-adaptive-asset-intelligence/includes/class-mad4b-scp-adaptive-asset-intelligence.php'
 QUEUE_TEST=ROOT/'ops/adaptive-queue-self-heal-20261116/tests/test-adaptive-queue-self-healing.php'
 
@@ -53,8 +54,17 @@ class AdaptiveSourceOwnership(unittest.TestCase):
     self.assertTrue(new['no_parallel_worker'] and new['no_parallel_queue'])
     self.assertTrue(new['no_css_certification_from_worker_ack'])
     self.assertTrue(new['no_auto_promotion'])
-    self.assertEqual(hashlib.sha256(actual).hexdigest(),new['updated_source_sha256'])
-    self.assertEqual(git_blob_sha1(actual),new['updated_source_git_blob_sha1'])
+    bridge=json.loads(TOKEN_BRIDGE.read_text())
+    self.assertEqual(bridge['contract'],'mad4b.adaptive-asset-worker-source-token-bridge.v1')
+    self.assertEqual(bridge['prior_source_sha256'],new['updated_source_sha256'])
+    self.assertEqual(bridge['prior_source_git_blob_sha1'],new['updated_source_git_blob_sha1'])
+    self.assertEqual(bridge['current_source_file'],row['relative_path'])
+    self.assertTrue(bridge['stale_revision_rejected'])
+    self.assertTrue(bridge['no_parallel_scheduler'] and bridge['no_new_queue'])
+    self.assertFalse(bridge['automatic_css_certification_from_ack'])
+    self.assertFalse(bridge['production_release_authorized_by_this_receipt'])
+    self.assertEqual(hashlib.sha256(actual).hexdigest(),bridge['current_source_sha256'])
+    self.assertEqual(git_blob_sha1(actual),bridge['current_source_git_blob_sha1'])
     self.assertFalse(candidate['production_authorized'])
     self.assertFalse(candidate['certified_for_target'])
    else:

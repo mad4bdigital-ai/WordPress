@@ -39,6 +39,63 @@ def wp_eval(php,code,timeout=150):
             if attempt:raise
             time.sleep(2)
     raise ValueError('WORDPRESS_BOOT_UNAVAILABLE')
+def management_revision_snapshot(php,path):
+    """Read exact queued edit source token, without consuming or creating work."""
+    if (not isinstance(path,str)
+        or not re.fullmatch(r'/[A-Za-z0-9/_%.\\-]{0,349}',path)
+        or '..' in path or '//' in path):
+        return None
+    code=(
+        '$class="MAD4B_SCP_Adaptive_Asset_Intelligence";'
+        'if(!class_exists($class,false)||!method_exists($class,"worker_source_for_path"))'
+        '{echo wp_json_encode(["ok"=>false,"error"=>"manager_absent"]);return;}'
+        '$r=$class::worker_source_for_path('+json.dumps(path)+');'
+        'echo wp_json_encode($r,JSON_UNESCAPED_SLASHES);'
+    )
+    try:
+        result=wp_eval(php,code,timeout=34)
+        if (result.get('ok') is True and result.get('path')==path
+            and isinstance(result.get('source_token'),str)
+            and re.fullmatch('[a-f0-9]{32}',result['source_token'])
+            and isinstance(result.get('updated'),int)
+            and 0<result['updated']<=int(time.time())+120):
+            print('PUBLIC_CCSS_MANAGEMENT_TOKEN_SNAPSHOT',path,flush=True)
+            return result
+    except (OSError,ValueError,subprocess.CalledProcessError,subprocess.TimeoutExpired) as exc:
+        print('PUBLIC_CCSS_MANAGEMENT_SNAPSHOT_UNAVAILABLE',type(exc).__name__,flush=True)
+    return None
+
+def acknowledge_management_certified(php,path,ticket):
+    """Best-effort exact-token ACK ONLY after original verified CSS readback.
+
+    A failed WordPress call or a newer editorial source revision leaves the
+    management job pending. The native CSS certificate remains independent.
+    """
+    if not isinstance(ticket,dict) or ticket.get('path')!=path:return False
+    token=ticket.get('source_token')
+    if not isinstance(token,str) or not re.fullmatch('[a-f0-9]{32}',token):
+        return False
+    code=(
+        '$class="MAD4B_SCP_Adaptive_Asset_Intelligence";'
+        'if(!class_exists($class,false)||!method_exists($class,"acknowledge_worker"))'
+        '{echo wp_json_encode(["ok"=>false,"error"=>"manager_absent"]);return;}'
+        '$r=$class::acknowledge_worker('+json.dumps(path)+',"certified",'
+        '"source_bound_public_css_verified",'+json.dumps(token)+');'
+        'echo wp_json_encode($r,JSON_UNESCAPED_SLASHES);'
+    )
+    try:
+        reply=wp_eval(php,code,timeout=40)
+        accepted=(reply.get('ok') is True
+                  and int(reply.get('matched',0))==1
+                  and reply.get('status')=='certified')
+        print('PUBLIC_CCSS_MANAGEMENT_ACK',path,
+              'source_token_matched' if accepted else
+              str(reply.get('error','no_match'))[:90],flush=True)
+        return accepted
+    except (OSError,ValueError,subprocess.CalledProcessError,subprocess.TimeoutExpired) as exc:
+        print('PUBLIC_CCSS_MANAGEMENT_ACK_DEFERRED',type(exc).__name__,flush=True)
+        return False
+
 def obs(php,host,env):
     data=wp_eval(php,r'''
 $s=get_option("icl_sitepress_settings",[]);
@@ -470,6 +527,10 @@ def run_core(site):
         return
     lang=route['language'];jobpath=route['path'];rid=route['id']
     jsonsave(jobdir/'route.json',route)
+    # Optional source-token handshake with the EXISTING management queue.
+    # Snapshot before Chromium; never allow a newer edit to inherit QA
+    # performed on old content. This does not execute its own CSS task.
+    management_ticket=management_revision_snapshot(php,jobpath)
     # Before any new Chromium work, ask the real WP 422 Consumer whether
     # an existing V2 cert is still valid after a bounded unrelated update.
     # Bypass the shared FastCGI representation. A cached HIT is NEVER proof.
@@ -482,6 +543,7 @@ def run_core(site):
             record('certified','listing' if prior_proof['depends_on_listing'] else 'no-listing')
             print('CERTIFIED_PUBLIC_CCSS',site,lang,jobpath,
                   'V2_VERIFIED_REUSED_NO_BROWSER',flush=True)
+            acknowledge_management_certified(php,jobpath,management_ticket)
             return
         except (subprocess.CalledProcessError,subprocess.TimeoutExpired,
                 ValueError,OSError) as exc:
@@ -895,6 +957,7 @@ def run_core(site):
         islisting='jet-listing-grid' in original[original.find('<body'):]
         record('certified','listing' if islisting else 'no-listing')
         print('CERTIFIED_PUBLIC_CCSS',site,lang,jobpath,'MARKET_CURRENCY_BOUND')
+        acknowledge_management_certified(php,jobpath,management_ticket)
     except (subprocess.CalledProcessError,subprocess.TimeoutExpired,
             OSError,ValueError,KeyError,json.JSONDecodeError) as exc:
         no_bundle=optimizer_bundle_missing(jobdir/'capture-index.json',route)

@@ -258,6 +258,32 @@ final class MAD4B_SCP_Adaptive_Asset_Intelligence {
     'retry_scheduled'=>($matched>0 && in_array($status,['hold','failed'],true)),
     'attempts'=>$retries,'event'=>$result];
  }
+ /**
+  * Source-revision snapshot for an EXACT route in the existing management
+  * queue. WP-CLI only; not a REST endpoint or extra dispatch mechanism.
+  * A worker must capture this BEFORE QA, and pass the token back AFTER a
+  * native route certificate has passed the existing original readback.
+  */
+ public static function worker_source_for_path($raw): array {
+  if (!self::scope() || !defined('WP_CLI') || !WP_CLI)
+   return ['ok'=>false,'error'=>'local_cli_required'];
+  $path=self::path($raw);
+  if($path==='')return ['ok'=>false,'error'=>'unsafe_route'];
+  $match=null;$count=0;
+  foreach(self::queue() as $job) {
+   if(!is_array($job) || ($job['path']??'')!==$path)continue;
+   ++$count;$match=$job;
+  }
+  if($count!==1||!is_array($match))
+   return ['ok'=>false,'error'=>$count>1?'ambiguous_route':'no_matching_edit'];
+  $token=self::job_source_token($match);
+  $when=(int)($match['updated']??0);
+  if(!preg_match('/^[a-f0-9]{32}$/D',$token)
+    || $when<1 || $when>time()+120)
+   return ['ok'=>false,'error'=>'invalid_source_revision'];
+  return ['ok'=>true,'path'=>$path,'source_token'=>$token,
+    'updated'=>$when,'legacy_source_token'=>empty($match['source_token'])];
+ }
  /** Select the due work using the existing WP-CLI-only Worker contract. */
  public static function due_worker_jobs(int $limit=10): array {
   if(!self::scope() || !defined('WP_CLI') || !WP_CLI)return [];
