@@ -149,3 +149,27 @@ original render-blocking CSS, not critical+async. The original measured
 EN four-viewport Chromium pilot must be repeated after the real release.
 Renderer v13 tree sha256: 07a31ac90fc93d09701c558727c48e1b76e9be2999d4ba599c66aa136e77c4d7
 Consumer sha256: 60fc91116affa5faf539cc835e12ce3939d598be68c94a56b21a36f860c5f29e
+
+
+### Legacy staging render-blocking probe and global Chromium lock
+
+The optional staging-only hourly legacy `mad4b-live-css-render-blocking`
+Cron probe is **not** the authoritative CSS V2 issuer and may not run in
+parallel with the site-owned browser certifier. Its canonical, tracked
+wrapper is `ops/site-owned-css-cron-v1/legacy-staging-css-probe-budgeted.sh`;
+the existing host-installed entrypoint is
+`/usr/local/libexec/mad4b-css-staging-probe-budgeted.sh`.
+
+The staging Cron retains its independent per-probe lock. Inside that
+wrapper the actual Chromium invocation acquires the **same nonblocking**
+`/run/lock/mad4b-native-lazy-browser-global.lock` used by original
+site-owned public CSS QA. A busy original certifier wins and the optional
+staging check logs `MAD4B_STAGING_QA_DEFERRED`, rather than measuring
+concurrently. The existing load/PSI guard and 95-second timeout remain
+unchanged. The source contract is tested by
+`test_legacy_staging_css_browser_lock.py`.
+
+This wrapper is an independently host-owned installation, not a reason
+to enable obsolete standalone systemd CSS-family timers. Promote only
+after validating current installed wrapper and a rollback backup; do
+not replace production template consumer, FastCGI or original WP-Cron.
