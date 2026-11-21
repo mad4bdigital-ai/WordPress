@@ -80,6 +80,74 @@ final class MAD4B_Supplier_Sheet_Reference_V1 {
       $tags[]='four_digit_year_not_in_this_cell';
   return array_values(array_unique($tags));
  }
+
+ /** Strict date-token evidence parser for original supplier note text.
+  * Date order and source cell stay visible; no signed tariff/eligibility. */
+ private static function explicitDateTokens(string $source):array {
+  $month='jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?';
+  $re='~(?<![\d])(?:\d{1,2}[./-]\d{1,2}[./-]20\d{2}|\d{1,2}(?:st|nd|rd|th)?[.\s-]+(?:'.$month.')[.,\s-]+20\d{2}|(?:'.$month.')[.\s-]+\d{1,2}(?:st|nd|rd|th)?[,]?\s+20\d{2})(?!\d)~iu';
+  preg_match_all($re,$source,$m,PREG_OFFSET_CAPTURE);
+  $dates=[];
+  foreach((array)($m[0]??[]) as $entry){
+   $raw=trim((string)$entry[0]);$offset=(int)$entry[1];
+   $day=0;$monthNumber=0;$year=0;
+   if(preg_match('~^(\d{1,2})[./-](\d{1,2})[./-](20\d{2})$~D',$raw,$a)){
+    $day=(int)$a[1];$monthNumber=(int)$a[2];$year=(int)$a[3];
+   }else{
+    $months=['jan'=>1,'feb'=>2,'mar'=>3,'apr'=>4,'may'=>5,'jun'=>6,
+     'jul'=>7,'aug'=>8,'sep'=>9,'oct'=>10,'nov'=>11,'dec'=>12];
+    if(preg_match('~^(\d{1,2})(?:st|nd|rd|th)?[.\s-]+([A-Za-z]+)[.,\s-]+(20\d{2})$~Di',$raw,$a)){
+     $day=(int)$a[1];$monthNumber=$months[strtolower(substr($a[2],0,3))]??0;$year=(int)$a[3];
+    }elseif(preg_match('~^([A-Za-z]+)[.\s-]+(\d{1,2})(?:st|nd|rd|th)?[,]?\s+(20\d{2})$~Di',$raw,$a)){
+     $day=(int)$a[2];$monthNumber=$months[strtolower(substr($a[1],0,3))]??0;$year=(int)$a[3];
+    }
+   }
+   $iso=checkdate($monthNumber,$day,$year)?sprintf('%04d-%02d-%02d',$year,$monthNumber,$day):null;
+   $dates[]=['raw'=>$raw,'iso'=>$iso,'offset'=>$offset];
+  }
+  return $dates;
+ }
+ private static function dateEvidence(string $source,array $flags):array {
+  $tokens=self::explicitDateTokens($source);
+  $dates=array_values(array_filter($tokens,static fn($x)=>$x['iso']!==null));
+  $errors=[];
+  if(count($tokens)!==count($dates))$errors[]='malformed_explicit_date';
+  $windows=[];
+  for($i=0;$i+1<count($dates);$i+=2){
+   $a=$dates[$i]['iso'];$b=$dates[$i+1]['iso'];
+   $begin=new DateTimeImmutable($a,new DateTimeZone('UTC'));
+   $end=new DateTimeImmutable($b,new DateTimeZone('UTC'));
+   $days=(int)$begin->diff($end)->days;
+   $backwards=$a>$b;
+   $tooLong=!$backwards&&$days>120;
+   if($backwards)$errors[]='end_precedes_start';
+   if($tooLong)$errors[]='unusually_long_exception_over_120_days';
+   $windows[]=['start'=>$a,'end'=>$b,'days_between'=>$days,
+     'requires_review'=>true,'plausible_date_order'=>!$backwards&&!$tooLong,
+     'end_inclusive_proven'=>false];
+  }
+  if(count($dates)%2===1){
+   $errors[]=count($dates)===1?'single_day_event_or_partial_window':'unpaired_date_token';
+  }
+  if(!$tokens&&in_array('date_or_season_mentioned',$flags,true))
+   $errors[]='no_complete_year_bearing_date_token';
+  // Yearless month-name tokens may coexist with a valid full-year pair
+  // in the SAME cell (e.g. Xmas and Easter); keep the latter unapproved
+  // until the second exception is disambiguated.
+  $month='jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?';
+  $withoutYear='~(?:\\b\\d{1,2}\\s+(?:'.$month.')\\b(?!\\s*[,.\\/ -]*20\\d{2})|\\b(?:'.$month.')\\s+\\d{1,2}\\b(?!\\s*[,.\\/ -]*20\\d{2}))~iu';
+  if(preg_match($withoutYear,$source))
+   $errors[]='month_name_date_missing_explicit_year';
+  // A complete-looking pair does not prove that all other dates in the
+  // note have a year. Never propagate contextual year automatically.
+  if(preg_match('~(?<!\d)\d{1,2}\s*[./-]\s*\d{1,2}(?!\d)(?!\s*[./-]\s*20\d{2})~u',$source)||
+    in_array('four_digit_year_not_in_this_cell',$flags,true)){
+   $errors[]='partial_date_could_need_year_review';
+  }
+  return ['kind'=>count($dates)===1?'event_or_partial':($windows?'window_candidate':'no_safe_window'),
+   'tokens'=>$tokens,'windows'=>$windows,'review_blockers'=>array_values(array_unique($errors)),
+   'auto_apply_allowed'=>false,'commercially_approved'=>false];
+ }
  private static function document(){
   if(!current_user_can('manage_options'))
    return new WP_Error('quote_sheet_access_denied');
@@ -121,6 +189,7 @@ final class MAD4B_Supplier_Sheet_Reference_V1 {
   $out=['contract'=>self::CONTRACT,'site'=>home_url('/'),
    'base_season'=>$calendar,'note_cell_count'=>0,
    'note_review_count'=>0,'note_flag_counts'=>[],
+   'date_window_candidate_count'=>0,'date_window_review_blocker_count'=>0,
    'tab'=>$tab,'period'=>$period,'source_url'=>$doc['source_url'],
    'matched_entities'=>0,'unmapped_entities'=>0,'tariff_values'=>0,
    'rows'=>[],'unmapped'=>[],'commercial_approved'=>false,
@@ -156,6 +225,10 @@ final class MAD4B_Supplier_Sheet_Reference_V1 {
    foreach($noteCells as &$note){
     $flags=self::noteReviewFlags((string)($note['text']??''));
     $note['review_flags']=$flags;
+    $note['date_evidence']=self::dateEvidence((string)($note['text']??''),$flags);
+    $out['date_window_candidate_count']+=count($note['date_evidence']['windows']);
+    if($note['date_evidence']['review_blockers'])
+      $out['date_window_review_blocker_count']++;
     // Adjacent supplier rows form ONE property-level instruction: preserve
     // contextual year-cell references, but never silently merge distinct dates.
     $note['related_explicit_year_cells']=($flags&&

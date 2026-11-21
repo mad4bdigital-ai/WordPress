@@ -426,7 +426,8 @@ function renderSheetQuoteCatalog(value){
  summary.textContent=value.matched_entities+' matched Properties · '+
   value.tariff_values+' quoted values for '+value.period+' · '+
   value.unmapped_entities+' unresolved property identities · '+
-  (value.note_review_count||0)+' flagged source-note cells for review. Not approved for booking.';
+  (value.note_review_count||0)+' flagged note cells · '+
+  (value.date_window_candidate_count||0)+' date window candidates (none approved).';
  host.append(summary);
  const calendar=document.createElement('p');calendar.className='mad4b-kinetic-muted';
  if(value.base_season?.status==='base_calendar_from_existing_term_meta'){
@@ -463,8 +464,14 @@ function renderSheetQuoteCatalog(value){
     const line=document.createElement('li');
     const flags=(note.review_flags||[]).map(x=>display(x)).join(', ');
     const context=(note.related_explicit_year_cells||[]).filter(c=>c!==note.cell);
+    const candidates=note.date_evidence?.windows||[];
+    const blockers=note.date_evidence?.review_blockers||[];
+    const dateText=candidates.map(w=>w.start+' → '+w.end+
+      (w.plausible_date_order?' [unapproved]':' [suspect · verify dates]')).join('; ');
     line.textContent=note.cell+(flags?' ['+flags+']':'')+
-     (context.length?' [Date context: '+context.join(', ')+' — verify applicability]':'')+
+     (dateText?' [Source date candidates: '+dateText+']':'')+
+     (blockers.length?' [Needs review: '+blockers.join(', ')+']':'')+
+     (context.length?' [Related year cells: '+context.join(', ')+' — verify applicability]':'')+
      ': '+note.text;
     noteList.append(line);
    }
