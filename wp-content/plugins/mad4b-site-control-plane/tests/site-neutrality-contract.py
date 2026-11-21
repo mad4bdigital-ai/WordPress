@@ -13,6 +13,7 @@ if not php:
     raise SystemExit("Site neutrality requires a PHP runtime")
 commands = [
     [sys.executable, str(ROOT / "tools/check_plugin_site_neutrality.py"), "--self-test"],
+    [sys.executable, str(PLUGIN / "tests/readiness-source-refactor-contract.py")],
     [sys.executable, str(ROOT / "tests/staging-public-http-contract.py")],
     [php, str(PLUGIN / "tests/elementor-site-neutral-runtime.php")],
     [php, str(PLUGIN / "tests/object-cache-diagnostics-runtime.php")],

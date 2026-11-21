@@ -3605,6 +3605,114 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
       "review_rationale": "New surface ability:mad4b/staging-write-grant-reconcile-staging is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
+    },
+    {
+      "id": "cron:hourly",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/readiness-source-refactor-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/frontend-impact-live-browser-acceptance.py"
+      ],
+      "owner_role": "Repository security / release source reviewer (CI-only; no Production sign-off)",
+      "review_rationale": "The read-only Frontend Impact discovery, bounded scheduling, public source evidence, and exact-language presentation policy are checked by committed regressions; no reservation, pricing or publication is authorized.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing repository security, platform, content and automation controls cover this non-authorizing source and its exact tests. Production remains separately gated."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-completeness.php",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/readiness-source-refactor-contract.py"
+      ],
+      "owner_role": "Repository security / release source reviewer (CI-only; no Production sign-off)",
+      "review_rationale": "Source-specific Content Readiness integration is reviewed against its bounded domain adapter, read-only admin presentation, deduplicated ledger, non-authorizing source evidence, and existing verified policy checks.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing repository security, platform, content and automation controls cover this non-authorizing source and its exact tests. Production remains separately gated."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-admin-view.php",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/readiness-source-refactor-contract.py"
+      ],
+      "owner_role": "Repository security / release source reviewer (CI-only; no Production sign-off)",
+      "review_rationale": "Source-specific Content Readiness integration is reviewed against its bounded domain adapter, read-only admin presentation, deduplicated ledger, non-authorizing source evidence, and existing verified policy checks.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing repository security, platform, content and automation controls cover this non-authorizing source and its exact tests. Production remains separately gated."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/readiness-source-refactor-contract.py"
+      ],
+      "owner_role": "Repository security / release source reviewer (CI-only; no Production sign-off)",
+      "review_rationale": "Source-specific Content Readiness integration is reviewed against its bounded domain adapter, read-only admin presentation, deduplicated ledger, non-authorizing source evidence, and existing verified policy checks.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing repository security, platform, content and automation controls cover this non-authorizing source and its exact tests. Production remains separately gated."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-impact-priority.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/readiness-source-refactor-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/frontend-impact-live-browser-acceptance.py"
+      ],
+      "owner_role": "Repository security / release source reviewer (CI-only; no Production sign-off)",
+      "review_rationale": "The read-only Frontend Impact discovery, bounded scheduling, public source evidence, and exact-language presentation policy are checked by committed regressions; no reservation, pricing or publication is authorized.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing repository security, platform, content and automation controls cover this non-authorizing source and its exact tests. Production remains separately gated."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-workflow-options.php",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/readiness-source-refactor-contract.py"
+      ],
+      "owner_role": "Repository security / release source reviewer (CI-only; no Production sign-off)",
+      "review_rationale": "Source-specific Content Readiness integration is reviewed against its bounded domain adapter, read-only admin presentation, deduplicated ledger, non-authorizing source evidence, and existing verified policy checks.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing repository security, platform, content and automation controls cover this non-authorizing source and its exact tests. Production remains separately gated."
     }
   ],
   "lifecycle": [],
@@ -11538,6 +11646,121 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The existing original Agent Registry exact grant, Staging-only provider review, site profile, mutation gate, owner approval, checkpoint, readback and audit safeguards govern this single diagnostic, without wildcard rights.",
       "review_rationale": "Exact source review allows a core grant to be considered only for mad4b/hub-queue-site-health-enqueue when the Ability is registered on the correct central Staging site. No grant is issued merely because this provider pair appears; broad hub-bulk-enqueue remains outside the reviewed policy and Production is not enabled."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-completeness.php",
+      "source_blob_sha": "88415df4d689347dd6f0193bd87f9ec2c21200eb",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/readiness-source-refactor-contract.py"
+      ],
+      "owner_role": "Repository security / release source reviewer (CI-only; no Production sign-off)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing audited source, release, access and content safety controls govern the exact read-only change; it does not enable production writes.",
+      "review_rationale": "Review pins the exact changed Git blob, preserves the original security and source boundary, and binds the read-only Frontend Impact and Readiness refactor to repository tests and real staging browser evidence without authorizing Production."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-admin-view.php",
+      "source_blob_sha": "3ebd6e76d25b7a2f0955f55a2e47e5bbe19708f8",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/readiness-source-refactor-contract.py"
+      ],
+      "owner_role": "Repository security / release source reviewer (CI-only; no Production sign-off)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing audited source, release, access and content safety controls govern the exact read-only change; it does not enable production writes.",
+      "review_rationale": "Review pins the exact changed Git blob, preserves the original security and source boundary, and binds the read-only Frontend Impact and Readiness refactor to repository tests and real staging browser evidence without authorizing Production."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_blob_sha": "4eacab2fc3e132677c44c6423bd2cf56922f8ebc",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/readiness-source-refactor-contract.py"
+      ],
+      "owner_role": "Repository security / release source reviewer (CI-only; no Production sign-off)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing audited source, release, access and content safety controls govern the exact read-only change; it does not enable production writes.",
+      "review_rationale": "Review pins the exact changed Git blob, preserves the original security and source boundary, and binds the read-only Frontend Impact and Readiness refactor to repository tests and real staging browser evidence without authorizing Production."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-impact-priority.php",
+      "source_blob_sha": "dbc44542e49854e2004aed61ae1df560b4fd8d80",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/readiness-source-refactor-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/frontend-impact-live-browser-acceptance.py"
+      ],
+      "owner_role": "Repository security / release source reviewer (CI-only; no Production sign-off)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing audited source, release, access and content safety controls govern the exact read-only change; it does not enable production writes.",
+      "review_rationale": "Review pins the exact changed Git blob, preserves the original security and source boundary, and binds the read-only Frontend Impact and Readiness refactor to repository tests and real staging browser evidence without authorizing Production."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-workflow-options.php",
+      "source_blob_sha": "43c8533777bae4c303b6c7136c921701456809ce",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/readiness-source-refactor-contract.py"
+      ],
+      "owner_role": "Repository security / release source reviewer (CI-only; no Production sign-off)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing audited source, release, access and content safety controls govern the exact read-only change; it does not enable production writes.",
+      "review_rationale": "Review pins the exact changed Git blob, preserves the original security and source boundary, and binds the read-only Frontend Impact and Readiness refactor to repository tests and real staging browser evidence without authorizing Production."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "eac7e681ff39c6c4639f616f40a4d35a1a5c9e25",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/readiness-source-refactor-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/frontend-impact-live-browser-acceptance.py"
+      ],
+      "owner_role": "Repository security / release source reviewer (CI-only; no Production sign-off)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing audited source, release, access and content safety controls govern the exact read-only change; it does not enable production writes.",
+      "review_rationale": "Review pins the exact changed Git blob, preserves the original security and source boundary, and binds the read-only Frontend Impact and Readiness refactor to repository tests and real staging browser evidence without authorizing Production."
     }
   ],
   "code_change_rules": {

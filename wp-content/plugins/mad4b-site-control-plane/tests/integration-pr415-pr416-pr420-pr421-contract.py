@@ -156,7 +156,23 @@ def reviewed_source_supersedes_snapshot(path):
         source_blob = hashlib.sha1(b"blob " + str(len(source)).encode("ascii") + b"\0" + source).hexdigest()
         # Reviewed successor adds the three Admin Route Registry smoke pages.
         # Pin exact current Git blob; keep historic Feature 007 snapshots immutable.
-        return (blob_sha == "0c0c2052254a5c893a79d45aa9d985b57d8361fd"
+        # Preserve the historic reviewed G6 smoke SHA. Admit the single
+        # exact new successor only when all four native route render cases
+        # are present; no wildcard fixture trust or archive fingerprint rewrite.
+        extra_route_cases = (
+            b"'mad4b-content-readiness-alerts' => array( 'MAD4B_SCP_Content_Readiness_Alerts', 'render'",
+            b"'mad4b-content-readiness-workflow' => array( 'MAD4B_SCP_Readiness_Workflow_Options', 'render'",
+            b"'mad4b-content-completeness' => array( 'MAD4B_SCP_Content_Completeness', 'render'",
+            b"'mad4b-frontend-impact-priority' => array( 'MAD4B_SCP_Frontend_Impact_Priority', 'admin'",
+        )
+        new_reviewed_sha = "1290eaa92a9078bf77f647f432d9ba1805c4e35e"
+        fixture_reviewed = (
+            blob_sha == "0c0c2052254a5c893a79d45aa9d985b57d8361fd"
+            or (blob_sha == new_reviewed_sha and all(
+                marker in data for marker in extra_route_cases
+            ))
+        )
+        return (fixture_reviewed
                 and (direct_profile, source_blob) in reviewed_exact_blobs
                 and b"'mad4b-direct-access-profile' => array( 'MAD4B_SCP_Direct_Profile', 'render_page'" in data)
     return (path, blob_sha) in reviewed_exact_blobs

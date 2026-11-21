@@ -1,0 +1,16 @@
+diff --git a/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php b/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php
+--- a/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php
++++ b/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-readiness-alerts.php
+@@
+         $ap=max(0,min(100,(int)($a['priority']??0)));
+         $bp=max(0,min(100,(int)($b['priority']??0)));
++        // Rank only within the existing severity/taxonomy class. Preserve
++        // provider-owned base priority, issue state and the source evidence.
++        // A stale/unknown impact score returns null and changes nothing.
++        $impactA=apply_filters('mad4b/content_readiness/impact_score',null,$a);
++        $impactB=apply_filters('mad4b/content_readiness/impact_score',null,$b);
++        if(is_int($impactA)&&is_int($impactB)&&$impactA!==$impactB)
++            return $impactB<=>$impactA;
++        if(is_int($impactA)&&!is_int($impactB))return -1;
++        if(!is_int($impactA)&&is_int($impactB))return 1;
+         if($ap!==$bp)return $bp<=>$ap;
