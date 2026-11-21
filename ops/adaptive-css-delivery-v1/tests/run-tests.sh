@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+REPO=$(cd "$ROOT/../.." && pwd)
+PYTHONDONTWRITEBYTECODE=1 python3 "$ROOT/tests/test_css_source_release_pin.py" "$REPO"
+PYTHONDONTWRITEBYTECODE=1 python3 "$ROOT/tests/test_cache_cohort.py"
 PYTHONDONTWRITEBYTECODE=1 python3 "$ROOT/tests/test_adaptive_policy.py"
 node "$ROOT/tests/test_rum_js.js" "$ROOT/assets/mad4b-css-rum-client.js"
 node --check "$ROOT/assets/web-vitals-6.2.3.iife.js"
