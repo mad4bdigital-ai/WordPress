@@ -167,7 +167,13 @@ def available_candidates(site,data,history,now):
     rows=[]
     ordering={'families':0,'public':1,'first_fold':2,'visual':3,'audit':4,'retention':5}
     for job,rec in data.get('pending',{}).items():
-        if job not in TASKS or job not in PROFILE['tasks']:
+        if job not in TASKS or job not in PROFILE['tasks'] or not isinstance(rec,dict):
+            continue
+        issued_at=rec.get('requested_at')
+        # WordPress 429 is the only ticket issuer. Unknown, malformed or
+        # future timestamps must never crash worker scheduling, especially
+        # while an overdue health task is waiting.
+        if type(issued_at) is not int or issued_at<0 or issued_at>now+300:
             continue
         jid=rec.get('id')
         if not isinstance(jid,int) or isinstance(jid,bool) or jid<=0:continue
@@ -184,7 +190,6 @@ def available_candidates(site,data,history,now):
             and prior.get('worker_release')!=str(SOURCE)):
             next_retry=0
         if now<next_retry:continue
-        issued_at=rec.get('requested_at')
         # An overdue health ticket is not starved behind endless new
         # source-change QA. This alters priority only, never bypasses the
         # CPU/WP-CLI guard, existing retry cooldown, or WordPress ACK.
@@ -193,7 +198,7 @@ def available_candidates(site,data,history,now):
         priority=(-1 if audit_due else
                   0 if (rec.get('reason') in ('source_changed','home_changed')
                         or (job=='first_fold' and site=='source')) else 1)
-        rows.append((priority,int(rec.get('requested_at') or 0),ordering[job],job,jid,key))
+        rows.append((priority,issued_at,ordering[job],job,jid,key))
     rows.sort()
     return rows
 def invoke(site,job,jid,key,history,timeout=None):
