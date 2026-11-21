@@ -9,7 +9,7 @@ if (!class_exists('MAD4B_Adaptive_CSS_RUM_V1',false)) {
 final class MAD4B_Adaptive_CSS_RUM_V1 {
     const CONTRACT='mad4b.adaptive-css.rum.v1';
     const OPTION='mad4b_css_rum_v1';
-    const CRON='mad4b_css_rum_retention_daily_v1';
+    const CRON='mad4b_css_rum_health_hourly_v1';
     const ASSETS='/mad4b-adaptive-css-v1/assets/';
     private const LIMITS=[
       'lcp'=>[500,1000,1500,2000,2500,3000,4000,5000,6000,8000,10000,15000,20000,30000],
@@ -219,12 +219,49 @@ final class MAD4B_Adaptive_CSS_RUM_V1 {
         register_rest_route('mad4b-css/v1','/rum',[
           'methods'=>'POST','callback'=>[__CLASS__,'record'],
           'permission_callback'=>'__return_true']);
+        register_rest_route('mad4b-css/v1','/status',[
+          'methods'=>'GET','callback'=>[__CLASS__,'admin_status'],
+          'permission_callback'=>static function() {
+              return current_user_can('manage_options');
+          }]);
+    }
+    public static function admin_status() {
+        nocache_headers();
+        return new \WP_REST_Response(['site'=>self::site(),
+          'policy'=>self::policy(),'health'=>get_option('mad4b_css_rum_health_v1',[])],200);
     }
     public static function retention():void {
         global $wpdb;
-        if (self::policy()['mode']==='off')return;
+        if (self::policy()['mode']!=='observe')return;
         $table=self::table();
         $wpdb->query("DELETE FROM $table WHERE day_utc<DATE_SUB(UTC_DATE(),INTERVAL 30 DAY)");
+        // Operational heartbeat only: site-wide histograms are not a
+        // substitute for route+market+device controlled Canary comparisons.
+        $sql="SELECT arm,metric,bucket,SUM(samples) AS total FROM $table
+              WHERE day_utc>=DATE_SUB(UTC_DATE(),INTERVAL 1 DAY)
+              GROUP BY arm,metric,bucket";
+        $observed=$wpdb->get_results($sql,ARRAY_A);
+        if (!is_array($observed))return;
+        $totals=[];
+        foreach ($observed as $row) {
+            $arm=(string)($row['arm']??'');
+            $metric=(string)($row['metric']??'');
+            $bucket=(int)($row['bucket']??-1);
+            $count=(int)($row['total']??0);
+            if (!in_array($arm,['native','optimized'],true)
+                || !in_array($metric,['lcp','inp','cls','css'],true)
+                || $bucket<0 || $bucket>32 || $count<0)continue;
+            $totals[$arm][$metric][$bucket]=($totals[$arm][$metric][$bucket]??0)+$count;
+        }
+        $fail=(int)($totals['optimized']['css'][0]??0);
+        $pass=(int)($totals['optimized']['css'][1]??0);
+        $state=['contract'=>'mad4b.adaptive-css.health.v1','site'=>self::site(),
+          'observed_utc'=>gmdate('Y-m-d\TH:i:s\Z'),
+          'health_status'=>($fail>=5 && $fail>($pass+$fail)*0.05)
+                ?'css_restore_regression_observed':'shadow_monitoring',
+          'css_restore_failed'=>$fail,'css_restore_passed'=>$pass,
+          'totals'=>$totals,'public_rollout_percent_changed'=>false];
+        update_option('mad4b_css_rum_health_v1',$state,false);
     }
     public static function boot():void {
         if (!self::site())return;
@@ -232,7 +269,7 @@ final class MAD4B_Adaptive_CSS_RUM_V1 {
         add_action('wp_footer',[__CLASS__,'footer'],5);
         add_action(self::CRON,[__CLASS__,'retention']);
         if (self::policy()['mode']==='observe'&&!wp_next_scheduled(self::CRON))
-            wp_schedule_event(time()+1800,'daily',self::CRON);
+            wp_schedule_event(time()+600,'hourly',self::CRON);
     }
 }
 add_action('init',['MAD4B_Adaptive_CSS_RUM_V1','boot'],40);

@@ -11,7 +11,7 @@ Source: PR #989; site-owned, company-scoped CSS architecture.
 - Histograms for LCP, INP, CLS, and restoration of the complete CSS.
 - No changes to existing 421/422 certificates, HTML, FastCGI or visitor CSS.
 - Pure source-aware decision engine: no real unqualified CSS promotion merely from user telemetry.
-- Per-company WordPress Cron retention, no additional systemd CSS executor.
+- Per-company WordPress Cron hourly health rollup with daily-window CSS restoration monitoring and 30-day retention; read-only admin REST status. No additional systemd CSS executor.
 
 ## Modes
 - off (default): no RUM client, beacon or data collection.
@@ -44,6 +44,6 @@ Source: PR #989; site-owned, company-scoped CSS architecture.
 - python3 tests/test_adaptive_policy.py
 - node tests/test_rum_js.js assets/mad4b-css-rum-client.js
 - php -l 438-mad4b-adaptive-css-rum-v1.php
-- cat tests/php-pre.php 438-mad4b-adaptive-css-rum-v1.php tests/php-post.php | php
+- cat tests/php-pre.php 438-mad4b-adaptive-css-rum-v1.php tests/php-post.php tests/php-rest.php | php
 
 Vendor web-vitals IIFE is from Google's Apache-2.0 project, pinned to version 6.2.3 and SHA256 1e5e9b9af6b8d71cfef508e5a869c53b4cf2bbccad8c9b5ac664c34e93f6151a.
