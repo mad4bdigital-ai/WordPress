@@ -193,6 +193,12 @@ def sign_exact_intent(offer,key,actor_digest,*,now,source_commit=None):
     return result
 
 def main():
+    # This signing ceremony belongs on the Owner's independently controlled
+    # workstation, never in the Root context of the MAD4B host.
+    need(not (hasattr(os,"geteuid") and os.geteuid()==0),
+         "OWNER_DEVICE_REQUIRED_DO_NOT_RUN_SIGNER_AS_ROOT")
+    need(not Path("/opt/mad4b-company-transport").exists(),
+         "OWNER_DEVICE_REQUIRED_DO_NOT_RUN_ON_MAD4B_VPS")
     p=argparse.ArgumentParser(description=__doc__)
     sub=p.add_subparsers(dest="command",required=True)
     init=sub.add_parser("init",help="Generate device-local encrypted key, public proof only")
@@ -209,7 +215,7 @@ def main():
         confirm=getpass("Confirm local passphrase: ")
         need(password==confirm,"OWNER_KEY_PASSWORDS_DIFFER")
         result,fingerprint=create_device_key(
-            args.device_dir.resolve(),password.encode())
+            args.device_dir.absolute(),password.encode())
         print(json.dumps({"state":"LOCAL_OWNER_KEY_GENERATED_NOT_ENROLLED",
           "public_proof":str(result),"public_fingerprint_sha256":fingerprint,
           "private_key_stored_encrypted_locally":True,"private_key_transmitted":False,"write_authorized":False}))

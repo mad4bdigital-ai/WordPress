@@ -75,6 +75,7 @@ class ExactOwnerContractTests(unittest.TestCase):
     self.assertNotIn("-----BEGIN PRIVATE KEY-----",s)
     self.assertNotIn("-----BEGIN ENCRYPTED PRIVATE KEY-----",s)
     self.assertIn("getpass(",s)
+    self.assertIn("OWNER_DEVICE_REQUIRED_DO_NOT_RUN_SIGNER_AS_ROOT",s)
     self.assertIn("BestAvailableEncryption(password)",s)
     self.assertIn('write_authorized":False',s)
  def test_valid_synthetic_test_offer_signs_original305_canonical_bytes(self):
