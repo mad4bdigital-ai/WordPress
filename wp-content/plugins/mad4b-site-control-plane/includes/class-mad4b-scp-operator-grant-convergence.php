@@ -38,6 +38,7 @@ final class MAD4B_SCP_Operator_Grant_Convergence {
         $properties = array(
             'action' => array( 'type' => 'string', 'enum' => array( 'plan', 'apply' ) ),
             'expected_plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+            'expected_policy_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
             'expected_source_commit_sha' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{40}$' ),
             'expected_site_uuid' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36 ),
             'expected_environment' => array( 'type' => 'string', 'enum' => array( 'local', 'development', 'staging', 'production' ) ),
@@ -198,6 +199,8 @@ final class MAD4B_SCP_Operator_Grant_Convergence {
             $response = array(
                 'contract' => self::CONTRACT,
                 'developer_policy_v2' => $policy_v2,
+                // Separate from the unchanged V1 Developer plan SHA.
+                'policy_sha256' => $policy_v2['governance_policy_sha256'],
                 'state' => 'review_exact_five_grants',
                 'target_environment' => sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ),
                 'server_id' => 'mad4b-developer',
@@ -218,6 +221,26 @@ final class MAD4B_SCP_Operator_Grant_Convergence {
                 return new WP_Error( 'mad4b_operator_grants_confirmation_or_plan_missing',
                     'Exact current plan SHA and operator grant confirmation required.' );
             }
+            // The policy reviewed at PLAN is independently bound at APPLY.
+            // Re-evaluating policy without comparing its digest would allow
+            // a changed Production permission to silently replace the intent.
+            $expected_policy = $input['expected_policy_sha256'] ?? '';
+            if ( ! is_string( $expected_policy )
+                || ! preg_match( '/^[a-f0-9]{64}$/D', $expected_policy )
+                || ! hash_equals( $policy_v2['governance_policy_sha256'], $expected_policy ) )
+                return new WP_Error( 'mad4b_operator_grants_policy_changed',
+                    'Governance policy changed or was not confirmed; review a new exact plan.' );
+            // Recheck immediately before the existing canonical V1 apply;
+            // this read never creates an approval, Grant or release.
+            $current_policy = MAD4B_SCP_Registered_Write_Admission::preflight( self::ABILITY );
+            if ( is_wp_error( $current_policy ) ) return $current_policy;
+            $current_view = MAD4B_SCP_Developer_Authority_Policy_V2::project(
+                $plan, $current_policy, self::ABILITY );
+            if ( is_wp_error( $current_view ) ) return $current_view;
+            if ( ! hash_equals( (string) $policy_v2['view_sha256'],
+                    (string) ( $current_view['view_sha256'] ?? '' ) ) )
+                return new WP_Error( 'mad4b_operator_grants_policy_recheck_changed',
+                    'Registered policy or enrolled Site Profile changed before canonical apply.' );
             $canonical = array(
                 'expected_plan_sha256' => $input['expected_plan_sha256'],
                 'expected_source_commit_sha' => $input['expected_source_commit_sha'] ?? '',

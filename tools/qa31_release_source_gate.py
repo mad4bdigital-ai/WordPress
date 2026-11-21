@@ -594,6 +594,104 @@ def reviewed_rc129_company_staff_ceiling_successor(repo:Path,path:str,contents:b
         return None
 
 
+def reviewed_pr990_wayfa_selective_operator_selfupdate_source(repo:Path,path:str,contents:bytes):
+    """Two exact source-only differences; never an Operator/Release authorization."""
+    prefix='wp-content/plugins/mad4b-site-control-plane/'
+    evidence=repo/'governance/release-parity/qa31-pr990-wayfa-selective-operator-selfupdate-source-20261121.json'
+    parent='784ae71e5a088ee299fe4db20912f0d8fe21932e'
+    previous='governance/release-parity/qa31-pr986-wayfa-host-pinned-uuid-source-20261120.json'
+    control_ids=['GOVERNANCE-02', 'SECURITY-01', 'EXECUTION-01', 'PLATFORM-01', 'UPDATES-01', 'CROSSPLUGIN-01', 'RECOVERY-01', 'ROLLOUT-01']
+    required={
+        'includes/class-mad4b-scp-operator-grant-convergence.php':
+            'tests/remote-execution/operator-grants-policy-binding-hermetic.php',
+        'includes/class-mad4b-scp-self-update.php':
+            'wp-content/plugins/mad4b-site-control-plane/tests/self-update-native-candidate-trust-hermetic.php',
+    }
+    if path not in required or not isinstance(contents,bytes):return None
+    try:
+        m=json.loads(evidence.read_text(encoding='utf-8'))
+        controls={x['id'] for x in json.loads(
+            (repo/'governance/production-readiness/controls.json').read_text()
+            ).get('controls',[]) if isinstance(x,dict)}
+        if (m.get('contract')!='mad4b.qa31-pr990-wayfa-selective-operator-selfupdate-source.v1'
+            or m.get('base_head_sha')!=parent or m.get('prior_review_path')!=previous
+            or m.get('prior_review_sha256')!='02b3103d662ad4e0d037544c6c9ea312fc9b5f4d21b68fb1dc240132f576d386'
+            or hashlib.sha256((repo/previous).read_bytes()).hexdigest()!=m.get('prior_review_sha256')
+            or not isinstance(m.get('source_paths'),dict)
+            or set(m['source_paths'])!=set(required)
+            or m.get('related_fixture')!='tests/remote-execution/operator-grants-convergence-smoke.php'
+            or m.get('adversarial_regression')!='tests/qa31_wayfa_selective_operator_selfupdate_source_contract.py'
+            or m.get('controls')!=control_ids or not set(control_ids)<=controls
+            or m.get('scope')!='selective manual source reconciliation; no version approval or deployment'
+            or m.get('source_only') is not True or m.get('reviewed_for_ci_only') is not True
+            or m.get('live_host_evidence_required') is not True
+            or m.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or len(m.get('review_rationale',''))<630
+            or any(m.get(key) is not False for key in (
+                'release_approved','production_authorized','host_grant_issued',
+                'operator_grants_written','update_executed','mail_sent',
+                'legacy_v1_signed_plan_modified','untrusted_candidate_promoted',
+                'changes_live_wordpress'))
+            or not (repo/m['adversarial_regression']).is_file()
+            or not (repo/m['related_fixture']).is_file()
+            or subprocess.run(['git','merge-base','--is-ancestor',parent,'HEAD'],cwd=repo,
+                stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=8).returncode!=0):
+            return None
+        for key,reg in required.items():
+            row=m['source_paths'][key]
+            if (not isinstance(row,dict) or row.get('regression')!=reg
+                or not (repo/reg).is_file() or (repo/reg).is_symlink()):
+                return None
+            old=subprocess.check_output(
+                ['git','show',parent+':'+prefix+key],cwd=repo,
+                stderr=subprocess.DEVNULL,timeout=8)
+            current=(repo/prefix/key).read_bytes()
+            if (row.get('original_sha256')!=hashlib.sha256(old).hexdigest()
+                or row.get('original_blob_sha')!=hashlib.sha1(
+                    b'blob '+str(len(old)).encode()+b'\0'+old).hexdigest()
+                or row.get('reviewed_sha256')!=hashlib.sha256(current).hexdigest()
+                or row.get('reviewed_blob_sha')!=hashlib.sha1(
+                    b'blob '+str(len(current)).encode()+b'\0'+current).hexdigest()):
+                return None
+        row=m['source_paths'][path]
+        if (hashlib.sha256(contents).hexdigest()!=row['reviewed_sha256']
+            or hashlib.sha1(b'blob '+str(len(contents)).encode()+b'\0'+contents).hexdigest()!=row['reviewed_blob_sha']):
+            return None
+        code=contents.decode('utf-8')
+        markers=(
+            (
+                "'expected_policy_sha256' => array(",
+                "'policy_sha256' => $policy_v2['governance_policy_sha256']",
+                "'mad4b_operator_grants_policy_changed'",
+                "'mad4b_operator_grants_policy_recheck_changed'",
+                "MAD4B_SCP_Registered_Write_Admission::preflight( self::ABILITY )",
+                "MAD4B_SCP_Developer_Authority::apply( $canonical )",
+            ) if path.startswith('includes/class-mad4b-scp-operator-grant') else (
+                "'wordpress_native_candidate_upload' === $plan['channel']",
+                'self::fetch_manifest( true )',
+                'self::trusted_master_release_candidate(',
+                'if ( $trusted_fields ) $apply_target = array_merge( $apply_target, $trusted_fields );',
+                'self::apply_verified_archive( $tmp, $apply_target',
+            )
+        )
+        if not all(marker in code for marker in markers):return None
+        if path.startswith('includes/class-mad4b-scp-operator-grant'):
+            new=code[code.index('// The policy reviewed at PLAN'):
+                     code.index('$canonical = array(',code.index('// The policy reviewed at PLAN'))]
+            if any(bad in new for bad in ('update_option(', 'wp_mail(', 'wp_schedule_event(')):
+                return None
+        else:
+            new=code[code.index('// Selective Wayfatours parity:'):
+                     code.index('self::apply_verified_archive( $tmp, $apply_target',
+                         code.index('// Selective Wayfatours parity:'))]
+            if any(bad in new for bad in ('update_option(', 'wp_mail(', 'wp_schedule_event(')):
+                return None
+        return row['regression']
+    except (OSError,ValueError,KeyError,TypeError,UnicodeError,
+            subprocess.CalledProcessError,subprocess.TimeoutExpired):
+        return None
+
+
 def reviewed_pr986_wayfa_host_pinned_uuid_source(repo:Path,path:str,contents:bytes):
     """SHA-pinned Host UUID first-enrollment compatibility, CI-only."""
     name='includes/class-mad4b-scp-site-profile.php'
@@ -1329,6 +1427,8 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     requested=reviewed_rc129_dormant_ollama_bootstrap_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_rc129_wayfa_source_followup_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_pr990_wayfa_selective_operator_selfupdate_source(repo,path,contents)
     if requested is None:
         requested=reviewed_pr986_wayfa_host_pinned_uuid_source(repo,path,contents)
     if requested is None:

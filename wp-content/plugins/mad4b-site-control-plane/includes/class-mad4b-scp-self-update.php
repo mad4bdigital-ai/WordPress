@@ -1073,6 +1073,20 @@ final class MAD4B_SCP_Self_Update {
 			$plan['target'],
 			isset( $plan['release_channel'] ) && is_array( $plan['release_channel'] ) ? $plan['release_channel'] : array()
 		);
+        // Selective Wayfatours parity: a WordPress-native candidate matching
+        // the *already verified* fixed release manifest may carry that
+        // exact trust evidence into Post_Update_Continuation. This does not
+        // certify, approve, publish or install a new release on its own.
+        // If no root-trusted matching manifest exists, preserve the original
+        // unpromoted Staging candidate target with NO fabricated release fields.
+        if ( $staging_candidate && 'wordpress_native_candidate_upload' === $plan['channel'] ) {
+            $trusted_manifest = self::fetch_manifest( true );
+            if ( ! is_wp_error( $trusted_manifest ) && is_array( $trusted_manifest ) ) {
+                $trusted_fields = self::trusted_master_release_candidate(
+                    $plan['target'], $trusted_manifest );
+                if ( $trusted_fields ) $apply_target = array_merge( $apply_target, $trusted_fields );
+            }
+        }
 		$result = self::apply_verified_archive( $tmp, $apply_target, $staging_candidate ? 'governed_staging_candidate_upload' : 'governed_file_upload', $expected, $verified );
 		@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		return $result;

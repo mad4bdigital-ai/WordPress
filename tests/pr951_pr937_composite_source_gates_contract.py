@@ -39,6 +39,15 @@ expected = {
     ],
   ),
 }
+# Preserve the historical PR951/PR937 review against its reviewed Git blob.
+# Newer SHA-pinned successor changes are checked by independent QA31 records.
+historical_head='784ae71e5a088ee299fe4db20912f0d8fe21932e'
+def historical_bytes(path):
+    if path.endswith('includes/class-mad4b-scp-self-update.php'):
+        return subprocess.check_output(
+            ['git','show',historical_head+':'+path],cwd=repo)
+    return (repo/path).read_bytes()
+
 def check(info, override=None):
     if (info.get('contract') != 'mad4b.qa31-pr951-pr937-composite-source-gates.v1'
         or info.get('pr951_exact_head_sha') != pr951
@@ -64,7 +73,7 @@ def check(info, override=None):
     for row in entries:
         path = row['path']
         blob,sha,parent951,parent937,controls,tests=expected[path]
-        data = override.get(path,(repo/path).read_bytes()) if override else (repo/path).read_bytes()
+        data = override.get(path,historical_bytes(path)) if override else historical_bytes(path)
         if (gitblob(data)!=blob or digest(data)!=sha
             or row.get('source_blob_sha')!=blob or row.get('source_sha256')!=sha
             or row.get('pr951_parent_blob_sha')!=parent951
@@ -127,6 +136,6 @@ for label,field,value in (
     corrupted[field]=value
     assert not check(corrupted), label
 for path in expected:
-    tampered = (repo/path).read_bytes()+b'\n# UNREVIEWED\n'
+    tampered = historical_bytes(path)+b'\n# UNREVIEWED\n'
     assert not check(review,{path:tampered}),path
 print('PR951_PR937_COMPOSITE_SOURCE_QA31: PASS (two exact SHA policies, denials, no Production release)')
