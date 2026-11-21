@@ -567,6 +567,9 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
                 'nonce'=>wp_create_nonce(self::AJAX),'packages'=>self::packages(),
                 'tiers'=>self::tierIds(),
                 'property_pricing_url'=>admin_url('admin.php?page=mad4b-stay-price-layers'),
+                'overview_url'=>admin_url('admin.php?page=mad4b-pricing-workspace'),
+                'pricing_controls_url'=>admin_url('admin.php?page=etg-dynamic-pricing-controls'),
+                'policy_bindings_url'=>admin_url('admin.php?page=mad4b-policy-bindings'),
             ],JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT).';',
             'before');
     }
@@ -584,6 +587,13 @@ add_action('wp_ajax_'.MAD4B_Package_Pricing_Lab_Readiness_V1::AJAX,
     [MAD4B_Package_Pricing_Lab_Readiness_V1::class,'ajax']);
 add_action('admin_enqueue_scripts',
     [MAD4B_Package_Pricing_Lab_Readiness_V1::class,'assets'],87);
-add_action('admin_notices',
-    [MAD4B_Package_Pricing_Lab_Readiness_V1::class,'container'],100);
+// Mount inside the original Pricing Lab page instead of WordPress notices.
+add_action('mad4b/pricing-lab/before-root',
+    [MAD4B_Package_Pricing_Lab_Readiness_V1::class,'container'],10);
+// Compatibility only if a future older Pricing Lab loses the native slot.
+add_action('admin_notices',static function():void {
+    if(!defined('MAD4B_PRICING_LAB_NATIVE_SLOT_READY'))
+        MAD4B_Package_Pricing_Lab_Readiness_V1::container();
+},100);
 }
+
