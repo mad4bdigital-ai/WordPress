@@ -169,6 +169,8 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
         if(is_wp_error($actual)||!is_array($actual)||!$actual)
             return ['eligible'=>false,'reason'=>'property_destination_missing'];
         $actual=array_map('intval',$actual);
+        if(!array_intersect($actual,array_map('intval',$scope['accepted_term_ids'])))
+            return ['eligible'=>false,'reason'=>'property_destination_mismatch'];
         if(($scope['destination']??'')==='aswan'){
             // A governorate-wide tag does NOT make an Abu Simbel hotel
             // an eligible Aswan-city overnight. Enforce the specific
@@ -182,8 +184,6 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
                 !in_array((int)$city->term_id,$actual,true))
                 return ['eligible'=>false,'reason'=>'aswan_city_location_unverified'];
         }
-        if(!array_intersect($actual,array_map('intval',$scope['accepted_term_ids'])))
-            return ['eligible'=>false,'reason'=>'property_destination_mismatch'];
         $tiers=wp_get_object_terms($property,'package_levels',['fields'=>'ids']);
         if(is_wp_error($tiers)||!is_array($tiers)||
             !in_array($tierId,array_map('intval',$tiers),true))
