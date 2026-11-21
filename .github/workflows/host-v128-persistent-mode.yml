@@ -9,6 +9,7 @@ on:
       - 'tests/host-v128/**'
       - 'tests/host-v135/**'
       - 'tests/host-v136/**'
+      - 'tests/host-v137/**'
       - 'tests/release-qualification/**'
       - 'tools/mad4b_release_qualification_mode.py'
       - 'tools/mad4b_host_runner.py'
@@ -63,7 +64,7 @@ jobs:
       - name: Install Ed25519 verification library
         run: python -m pip install 'cryptography>=41,<48'
       - name: Compile source
-        run: python -m compileall -q ops/host-authority-v128 tests/host-v128 tests/host-v135 tests/host-v136
+        run: python -m compileall -q ops/host-authority-v128 tests/host-v128 tests/host-v135 tests/host-v136 tests/host-v137
       - name: Verify strict cross-company host modes and Original318 PHP Ed25519 parity
         env:
           MAD4B_REQUIRE_PHP: '1'
@@ -80,6 +81,12 @@ jobs:
           MAD4B_REQUIRE_PHP: '1'
           MAD4B_REQUIRE_NODE: '1'
         run: python -B -m unittest discover -s tests/host-v136 -p 'test_*.py' -v
+      - name: Verify WordPress per-user locale and localized REST errors
+        env:
+          MAD4B_TEST_PHP: php
+          MAD4B_REQUIRE_PHP: '1'
+          MAD4B_REQUIRE_NODE: '1'
+        run: python -B -m unittest discover -s tests/host-v137 -p 'test_*.py' -v
       - name: Verify existing bounded Host Runner write limits and path safety
         run: |
           python -B wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py

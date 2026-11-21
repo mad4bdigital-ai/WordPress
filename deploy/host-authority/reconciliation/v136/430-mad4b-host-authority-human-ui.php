@@ -70,6 +70,8 @@ final class MAD4B_Host_V3_Human_UI {
             'restBase' => rest_url('mad4b-host-v3/v1'),
             'restNonce' => wp_create_nonce('wp_rest'),
             'latestReview' => self::latest_owner_review(),
+            // The signed-in administrator's WP Profile language, not WPML or site content.
+            'userLocale' => get_user_locale(),
         );
         $json = wp_json_encode($bootstrap,
             JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
@@ -175,6 +177,11 @@ final class MAD4B_Host_V3_Human_UI {
 (function() {
 "use strict";
 const settings = <?php echo $json; ?>;
+const languageCode = String(settings.userLocale || "en_US").split(/[-_]/)[0].toLowerCase();
+const language = ["ar","en","fr","de","es","it"].includes(languageCode) ? languageCode : "en";
+const intlLocale = languageCode === language ? String(settings.userLocale).replace("_","-") : "en-US";
+const strings = {"ar":{"eyebrow":"Tours.dev · بيئة الاختبار","panelTitle":"اعتماد صلاحية الكتابة الدائمة","intro":"صلاحية الكتابة غير مفعّلة حاليًا. النظام ينتظر استكمال سجل الاعتمادات السابقة ثم توقيع المالك من الجهة المستقلة.","progress":"إحنا وصلنا لفين؟","identityTitle":"هوية الموقع","identityDesc":"تم التحقق من موقع Tours.dev ومفاتيح التحقق.","reviewTitle":"طلب مراجعة المالك","reviewInitial":"هنعرض حالة طلبك هنا.","historyTitle":"مراجعة سجل الموافقات السابقة","historyDesc":"المطلوب من النظام: إثبات أحدث اعتماد أصلي من الجهة المستقلة.","signatureTitle":"التوقيع وتفعيل الكتابة","signatureDesc":"في انتظار جهة توقيع المالك، ثم يتم إصدار صلاحية كتابة محكومة.","actionHeading":"إيه المطلوب منك دلوقتي؟","copyId":"نسخ رقم الطلب","help":"لن تحتاج إلى كتابة JSON أو استخدام SSH. تسجيل الطلب لا يعني صدور توقيع أو تفعيل الكتابة.","advancedTitle":"تفاصيل فنية للمسؤول التقني (اختياري)","advancedDesc":"البيانات الموقّعة وطلبات REST مخصصة لفريق التشغيل فقط، وليست حقولًا مطلوبة من المالك.","pageHeading":"صلاحية الكتابة الدائمة — Host Authority","reviewRecorded":"تم تسجيل طلب المراجعة","reviewRecordedDesc":"الطلب مسجّل، لكن لسه مش موافقة موقّعة.","existingTitle":"طلبك موجود بالفعل","currentExpires":"ينتهي الطلب الحالي: ","noDuplicate":"لا تحتاج إلى إنشاء طلب جديد الآن.","reviewExpired":"انتهت صلاحية طلب المراجعة","renewDesc":"ممكن تجدد الطلب، لكن اعتماد النظام الأصلي ما زال مطلوبًا.","newDesc":"يمكن تسجيل طلب مراجعة الآن، دون أي توقيع تلقائي.","renewHeading":"تجديد طلب المراجعة","requestHeading":"تسجيل طلب مراجعة المالك","offerNeeded":"التوقيع المستقل مطلوب بعد تسجيل الطلب.","missingPrereqs":"جهة التوقيع وسجل الاعتمادات السابقة لم يجهزا بعد. تسجيل الطلب لا يفعّل الصلاحية.","renewButton":"تجديد طلب المراجعة","requestButton":"تسجيل طلب مراجعة","requesting":"جارٍ تسجيل طلب المراجعة دون إصدار موافقة...","missingPlan":"لا توجد خطة مراجعة معتمدة لهذا الموقع.","missingId":"لم يمكن التحقق من رقم الطلب. راجع سجلات التشغيل.","requestSuccess":"تم تسجيل الطلب. لا توجد موافقة موقّعة أو صلاحية كتابة حتى الآن.","requestFailed":"لم يُسجّل طلب جديد: ","copySuccess":"تم نسخ رقم الطلب فقط، وليس بيانات التوقيع.","copyFailure":"تعذّر النسخ. يمكن لمسؤول النظام عرض رقم الطلب من السجل.","offerHelp":"وصلت شهادة أولية موقّعة. استكمال توقيع المالك يتطلب جهة توقيع مستقلة؛ التفاصيل متاحة للمسؤول التقني.","refreshFailed":"تعذّر جلب أحدث حالة. ما زال تفعيل الكتابة غير مؤكد؛ يرجى تحديث الصفحة.","dateUnknown":"غير معروف","invalidResponse":"تعذّر قراءة استجابة الموقع. جرّب تحديث الصفحة.","connectionFailed":"لم ينجح الاتصال. يرجى إعادة المحاولة.","accessibilityLabel":"حالة اعتماد الكتابة الدائمة","requestDenied":"هذه الجلسة لا تملك صلاحية تسجيل الطلب، أو انتهت صلاحيتها. حدّث الصفحة وسجّل الدخول إذا لزم الأمر.","reviewUnavailable":"الطلب غير متاح حاليًا. تحقّق من حالة الاعتماد أو حدّث الصفحة.","requestRateLimited":"يوجد طلب حديث بالفعل. لا تنشئ طلبًا مكررًا؛ حدّث الصفحة لمراجعة الطلب السابق.","temporaryFailure":"تعذّر التحقق من نتيجة العملية حاليًا. راجع حالة الطلب قبل إعادة الإرسال."},"en":{"eyebrow":"Tours.dev · Staging","panelTitle":"Persistent write authorization","intro":"Persistent write is not enabled. The system is awaiting verification of earlier approvals and a signature from the independent owner identity.","progress":"Approval progress","identityTitle":"Site identity","identityDesc":"Tours.dev and its verification keys are confirmed.","reviewTitle":"Owner review request","reviewInitial":"Your review request status appears here.","historyTitle":"Verify previous approvals","historyDesc":"The system must verify the latest original approval with the independent authority.","signatureTitle":"Signature and write access","signatureDesc":"Waiting for the independent owner signer before a controlled write grant can be issued.","actionHeading":"What needs your attention?","copyId":"Copy request ID","help":"No JSON or SSH needed. Recording a request does not sign an approval or enable write access.","advancedTitle":"Technical details for administrators (optional)","advancedDesc":"Signed evidence and REST requests are for technical operators, not fields the owner needs to complete.","pageHeading":"Persistent write access — Host Authority","reviewRecorded":"Review request recorded","reviewRecordedDesc":"Your request is recorded, but it is not a signed approval.","existingTitle":"Your request already exists","currentExpires":"Current request expires: ","noDuplicate":"No need to create another request now.","reviewExpired":"Review request expired","renewDesc":"You can renew the request; independent approval is still required.","newDesc":"You can register a review request without creating a signature.","renewHeading":"Renew review request","requestHeading":"Register an owner review request","offerNeeded":"An independent signature is required after the request is recorded.","missingPrereqs":"The independent signer and previous approvals are not ready. Registering a request will not enable write access.","renewButton":"Renew review request","requestButton":"Register review request","requesting":"Recording the request (no approval will be issued)…","missingPlan":"No verified review plan is available for this site.","missingId":"The request ID could not be verified. Check the operation logs.","requestSuccess":"Request recorded. No signed approval or write access has been issued.","requestFailed":"No new request was recorded: ","copySuccess":"Request ID copied (not signing data).","copyFailure":"Could not copy. An administrator can find the request ID in the log.","offerHelp":"An initial signed certificate is available. The owner still needs an independent signer; technical details are available below.","refreshFailed":"Could not refresh status. Write access is still unconfirmed; reload the page.","dateUnknown":"Unknown","invalidResponse":"Could not read the site response. Reload the page.","connectionFailed":"Connection failed. Please try again.","accessibilityLabel":"Persistent write authorization status","requestDenied":"Your session cannot submit this request or has expired. Refresh the page and sign in if needed.","reviewUnavailable":"The request is not available yet. Check approval status or refresh the page.","requestRateLimited":"A recent request already exists. Do not create a duplicate; refresh to review it.","temporaryFailure":"The operation could not be verified. Check request status before trying again."},"fr":{"eyebrow":"Tours.dev · Préproduction","panelTitle":"Autorisation d’écriture permanente","intro":"L’écriture permanente est désactivée. Le système attend la vérification des autorisations précédentes et la signature du propriétaire indépendant.","progress":"Progression de l’approbation","identityTitle":"Identité du site","identityDesc":"Tours.dev et ses clés de vérification sont confirmés.","reviewTitle":"Demande de vérification du propriétaire","reviewInitial":"L’état de votre demande s’affiche ici.","historyTitle":"Vérifier les autorisations précédentes","historyDesc":"Le système doit vérifier la dernière approbation originale auprès de l’autorité indépendante.","signatureTitle":"Signature et accès en écriture","signatureDesc":"En attente de la signature indépendante du propriétaire avant d’accorder l’accès en écriture contrôlé.","actionHeading":"Quelle action est nécessaire ?","copyId":"Copier l’identifiant de demande","help":"Aucun JSON ni SSH nécessaire. Enregistrer une demande ne signe pas l’approbation et n’active pas l’écriture.","advancedTitle":"Détails techniques pour les administrateurs (facultatif)","advancedDesc":"Les preuves signées et les requêtes REST sont réservées aux techniciens, pas au propriétaire.","pageHeading":"Accès en écriture permanent — Host Authority","reviewRecorded":"Demande de vérification enregistrée","reviewRecordedDesc":"Votre demande est enregistrée, mais ce n’est pas une approbation signée.","existingTitle":"Votre demande existe déjà","currentExpires":"La demande actuelle expire le : ","noDuplicate":"Inutile de créer une autre demande maintenant.","reviewExpired":"Demande de vérification expirée","renewDesc":"Vous pouvez renouveler la demande ; l’approbation indépendante reste nécessaire.","newDesc":"Vous pouvez enregistrer une demande sans créer de signature.","renewHeading":"Renouveler la demande","requestHeading":"Enregistrer une demande de vérification","offerNeeded":"Une signature indépendante est nécessaire après l’enregistrement.","missingPrereqs":"Le signataire indépendant et les autorisations précédentes ne sont pas prêts. La demande n’active pas l’écriture.","renewButton":"Renouveler la demande","requestButton":"Enregistrer la demande","requesting":"Enregistrement de la demande (sans approbation)…","missingPlan":"Aucun plan de vérification validé pour ce site.","missingId":"L’identifiant n’a pas pu être vérifié. Consultez les journaux.","requestSuccess":"Demande enregistrée. Aucune autorisation signée ni accès en écriture accordé.","requestFailed":"Aucune nouvelle demande enregistrée : ","copySuccess":"Identifiant copié (pas les données de signature).","copyFailure":"Copie impossible. L’administrateur peut retrouver l’identifiant dans le journal.","offerHelp":"Un certificat initial signé est disponible. La signature indépendante du propriétaire reste nécessaire.","refreshFailed":"Impossible d’actualiser l’état. L’accès en écriture reste non confirmé ; rechargez la page.","dateUnknown":"Inconnu","invalidResponse":"Impossible de lire la réponse du site. Rechargez la page.","connectionFailed":"Connexion échouée. Réessayez.","accessibilityLabel":"État de l’autorisation d’écriture permanente","requestDenied":"Votre session ne permet pas cette demande ou a expiré. Actualisez la page et reconnectez-vous si nécessaire.","reviewUnavailable":"La demande n’est pas disponible pour le moment. Vérifiez l’état ou actualisez.","requestRateLimited":"Une demande récente existe déjà. Évitez un doublon ; actualisez pour la consulter.","temporaryFailure":"Le résultat n’a pas pu être vérifié. Consultez l’état avant de réessayer."},"de":{"eyebrow":"Tours.dev · Staging-Umgebung","panelTitle":"Freigabe dauerhafter Schreibrechte","intro":"Dauerhafte Schreibrechte sind nicht aktiviert. Es fehlen die Prüfung früherer Freigaben und die unabhängige Unterschrift des Eigentümers.","progress":"Status der Freigabe","identityTitle":"Website-Identität","identityDesc":"Tours.dev und die Prüfschlüssel sind bestätigt.","reviewTitle":"Prüfanfrage des Eigentümers","reviewInitial":"Hier erscheint der Status Ihrer Anfrage.","historyTitle":"Frühere Freigaben prüfen","historyDesc":"Das System muss die letzte Originalfreigabe bei der unabhängigen Stelle prüfen.","signatureTitle":"Unterschrift und Schreibzugriff","signatureDesc":"Die unabhängige Unterschrift des Eigentümers ist nötig, bevor Schreibrechte vergeben werden.","actionHeading":"Was ist jetzt zu tun?","copyId":"Anfrage-ID kopieren","help":"Kein JSON oder SSH nötig. Eine Anfrage ist keine unterschriebene Freigabe und aktiviert keine Schreibrechte.","advancedTitle":"Technische Details für Administratoren (optional)","advancedDesc":"Signierte Nachweise und REST-Anfragen sind für Techniker, nicht für den Eigentümer.","pageHeading":"Dauerhafter Schreibzugriff — Host Authority","reviewRecorded":"Prüfanfrage erfasst","reviewRecordedDesc":"Die Anfrage ist erfasst, aber noch keine signierte Freigabe.","existingTitle":"Ihre Anfrage liegt bereits vor","currentExpires":"Die aktuelle Anfrage läuft ab am: ","noDuplicate":"Sie müssen jetzt keine weitere Anfrage erstellen.","reviewExpired":"Prüfanfrage abgelaufen","renewDesc":"Sie können erneuern; die unabhängige Freigabe bleibt erforderlich.","newDesc":"Sie können eine Anfrage erfassen, ohne eine Unterschrift zu erstellen.","renewHeading":"Prüfanfrage erneuern","requestHeading":"Prüfanfrage des Eigentümers erfassen","offerNeeded":"Nach der Erfassung ist eine unabhängige Unterschrift nötig.","missingPrereqs":"Signaturdienst und frühere Freigaben sind noch nicht bereit. Eine Anfrage aktiviert keine Schreibrechte.","renewButton":"Anfrage erneuern","requestButton":"Anfrage erfassen","requesting":"Anfrage wird erfasst (keine Freigabe)…","missingPlan":"Kein verifizierter Prüfplan für diese Website verfügbar.","missingId":"Die Anfrage-ID konnte nicht bestätigt werden. Prüfen Sie die Protokolle.","requestSuccess":"Anfrage erfasst. Es wurden keine signierten Schreibrechte erteilt.","requestFailed":"Keine neue Anfrage erfasst: ","copySuccess":"Anfrage-ID kopiert (keine Signaturdaten).","copyFailure":"Kopieren fehlgeschlagen. Administratoren finden die ID im Protokoll.","offerHelp":"Ein erstes signiertes Zertifikat liegt vor. Die unabhängige Unterschrift des Eigentümers fehlt noch.","refreshFailed":"Status konnte nicht geladen werden. Schreibrechte sind nicht bestätigt; Seite neu laden.","dateUnknown":"Unbekannt","invalidResponse":"Website-Antwort nicht lesbar. Seite neu laden.","connectionFailed":"Verbindung fehlgeschlagen. Bitte erneut versuchen.","accessibilityLabel":"Status der dauerhaften Schreibfreigabe","requestDenied":"Ihre Sitzung ist nicht berechtigt oder abgelaufen. Seite aktualisieren und bei Bedarf erneut anmelden.","reviewUnavailable":"Die Anfrage ist noch nicht verfügbar. Status prüfen oder Seite aktualisieren.","requestRateLimited":"Eine aktuelle Anfrage existiert bereits. Keine doppelte Anfrage senden; Seite aktualisieren.","temporaryFailure":"Das Ergebnis konnte nicht überprüft werden. Status vor erneutem Versuch prüfen."},"es":{"eyebrow":"Tours.dev · Entorno de pruebas","panelTitle":"Autorización de escritura permanente","intro":"La escritura permanente está desactivada. Faltan verificar las autorizaciones anteriores y obtener la firma independiente del propietario.","progress":"Progreso de la aprobación","identityTitle":"Identidad del sitio","identityDesc":"Tours.dev y sus claves de verificación están confirmados.","reviewTitle":"Solicitud de revisión del propietario","reviewInitial":"Aquí aparece el estado de su solicitud.","historyTitle":"Verificar autorizaciones anteriores","historyDesc":"El sistema debe verificar la última autorización original ante la autoridad independiente.","signatureTitle":"Firma y acceso de escritura","signatureDesc":"Se necesita la firma independiente del propietario antes de conceder escritura controlada.","actionHeading":"¿Qué necesitas hacer ahora?","copyId":"Copiar ID de solicitud","help":"No necesitas JSON ni SSH. Registrar una solicitud no supone una firma ni activa la escritura.","advancedTitle":"Detalles técnicos para administradores (opcional)","advancedDesc":"Las pruebas firmadas y solicitudes REST son para técnicos, no campos para el propietario.","pageHeading":"Acceso de escritura permanente — Host Authority","reviewRecorded":"Solicitud de revisión registrada","reviewRecordedDesc":"La solicitud está registrada, pero aún no es una aprobación firmada.","existingTitle":"Tu solicitud ya existe","currentExpires":"La solicitud actual vence el: ","noDuplicate":"No necesitas crear otra solicitud ahora.","reviewExpired":"Solicitud de revisión caducada","renewDesc":"Puedes renovar la solicitud; sigue siendo necesaria la aprobación independiente.","newDesc":"Puedes registrar una solicitud sin generar una firma.","renewHeading":"Renovar solicitud de revisión","requestHeading":"Registrar revisión del propietario","offerNeeded":"Se requiere una firma independiente después de registrar la solicitud.","missingPrereqs":"El firmante independiente y las autorizaciones anteriores no están listos. La solicitud no activa la escritura.","renewButton":"Renovar solicitud","requestButton":"Registrar solicitud","requesting":"Registrando la solicitud (sin aprobación)…","missingPlan":"No hay un plan de revisión verificado para este sitio.","missingId":"No se pudo verificar el ID. Revisa los registros.","requestSuccess":"Solicitud registrada. No hay aprobación firmada ni acceso de escritura.","requestFailed":"No se registró una nueva solicitud: ","copySuccess":"ID copiado (no datos de firma).","copyFailure":"No se pudo copiar. El administrador puede ver el ID en el registro.","offerHelp":"Hay un certificado inicial firmado. Aún hace falta la firma independiente del propietario.","refreshFailed":"No se pudo actualizar el estado. El acceso de escritura sigue sin confirmar; recarga la página.","dateUnknown":"Desconocido","invalidResponse":"No se pudo leer la respuesta. Recarga la página.","connectionFailed":"Falló la conexión. Inténtalo de nuevo.","accessibilityLabel":"Estado de autorización de escritura permanente","requestDenied":"Tu sesión no tiene permiso o ha caducado. Actualiza la página y vuelve a iniciar sesión si es necesario.","reviewUnavailable":"La solicitud aún no está disponible. Consulta el estado o actualiza la página.","requestRateLimited":"Ya existe una solicitud reciente. Evita duplicarla; actualiza para consultarla.","temporaryFailure":"No se pudo verificar el resultado. Consulta el estado antes de reintentar."},"it":{"eyebrow":"Tours.dev · Ambiente di test","panelTitle":"Autorizzazione di scrittura permanente","intro":"La scrittura permanente non è attiva. Sono necessarie la verifica delle autorizzazioni precedenti e la firma indipendente del proprietario.","progress":"Avanzamento dell’autorizzazione","identityTitle":"Identità del sito","identityDesc":"Tours.dev e le relative chiavi di verifica sono confermati.","reviewTitle":"Richiesta di verifica del proprietario","reviewInitial":"Qui compare lo stato della richiesta.","historyTitle":"Verificare le autorizzazioni precedenti","historyDesc":"Il sistema deve verificare l’ultima autorizzazione originale con l’autorità indipendente.","signatureTitle":"Firma e accesso in scrittura","signatureDesc":"Serve la firma indipendente del proprietario prima del permesso di scrittura controllato.","actionHeading":"Cosa devi fare adesso?","copyId":"Copia ID richiesta","help":"Non servono JSON o SSH. La richiesta non costituisce una firma e non abilita la scrittura.","advancedTitle":"Dettagli tecnici per amministratori (facoltativo)","advancedDesc":"Le prove firmate e le richieste REST sono per i tecnici, non campi da compilare per il proprietario.","pageHeading":"Accesso di scrittura permanente — Host Authority","reviewRecorded":"Richiesta di verifica registrata","reviewRecordedDesc":"La richiesta è registrata, ma non è ancora un’autorizzazione firmata.","existingTitle":"La tua richiesta esiste già","currentExpires":"La richiesta attuale scade il: ","noDuplicate":"Non serve creare un’altra richiesta ora.","reviewExpired":"Richiesta di verifica scaduta","renewDesc":"Puoi rinnovare la richiesta; serve comunque l’approvazione indipendente.","newDesc":"Puoi registrare la richiesta senza creare una firma.","renewHeading":"Rinnova richiesta di verifica","requestHeading":"Registra una richiesta di verifica","offerNeeded":"Serve una firma indipendente dopo la registrazione.","missingPrereqs":"Il firmatario indipendente e le autorizzazioni precedenti non sono pronti. La richiesta non abilita la scrittura.","renewButton":"Rinnova richiesta","requestButton":"Registra richiesta","requesting":"Registrazione richiesta (senza approvazione)…","missingPlan":"Nessun piano di verifica convalidato per questo sito.","missingId":"Impossibile verificare l’ID. Controlla i registri.","requestSuccess":"Richiesta registrata. Nessuna approvazione firmata né accesso in scrittura.","requestFailed":"Nessuna nuova richiesta registrata: ","copySuccess":"ID copiato (non i dati di firma).","copyFailure":"Copia non riuscita. L’amministratore può vedere l’ID nel registro.","offerHelp":"È disponibile un certificato iniziale firmato. Serve ancora la firma indipendente del proprietario.","refreshFailed":"Impossibile aggiornare lo stato. L’accesso in scrittura non è confermato; ricarica la pagina.","dateUnknown":"Sconosciuto","invalidResponse":"Impossibile leggere la risposta. Ricarica la pagina.","connectionFailed":"Connessione non riuscita. Riprova.","accessibilityLabel":"Stato dell’autorizzazione di scrittura permanente","requestDenied":"La sessione non è autorizzata o è scaduta. Aggiorna la pagina e accedi di nuovo se necessario.","reviewUnavailable":"La richiesta non è ancora disponibile. Verifica lo stato o aggiorna la pagina.","requestRateLimited":"Esiste già una richiesta recente. Non duplicarla; aggiorna per visualizzarla.","temporaryFailure":"Impossibile verificare il risultato. Controlla lo stato prima di riprovare."}};
+const tr = key => strings[language][key] || strings.en[key] || key;
 function elm(tag, className, text) {
     const el = document.createElement(tag);
     if (className) el.className = className;
@@ -182,10 +189,10 @@ function elm(tag, className, text) {
     return el;
 }
 function formatDate(unix) {
-    try {return new Intl.DateTimeFormat("ar-EG", {
+    try {return new Intl.DateTimeFormat(intlLocale, {
         dateStyle:"medium",timeStyle:"short"
     }).format(new Date(unix * 1000));}
-    catch(e){return "غير معروف";}
+    catch(e){return tr("dateUnknown");}
 }
 async function api(path, body) {
     const response = await fetch(settings.restBase + path, {
@@ -201,11 +208,18 @@ async function api(path, body) {
     });
     let data;
     try {data = await response.json();}
-    catch(e){throw new Error("تعذّر قراءة استجابة الموقع. جرّب تحديث الصفحة.");}
-    if (!response.ok) throw new Error(
-        typeof data.message === "string" ?
-        data.message : "لم ينجح الاتصال. يرجى إعادة المحاولة."
-    );
+    catch(e){throw new Error(tr("invalidResponse"));}
+    if (!response.ok) {
+        // WordPress REST error text is generally English. Localize the Owner
+        // explanation while retaining a short technical code for support.
+        const key = response.status === 403 ? "requestDenied"
+            : response.status === 409 ? "reviewUnavailable"
+            : response.status === 429 ? "requestRateLimited"
+            : response.status === 503 ? "temporaryFailure" : "connectionFailed";
+        const code = typeof data.code === "string"
+            && /^[a-z0-9_-]{1,80}$/i.test(data.code) ? " [" + data.code + "]" : "";
+        throw new Error(tr(key) + code);
+    }
     return data;
 }
 function init() {
@@ -214,14 +228,15 @@ function init() {
     if (!page || !layout || !layout.children[0]) return;
     const main = layout.children[0];
     const pane = elm("section","mad4b-human");
-    pane.dir = "rtl";
-    pane.setAttribute("aria-label","حالة اعتماد الكتابة الدائمة");
-    pane.append(elm("p","human-eyebrow","Tours.dev · بيئة الاختبار"));
-    pane.append(elm("h2","", "اعتماد صلاحية الكتابة الدائمة"));
+    pane.dir = language === "ar" ? "rtl" : "ltr";
+    pane.setAttribute("lang", intlLocale);
+    pane.setAttribute("aria-label",tr("accessibilityLabel"));
+    pane.append(elm("p","human-eyebrow",tr("eyebrow")));
+    pane.append(elm("h2","", tr("panelTitle")));
     const intro = elm("p","human-muted",
-        "صلاحية الكتابة غير مفعّلة حاليًا. النظام ينتظر استكمال سجل الاعتمادات السابقة ثم توقيع المالك من الجهة المستقلة.");
+        tr("intro"));
     pane.append(intro);
-    pane.append(elm("h3","", "إحنا وصلنا لفين؟"));
+    pane.append(elm("h3","", tr("progress")));
     const steps = elm("ol","human-steps");
     function step(mark,label,description,done) {
         const li=elm("li");
@@ -234,15 +249,15 @@ function init() {
         steps.append(li);
         return {label:content.firstChild,description:content.lastChild,marker:m};
     }
-    step("✓","هوية الموقع", "تم التحقق من موقع Tours.dev ومفاتيح التحقق.",true);
-    const reviewStep=step("2","طلب مراجعة المالك","هنعرض حالة طلبك هنا.",false);
-    step("3","مراجعة سجل الموافقات السابقة",
-        "المطلوب من النظام: إثبات أحدث اعتماد أصلي من الجهة المستقلة.",false);
-    step("4","التوقيع وتفعيل الكتابة",
-        "في انتظار جهة توقيع المالك، ثم يتم إصدار صلاحية كتابة محكومة.",false);
+    step("✓",tr("identityTitle"), tr("identityDesc"),true);
+    const reviewStep=step("2",tr("reviewTitle"),tr("reviewInitial"),false);
+    step("3",tr("historyTitle"),
+        tr("historyDesc"),false);
+    step("4",tr("signatureTitle"),
+        tr("signatureDesc"),false);
     pane.append(steps);
     const actions=elm("div","human-actions");
-    const actionTitle=elm("h3","", "إيه المطلوب منك دلوقتي؟");
+    const actionTitle=elm("h3","", tr("actionHeading"));
     actions.append(actionTitle);
     const status=elm("p","human-status");
     status.setAttribute("role","status");
@@ -252,17 +267,17 @@ function init() {
     const secondary=elm("button","button");
     secondary.type="button";
     secondary.style.marginInlineStart="8px";
-    secondary.textContent="نسخ رقم الطلب";
+    secondary.textContent=tr("copyId");
     secondary.hidden=true;
     const help=elm("p","human-muted",
-        "لن تحتاج إلى كتابة JSON أو استخدام SSH. تسجيل الطلب لا يعني صدور توقيع أو تفعيل الكتابة.");
+        tr("help"));
     actions.append(primary,secondary,status,help);
     pane.append(actions);
     const advanced=elm("details","human-detail");
-    advanced.append(elm("summary","", "تفاصيل فنية للمسؤول التقني (اختياري)"));
+    advanced.append(elm("summary","", tr("advancedTitle")));
     const advancedBody=elm("div","human-extra");
     advancedBody.append(elm("p","human-muted",
-        "البيانات الموقّعة وطلبات REST مخصصة لفريق التشغيل فقط، وليست حقولًا مطلوبة من المالك."));
+        tr("advancedDesc")));
     advanced.append(advancedBody);
     pane.append(advanced);
     main.prepend(pane);
@@ -276,7 +291,7 @@ function init() {
     layout.style.display="block";
     if (layout.children[1]) layout.children[1].hidden=true;
     const heading=page.querySelector("h1");
-    if (heading) heading.textContent="صلاحية الكتابة الدائمة — Host Authority";
+    if (heading) heading.textContent=tr("pageHeading");
     const leading=page.querySelector(":scope > p");
     if (leading) leading.hidden=true;
 
@@ -289,59 +304,59 @@ function init() {
         if (review && active) {
             reviewStep.marker.textContent="✓";
             reviewStep.marker.classList.add("is-done");
-            reviewStep.label.textContent="تم تسجيل طلب المراجعة";
+            reviewStep.label.textContent=tr("reviewRecorded");
             reviewStep.description.textContent=
-                "الطلب مسجّل، لكن لسه مش موافقة موقّعة.";
-            actionTitle.textContent="طلبك موجود بالفعل";
-            status.textContent="ينتهي الطلب الحالي: "+formatDate(review.expires_epoch)
-                +". لا تحتاج إلى إنشاء طلب جديد الآن.";
+                tr("reviewRecordedDesc");
+            actionTitle.textContent=tr("existingTitle");
+            status.textContent=tr("currentExpires")+formatDate(review.expires_epoch)
+                +". "+tr("noDuplicate");
             primary.hidden=true;
         } else {
             reviewStep.marker.textContent="2";
             reviewStep.marker.classList.remove("is-done");
-            reviewStep.label.textContent=review?"انتهت صلاحية طلب المراجعة":"طلب مراجعة المالك";
+            reviewStep.label.textContent=review?tr("reviewExpired"):tr("reviewTitle");
             reviewStep.description.textContent=review?
-                "ممكن تجدد الطلب، لكن اعتماد النظام الأصلي ما زال مطلوبًا.":
-                "يمكن تسجيل طلب مراجعة الآن، دون أي توقيع تلقائي.";
+                tr("renewDesc"):
+                tr("newDesc");
             actionTitle.textContent=review?
-                "تجديد طلب المراجعة":"تسجيل طلب مراجعة المالك";
+                tr("renewHeading"):tr("requestHeading");
             status.textContent=rootOffer?
-                "التوقيع المستقل مطلوب بعد تسجيل الطلب.":
-                "جهة التوقيع وسجل الاعتمادات السابقة لم يجهزا بعد. تسجيل الطلب لا يفعّل الصلاحية.";
-            primary.textContent=review?"تجديد طلب المراجعة":"تسجيل طلب مراجعة";
+                tr("offerNeeded"):
+                tr("missingPrereqs");
+            primary.textContent=review?tr("renewHeading"):tr("requestButton");
             primary.hidden=false;
         }
     }
     primary.addEventListener("click",async ()=>{
         primary.disabled=true;
-        status.textContent="جارٍ تسجيل طلب المراجعة دون إصدار موافقة...";
+        status.textContent=tr("requesting");
         try {
             const plan=await api("/review-plan");
             if (!plan || typeof plan.plan_sha256!=="string") {
-                throw new Error("لا توجد خطة مراجعة معتمدة لهذا الموقع.");
+                throw new Error(tr("missingPlan"));
             }
             const result=await api("/remote-requests",{
                 expected_plan_sha256:plan.plan_sha256,
                 confirmation:"REQUEST REMOTE V3 OWNER REVIEW"
             });
             if (!result.review || typeof result.review.request_id!=="string") {
-                throw new Error("لم يمكن التحقق من رقم الطلب. راجع سجلات التشغيل.");
+                throw new Error(tr("missingId"));
             }
             review=result.review;
             renderReview();
-            status.textContent="تم تسجيل الطلب. لا توجد موافقة موقّعة أو صلاحية كتابة حتى الآن.";
+            status.textContent=tr("requestSuccess");
         } catch (error) {
             renderReview();
-            status.textContent="لم يُسجّل طلب جديد: "+error.message;
+            status.textContent=tr("requestFailed")+error.message;
         } finally {primary.disabled=false;}
     });
     secondary.addEventListener("click",async ()=>{
         if (!review || typeof review.request_id!=="string") return;
         try {
             await navigator.clipboard.writeText(review.request_id);
-            status.textContent="تم نسخ رقم الطلب فقط، وليس بيانات التوقيع.";
+            status.textContent=tr("copySuccess");
         } catch (error) {
-            status.textContent="تعذّر النسخ. يمكن لمسؤول النظام عرض رقم الطلب من السجل.";
+            status.textContent=tr("copyFailure");
         }
     });
     renderReview();
@@ -349,10 +364,10 @@ function init() {
         rootOffer=result.signed_root_offer_present===true;
         if (!review || review.expires_epoch < Date.now()/1000) renderReview();
         if (rootOffer) {
-            help.textContent="وصلت شهادة أولية موقّعة. استكمال توقيع المالك يتطلب جهة توقيع مستقلة؛ التفاصيل متاحة للمسؤول التقني.";
+            help.textContent=tr("offerHelp");
         }
     }).catch(()=>{
-        help.textContent="تعذّر جلب أحدث حالة. ما زال تفعيل الكتابة غير مؤكد؛ يرجى تحديث الصفحة.";
+        help.textContent=tr("refreshFailed");
     });
 }
 if (document.readyState==="loading") {
