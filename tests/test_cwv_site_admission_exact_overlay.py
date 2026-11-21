@@ -14,7 +14,7 @@ class ExactOverlay(unittest.TestCase):
         cls.preceding=cwv.ROOT / 'docs/source-reconciliation/PR977-CWV-SITE-ADMISSION-20261120.md'
 
     def test_reconstructs_previous_exact_git_blob(self):
-        self.assertEqual(cwv.blob(self.actual), cwv.NEW)
+        self.assertEqual(cwv.blob(cwv.strip_exact_public_kernel(self.actual)), cwv.NEW)
         self.assertEqual(cwv.blob(cwv.strip_exact_site_admission(self.actual)),cwv.OLD)
 
     def test_unknown_bootstrap_bytes_denied(self):

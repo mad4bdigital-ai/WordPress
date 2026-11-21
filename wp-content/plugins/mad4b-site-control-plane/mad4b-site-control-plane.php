@@ -183,6 +183,14 @@ if ( '' !== $mad4b_scp_early_zero_touch_reason ) {
 }
 unset( $mad4b_scp_early_zero_touch_reason );
 
+// Request-aware public singular kernel. OFF by default and restricted to
+// read-only, signed-site, cookie-free canonical routes; no authorization or
+// public cache admission is created by this optional source module.
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-public-document-kernel.php';
+if ( MAD4B_SCP_Public_Document_Kernel::try_boot() ) {
+    return;
+}
+
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-route-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-workspace.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-guided-operator-experience.php';

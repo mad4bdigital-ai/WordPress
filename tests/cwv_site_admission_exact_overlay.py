@@ -6,6 +6,7 @@ Unknown bytes always fail closed instead of being accepted as newer source.
 from pathlib import Path
 import hashlib
 import json
+from scp_public_kernel_exact_source_overlay import strip_exact_public_kernel
 
 ROOT = Path(__file__).resolve().parents[1]
 MAIN = "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
@@ -24,6 +25,7 @@ def blob(content):
     return hashlib.sha1(b"blob " + str(len(content)).encode('ascii') + b"\0" + content).hexdigest()
 
 def strip_exact_site_admission(content):
+    content = strip_exact_public_kernel(content)
     sha = blob(content)
     if sha == OLD:
         return content

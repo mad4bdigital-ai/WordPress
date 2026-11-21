@@ -1,0 +1,78 @@
+name: MAD4B SCP Request-Aware Public Kernel
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-public-document-kernel.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/public-document-kernel-manifest-v1.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/fixtures/public-kernel/**'
+      - 'tests/scp_public_document_kernel_source_contract.py'
+      - 'tests/scp_public_kernel_exact_source_overlay.py'
+      - 'tests/test_scp_public_kernel_exact_source_overlay.py'
+      - 'tests/cwv_site_admission_exact_overlay.py'
+      - 'tests/test_cwv_site_admission_exact_overlay.py'
+      - 'tools/qa31_release_source_gate.py'
+      - 'governance/production-readiness/capability-coverage.json'
+      - '.github/workflows/mad4b-scp-request-aware-bootstrap.yml'
+  push:
+    branches:
+      - 'fix/scp-request-aware-bootstrap-*'
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'tests/scp_public_document_kernel_source_contract.py'
+      - 'tests/scp_public_kernel_exact_source_overlay.py'
+      - 'tests/test_scp_public_kernel_exact_source_overlay.py'
+      - 'tests/cwv_site_admission_exact_overlay.py'
+      - 'tests/test_cwv_site_admission_exact_overlay.py'
+      - 'tools/qa31_release_source_gate.py'
+      - 'governance/production-readiness/capability-coverage.json'
+      - '.github/workflows/mad4b-scp-request-aware-bootstrap.yml'
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-scp-public-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  kernel-contract:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: none
+          coverage: none
+      - name: Lint source and hermetic tests
+        run: |
+          php -l wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-public-document-kernel.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-hermetic.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-boot-hermetic.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-hook-contract-hermetic.php
+      - name: Test exact public routing and protected commercial hooks
+        run: |
+          php wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-hermetic.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-boot-hermetic.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-hook-contract-hermetic.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/market-bootstrap-compatibility.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/request-serving-zero-touch-runtime.php
+      - name: Validate manifest and source order
+        run: |
+          python3 tests/scp_public_document_kernel_source_contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/request-serving-zero-touch-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-zero-touch-contract.py
+      - name: Preserve immutable historical source and deny forged successors
+        run: |
+          PYTHONPATH=tests python3 tests/test_scp_public_kernel_exact_source_overlay.py
+          PYTHONPATH=tests python3 tests/test_cwv_site_admission_exact_overlay.py
+          PYTHONPATH=tests python3 tests/test_tour_highlights_source_delta.py
+          PYTHONPATH=tests python3 tests/qa31_release_source_gate_contract.py
