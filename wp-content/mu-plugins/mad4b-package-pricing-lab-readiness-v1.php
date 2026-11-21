@@ -89,7 +89,7 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
         if($relId<=0)return [];
         $table=$wpdb->prefix.'jet_rel_default';
         $rows=$wpdb->get_col($wpdb->prepare(
-            "SELECT child_object_id FROM \`{$table}\` WHERE rel_id=%d AND parent_object_id=%d",
+            "SELECT child_object_id FROM {$table} WHERE rel_id=%d AND parent_object_id=%d",
             $relId,$property
         ));
         return array_fill_keys(array_map('intval',(array)$rows),true);
