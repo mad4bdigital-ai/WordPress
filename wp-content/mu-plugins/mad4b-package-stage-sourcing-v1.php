@@ -84,6 +84,38 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
             if(!$unitStatus['publish'])$out['missing_native_units_count']++;
             $out['draft_native_units_discovered']+=$unitStatus['draft'];
             $out['published_native_units_discovered']+=$unitStatus['publish'];
+            $draftEditors=[];
+            if($unitStatus['draft']>0){
+                global $wpdb;
+                $relationTable=$wpdb->prefix.'jet_rel_default';
+                if(preg_match('/^[A-Za-z0-9_]+$/D',$relationTable)){
+                    $draftIds=$wpdb->get_col($wpdb->prepare(
+                       "SELECT DISTINCT p.ID FROM {$relationTable} r
+                        JOIN {$wpdb->posts} p ON p.ID=r.child_object_id
+                        WHERE r.rel_id=%d AND r.parent_object_id=%d
+                          AND p.post_type='units' AND p.post_status='draft'
+                        ORDER BY p.ID ASC LIMIT 40",223,$id));
+                    foreach((array)$draftIds as $uid){
+                        $uid=(int)$uid;
+                        $r=get_post_meta($uid,'_mad4b_room_source_receipt_v1',true);
+                        $capacity=get_post_meta($uid,'unit_max_occupancy',true);
+                        $draftEditors[]=[
+                            'id'=>$uid,
+                            'title'=>wp_strip_all_tags(html_entity_decode(
+                                get_the_title($uid),ENT_QUOTES,'UTF-8')),
+                            'capacity'=>(is_numeric($capacity)&&(int)$capacity>0)
+                                ?(int)$capacity:null,
+                            'source_verified'=>is_array($r) &&
+                                (int)($r['property_id']??0)===$id &&
+                                !empty($r['source_url']),
+                            'ready'=>false,
+                            'supplier_cost_verified'=>false,
+                            'edit_url'=>current_user_can('edit_post',$uid)
+                                ?self::edit($uid):''
+                        ];
+                    }
+                }
+            }
             $out['properties'][]=[
                 'id'=>$id,'title'=>wp_strip_all_tags(html_entity_decode(
                     get_the_title($id),ENT_QUOTES,'UTF-8')),
@@ -92,6 +124,7 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
                 'native_unit_count'=>$unitCount,
                 'native_published_unit_count'=>$unitStatus['publish'],
                 'native_draft_unit_count'=>$unitStatus['draft'],
+                'source_unit_draft_editors'=>$draftEditors,
                 'stage_city_location_verified'=>$cityVerified,
                 'tier_eligible'=>$eligible['eligible'],
                 'tier_status'=>$eligible['eligible']?'tier_matched':
