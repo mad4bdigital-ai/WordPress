@@ -98,6 +98,151 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
         ));
         return array_fill_keys(array_map('intval',(array)$rows),true);
     }
+    /**
+     * Stage destination is the saved itinerary-derived destination, not a
+     * package-wide hotel pool. The only supported metro exception (Cairo +
+     * Giza) must be present in the tour's own sourced discovery evidence.
+     *
+     * Never accept generic country terms or arbitrary destination parents as
+     * city evidence. New cities must be mapped to exact canonical term IDs.
+     */
+    public static function stageDestinationScope(int $tour,array $stage):array {
+        $dest=sanitize_key((string)($stage['destination_key']??''));
+        $terms=[];
+        $slugs=[
+            'cairo'=>['cairo'],
+            'aswan'=>['aswan-gov','aswan-city'],
+            'luxor'=>['luxor'],
+            'sharm'=>['sharm-el-sheikh'],
+        ];
+        $aliases=$slugs[$dest]??[$dest];
+        $metro=false;
+        if($dest==='cairo'){
+            $discovery=get_post_meta($tour,
+                '_mad4b_package_hotel_candidate_discovery_v1',true);
+            $cityScope=array_map('sanitize_key',
+                (array)(is_array($discovery)?($discovery['city_scope']??[]):[]));
+            $classified=array_map('absint',
+                (array)(is_array($discovery)?($discovery['source_classifications']['en']??[]):[]));
+            $c=get_term_by('slug','cairo','destinations');
+            $g=get_term_by('slug','giza','destinations');
+            if($c instanceof WP_Term && $g instanceof WP_Term &&
+                in_array('cairo',$cityScope,true) &&
+                in_array('giza',$cityScope,true) &&
+                in_array((int)$c->term_id,$classified,true) &&
+                in_array((int)$g->term_id,$classified,true)){
+                $aliases[]='giza';
+                $metro=true;
+            }
+        }
+        foreach(array_unique($aliases) as $slug){
+            $term=get_term_by('slug',$slug,'destinations');
+            if($term instanceof WP_Term)$terms[(int)$term->term_id]=$slug;
+        }
+        return [
+            'destination'=>$dest,'accepted_term_ids'=>array_keys($terms),
+            'accepted_slugs'=>array_values($terms),
+            'metro_exception'=>$metro?'source_explicit_cairo_and_giza':null,
+            'status'=>$terms?'mapped':'unmapped',
+            'contract'=>'exact_stage_destination_terms_only'
+        ];
+    }
+    /**
+     * Independent readback per candidate. Destination and tier must BOTH
+     * match, so a Cairo hotel cannot appear in Aswan/Luxor/Sharm even when a
+     * saved proposal mistakenly lists it under the wrong stage.
+     */
+    public static function propertyEligibility(int $property,int $tierId,
+        array $scope,string $kind):array {
+        $type=get_post_type($property);
+        if($type!=='properties')
+            return ['eligible'=>false,'reason'=>'invalid_property_type'];
+        if(get_post_status($property)!=='publish')
+            return ['eligible'=>false,'reason'=>'property_not_published'];
+        if(!in_array($kind,['hotel','resort'],true))
+            return ['eligible'=>false,'reason'=>'non_hotel_stage_requires_component_provider'];
+        if(($scope['status']??'unmapped')!=='mapped' ||
+            empty($scope['accepted_term_ids']))
+            return ['eligible'=>false,'reason'=>'stage_destination_unmapped'];
+        $actual=wp_get_object_terms($property,'destinations',['fields'=>'ids']);
+        if(is_wp_error($actual)||!is_array($actual)||!$actual)
+            return ['eligible'=>false,'reason'=>'property_destination_missing'];
+        $actual=array_map('intval',$actual);
+        if(!array_intersect($actual,array_map('intval',$scope['accepted_term_ids'])))
+            return ['eligible'=>false,'reason'=>'property_destination_mismatch'];
+        $tiers=wp_get_object_terms($property,'package_levels',['fields'=>'ids']);
+        if(is_wp_error($tiers)||!is_array($tiers)||
+            !in_array($tierId,array_map('intval',$tiers),true))
+            return ['eligible'=>false,'reason'=>'property_tier_mismatch'];
+        $kinds=wp_get_object_terms($property,'property-types',['fields'=>'slugs']);
+        if(is_wp_error($kinds)||!is_array($kinds)||
+            !array_intersect($kinds,['hotel','resort']))
+            return ['eligible'=>false,'reason'=>'property_kind_mismatch'];
+        return ['eligible'=>true,'reason'=>'destination_tier_property_matched'];
+    }
+    /**
+     * Source-to-plan parity is independent of Property filtering.
+     * A day mentioning a city in sightseeing is not proof of accommodation.
+     * Only explicit overnight-IN-city text is accepted as positive evidence;
+     * missing text stays "review_needed", not a fabricated mismatch or match.
+     */
+    public static function itineraryNightEvidence(int $tour,array $stage):array {
+        $start=(int)($stage['source_day_start']??0);
+        $nights=(int)($stage['nights']??0);
+        $kind=sanitize_key((string)($stage['lodging_kind']??''));
+        $destination=sanitize_key((string)($stage['destination_key']??''));
+        $out=['status'=>'not_applicable','night_days'=>[],
+            'explicit_matching_nights'=>0,'explicit_conflicting_nights'=>0,
+            'unconfirmed_nights'=>0,'source'=>'tour.itinerary_item',
+            'requires_editor_review'=>false];
+        if(!in_array($kind,['hotel','resort'],true))return $out;
+        if($start<1||$nights<1||$nights>30){
+            $out['status']='invalid_stage_night_geometry';
+            $out['requires_editor_review']=true;return $out;
+        }
+        $raw=get_post_meta($tour,'itinerary_item',true);
+        $days=is_array($raw)?array_values($raw):[];
+        $cities=['cairo'=>'cairo','giza'=>'giza','luxor'=>'luxor',
+            'aswan'=>'aswan','sharm'=>'sharm',
+            'sharm el sheikh'=>'sharm','red sea'=>'red_sea_unspecified'];
+        for($day=$start;$day<$start+$nights;$day++){
+            $itinerary=$days[$day-1]??null;
+            $description=is_array($itinerary)?(string)($itinerary['description']??''):'';
+            $title=is_array($itinerary)?(string)($itinerary['title']??''):'';
+            $description=html_entity_decode(wp_strip_all_tags($description),ENT_QUOTES,'UTF-8');
+            $title=html_entity_decode(wp_strip_all_tags($title),ENT_QUOTES,'UTF-8');
+            $hits=[];
+            if(preg_match_all('/\bovernight\s+(?:stay\s+)?in\s+(cairo|giza|luxor|aswan|sharm(?:\s+el\s+sheikh)?|red\s+sea)\b/iu',
+                $description,$m)){
+                foreach($m[1] as $hit){
+                    $name=sanitize_key(preg_replace('/\s+/u',' ',strtolower(trim($hit))));
+                    $normalized=str_replace('_',' ',$name);
+                    if(isset($cities[$normalized]))$hits[$cities[$normalized]]=true;
+                }
+            }
+            // Red Sea is a region, not proof of Sharm specifically.
+            $recognized=array_keys($hits);
+            $expected=$destination==='cairo'?['cairo','giza']:[$destination];
+            $conflicts=array_values(array_diff($recognized,
+                array_merge($expected,['red_sea_unspecified'])));
+            $matches=array_intersect($recognized,$expected);
+            $proof=$conflicts?'conflict':($matches?'match':'unconfirmed');
+            if($proof==='match')$out['explicit_matching_nights']++;
+            elseif($proof==='conflict')$out['explicit_conflicting_nights']++;
+            else $out['unconfirmed_nights']++;
+            $out['night_days'][]=[
+                'day'=>$day,'source_title'=>mb_substr($title,0,150),
+                'observed_overnight_destinations'=>$recognized,
+                'result'=>$proof
+            ];
+        }
+        if($out['explicit_conflicting_nights']>0)$out['status']='itinerary_destination_conflict';
+        elseif($out['explicit_matching_nights']===$nights)$out['status']='explicit_overnights_matched';
+        elseif($out['explicit_matching_nights']>0)$out['status']='partially_matched_requires_review';
+        else $out['status']='missing_explicit_overnight_evidence';
+        $out['requires_editor_review']=$out['status']!=='explicit_overnights_matched';
+        return $out;
+    }
     public static function inspect(int $tour,int $tierId) {
         $tour=self::canonical($tour);
         if(!$tour||!self::isPackage($tour)||!current_user_can('edit_post',$tour))
@@ -115,6 +260,7 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
         foreach($raw as $b)if(is_array($b)&&!empty($b['stage_key']))
             $byKey[(string)$b['stage_key']]=$b;
         $stages=[];$allProps=[];
+        $seenPropertyStage=[];
         $stats=['stages'=>0,'hotel_or_resort_stages'=>0,
             'stages_without_candidates'=>0,'candidate_mentions'=>0,
             'units_referenced'=>0,'unit_occupancy_recorded'=>0,
@@ -122,12 +268,21 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
             'unit_available'=>0,'published_property_rates'=>0,
             'approved_supplier_stage_receipts'=>0,'native_rate_stages_written'=>0,
             'selected_stage_properties'=>0,'selected_stage_units'=>0,
-            'unpriced_stages'=>0];
+            'unpriced_stages'=>0,
+            'destination_excluded_candidates'=>0,
+            'destination_mismatches'=>0,
+            'tier_mismatches'=>0,
+            'hotel_stages_requiring_itinerary_review'=>0,
+            'hotel_stages_with_explicit_itinerary_conflict'=>0,
+            'stage_selection_isolation_violations'=>0];
         foreach(array_slice($plan['stages'],0,40) as $p){
             if(!is_array($p))continue;
             $key=(string)($p['stage_key']??'');
             $b=$byKey[$key]??[];
             $kind=sanitize_key((string)($p['lodging_kind']??$b['lodging_kind']??'unknown'));
+            $destinationScope=self::stageDestinationScope($tour,$p);
+            $itineraryEvidence=self::itineraryNightEvidence($tour,$p);
+            $excluded=[];
             $rows=(array)($b['room_candidate_refs'][(string)$tierId]??[]);
             $fallback=(array)($p['hotel_alternatives_or_by_tier'][(string)$tierId]??[]);
             $candidates=[];$candidateIds=[];
@@ -136,6 +291,12 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
                 $pid=(int)($entry['property_id_en']??0);
                 if(!$pid||isset($candidateIds[$pid]))continue;
                 $candidateIds[$pid]=true;
+                $decision=self::propertyEligibility($pid,$tierId,$destinationScope,$kind);
+                if(!$decision['eligible']){
+                    $excluded[]=['property_id'=>$pid,'title'=>get_the_title($pid),
+                        'reason'=>$decision['reason']];
+                    continue;
+                }
                 $allProps[$pid]=$pid;
                 $units=array_values(array_unique(array_filter(array_map(
                     'absint',(array)($entry['unit_ids_en']??[])))));
@@ -151,9 +312,34 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
                 $pid=(int)$rawId;
                 if(!$pid||isset($candidateIds[$pid]))continue;
                 $candidateIds[$pid]=true;
+                $decision=self::propertyEligibility($pid,$tierId,$destinationScope,$kind);
+                if(!$decision['eligible']){
+                    $excluded[]=['property_id'=>$pid,'title'=>get_the_title($pid),
+                        'reason'=>$decision['reason']];
+                    continue;
+                }
                 $allProps[$pid]=$pid;
                 $candidates[]=['property_id'=>$pid,'unit_ids'=>[],
                     'rel_id'=>0,'review_approved_unit_ids'=>[]];
+            }
+            // These are independent stay instances, even when the same Cairo
+            // property is offered at trip arrival and return. Never reuse
+            // selection, availability or tariff across different stage keys.
+            foreach($candidates as $candidate){
+                $seenPropertyStage[$candidate['property_id']][]=$key;
+            }
+            $stats['destination_excluded_candidates']+=count($excluded);
+            foreach($excluded as $exclusion){
+                if($exclusion['reason']==='property_destination_mismatch')
+                    $stats['destination_mismatches']++;
+                if($exclusion['reason']==='property_tier_mismatch')
+                    $stats['tier_mismatches']++;
+            }
+            if(in_array($kind,['hotel','resort'],true)){
+                if($itineraryEvidence['requires_editor_review'])
+                    $stats['hotel_stages_requiring_itinerary_review']++;
+                if($itineraryEvidence['status']==='itinerary_destination_conflict')
+                    $stats['hotel_stages_with_explicit_itinerary_conflict']++;
             }
             $isStay=in_array($kind,['hotel','resort','cruise'],true);
             $hasHotel=in_array($kind,['hotel','resort'],true);
@@ -179,6 +365,16 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
                 'key'=>$key,'kind'=>$kind,'day_start'=>(int)($p['source_day_start']??0),
                 'nights'=>max(0,(int)($p['nights']??0)),
                 'destination'=>sanitize_key((string)($p['destination_key']??'')),
+                'destination_scope'=>$destinationScope,
+                'itinerary_evidence'=>$itineraryEvidence,
+                'stage_instance_key'=>hash('sha256',wp_json_encode([$tour,$tierId,$key,
+                    (int)($p['source_day_start']??0),(int)($p['nights']??0),
+                    sanitize_key((string)($p['destination_key']??''))])),
+                'arrival_day_offset'=>(int)($p['day_offset']??0),
+                'departure_day_number'=>(int)($p['source_day_start']??0)+(int)($p['nights']??0),
+                'stage_selection_independent'=>true,
+                'price_must_resolve_for_stage_dates'=>true,
+                'excluded_candidates'=>$excluded,
                 'board'=>sanitize_key((string)($p['board']??'')),
                 'price_status'=>(string)($b['price_status']??$p['price_status']??'pending_quote'),
                 'selected_property_id'=>(int)($b['selected_property_id']??0),
@@ -193,6 +389,13 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
         $distinctUnits=[];$detailed=[];
         foreach($stages as $stage){
             $out=$stage;$out['candidates']=[];
+            $out['repeated_candidate_property_ids']=array_values(array_map('intval',
+                array_keys(array_filter(array_intersect_key($seenPropertyStage,
+                    array_fill_keys(array_column($stage['candidates'],'property_id'),true)),
+                    static fn($keys)=>count(array_unique($keys))>1))));
+            $out['same_destination_revisit']=count(array_filter($stages,
+                static fn($x)=>$x['destination']===$stage['destination'] &&
+                    $x['key']!==$stage['key']))>0;
             foreach($stage['candidates'] as $candidate){
                 $pid=$candidate['property_id'];$linked=$candidate['unit_ids'];
                 $relations=self::nativeRelationUnits($pid,$candidate['rel_id']);
@@ -284,6 +487,9 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
                 'tour_rate_relation'=>'related_tour_id'],
             'summary'=>$stats,
             'unit_sources_are_editorial_only'=>true,
+            'destination_validation'=>'per_stage_exact_taxonomy_plus_documented_cairo_giza_scope',
+            'stage_pricing_authority'=>'separate_stage_key_and_date_occupancy',
+            'candidate_exclusions_are_not_priced'=>true,
             'supplier_cost_total'=>null,
             'sale_price'=>null,
             'margin'=>null,
