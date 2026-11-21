@@ -24580,6 +24580,54 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-grant-convergence.php",
+      "source_blob_sha": "ce9b3af3442ecbb0efa098e8bbe78c41ae9518cf",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01",
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "tests/remote-execution/operator-grants-policy-binding-hermetic.php"
+      ],
+      "owner_role": "MAD4B signed release and Host Governance authority owners remain independent; this is source review only",
+      "review_rationale": "MANUAL SELECTIVE source-only preservation: Two narrow differences from exact frozen Wayfatours Production source. Operator Grants preserve the current registered-first-party-governance Production model and immutable canonical Developer V1 signed plan; independently require the SHA256 of the reviewed policy at Apply, reject missing/stale policy SHA, and recheck the exact full V2 projection immediately before canonical Apply. The real signed plan, owner OAuth client step-up, five-grant scope, persistence and readback are unchanged. WordPress-native Staging candidate path reacquires the fixed root-trusted release manifest after archive and candidate ref verification; only an existing successful, root-trusted, master-published release with exact version, source, archive hash, build fingerprint, manifest digest and size may attach verified continuation metadata. Missing or untrusted release metadata stays an unpromoted candidate and is not authorized by this PR. No version tag, Release Verdict, Host credential, Operator grant, approval, OAuth token, Production patch or update execution was created; actual live Host and browser proof remains a separate gate. Exact file: includes/class-mad4b-scp-operator-grant-convergence.php",
+      "coverage_reuse_rationale": "Current canonical Developer V1 plan, original OAuth step-up, registry-bound policy and original immutable release pointer/manifest are reused without adding a broad executor, approval route, automatic release selection or production override.",
+      "execution_note": "Read-only offline synthetic PHP 7.4/8.5 positive/negative tests of actual source classes. No WordPress runtime writes, no Host approvals, no Release Verdict, no changed runtime build.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+      "source_blob_sha": "fc5ae1d7d75971cd3da9c1064319750252c7c40b",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PLATFORM-01",
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-native-candidate-trust-hermetic.php"
+      ],
+      "owner_role": "MAD4B signed release and Host Governance authority owners remain independent; this is source review only",
+      "review_rationale": "MANUAL SELECTIVE source-only preservation: Two narrow differences from exact frozen Wayfatours Production source. Operator Grants preserve the current registered-first-party-governance Production model and immutable canonical Developer V1 signed plan; independently require the SHA256 of the reviewed policy at Apply, reject missing/stale policy SHA, and recheck the exact full V2 projection immediately before canonical Apply. The real signed plan, owner OAuth client step-up, five-grant scope, persistence and readback are unchanged. WordPress-native Staging candidate path reacquires the fixed root-trusted release manifest after archive and candidate ref verification; only an existing successful, root-trusted, master-published release with exact version, source, archive hash, build fingerprint, manifest digest and size may attach verified continuation metadata. Missing or untrusted release metadata stays an unpromoted candidate and is not authorized by this PR. No version tag, Release Verdict, Host credential, Operator grant, approval, OAuth token, Production patch or update execution was created; actual live Host and browser proof remains a separate gate. Exact file: includes/class-mad4b-scp-self-update.php",
+      "coverage_reuse_rationale": "Current canonical Developer V1 plan, original OAuth step-up, registry-bound policy and original immutable release pointer/manifest are reused without adding a broad executor, approval route, automatic release selection or production override.",
+      "execution_note": "Read-only offline synthetic PHP 7.4/8.5 positive/negative tests of actual source classes. No WordPress runtime writes, no Host approvals, no Release Verdict, no changed runtime build.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {

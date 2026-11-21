@@ -27,6 +27,7 @@ class MAD4B_SCP_Site_Profile {
 }
 class MAD4B_SCP_Registered_Write_Admission {
     public static function preflight( $name ) {
+        if ( isset( $GLOBALS['test_track_policy_calls'] ) ) ++$GLOBALS['test_track_policy_calls'];
         if ( 'mad4b/operator-grants-converge' !== $name || ! empty( $GLOBALS['registered_policy_revoked'] ) )
             return new WP_Error( 'mad4b_registered_operation_policy_missing' );
         if ( ! empty( $GLOBALS['test_site_write_disabled'] ) )
@@ -45,7 +46,9 @@ class MAD4B_SCP_Registered_Write_Admission {
             'site_uuid' => '11111111-1111-4111-8111-111111111111',
             'profile_revision' => 2,
             'profile_digest' => str_repeat( 'c', 64 ),
-            'policy_sha256' => str_repeat( 'd', 64 ),
+            'policy_sha256' => ! empty( $GLOBALS['test_policy_flip_on_call'] )
+                && ( $GLOBALS['test_track_policy_calls'] ?? 0 ) === $GLOBALS['test_policy_flip_on_call']
+                    ? str_repeat( 'f', 64 ) : ( $GLOBALS['registered_policy_digest'] ?? str_repeat( 'd', 64 ) ),
             'authorization_issued' => false, 'mutation_performed' => false );
     }
 }
