@@ -63,8 +63,11 @@ final class MAD4B_Accommodation_Weight_Policies_V1 {
     public static function authorize(string $scope,int $id,bool $write=false) {
         if(!self::can())return new WP_Error('accommodation_weight_forbidden');
         if(!in_array($scope,self::SCOPES,true))return new WP_Error('accommodation_weight_scope_invalid');
-        if($scope==='global')
-            return !$id && current_user_can('manage_options') ? true : new WP_Error('accommodation_weight_global_access');
+        if($scope==='global'){
+            if($id!==0)return new WP_Error('accommodation_weight_global_target_invalid');
+            return (!$write||current_user_can('manage_options'))
+                ? true : new WP_Error('accommodation_weight_global_write_denied');
+        }
         if($id<1)return new WP_Error('accommodation_weight_target_missing');
         if($taxonomy=self::taxonomy($scope)){
             $term=get_term($id,$taxonomy);
@@ -107,14 +110,18 @@ final class MAD4B_Accommodation_Weight_Policies_V1 {
         if(!empty($storage['duplicates']))return new WP_Error('accommodation_weight_duplicate_scope_meta');
         $raw=$storage['row']['raw']??null;
         $revision=hash('sha256',$raw===null?'SCOPE_ABSENT_V1':$raw);
+        $canWrite=self::authorize($scope,$id,true)===true;
         if($raw===null)return [
-          'configured'=>false,'revision'=>$revision,'policy'=>[
+          'configured'=>false,'revision'=>$revision,'can_write'=>$canWrite,
+          'has_override'=>false,'policy'=>[
             'schema'=>1,'mode'=>'shadow_only','reference'=>'inherit',
             'weights'=>array_fill_keys(self::FIELDS,null)]
         ];
         $valid=self::validate(maybe_unserialize($raw));
         if(is_wp_error($valid))return $valid;
-        return ['configured'=>true,'revision'=>$revision,'policy'=>$valid];
+        return ['configured'=>true,'revision'=>$revision,
+            'can_write'=>$canWrite,'has_override'=>self::hasOverride($valid),
+            'policy'=>$valid];
     }
     private static function rawPolicy(string $scope,int $id) {
         $storage=self::storage($scope,$id);
@@ -362,6 +369,141 @@ final class MAD4B_Accommodation_Weight_Policies_V1 {
                 'Per-person and per-room units are never implicitly interchanged.',
                 'Optional board extras and compulsory gala fees require separate dated source evidence.']];
     }
+
+    /** An all-Inherit record is present for audit but does not override an effective rule. */
+    private static function hasOverride(array $policy):bool {
+        if(($policy['reference']??'inherit')!=='inherit')return true;
+        foreach(self::FIELDS as $key)
+            if(($policy['weights'][$key]??null)!==null)return true;
+        return false;
+    }
+    private static function policyDetails(array $policy):array {
+        $fields=[];
+        if(($policy['reference']??'inherit')!=='inherit')
+            $fields[]=['field'=>'reference','value'=>$policy['reference']];
+        foreach(self::FIELDS as $field)
+            if(array_key_exists($field,$policy['weights']??[]) &&
+               $policy['weights'][$field]!==null)
+                $fields[]=['field'=>$field,'value'=>$policy['weights'][$field]];
+        $nonzero=0;
+        foreach(self::FIELDS as $field)
+            if(isset($policy['weights'][$field])&&
+               (float)$policy['weights'][$field]!==0.)$nonzero++;
+        return ['fields'=>$fields,'field_count'=>count($fields),
+            'nonzero_adjustments'=>$nonzero,
+            'status'=>!$fields?'stored_inherit_only':
+                ($nonzero?'configured_adjustments':'configured_neutral')];
+    }
+    private static function layer(string $scope,int $id,string $label) {
+        $source=self::read($scope,$id);
+        if(is_wp_error($source))return $source;
+        $details=self::policyDetails($source['policy']);
+        return ['scope'=>$scope,'target_id'=>$id,'label'=>$label,
+            'configured'=>$source['configured'],'has_override'=>$source['has_override'],
+            'can_write'=>$source['can_write'],
+            'status'=>$source['configured']?$details['status']:'not_configured',
+            'fields'=>$details['fields']];
+    }
+    /** Read-only effective matrix and original configured sources, without a price input. */
+    public static function effective(array $input) {
+        if(!self::can())return new WP_Error('accommodation_weight_forbidden');
+        $property=self::integer($input['property_id']??0);
+        $unit=self::integer($input['unit_id']??0);
+        if(!$property)return new WP_Error('accommodation_weight_property_required');
+        $permission=self::authorize('property',$property);
+        if(is_wp_error($permission))return $permission;
+        if($unit){
+            $permission=self::authorize('unit',$unit);
+            if(is_wp_error($permission))return $permission;
+        }
+        $resolved=self::resolve($property,$unit);
+        if(is_wp_error($resolved))return $resolved;
+        $layers=[];
+        $global=self::layer('global',0,'Global base');
+        if(is_wp_error($global))return $global;
+        $layers[]=$global;
+        foreach([['property-types','property_type','Property type'],
+                  ['destinations','destination','Destination']] as [$taxonomy,$scope,$caption]){
+            $terms=wp_get_object_terms($property,$taxonomy,['fields'=>'ids']);
+            if(is_wp_error($terms))return $terms;
+            foreach($terms as $termId){
+                $term=get_term((int)$termId,$taxonomy);
+                if(!($term instanceof WP_Term))continue;
+                $layer=self::layer($scope,(int)$termId,$caption.' · '.$term->name);
+                if(is_wp_error($layer))return $layer;
+                $layers[]=$layer;
+            }
+        }
+        $layer=self::layer('property',$property,'Property · '.get_the_title($property));
+        if(is_wp_error($layer))return $layer;
+        $layers[]=$layer;
+        if($unit){
+            $layer=self::layer('unit',$unit,'Unit · '.get_the_title($unit));
+            if(is_wp_error($layer))return $layer;
+            $layers[]=$layer;
+        }
+        $fieldRows=[];
+        foreach(self::FIELDS as $field)
+            $fieldRows[]=['field'=>$field,'percent'=>$resolved['weights'][$field],
+                'source'=>$resolved['sources'][$field]??'neutral_default'];
+        return ['contract'=>self::CONTRACT,'status'=>'policy_readback_only',
+            'property_id'=>$property,'property_name'=>get_the_title($property),
+            'unit_id'=>$unit?:null,'unit_name'=>$unit?get_the_title($unit):null,
+            'reference'=>$resolved['reference'],
+            'reference_source'=>$resolved['sources']['reference']??'neutral_default',
+            'fields'=>$fieldRows,'layers'=>$layers,
+            'configured_layer_count'=>count(array_filter($layers,
+                static fn($x)=>$x['has_override'])),
+            'neutral_fallback_used'=>count($resolved['sources'])<7,
+            'commercial_authority'=>false,'price_written'=>false,
+            'note'=>'Policy effective weights are diagnostic; only source-approved native Property Rates can authorize prices.'];
+    }
+    /** Compact scoped registry. Does not invent a second rate/policy store. */
+    public static function inventory() {
+        if(!self::can())return new WP_Error('accommodation_weight_forbidden');
+        global $wpdb;
+        $rows=[];$seen=[];
+        $push=static function(string $scope,int $id,string $label)use(&$rows,&$seen) {
+            $key=$scope.':'.$id;
+            if(isset($seen[$key]))return;
+            $seen[$key]=true;
+            $entry=self::layer($scope,$id,$label);
+            if(is_wp_error($entry))return;
+            if($entry['configured'])$rows[]=$entry;
+        };
+        $push('global',0,'Global base');
+        $terms=$wpdb->get_results($wpdb->prepare(
+            "SELECT m.term_id,t.name,tt.taxonomy FROM {$wpdb->termmeta} m
+             INNER JOIN {$wpdb->terms} t ON t.term_id=m.term_id
+             INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_id=m.term_id
+             WHERE m.meta_key=%s AND tt.taxonomy IN ('property-types','destinations')
+             ORDER BY m.meta_id DESC LIMIT 201",self::META),ARRAY_A);
+        foreach($terms as $row){
+            $scope=$row['taxonomy']==='property-types'?'property_type':'destination';
+            $push($scope,(int)$row['term_id'],
+                  ($scope==='property_type'?'Property type':'Destination').' · '.$row['name']);
+        }
+        $posts=$wpdb->get_results($wpdb->prepare(
+            "SELECT m.post_id,p.post_type,p.post_title FROM {$wpdb->postmeta} m
+             INNER JOIN {$wpdb->posts} p ON p.ID=m.post_id
+             WHERE m.meta_key=%s AND p.post_type IN ('properties','units')
+             AND p.post_status IN ('publish','draft','pending')
+             ORDER BY m.meta_id DESC LIMIT 201",self::META),ARRAY_A);
+        foreach($posts as $row){
+            $id=(int)$row['post_id'];
+            if(!current_user_can('edit_post',$id))continue;
+            $scope=$row['post_type']==='units'?'unit':'property';
+            $push($scope,$id,($scope==='unit'?'Unit':'Property').' · '.$row['post_title']);
+        }
+        $count=['configured_adjustments'=>0,'configured_neutral'=>0,'stored_inherit_only'=>0];
+        foreach($rows as $entry)
+            if(isset($count[$entry['status']]))$count[$entry['status']]++;
+        // Report incomplete results explicitly; never silently claim global coverage.
+        return ['contract'=>self::CONTRACT,'status'=>'configured_policy_inventory_readonly',
+            'items'=>array_slice($rows,0,200),'visible_count'=>min(200,count($rows)),
+            'counts'=>$count,'truncated'=>count($terms)>=201||count($posts)>=201||count($rows)>200,
+            'commercial_authority'=>false];
+    }
     public static function search(string $scope,string $query):array {
         if(!self::can())return [];
         $query=trim(wp_strip_all_tags($query));
@@ -398,7 +540,14 @@ final class MAD4B_Accommodation_Weight_Policies_V1 {
             if(strlen($term)>95)wp_send_json_error(['code'=>'accommodation_weight_search_length'],422);
             wp_send_json_success(['items'=>self::search($scope,$term),'read_only'=>true]);
         }
-        if($mode==='preview'){
+        if($mode==='effective'){
+            $data=[
+                'property_id'=>sanitize_text_field(wp_unslash((string)($_POST['property_id']??''))),
+                'unit_id'=>sanitize_text_field(wp_unslash((string)($_POST['unit_id']??'')))];
+            $out=self::effective($data);
+        }elseif($mode==='inventory'){
+            $out=self::inventory();
+        }elseif($mode==='preview'){
             $fields=['property_id','unit_id','occupancy','room_grade',
                 'price_unit','currency','base_amount','origin'];
             $data=[];
