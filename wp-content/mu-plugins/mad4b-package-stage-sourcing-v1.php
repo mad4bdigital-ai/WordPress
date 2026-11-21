@@ -105,8 +105,27 @@ final class MAD4B_Package_Stage_Sourcing_V1 {
         // In 60623 the return sleeper departs Luxor; no implication that a
         // train from Aswan itself is the booking segment.
         $from=$to==='aswan'&&preg_match('/cairo/iu',$short)?'cairo':'';
-        if($to==='cairo'&&preg_match('/luxor/iu',$short))$from='luxor';
-        return ['from'=>$from,'to'=>$to,'source_day'=>$day,
+        $originEvidence=$from?'itinerary_text_explicit_city':null;
+        if($to==='cairo'&&preg_match('/luxor/iu',$short)){
+            $from='luxor';$originEvidence='original_itinerary_explicit_luxor';
+        }
+        // The outbound Day-2 source header says "to Aswan"; its previous
+        // verified Cairo hotel stay ends on Day 2. Use that *saved Tour
+        // stage geometry*, not a guessed origin from a sightseeing place.
+        if(!$from&&$to==='aswan'){
+            $plan=get_post_meta($source,'_mad4b_package_accommodation_source_plan_v1',true);
+            $matches=[];
+            foreach((array)($plan['stages']??[]) as $previous){
+                if(!is_array($previous)||!in_array($previous['lodging_kind']??'',
+                    ['hotel','resort'],true))continue;
+                $end=(int)($previous['source_day_start']??0)+(int)($previous['nights']??0);
+                if($end===$day&&($previous['destination_key']??'')==='cairo')
+                    $matches[]=$previous;
+            }
+            if(count($matches)===1){$from='cairo';$originEvidence='adjacent_verified_cairo_hotel_stage';}
+        }
+        return ['from'=>$from,'to'=>$to,
+            'origin_evidence'=>$originEvidence,'source_day'=>$day,
             'source_title'=>mb_substr($title,0,160),
             'status'=>$from&&$to?'itinerary_route_proposal':'route_not_explicitly_resolved'];
     }
