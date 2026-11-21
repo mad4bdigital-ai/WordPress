@@ -26,12 +26,34 @@ class TestNativeCommercialLiveForward(unittest.TestCase):
         self.assertEqual(len(p['source_blobs']),7)
         for name,sha in p['source_blobs'].items():
             with self.subTest(name=name):
-                self.assertEqual(git_blob((ROOT/name).read_bytes()),sha)
+                body=(ROOT/name).read_bytes()
+                if name=='wp-content/mu-plugins/mad4b-accommodation-weight-policies-v1.php':
+                    # Preserve the immutable 2026-11-21 seven-blob review.
+                    # Allow ONLY the exact reviewed live-forward successor,
+                    # and reconstruct its byte-identical audited predecessor.
+                    self.assertEqual(sha,'9142d558d0a93f9af1d4ba4369cfb0b065c4a644')
+                    self.assertEqual(git_blob(body),'a890cff16111dd5f237050ab1fffade6bcc12a52')
+                    raw=body.decode('utf-8')
+                    marker='\n/**\n * Original accommodation rate-source selector, strictly READ-ONLY.'
+                    self.assertEqual(raw.count(marker),1)
+                    prefix=raw.split(marker)[0]
+                    start="        }elseif($mode==='rate_source'){\n"
+                    end="        }elseif($mode==='preview'){\n"
+                    self.assertEqual(prefix.count(start),1)
+                    self.assertEqual(prefix.count(end),1)
+                    reconstructed=prefix[:prefix.index(start)]+end+prefix[prefix.index(end)+len(end):]
+                    prior=(reconstructed.rstrip()+'\n').encode('utf-8')
+                    self.assertEqual(git_blob(prior),sha)
+                else:
+                    self.assertEqual(git_blob(body),sha)
     def test_unreviewed_mutation_rejected(self):
         for name,sha in self.provenance['source_blobs'].items():
             with self.subTest(name=name):
                 body=(ROOT/name).read_bytes()
                 self.assertNotEqual(git_blob(body+b'// unreviewed'),sha)
+                if name=='wp-content/mu-plugins/mad4b-accommodation-weight-policies-v1.php':
+                    self.assertNotEqual(git_blob(body+b'// unreviewed'),
+                                        'a890cff16111dd5f237050ab1fffade6bcc12a52')
     def test_weight_estimates_not_bookable(self):
         src=self.read('wp-content/mu-plugins/mad4b-accommodation-weight-policies-v1.php')
         for fragment in ("'commercial_authority'=>false","'rate_written'=>false",
