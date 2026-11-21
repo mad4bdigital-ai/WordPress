@@ -504,6 +504,12 @@ def source_browser_evidence_due(variance,history,now):
     if not isinstance(missing,list) or any(x not in _SOURCE_OBSERVER_LANGS for x in missing):
         return False,'invalid_missing_languages'
     if not missing:
+        # The report is still valid, but proactively renew on the first
+        # original Cron tick after 45 minutes. Waiting until the 90-minute
+        # expiry would create a recurrent evidence gap even on an idle VPS.
+        last=row.get('last_completed') if isinstance(row,dict) else None
+        if type(last)==int and 0<last<=now and now-last>=2700:
+            return True,'proactive_browser_proof_renewal'
         return False,'existing_browser_proof_fresh'
     return True,'browser_evidence_expired'
 

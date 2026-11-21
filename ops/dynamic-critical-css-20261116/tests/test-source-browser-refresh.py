@@ -25,6 +25,14 @@ assert due({**base,'browser_profiles_missing_or_expired':[]},history,now)==(Fals
 print('PASS existing fresh proof not recaptured')
 assert due(base,{'source:original_browser_evidence_refresh':{'next_attempt':now+2700}},now)==(False,'readback_cooldown')
 print('PASS 45-minute successful cooldown')
+fresh={**base,'browser_profiles_missing_or_expired':[]}
+assert due(fresh,{'source:original_browser_evidence_refresh':
+                 {'last_completed':now-2700,'next_attempt':now-5}},now)==(
+                 True,'proactive_browser_proof_renewal')
+assert due(fresh,{'source:original_browser_evidence_refresh':
+                 {'last_completed':now-2600,'next_attempt':now-5}},now)==(
+                 False,'existing_browser_proof_fresh')
+print('PASS proactive refresh before 90-minute expiry, no premature Chrome')
 assert due({**base,'host':'wayfatours.com'},history,now)==(False,'foreign_variance')
 print('PASS exact site host admission')
 assert due({**base,'checked_at':now-901},history,now)==(False,'stale_variance')
@@ -44,4 +52,4 @@ assert "'node','/tools/probe-public.js'" in candidate.read_text()
 assert "_SOURCE_OBSERVER_LOCK=Path('/run/lock/mad4b-native-lazy-browser-global.lock')" in candidate.read_text()
 assert 'CSS_NETWORK_PROFILE' not in m
 print('PASS original renderer probe and shared browser lock, no second runtime')
-print('CSS_ORIGINAL_BROWSER_FRESHNESS_TESTS_11_OF_11_PASS')
+print('CSS_ORIGINAL_BROWSER_FRESHNESS_TESTS_13_OF_13_PASS')
