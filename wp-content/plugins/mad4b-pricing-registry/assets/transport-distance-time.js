@@ -579,7 +579,14 @@ function renderPackageReadinessBoard(value){
       (s.issues.length?s.issues.join(', '):'component proof recorded')+
       (s.season_excluded_properties?' · season excluded #'+s.season_excluded_property_ids.join(', #'):'')+
       (['hotel','resort'].includes(s.kind)?' · sheet period: '+
-        (s.sheet_quote_period||'none · mixed/outside quoted year'):'');
+        (s.sheet_quote_period||'none · mixed/outside quoted year'):'')+
+      (s.unassigned_property_diagnostics?
+        ' · CATALOGUE REVIEW ONLY ('+s.unassigned_property_diagnostics.total+
+        ' not assigned; none qualified): '+
+        (s.unassigned_property_diagnostics.candidates||[]).map(c=>
+          c.name+' (#'+c.id+', '+c.reason+
+          (c.supplier_quote_reference?', quotation reference available':'')+')').join('; '):
+        '');
    });
    const details=document.createElement('details');
    const sum=document.createElement('summary');
