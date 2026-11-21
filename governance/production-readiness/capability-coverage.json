@@ -24330,6 +24330,63 @@
       "coverage_reuse_rationale": "Existing Content Integrity policies and term scanning protections persist unchanged in exactly reconstructed source.",
       "review_rationale": "Refactor only: original brand source SHA 9169abd2dbce76dfbe087337799dd475eced8a66 reconstructed byte-for-byte after exact loader and Trait extraction. No new REST, hooks, cron, API or live WordPress writes.",
       "execution_note": "Hermetic PHP test checks Term Meta foreign-link denial; Python source contract validates method-body identity. No Production, Staging or Host acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-content-readiness-scanning.php",
+      "source_blob_sha": "394d354309757e261345679a305b1717a787ecdc",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/cp4_content_readiness_source_regression.py"
+      ],
+      "owner_role": "MAD4B first-party Content Readiness CI source reviewer; commercial owner signature and Production release approval remain independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "CP4 Content Readiness first-party source extension checks exact canonical Tour post identity and publish status, authenticated source row consistency, known stage-key code fingerprint, severity and bounded evidence. It explicitly refuses forged owner group, non-high severity, stale source or another tenant. WordPress ledger remains original and no new capability/approval or external notification is added.",
+      "coverage_reuse_rationale": "Existing site-bound original Content Readiness ledger, source admission with immutable stage identity, WordPress role controls, independent Cost Receipt signature gate, native scheduler and Production release controls remain in force. This review does not grant an administrator role, new REST capability, external notification, automatic supplier approval, pricing authorization or checkout permission."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-content-readiness-reconciliation.php",
+      "source_blob_sha": "39ab0b9c97cdfea300dbeadfc069353072347a56",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "tests/cp4_content_readiness_source_regression.py"
+      ],
+      "owner_role": "MAD4B first-party Content Readiness CI source reviewer; commercial owner signature and Production release approval remain independent",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "CP4 Content Readiness reconciliation retains original source-owned lifecycle. Missing unreviewed source, a changed stage, deleted stage, or a partial canonical scan cannot resolve any existing cost alert. A specific unchanged stage can be resolved only after its receipt passes the independent supplier Cost Receipt signature gate. Positive signature tests use a hermetic mock only, never a real commercial approval.",
+      "coverage_reuse_rationale": "Existing site-bound original Content Readiness ledger, source admission with immutable stage identity, WordPress role controls, independent Cost Receipt signature gate, native scheduler and Production release controls remain in force. This review does not grant an administrator role, new REST capability, external notification, automatic supplier approval, pricing authorization or checkout permission."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-workflow-options.php",
+      "source_blob_sha": "2b0b20927811e097b6dc19a3d84134205a8eb423",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PROVIDERS-02",
+        "LOCALIZATION-01"
+      ],
+      "regression_tests": [
+        "tests/cp4_content_readiness_source_regression.py"
+      ],
+      "owner_role": "MAD4B first-party Pricing and Content Readiness CI reviewer; independent commercial and Production owner remain mandatory",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "The original FluentBoards Readiness owner router now maps only exact first-party CP4 cost alerts with a native source, typed 12-digit hex stage code and source contract to its existing Pricing group, while retaining Hotel Supplier Contracts, Cruise Contracting, and Rail Supplier Contracting labels in signed source evidence. No arbitrary user assignment, task creation, external notifications or new permissions. Hermetic PHP regression rejects fake source and fake contract.",
+      "coverage_reuse_rationale": "The existing Pricing group owner role, explicit per-site board/stage configuration, WordPress capability, independent task mutation gate, original scope-bounded issue registry and Cost Receipt signature check remain unchanged. No new Control IDs, task creation, privileged identity, commercial approval or Production release authority."
     }
   ],
   "code_change_rules": {

@@ -35,6 +35,37 @@ def exact_reviewed_brand_trait_reconstruction(root, item):
     return git_blob(prior)==original
 
 
+def exact_reviewed_cp4_workflow_successor(root,item):
+    # Frozen historical 46-path inventory and original live-mount readings do
+    # not change. Only the specific original workflow-option successor reviewed
+    # by the native signed-only CP4 regression is admissible.
+    path='wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-readiness-workflow-options.php'
+    if item['path']!=path or item['candidate_git_blob']!='b790da33c16496013ea408d5a142299ec5fd8724':
+        return False
+    actual=git_blob((root/path).read_bytes())
+    if actual!='2b0b20927811e097b6dc19a3d84134205a8eb423':
+        return False
+    gov=root/'governance/production-readiness/capability-coverage.json'
+    if git_blob(gov.read_bytes())!='2ad267654e478457dd7c61acb58950e16177a806':
+        return False
+    coverage=json.loads(gov.read_text())
+    if coverage.get('authorizing') is not False or coverage.get('production_promotion_from_ci') is not False:
+        return False
+    rows=[r for r in coverage.get('reviewed_changes',[])
+          if r.get('path')==path and r.get('source_blob_sha')==actual
+          and r.get('status')=='reviewed_for_ci_only'
+          and r.get('live_evidence_required') is True
+          and r.get('production_authorized') is False
+          and 'tests/cp4_content_readiness_source_regression.py' in r.get('regression_tests',[])]
+    if len(rows)!=1:return False
+    code=(root/path).read_text()
+    return ("($issue['source']??'')==='mad4b-package-cost-readiness'" in code
+       and "preg_match('/^cp4_cost_[a-f0-9]{12}$/D',$code)" in code
+       and "($issue['source_evidence']['contract']??'')==='mad4b.cp4-cost-readiness-alert.v1'" in code
+       and "return 'pricing';" in code
+       and "return 'general';" in code)
+
+
 def verify(record, root=ROOT):
     assert record['contract']=='mad4b.46-pr920-collisions-live-mount-source-review.non-authorizing.v1'
     assert record['human_functional_approval'] is False
@@ -50,8 +81,9 @@ def verify(record, root=ROOT):
         assert item['pr920_git_blob']==item['candidate_git_blob']
         assert item['semantic_signoff'] is False and item['runtime_accepted'] is False
         current=git_blob((root/path).read_bytes())
-        assert current==item['candidate_git_blob'] or \
-            exact_reviewed_brand_trait_reconstruction(root,item),path
+        assert (current==item['candidate_git_blob']
+                or exact_reviewed_brand_trait_reconstruction(root,item)
+                or exact_reviewed_cp4_workflow_successor(root,item)),path
         for site in ('toursdev_staging','wayfatours_production'):
             state=item['mounted'][site]['state']
             assert state in ('exact','different','absent'),(path,state)

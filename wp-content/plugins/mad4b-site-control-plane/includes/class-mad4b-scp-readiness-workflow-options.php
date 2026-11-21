@@ -18,6 +18,12 @@ final class MAD4B_SCP_Readiness_Workflow_Options {
     }
     public static function group_for_issue($issue) {
         $code=sanitize_key((string)($issue['code']??''));
+        // First-party CP4 cost issues remain in the native pricing-owner route;
+        // supplier contracting subgroups are retained separately in source_evidence.
+        if(($issue['source']??'')==='mad4b-package-cost-readiness' &&
+           preg_match('/^cp4_cost_[a-f0-9]{12}$/D',$code) &&
+           ($issue['source_evidence']['contract']??'')==='mad4b.cp4-cost-readiness-alert.v1')
+            return 'pricing';
         if(($issue['source']??'')==='mad4b-rate-planner'&&in_array($issue['source_evidence']['owner_group']??'',array('pricing','operations','destinations','wpml'),true))return $issue['source_evidence']['owner_group'];
         if(str_starts_with($code,'ccr_')){
             $field=sanitize_key((string)($issue['source_evidence']['field']??''));

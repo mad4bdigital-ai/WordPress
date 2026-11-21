@@ -47,3 +47,12 @@ Eight canonical Package tours, **28 stage records per company, 0 approved/source
 5. Revalidate FX, tax, margins and children/infant policy before enabling generation; all remain blocked here.
 
 `Checkpoint 4` therefore has **technical admission and routing PASS**, **commercial Cost Receipts NOT YET READY**.
+
+## Flat repeater mirror cleanup after native station repair
+After validating the original five-stop arrays, discovered stale denormalized JetEngine `trans_train_stops_station_id`, `trans_train_stops_sort_num`, and `trans_train_stops_time` fields from the old Ramses-based repeater. Guarded live repair of only sleeper 86/87 and their staging Arabic twins:
+- Tours.dev: post IDs `54552,54553,54558,54559`, all correct station `68930` (Bashteel).
+- Wayfatours: post IDs `54552,54553`, correct station `68922` (Bashteel).
+- Train 86 mirror is first stop `1,19:45`; train 87 mirror last stop `5,06:25`.
+- Separate preimages under VPS `/opt/mad4b-company-provisioning/reports/checkpoint4-supplier-cost-20261121/train_legacy_mirror_preflight_*.jsonl`.
+- Guarded one-time source: `reconcile-train-legacy-stop-mirrors-guarded.php`. Its preflight expects OLD Ramses values; on an already-reconciled site it will intentionally refuse reapplication.
+- Final independent read-only acceptance: `CP4_READONLY_ACCEPTANCE_PASS` on **both** tenants; 13/13 receipt tests per site; original trains still `trans_use_in_tour_rate_generation=0`. Source-price approval receipts remain **0/28** on both sites.
