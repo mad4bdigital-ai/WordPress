@@ -388,14 +388,32 @@ function renderReport(data){
         ])]));
         const tbody=el('tbody');
         for(const prop of properties){
+          const unitCell=el('td','');
+          unitCell.append(el('span','',String(prop.native_published_unit_count||0)+
+            ' published / '+String(prop.native_draft_unit_count||0)+' draft'));
+          const drafts=Array.isArray(prop.source_unit_draft_editors)
+            ?prop.source_unit_draft_editors:[];
+          if(drafts.length){
+            const more=el('details','mad4b-pcl-source-unit-drafts');
+            more.append(el('summary','','Open original room drafts ('+drafts.length+')'));
+            const links=el('ul','');
+            for(const item of drafts){
+              const li=el('li','');
+              li.append(link(item.edit_url,item.title||('Unit #'+item.id)));
+              li.append(el('small','',
+                ' · capacity '+(item.capacity===null?'unverified':String(item.capacity))+
+                ' · supplier cost pending'));
+              links.append(li);
+            }
+            more.append(links);unitCell.append(more);
+          }
           tbody.append(row('tr',[
             row('td',[link(prop.edit_url,prop.title||('Property #'+prop.id))]),
             el('td','',(prop.stars||[]).join(', ')||'Not classified'),
             el('td','',prop.tier_eligible?'Matches selected tier':
               (prop.tier_status==='tier_unclassified'?'Not assigned to any package tier':
                'Not eligible for selected tier')),
-            el('td','',String(prop.native_published_unit_count||0)+' / '+
-              String(prop.native_draft_unit_count||0))
+            unitCell
           ]));
         }
         table.append(tbody);scout.append(table);
