@@ -8,7 +8,7 @@ are re-read before publishing; safe native CSS remains for unproven contexts.
 import fcntl,hashlib,json,os,pathlib,subprocess,sys,time,re
 from pathlib import Path
 ROOT=Path('/opt/mad4b-company-provisioning')
-TOOLS=ROOT/'worktrees/pr814-converged-local-20261115/ops/dynamic-critical-css-20261116'
+TOOLS=Path(__file__).resolve().parent
 IMAGE='mad4b-firecrawl-playwright:20261107-lifecycle-v3'
 CONFIG={
  'source':('tours.dev.mad4b.com','php-wkgtkzta35wkkgouwt6ruljc',
@@ -71,6 +71,24 @@ echo wp_json_encode([
  "enabled_currencies"=>$codes,
  "base_currency"=>$base,
  "source_optimizer_sha"=>hash("sha256",wp_json_encode($css_opt_config,JSON_UNESCAPED_SLASHES)),
+ // A tour-specific CSS source veto is not part of the global LiteSpeed
+ // options. Bind its ORIGINAL file bytes to the *tour-only* optimizer
+ // negative-proof identity. After a native tour CSS repair, old
+ // source_css_bundle_unavailable evidence MUST be re-evaluated, without
+ // invalidating unrelated destinations, pages, or home certifications.
+ "source_private_css_policy_sha"=>is_file(WPMU_PLUGIN_DIR."/424-mad4b-private-html-css-bundler-v1.php")
+   ?(string)hash_file("sha256",WPMU_PLUGIN_DIR."/424-mad4b-private-html-css-bundler-v1.php"):null,
+ "source_tour_css_policy_sha"=>is_file(WPMU_PLUGIN_DIR."/378-mad4b-tour-single-css-stability.php")
+   ?(string)hash_file("sha256",WPMU_PLUGIN_DIR."/378-mad4b-tour-single-css-stability.php"):null,
+ // WordPress core categories keep their per-render JetEngine CSS inline.
+ // Bind the first-party optimizer file to category-only negative proof.
+ "source_category_css_policy_sha"=>is_file(WPMU_PLUGIN_DIR."/427-mad4b-public-archive-css-source-v1.php")
+   ?(string)hash_file("sha256",WPMU_PLUGIN_DIR."/427-mad4b-public-archive-css-source-v1.php"):null,
+ // Destination archive dynamic Elementor selectors share the first-party
+ // 427 native CSS exclusion with categories, but its negative evidence
+ // must be invalidated independently from unrelated CPT/page sources.
+ "source_destination_css_policy_sha"=>is_file(WPMU_PLUGIN_DIR."/428-mad4b-public-destination-css-source-v1.php")
+   ?(string)hash_file("sha256",WPMU_PLUGIN_DIR."/428-mad4b-public-destination-css-source-v1.php"):null,
  "global_generation"=>(int)get_option("mad4b_ccss_global_generation_v1",0),
  "listing_generation"=>(int)get_option("mad4b_ccss_listing_generation_v1",0),
  "wpml_languages"=>array_values((array)($s["active_languages"]??[])),
@@ -86,14 +104,57 @@ echo wp_json_encode([
         or not re.fullmatch('[a-f0-9]{64}',str(data.get('source_optimizer_sha','')))):
         raise ValueError('SITE_ENVIRONMENT_OR_DEFAULT_POLICY_HOLD')
     return data
+def public_service_route_scope(cat,service_channels):
+    """Respect first-party Wayfa standalone service activation, never invent 200s.
+
+    A published JetEngine Properties record is not a public URL when
+    service-activation makes that channel tour-only or disabled. The
+    original 004 service visibility policy intentionally returns HTTP
+    404 to shoppers for standalone Properties. Such records must not
+    consume an expensive Chromium critical-css source-family slot.
+    """
+    if not isinstance(cat,dict):
+        raise ValueError('UNTRUSTED_SERVICE_CATALOG')
+    if cat.get('host')!='wayfatours.com':
+        return cat
+    if (not isinstance(service_channels,dict)
+        or set(service_channels)!={'tours','properties'}
+        or any(not isinstance(v,bool) for v in service_channels.values())):
+        raise ValueError('PUBLIC_SERVICE_POLICY_UNATTESTED')
+    excluded=set()
+    if not service_channels['properties']:
+        excluded.update(('properties','archive:properties','property-types'))
+    if not service_channels['tours']:
+        excluded.update(('tours-and-activities','archive:tours-and-activities',
+                         'tour-types','tour-categories'))
+    rows=cat.get('routes')
+    if not isinstance(rows,list):raise ValueError('INVALID_PUBLIC_SERVICE_CATALOG')
+    # Filter only the original WordPress CLI catalog view, not the site's
+    # public activation settings, posts, WPML translation graph or cache.
+    return {**cat,'routes':[row for row in rows
+            if isinstance(row,dict) and row.get('type') not in excluded]}
+
 def catalog(php,host):
-    out=wp_eval(php,r'''
+    admitted=wp_eval(php,r'''
 if(!class_exists("MAD4B_Public_Critical_CSS_Coverage_V1",false)) exit(3);
-echo wp_json_encode(MAD4B_Public_Critical_CSS_Coverage_V1::catalog(),JSON_UNESCAPED_SLASHES),"\n";
+$routes=MAD4B_Public_Critical_CSS_Coverage_V1::catalog();
+$service=null;
+if(($routes["host"]??"")==="wayfatours.com"){
+    // This is the first-party service visibility policy used by the
+    // site's public pre_get_posts and singular-template HTTP 404 gate.
+    // Do not infer visibility from published post status or permalink.
+    if(!function_exists("service_visibility_active"))exit(4);
+    $service=["tours"=>(bool)service_visibility_active("tours"),
+              "properties"=>(bool)service_visibility_active("properties")];
+}
+echo wp_json_encode(["catalog"=>$routes,"public_service_channels"=>$service],
+    JSON_UNESCAPED_SLASHES),"\n";
 ''',timeout=210)
-    if out.get('contract')!='mad4b.public-critical-css.routes.v1' or out.get('host')!=host:
+    if not isinstance(admitted,dict):raise ValueError('CATALOG_ADMISSION_INVALID')
+    out=admitted.get('catalog')
+    if not isinstance(out,dict) or out.get('contract')!='mad4b.public-critical-css.routes.v1' or out.get('host')!=host:
         raise ValueError('CATALOG_HOST_UNTRUSTED')
-    return out
+    return public_service_route_scope(out,admitted.get('public_service_channels'))
 def jsonsave(p,obj):
     p.write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n')
 def optimizer_bundle_missing(capture_index,route):
@@ -115,6 +176,28 @@ def optimizer_bundle_missing(capture_index,route):
 
 def locked(file):
     f=open(file,'a+');fcntl.flock(f,fcntl.LOCK_EX|fcntl.LOCK_NB);return f
+
+def approved_browser_network(site,env,script):
+    # Original Chromium's default Docker bridge resolves WCML DE to USD,
+    # while the exact same unauthenticated public request from host/outside
+    # resolves DE to EUR. Only the staging public navigation/QA workload may
+    # use host egress; keep capabilities removed and original browser locks.
+    # All other tenant/workload combinations retain their original network.
+    if site=='tours.dev.mad4b.com' and env=='staging' and script in (
+        'capture.js','verify.js','probe-public.js'):
+        # Original Source LiteSpeed CSS directory is www-data:www-data
+        # (0770). With all Linux capabilities dropped, root-in-container
+        # cannot traverse it without group 33. Grant ONLY the supplemental
+        # group needed by the read-only /source-css capture bind, not the
+        # directory write access or DAC override capabilities.
+        if script=='capture.js':
+            return ['--network=host','--cap-drop=ALL','--group-add=33']
+        return ['--network=host','--cap-drop=ALL']
+    if (site,env) not in [
+        ('tours.dev.mad4b.com','staging'),('wayfatours.com','production')]:
+        raise ValueError('UNAPPROVED_BROWSER_SITE_ENVIRONMENT')
+    return []
+
 def browser(job,wp,site,env,script,output,extra=None,limit=1320):
     opts={
       'NODE_PATH':'/usr/src/app/node_modules',
@@ -129,10 +212,51 @@ def browser(job,wp,site,env,script,output,extra=None,limit=1320):
     args=['docker','run','--rm','--user','0:0','--memory=1024m','--cpus=1.3',
           '--pids-limit=250','--security-opt=no-new-privileges',
           '-v',str(TOOLS/'tools')+':/tools:ro','-v',str(output.parent)+':/out']
+    args+=approved_browser_network(site,env,script)
     if script=='capture.js':args+=['-v',str(wp/'litespeed/css')+':/source-css:ro']
     for k,v in opts.items():args+=['-e',k+'='+v]
     args+=[IMAGE,'node','/tools/'+script]
     return run(args,timeout=limit,stdout=output)
+# Git-owned byte pins (source code in the same reviewed Git tree).
+# A live WordPress copy cannot self-authorize any code change. The old
+# pr814-converged-local worktree was temporary and has been deleted.
+# Update these constants ONLY with a reviewed source commit and the
+# original full test suite; do not relax this to a current-live SHA.
+APPROVED_NATIVE_RUNTIME_SHA256={
+    '421-mad4b-public-critical-css-coverage.php':
+      'ae7936c7ad09b059375e1960d4c59144af0b4325933db34bcfa63c26e49233bb',
+    '422-mad4b-public-critical-css-runtime.php':
+      '13e98efebaef87918d38c1d5be30bd6cf45c9f40c0e3264a31beca79b4663a36',
+}
+
+def approved_native_runtime_sha(site,wp):
+    """Source-review-pinned native CSS owner; fail closed on unknown companies.
+
+    A deleted worktree must never stall a correct site nor cause a rollback to
+    older PHP. This exact SHA contract is bound to the reviewed Git source.
+    """
+    if site not in CONFIG or wp!=CONFIG[site][2] or wp.is_symlink():
+        raise ValueError('SOURCE_NATIVE_COMPONENT_COMPANY_ROOT_MISMATCH')
+    for name,expected in APPROVED_NATIVE_RUNTIME_SHA256.items():
+        live=wp/'mu-plugins'/name
+        if live.is_symlink() or not live.is_file():
+            raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
+        if hashlib.sha256(live.read_bytes()).hexdigest()!=expected:
+            raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
+    return APPROVED_NATIVE_RUNTIME_SHA256[
+        '422-mad4b-public-critical-css-runtime.php']
+
+def qa_policy_sha():
+    # Exact deployed original Chromium QA code, never a user-supplied key.
+    # Invalidating negative attempts never publishes a public certificate.
+    digest=hashlib.sha256(b'mad4b-public-css-qa-implementation-v1\x00')
+    for name in ('verify.js','lcp-observation-window.js'):
+        p=TOOLS/'tools'/name
+        if p.is_symlink() or not p.is_file():
+            raise ValueError('QA_VERIFIER_TOOL_MISSING_OR_SYMLINK:'+name)
+        digest.update(name.encode()+b'\x00'+p.read_bytes()+b'\x00')
+    return digest.hexdigest()
+
 def run_core(site):
     if site not in CONFIG:raise ValueError('UNKNOWN_COMPANY')
     host,php,wp,env=CONFIG[site]
@@ -152,14 +276,9 @@ def run_core(site):
     try:b=locked('/run/lock/mad4b-native-lazy-browser-global.lock')
     except BlockingIOError:
         print('SKIP_PUBLIC_CCSS_BROWSER_BUSY',site);return
-    # Never use a staging source code that was changed concurrently with
-    # publishing or a production runtime version out of sync with Git.
-    for name in ['421-mad4b-public-critical-css-coverage.php',
-                 '422-mad4b-public-critical-css-runtime.php']:
-        src=ROOT/'worktrees/pr814-converged-local-20261115/wp-content/mu-plugins'/name
-        dst=wp/'mu-plugins'/name
-        if not src.is_file() or not dst.is_file() or src.read_bytes()!=dst.read_bytes():
-            raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
+    # Shared exact first-party runtime admission; refresh registry uses
+    # the same source-release identity and cannot diverge from this runner.
+    verified_runtime_sha=approved_native_runtime_sha(site,wp)
     # Borrow the host's existing 45-second CPU sensor instead of starting a
     # Chromium run at 51-100% guest CPU (or with two original WPCLI slots).
     # A deferred run never selects a route, mutates the ledger or changes a
@@ -179,8 +298,17 @@ def run_core(site):
     if pressure>max(4,cores*1.35):
         print('HOLD_PUBLIC_CCSS_HIGH_LOAD',round(pressure,2));return
     state=obs(php,host,env)
-    state['runtime_sha']=hashlib.sha256(
-        (wp/'mu-plugins/422-mad4b-public-critical-css-runtime.php').read_bytes()).hexdigest()
+    state['runtime_sha']=verified_runtime_sha
+    # The optional browser verifier is NOT an activation authority for
+    # the native template policy. If unavailable, keep policy discovery
+    # active and defer only further expensive browser measurement.
+    qa_available=True
+    try:state['qa_policy_sha']=qa_policy_sha()
+    except (OSError,ValueError) as exc:
+        print('OBSERVE_CHROMIUM_QA_UNAVAILABLE_POLICY_REMAINS_ACTIVE',
+              site,str(exc)[:150],flush=True)
+        state['qa_policy_sha']='unavailable'
+        qa_available=False
     listing=catalog(php,host)
     stamp=time.strftime('%Y%m%dT%H%M%SZ',time.gmtime())
     jobdir=base/stamp
@@ -198,11 +326,52 @@ def run_core(site):
     import importlib.util
     spec=importlib.util.spec_from_file_location('source_families',TOOLS/'public-source-families.py')
     family=importlib.util.module_from_spec(spec);spec.loader.exec_module(family)
-    report=family.build(site,listing,state,
-        family.queue.read_ledger(ledger,site),wp)
+    current_ledger=family.queue.read_ledger(ledger,site)
+    # One bounded, no-cookie, content-addressed source CSS audit in each
+    # already admitted browser window. This repairs a certified route when
+    # LiteSpeed rewrites a real CSS bundle without changing post/global
+    # generations. It never bypasses independent Chromium QA or WCML scope.
+    drift_spec=importlib.util.spec_from_file_location(
+        'native_live_css_drift',TOOLS/'public-route-live-css-drift.py')
+    drift_mod=importlib.util.module_from_spec(drift_spec)
+    drift_spec.loader.exec_module(drift_mod)
+    try:
+        drift=drift_mod.scan(site,listing,state,current_ledger,wp,family,
+            base/'live-css-drift-scan-cursor.json',count=4)
+    except (OSError,ValueError,KeyError,TypeError) as exc:
+        print('HOLD_PUBLIC_CCSS_DRIFT_AUDIT',site,str(exc)[:140],flush=True)
+        drift=None
+    selected_ledger_path=ledger
+    report_ledger=current_ledger
+    if drift:
+        report_ledger=drift_mod.select_verified_repair(current_ledger,drift)
+        selected_ledger_path=jobdir/'verified-asset-drift-selection-ledger.json'
+        family.queue.atom(selected_ledger_path,report_ledger)
+        print('PUBLIC_CCSS_LIVE_ASSET_DRIFT',site,drift['path'],
+              drift['expected_css_file'],drift['css_file'],flush=True)
+    # Template policies apply at native source discovery. Chromium QA is
+    # separate evidence of display/interaction quality; it must not decide
+    # whether the template policy or variant index is activated.
+    v_spec=importlib.util.spec_from_file_location(
+        'original_template_variant_index',TOOLS/'public-template-variant-index.py')
+    variants=importlib.util.module_from_spec(v_spec)
+    v_spec.loader.exec_module(variants)
+    vpath=base/'template-variant-index.json'
+    try:
+        index=variants.refresh_file(
+            site,listing,state,report_ledger,wp,family,vpath,budget=4)
+    except (BlockingIOError,ValueError,OSError,KeyError,TypeError) as exc:
+        print('OBSERVE_TEMPLATE_HTML_NONBLOCKING',site,str(exc)[:120],flush=True)
+        try:index=variants.read(vpath,site)
+        except (ValueError,OSError,KeyError,TypeError):index=variants.empty(site)
+    report=family.build(site,listing,state,report_ledger,wp,variant_index=index)
     report['refreshed_at_utc']=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime())
     family.queue.atom(base/'source-families-latest.json',report)
-    preferred=report.get('next_canary_route_key')
+    preferred=drift['route_key'] if drift else report.get('next_canary_route_key')
+    if not qa_available:
+        print('POLICY_ACTIVE_BROWSER_EVIDENCE_DEFERRED',site,
+              report['source_groups_total'],flush=True)
+        return
     print('PUBLIC_CCSS_SOURCE_FAMILIES',site,'total',report['source_groups_total'],
         'qualified',report['source_canary_qualified_groups'],
         'next',preferred[:12] if preferred else 'none',flush=True)
@@ -211,7 +380,7 @@ def run_core(site):
               'NO_UNPROVEN_TEMPLATE_CANARY_ELIGIBLE_NATIVE_PAGE_FALLBACKS_REMAIN')
         return
     run(['python3',str(TOOLS/'public-route-queue.py'),'select',site,
-        str(catfile),str(statefile),str(ledger),str(jobfile),preferred])
+        str(catfile),str(statefile),str(selected_ledger_path),str(jobfile),preferred])
     job=json.loads(jobfile.read_text())
     route=job['route']
     if route is None:
@@ -272,9 +441,12 @@ def run_core(site):
                        site,str(wp),str(catfile),str(jobdir/'route.json'),
                        str(statefile),str(resdir/(lang+'.headers')),
                        str(resdir/(lang+'.html')),str(proofout)],timeout=25))
+            # Resume has the same original source/QA revision gate as
+            # fresh certification. Include *all* admitted synthetic
+            # fields from initial capture before comparing revisions.
             fresh_state=obs(php,host,env)
-            fresh_state['runtime_sha']=hashlib.sha256(
-                (wp/'mu-plugins/422-mad4b-public-critical-css-runtime.php').read_bytes()).hexdigest()
+            fresh_state['runtime_sha']=approved_native_runtime_sha(site,wp)
+            fresh_state['qa_policy_sha']=qa_policy_sha()
             fresh_catalog=catalog(php,host)
             current=next((r for r in fresh_catalog['routes']
                           if r['route_key']==route['route_key']),None)
@@ -340,9 +512,13 @@ def run_core(site):
             modspec=importlib.util.spec_from_file_location('negative_css',TOOLS/'public-route-native-preferred.py')
             mod=importlib.util.module_from_spec(modspec);modspec.loader.exec_module(mod)
             if mod.is_native_preferred(q,lang):
+                # The independent native-CSS nonbenefit decision must
+                # compare the same source/QA release identity as original
+                # capture, otherwise legitimate negative evidence is
+                # incorrectly converted into a generic QA hold.
                 fresh=obs(php,host,env)
-                fresh['runtime_sha']=hashlib.sha256(
-                    (wp/'mu-plugins/422-mad4b-public-critical-css-runtime.php').read_bytes()).hexdigest()
+                fresh['runtime_sha']=approved_native_runtime_sha(site,wp)
+                fresh['qa_policy_sha']=qa_policy_sha()
                 current=next((x for x in catalog(php,host)['routes']
                               if x['route_key']==route['route_key']),None)
                 if fresh==state and current==route:
@@ -359,8 +535,13 @@ def run_core(site):
              str(statefile),str(probe/(lang+'.headers')),str(jobdir/'measured-site.json')])
         # Re-read global + route-specific revision before admission.
         fresh_state=obs(php,host,env)
-        fresh_state['runtime_sha']=hashlib.sha256(
-            (wp/'mu-plugins/422-mad4b-public-critical-css-runtime.php').read_bytes()).hexdigest()
+        # The original QA policy is part of the initial snapshot since
+        # versioned negative evidence was introduced. Recompute the same
+        # admission-bound, fail-closed fields at final readback; otherwise
+        # an unchanged page is always misclassified as revision drift.
+        # A *real* QA source change while Chromium runs still fails here.
+        fresh_state['runtime_sha']=approved_native_runtime_sha(site,wp)
+        fresh_state['qa_policy_sha']=qa_policy_sha()
         fresh_catalog=catalog(php,host)
         current=next((x for x in fresh_catalog['routes'] if x['route_key']==route['route_key']),None)
         if (fresh_state!=state or current!=route):
