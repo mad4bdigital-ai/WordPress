@@ -203,6 +203,71 @@ function renderReport(data){
       }
       hidden.append(entries);section.append(hidden);
     }
+    // A separate source discovery does not grant candidate eligibility,
+    // unit assignment or supplier price authority.
+    const source=stage.source_discovery||{};
+    if(source.type==='published_hotel_property_pool'){
+      const scout=el('details','mad4b-pcl-source-scout');
+      const count=Number(source.source_property_count||0);
+      scout.append(el('summary','',
+        'Discover real '+String(stage.destination||'')+' hotel Properties ('+count+
+        ') · '+String(source.tier_matched_count||0)+' with matching Package Level'+
+        ' · '+String(source.tier_unclassified_count||0)+' unclassified'));
+      scout.append(el('p','mad4b-pcl-warning',
+        'Editorial source pool only. A real hotel is not a selected hotel for this tier or date; add the correct native Package Level, actual Room Units and positive supplier rates before generation.'));
+      if(source.excluded_wrong_locality){
+        scout.append(el('p','mad4b-pcl-info',
+          String(source.excluded_wrong_locality)+' Abu Simbel Property record(s) excluded from an Aswan-city overnight.'));
+      }
+      const properties=Array.isArray(source.properties)?source.properties:[];
+      if(properties.length){
+        const table=el('table','widefat striped mad4b-pcl-table');
+        table.append(row('thead',[row('tr',[
+          el('th','','Published Property'),el('th','','Native stars'),
+          el('th','','Package Level'),el('th','','Linked Units')
+        ])]));
+        const tbody=el('tbody');
+        for(const prop of properties){
+          tbody.append(row('tr',[
+            row('td',[link(prop.edit_url,prop.title||('Property #'+prop.id))]),
+            el('td','',(prop.stars||[]).join(', ')||'Not classified'),
+            el('td','',prop.tier_eligible?'Matches selected tier':
+              (prop.tier_status==='tier_unclassified'?'Not assigned to any package tier':
+               'Not eligible for selected tier')),
+            el('td','',String(prop.native_unit_count||0))
+          ]));
+        }
+        table.append(tbody);scout.append(table);
+      }else scout.append(el('p','mad4b-pcl-empty','No source-backed published hotel Properties for this destination.'));
+      section.append(scout);
+    }else if(source.type==='published_sleeper_train_route_candidates'){
+      const route=source.route||{};
+      const trains=Array.isArray(source.train_candidates)?source.train_candidates:[];
+      const scout=el('details','mad4b-pcl-source-scout');
+      scout.append(el('summary','','Original sleeper train route '+(route.from||'?')+
+        ' → '+(route.to||'?')+' · '+trains.length+' published train candidate(s)'));
+      scout.append(el('p','mad4b-pcl-warning',
+        'Train station order is a route proposal, not a verified operating timetable, booked sleeper cabin or approved supplier fare.'));
+      for(const train of trains){
+        scout.append(row('p',[
+          link(train.edit_url,train.title||('Train #'+train.id)),
+          el('span','',' · train '+(train.number||'?')+
+            ' · '+String(train.published_transport_rate_count||0)+
+            ' published transport rates · sleeper cabin fare not verified')
+        ]));
+      }
+      if(!trains.length)scout.append(el('p','mad4b-pcl-empty',
+        'No published sleeping train supports the route in the original itinerary.'));
+      section.append(scout);
+    }else if(source.type==='cruise_native_program_source'){
+      const scout=el('div','mad4b-pcl-source-program');
+      scout.append(el('p','',
+        'Original cruise program: '+(source.program_title||'Unassigned')+
+        ' · '+(source.route_from||'?')+' → '+(source.route_to||'?')+
+        ' · '+String(source.program_days||0)+' program days'+
+        ' · vessel/cabin/sailing and supplier tariff still unverified'));
+      section.append(scout);
+    }
     const candidates=Array.isArray(stage.candidates)?stage.candidates:[];
     if(!candidates.length){
       let msg='No destination- and tier-matched hotel candidates are linked to this stage. Pricing remains unavailable.';
