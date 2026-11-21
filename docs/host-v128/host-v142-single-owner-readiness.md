@@ -58,8 +58,10 @@ WordPress review records, signing identities and authorization grants untouched.
 
 ## Next human action
 
-Once Original313 issues a genuinely signed offer and the independent Owner
-identity has been enrolled through a first-party verified registration, the
-Owner will sign the exact bound plan on their own device. Their private key
+The Owner may create a device-held encrypted key and submit a PUBLIC proof of
+possession to the independent first-party identity registrar even while
+Original313 history is being reconstructed. This is NOT automatically approved.
+Once Original313 issues a genuine signed offer and the independent Owner
+identity is registered, the Owner signs the exact plan on their own device. Their private key
 must not be sent over chat or stored on the VPS. A WordPress review alone
 never authorizes Write.

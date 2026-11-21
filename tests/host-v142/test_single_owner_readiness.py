@@ -45,7 +45,8 @@ class Monitor(unittest.TestCase):
         self.assertIn("independent_owner_signer_enrolled",x["blockers"])
         self.assertFalse(x["write_authorized"])
         self.assertEqual(x["owner_action"],
-                         "NONE_UNTIL_SIGNED_ORIGINAL313_OFFER_AND_ENROLLED_SIGNER")
+                         "PREPARE_DEVICE_HELD_OWNER_PUBLIC_KEY_"
+                         "AND_REGISTER_WITH_INDEPENDENT_FIRSTPARTY_IDENTITY_AUTHORITY")
     def test_remaining_issuer_gates_are_independent(self):
         e=evidence()
         e[1]["complete_cross_generation_history_verified"]=True
@@ -69,6 +70,18 @@ class Monitor(unittest.TestCase):
         self.assertEqual(x["blockers"],[])
         self.assertEqual(x["next_state"],"FIRSTPARTY_ISSUANCE_READBACK_REQUIRED")
         self.assertFalse(x["write_authorized"])
+    def test_owner_action_only_advances_with_firstparty_evidence(self):
+        e=evidence()
+        e[0]["original305_v3_independent_owner_key_registered"]=True
+        x=check(e)
+        self.assertEqual(x["owner_action"],"WAIT_FOR_INDEPENDENT_ORIGINAL313_SIGNED_OFFER")
+        e[1]["complete_cross_generation_history_verified"]=True
+        e[1]["complete_original313_predecessor_for_target"]="VERIFIED"
+        e[0]["original313_predecessor_v3_signed"]=True
+        y=check(e)
+        self.assertEqual(y["owner_action"],"SIGN_FRESH_EXACT_ORIGINAL313_OFFER_ON_OWNER_DEVICE")
+        self.assertFalse(y["write_authorized"])
+
     def test_deny_mismatched_company_or_unpinned_broker(self):
         for group,key,value in (
           (0,"company","all-royal-egypt"),(1,"target_site_uuid","wrong"),
