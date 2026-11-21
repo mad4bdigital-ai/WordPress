@@ -1,0 +1,167 @@
+/* Package Cost Lab: native WordPress admin context; a separate read-only
+   source-inspection section alongside Pricing Lab strategy authoring. */
+.mad4b-package-cost-lab-v1{border:1px solid #c3c4c7;background:#fff;
+  border-radius:6px;padding:18px 20px;margin:18px 0 24px;max-width:100%;
+  box-sizing:border-box;font-size:13px;line-height:1.55;color:#1d2327}
+.mad4b-pcl-heading h2{font-size:18px;margin:0 0 5px}
+.mad4b-pcl-heading p{margin:0 0 15px;color:#50575e;max-width:920px}
+.mad4b-pcl-form{display:flex;align-items:end;gap:10px 16px;flex-wrap:wrap;
+  padding:12px;background:#f6f7f7;border-radius:5px}
+.mad4b-pcl-label{display:flex;flex-direction:column;gap:5px;min-width:180px;flex:1}
+.mad4b-pcl-label span{font-weight:600}
+.mad4b-pcl-label select{max-width:100%;width:100%;min-height:36px}
+.mad4b-pcl-form .button{min-height:36px}
+.mad4b-pcl-note{color:#50575e;margin:12px 0 4px}
+.mad4b-pcl-status{margin:4px 0 12px;font-weight:500}
+.mad4b-pcl-summary{border-top:1px solid #dcdcde;padding:14px 0 10px}
+.mad4b-pcl-summary h3{font-size:17px;margin:0}
+.mad4b-pcl-summary>p{margin:8px 0;color:#50575e}
+.mad4b-pcl-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.mad4b-pcl-metric{border:1px solid #dcdcde;border-radius:5px;padding:10px}
+.mad4b-pcl-metric strong{font-size:21px;display:block;line-height:1.4}
+.mad4b-pcl-metric span{font-size:12px;color:#50575e}
+.mad4b-pcl-warning{border-left:3px solid #b32d2e;padding:9px 12px;
+  color:#1d2327!important;background:#fff9f7}
+.mad4b-pcl-components{display:flex;flex-wrap:wrap;gap:6px 16px;color:#50575e}
+.mad4b-pcl-stage{border:1px solid #dcdcde;margin:12px 0;border-radius:5px;padding:12px}
+.mad4b-pcl-stage h4{font-size:15px;margin:0 0 8px}
+.mad4b-pcl-stage-status,.mad4b-pcl-property-flags{display:flex;
+  flex-wrap:wrap;gap:5px 10px;margin:4px 0 12px!important}
+.mad4b-pcl-missing,.mad4b-pcl-good{font-size:12px;padding:2px 6px;
+  border-radius:3px;white-space:normal}
+.mad4b-pcl-missing{color:#7c2d12;background:#fff4eb}
+.mad4b-pcl-good{color:#166534;background:#f0fdf4}
+.mad4b-pcl-properties{display:grid;gap:8px}
+.mad4b-pcl-property{border:1px solid #c3c4c7;border-radius:4px}
+.mad4b-pcl-property summary{cursor:pointer;display:flex;flex-wrap:wrap;
+  justify-content:space-between;gap:6px 15px;padding:9px 12px}
+.mad4b-pcl-property summary:hover{background:#f6f7f7}
+.mad4b-pcl-property summary:focus-visible{outline:2px solid #2271b1;outline-offset:2px}
+.mad4b-pcl-property summary span{color:#50575e}
+.mad4b-pcl-property-body{padding:10px 12px;border-top:1px solid #dcdcde}
+.mad4b-pcl-table{width:100%;table-layout:auto}
+.mad4b-pcl-table th,.mad4b-pcl-table td{font-size:12px;padding:6px 8px}
+.mad4b-pcl-empty{background:#f6f7f7;padding:10px;margin:0}
+.mad4b-pcl-footer{margin:14px 0 0;color:#50575e}
+@media(max-width:782px){.mad4b-pcl-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .mad4b-package-cost-lab-v1{padding:14px}
+ .mad4b-pcl-property-body{overflow-x:auto}
+ .mad4b-pcl-table{min-width:540px}}
+@media(max-width:440px){.mad4b-pcl-kpis{grid-template-columns:1fr}
+ .mad4b-pcl-form{display:block}
+ .mad4b-pcl-label{margin-bottom:10px}}
+
+/* v1.1 — destination-scoped stage evidence; no duplicated editable fields */
+.mad4b-pcl-stage-scope{color:#374151;background:#f6f7f7;padding:9px 12px;
+  border-left:3px solid #2271b1;margin:8px 0;line-height:1.6}
+.mad4b-pcl-info{color:#1d2327;background:#f0f6fc;border:1px solid #c3d9ef;
+  border-radius:3px;padding:9px 12px;margin:8px 0}
+.mad4b-pcl-stage-itinerary{padding:8px 10px;margin:7px 0;border-radius:3px;
+  border-left:3px solid #dba617}
+.mad4b-pcl-stage-itinerary.mad4b-pcl-confirmed{background:#f0fdf4;
+  border-color:#1c7c4a;color:#1d2327}
+.mad4b-pcl-stage-itinerary.mad4b-pcl-needs-review{background:#fff9e6;
+  border-color:#b88c15;color:#1d2327}
+.mad4b-pcl-night-evidence,.mad4b-pcl-excluded{margin:8px 0;
+  padding:7px 10px;background:#f6f7f7;border:1px solid #dcdcde;border-radius:4px}
+.mad4b-pcl-night-evidence summary,.mad4b-pcl-excluded summary{cursor:pointer;
+  font-weight:600}
+.mad4b-pcl-night-evidence summary:focus-visible,
+.mad4b-pcl-excluded summary:focus-visible{outline:2px solid #2271b1;
+  outline-offset:2px}
+.mad4b-pcl-night-evidence ol,.mad4b-pcl-excluded ul{padding-inline-start:20px;
+  margin:8px 0}
+.mad4b-pcl-night-evidence li,.mad4b-pcl-excluded li{margin:3px 0}
+@media(max-width:782px){
+ .mad4b-pcl-stage-scope{overflow-wrap:anywhere}
+ .mad4b-pcl-stage h4{line-height:1.45}
+}
+
+/* Source-native Rate generation admission: informational, never a Rate submit. */
+.mad4b-pcl-native-admission{margin:12px 0;padding:10px 12px;
+  background:#f6f7f7;border:1px solid #dcdcde;border-radius:4px}
+.mad4b-pcl-native-admission>p:first-child{margin:0 0 6px;
+  padding:7px 10px;display:block}
+.mad4b-pcl-native-admission .mad4b-pcl-note{margin:8px 0 0}
+.mad4b-pcl-native-findings{margin:5px 0}
+.mad4b-pcl-native-findings>summary{cursor:pointer;font-weight:600}
+.mad4b-pcl-native-findings>summary:focus-visible{outline:2px solid #2271b1;outline-offset:2px}
+.mad4b-pcl-native-findings ul{list-style:disc;padding-inline-start:21px;
+  columns:2;column-gap:22px;line-height:1.65;margin:10px 0}
+.mad4b-pcl-native-findings li{overflow-wrap:anywhere;break-inside:avoid}
+@media(max-width:782px){.mad4b-pcl-native-findings ul{columns:1}}
+
+
+/* v2: Progressive workflow. Ownership tooltip appears above its focusable icon. */
+.mad4b-pcl-responsibilities{display:flex;flex-wrap:wrap;gap:8px 14px;margin:9px 0 12px;
+ padding:9px 12px;background:#f6f7f7;border:1px solid #dcdcde;border-radius:4px}
+.mad4b-pcl-owner{display:inline-flex;align-items:center;gap:5px;font-size:12px}
+.mad4b-pcl-help{position:relative;display:inline-flex;align-items:center;vertical-align:middle}
+.mad4b-pcl-help-trigger{font-size:11px;font-weight:700;width:18px;height:18px;border-radius:50%;
+ padding:0;border:1px solid #8c8f94;color:#50575e;background:#fff;cursor:help;line-height:16px}
+.mad4b-pcl-help-trigger:focus-visible{outline:2px solid #2271b1;outline-offset:2px}
+.mad4b-pcl-help-note{display:none;position:absolute;bottom:calc(100% + 10px);left:50%;
+ transform:translateX(-50%);z-index:100;min-width:210px;max-width:min(320px,80vw);
+ width:max-content;white-space:normal;padding:9px 11px;border-radius:4px;
+ background:#1d2327;color:#fff;font-size:12px;line-height:1.45;box-shadow:0 3px 10px #0003;
+ text-align:start;pointer-events:none}
+.mad4b-pcl-help-note:after{content:"";position:absolute;top:100%;left:calc(50% - 5px);
+ border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid #1d2327}
+.mad4b-pcl-help:focus-within .mad4b-pcl-help-note,
+.mad4b-pcl-help:hover .mad4b-pcl-help-note{display:block}
+.mad4b-pcl-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
+.mad4b-pcl-diagnostics{margin:12px 0;border:1px solid #dcdcde;padding:9px 12px;border-radius:4px}
+.mad4b-pcl-diagnostics>summary{cursor:pointer;display:flex;align-items:center;gap:8px;font-weight:600}
+.mad4b-pcl-more-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+.mad4b-pcl-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:16px 0 12px}
+.mad4b-pcl-step-item{display:flex;align-items:center;min-width:0;border:1px solid #dcdcde;
+ background:#f6f7f7;border-radius:4px;padding:4px 6px;gap:4px}
+.mad4b-pcl-step-item.is-active{background:#f0f6fc;border-color:#2271b1}
+.mad4b-pcl-step{display:block;flex:1;min-width:0;text-align:start;color:#1d2327;
+ background:transparent;border:0;cursor:pointer;padding:7px 5px;font-weight:600;font-size:12px}
+.mad4b-pcl-step:focus-visible{outline:2px solid #2271b1;outline-offset:0}
+.mad4b-pcl-panel[hidden]{display:none!important}
+.mad4b-pcl-panel{min-height:100px;border:1px solid #dcdcde;border-radius:5px;padding:13px;background:#fff}
+.mad4b-pcl-step-intro{margin:0 0 12px!important;color:#50575e}
+.mad4b-pcl-source-line{border-left:3px solid #2271b1;background:#f6f7f7;
+ padding:9px 12px;margin:8px 0!important}
+.mad4b-pcl-stage-disclosure{margin:8px 0;border:1px solid #dcdcde;border-radius:5px;background:#fff}
+.mad4b-pcl-stage-toggle{cursor:pointer;display:flex;gap:8px;justify-content:space-between;
+ flex-wrap:wrap;align-items:center;padding:11px 12px}
+.mad4b-pcl-stage-toggle h4{font-size:14px;margin:0}
+.mad4b-pcl-stage-meta{font-size:12px;color:#50575e}
+.mad4b-pcl-stage-disclosure[open]>.mad4b-pcl-stage-toggle{border-bottom:1px solid #dcdcde;background:#f6f7f7}
+.mad4b-pcl-stage-disclosure>.mad4b-pcl-stage{border:0;margin:0}
+.mad4b-pcl-stage-toggle:focus-visible{outline:2px solid #2271b1;outline-offset:2px}
+@media(max-width:1100px){.mad4b-pcl-steps{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .mad4b-pcl-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.mad4b-pcl-steps,.mad4b-pcl-kpis,
+ .mad4b-pcl-more-metrics{grid-template-columns:minmax(0,1fr)}
+ .mad4b-pcl-panel{padding:9px}
+ .mad4b-pcl-responsibilities{gap:10px}
+ .mad4b-pcl-stage-toggle{display:block}
+ .mad4b-pcl-stage-meta{display:block;margin-top:5px}}
+@media(prefers-reduced-motion:reduce){.mad4b-pcl-step{scroll-behavior:auto}}
+
+/* Read-only source discovery: native hotel inventory and route-matched trains */
+.mad4b-pcl-source-scout{margin:12px 0;background:#f6f7f7;padding:10px 12px;
+  border:1px solid #c3c4c7;border-radius:4px}
+.mad4b-pcl-source-scout>summary{font-weight:600;cursor:pointer;line-height:1.55}
+.mad4b-pcl-source-scout>summary:focus-visible{outline:2px solid #2271b1;outline-offset:3px}
+.mad4b-pcl-source-scout .mad4b-pcl-table{margin:10px 0}
+.mad4b-pcl-source-scout p{margin:8px 0}
+.mad4b-pcl-source-program{background:#eef6fc;border-left:3px solid #2271b1;
+  padding:10px 12px;margin:10px 0}
+.mad4b-pcl-source-program p{margin:0;line-height:1.5}
+@media(max-width:782px){
+.mad4b-pcl-source-scout{overflow-x:auto}
+.mad4b-pcl-source-scout .mad4b-pcl-table{min-width:550px}
+}
+
+
+/* Source Unit links stay in the original JetEngine editors, not a second form. */
+.mad4b-pcl-source-unit-drafts{margin-top:5px;max-width:320px}
+.mad4b-pcl-source-unit-drafts summary{font-size:12px;cursor:pointer;color:#2271b1}
+.mad4b-pcl-source-unit-drafts ul{margin:7px 0 2px;padding-inline-start:17px}
+.mad4b-pcl-source-unit-drafts li{margin:5px 0;overflow-wrap:anywhere}
+.mad4b-pcl-source-unit-drafts small{font-size:11px;color:#646970}

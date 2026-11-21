@@ -1,0 +1,15 @@
+/* Conditional Package Components context. WordPress-admin native, read-only. */
+#mad4b-package-components-context-v1 .inside{margin:0;padding:0}
+.mad4b-pkg-context{padding:12px 16px 16px;font-size:13px;line-height:1.55}
+.mad4b-pkg-context>.description{margin:0 0 12px}
+.mad4b-pkg-context__list{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.mad4b-pkg-context__item{box-sizing:border-box;min-width:0;border:1px solid #c3c4c7;border-radius:4px;background:#fff;margin:0;padding:12px}
+.mad4b-pkg-context__item>div{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px 12px}
+.mad4b-pkg-context__item strong{font-weight:600;color:#1d2327}
+.mad4b-pkg-context__status{font-size:12px;color:#50575e;font-weight:500}
+.mad4b-pkg-context__item p{margin:7px 0 0;color:#50575e}
+.mad4b-pkg-context__item .mad4b-pkg-context__link{margin-top:9px}
+.mad4b-pkg-context__item a:focus-visible{outline:2px solid #2271b1;outline-offset:2px}
+.mad4b-pkg-context__footer{margin-top:14px!important}
+@media(max-width:960px){.mad4b-pkg-context__list{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.mad4b-pkg-context *{scroll-behavior:auto}}

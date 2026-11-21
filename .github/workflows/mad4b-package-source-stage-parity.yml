@@ -1,0 +1,35 @@
+name: MAD4B Package Source Stage Parity
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mad4b-package-source-stage-parity.yml'
+      - 'ops/pricing-unified-checkpoints/tests/verify-live-stage-discovery-source-parity.php'
+      - 'wp-content/mu-plugins/mad4b-package-stage-sourcing-v1.php'
+      - 'wp-content/mu-plugins/assets/mad4b-package-pricing-lab-readiness-v1.js'
+      - 'wp-content/mu-plugins/assets/mad4b-package-pricing-lab-readiness-v1.css'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-package-stage-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}-${{ github.event.pull_request.head.sha || github.ref }}
+  cancel-in-progress: true
+jobs:
+  exact-source-admission:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Check exact-head source and source-only PHP behavior
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/workflow-exact-head-hygiene.py
+          docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --pids-limit 80 --memory 480m             -v "$PWD":/src:ro -w /src --entrypoint php "php:${{ matrix.php }}-cli"             ops/pricing-unified-checkpoints/tests/verify-live-stage-discovery-source-parity.php
+          node --check wp-content/mu-plugins/assets/mad4b-package-pricing-lab-readiness-v1.js

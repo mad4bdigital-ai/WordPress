@@ -12,6 +12,10 @@
     return node;
   };
   const sections = [];
+  // Pricing Controls already renders each rule in its original JetEngine
+  // repeater. A SECOND full listing above it is redundant. Keep its
+  // inspector available on demand, instead of inserting a second card.
+  const compactPricing = cfg.slug === 'etg-dynamic-pricing-controls';
   const fieldDefs = cfg.fields.filter(f => f?.type === 'repeater' && Array.isArray(f.repeater_fields));
   const toText = (value) => String(value ?? '').slice(0, 160).trim();
 
@@ -90,12 +94,21 @@
     // Put the compact read-only overview under the native label, in the
     // otherwise unused left information column. Never insert a third sibling
     // into the original JetEngine inline info/content flex row.
-    if (nativeInfo) nativeInfo.append(panel);
-    else {
+    if (!nativeInfo) {
       // Vendor markup mismatch: skip rather than create a competing flex item.
       continue;
     }
-    sections.push({def, control, list, panel, state, content});
+    let disclosure = null;
+    if (compactPricing) {
+      disclosure = create('details', 'mad4b-repeater-overview-disclosure');
+      disclosure.setAttribute('data-mad4b-repeater-preview', def.name);
+      const summary = create('summary', '', 'Review current rows · preview only');
+      summary.setAttribute('aria-label',
+        'Expand read-only preview for '+(def.label||def.name));
+      disclosure.append(summary, panel);
+      nativeInfo.append(disclosure);
+    } else nativeInfo.append(panel);
+    sections.push({def, control, list, panel, state, content, disclosure});
   }
 
   // Price Source Mode rows deliberately do not get the large AJAX overview.
@@ -190,6 +203,9 @@
   let activeController = null;
   let requestSerial = 0;
   const send = async () => {
+    // Never issue a background preview for nine closed native repeaters.
+    // Their local row summaries remain available without an AJAX call.
+    if (compactPricing && !sections.some(s => s.disclosure?.open)) return;
     if (!service.ajax_url || !service.nonce || !service.action || typeof fetch !== 'function') return;
     const data = snapshot();
     const serialized = JSON.stringify(data);
@@ -254,8 +270,19 @@
   });
   for (const s of sections) {
     new MutationObserver(() => queue()).observe(s.list, {childList:true});
+    // Details is keyboard accessible and initially closed. Fetch only when
+    // the operator explicitly expands a native policy collection overview.
+    s.disclosure?.addEventListener('toggle', () => {
+      if (s.disclosure.open) queue(false);
+      else if (compactPricing && !sections.some(item => item.disclosure?.open))
+        activeController?.abort();
+    });
   }
-  // One low-priority batched read-only preview. No polling, no page-blocking AJAX.
-  if (typeof requestIdleCallback === 'function') requestIdleCallback(() => queue(false), {timeout:2200});
-  else queue(false);
+  // Legacy JetEngine pages retain their existing low-priority overview.
+  // Pricing Controls uses collapsed native details without background work.
+  if (!compactPricing) {
+    if (typeof requestIdleCallback === 'function')
+      requestIdleCallback(() => queue(false), {timeout:2200});
+    else queue(false);
+  }
 })();
