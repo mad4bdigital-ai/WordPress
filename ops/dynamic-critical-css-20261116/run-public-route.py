@@ -247,7 +247,17 @@ def approved_native_runtime_sha(site,wp):
         'wayfa':('597a31f0ea962d2700ead68f9856596727a4e07055650705f52ba57bbaf11119',
                  '249083d5aa0124ea1280a88f5062945cdff2885eca63b36ba5c66682b0faf3d1')}
     released_v2_422,released_v2_consumer=released_v2_pairs[site]
-    original=ROOT/'worktrees/pr814-converged-local-20261115/wp-content/mu-plugins'
+    # Immutable original source Git objects, verified against GitHub.
+    # Previously this trusted branch's 421/422 bytes via an ephemeral
+    # /worktrees/pr814-* checkout. Worktree GC is NOT source drift.
+    # The SHA256 pins below match first-party Git blobs ec5f8cf... (421)
+    # and 760d254... (original 422). No dynamic observed-live SHA grant.
+    approved_original_sha={
+        '421-mad4b-public-critical-css-coverage.php':
+            'ae7936c7ad09b059375e1960d4c59144af0b4325933db34bcfa63c26e49233bb',
+        '422-mad4b-public-critical-css-runtime.php':
+            'b5ed9a9629e0a547bf42803b4810b492f73a748eaaad66b5dde6e1961c7713f4'}
+
     runtime=None
     for name in ['421-mad4b-public-critical-css-coverage.php',
                  '422-mad4b-public-critical-css-runtime.php']:
@@ -265,8 +275,7 @@ def approved_native_runtime_sha(site,wp):
             if actual_sha!=approved_stage_422:
                 raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
         else:
-            source=original/name
-            if source.is_symlink() or not source.is_file() or source.read_bytes()!=blob:
+            if actual_sha!=approved_original_sha.get(name):
                 raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
         if name=='422-mad4b-public-critical-css-runtime.php':
             runtime=hashlib.sha256(blob).hexdigest()
