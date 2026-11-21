@@ -594,6 +594,82 @@ def reviewed_rc129_company_staff_ceiling_successor(repo:Path,path:str,contents:b
         return None
 
 
+def reviewed_pr997_wayfa_addon_site_bound_ring_source(repo:Path,path:str,contents:bytes):
+    """Exact, nonauthorizing review: dynamic Addon rings remain tenant-bound."""
+    name='includes/class-mad4b-scp-addon-registry.php'
+    if path!=name or not isinstance(contents,bytes):return None
+    manifest=repo/'governance/release-parity/qa31-pr997-wayfa-addon-site-bound-source-20261121.json'
+    parent='532fbd467a94232a5460f0d2d53ceff86c3414f9'
+    prior='governance/release-parity/qa31-pr995-wayfa-skill-cimd-source-20261121.json'
+    frozen_prior='617a736ddf34f9dc7309be1a30ef875ec682de846bdd32821b438a0b8ed3daff'
+    frozen_live='bb62947b1927581683f74541c6f8cf2cdebe5e33b80259beae5c1eb6b88df813'
+    old_blob='4db830176dc8da77c29e954a0783b7e4a0bab2d2'
+    old_sha='86e9edbf083ecc4c5748239aba0f228557f737e0ef6412ed00d57aaeb284aa46'
+    new_blob='b901793c67eba29764311e0fae5af016531c96a0'
+    new_sha='8153b244678120e53937e8ca13bf36158e7273b5f8714a9128be9ff728f036c5'
+    regression='wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php'
+    negative='tests/qa31_wayfa_addon_site_bound_ring_source_contract.py'
+    spec='specs/007-content-intelligence-workflow-platform/contracts/wordpress-addon-manifest.md'
+    control_ids=['GOVERNANCE-01','SECURITY-01','PLATFORM-01','EXECUTION-01','CROSSPLUGIN-01','UPDATES-01','RECOVERY-01','ROLLOUT-01']
+    try:
+        m=json.loads(manifest.read_text(encoding='utf-8'))
+        known={c['id'] for c in json.loads((repo/'governance/production-readiness/controls.json').read_text()).get('controls',[]) if isinstance(c,dict)}
+        if (m.get('contract')!='mad4b.qa31-pr997-wayfa-addon-site-bound-ring.v1'
+            or m.get('base_head_sha')!=parent
+            or m.get('prior_source_review_path')!=prior
+            or m.get('prior_source_review_sha256')!=frozen_prior
+            or hashlib.sha256((repo/prior).read_bytes()).hexdigest()!=frozen_prior
+            or m.get('source_path')!=name
+            or m.get('original_parent_blob_sha')!=old_blob
+            or m.get('original_parent_sha256')!=old_sha
+            or m.get('reviewed_blob_sha')!=new_blob
+            or m.get('reviewed_sha256')!=new_sha
+            or m.get('frozen_wayfatours_live_sha256')!=frozen_live
+            or m.get('frozen_wayfatours_live_source_basename')!='wayfa-control-plane-live-before-reconciliation.tar.gz'
+            or m.get('regression')!=regression
+            or m.get('negative_contract')!=negative
+            or m.get('spec_path')!=spec
+            or m.get('control_ids')!=control_ids or not set(control_ids)<=known
+            or m.get('source_only') is not True or m.get('reviewed_for_ci_only') is not True
+            or m.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or m.get('live_host_evidence_required') is not True
+            or any(m.get(key) is not False for key in (
+                'production_authorized','release_approved','host_anchor_issued',
+                'addon_activated','addon_deployed','execution_grant_created',
+                'wordpress_mutated','source_promoted','legacy_rings_modified'))
+            or len(m.get('reason',''))<780
+            or not all((repo/p).is_file() and not (repo/p).is_symlink() for p in (regression,negative,spec))
+            or subprocess.run(['git','merge-base','--is-ancestor',parent,'HEAD'],
+                cwd=repo,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=8).returncode!=0):
+            return None
+        old=subprocess.check_output(
+            ['git','show',parent+':wp-content/plugins/mad4b-site-control-plane/'+name],
+            cwd=repo,stderr=subprocess.DEVNULL,timeout=8)
+        if (hashlib.sha256(old).hexdigest()!=old_sha
+            or hashlib.sha1(b'blob '+str(len(old)).encode()+b'\0'+old).hexdigest()!=old_blob
+            or hashlib.sha256(contents).hexdigest()!=new_sha
+            or hashlib.sha1(b'blob '+str(len(contents)).encode()+b'\0'+contents).hexdigest()!=new_blob):
+            return None
+        code=contents.decode('utf-8')
+        for marker in (
+            'private static function enrolled_site_binding()',
+            "'mode' => 'site_bound_certified_pair'",
+            "'unknown_pair_fallback' => 'shadow'",
+            "'production_authorized' => false",
+            'site_urls_match_enrollment',
+            '$certified_pair = 1 === $matching_certificates',
+            "'effective_release_ring' => $effective_ring",
+            "'mutating_capabilities_eligible' => 'certified' === $state",
+            "'active' === $effective_ring",
+            'mad4b_addon_release_ring_not_active',
+            'public static function mutation_guard('):
+            if marker not in code:return None
+        return regression
+    except (OSError,ValueError,KeyError,TypeError,UnicodeError,
+            subprocess.CalledProcessError,subprocess.TimeoutExpired):
+        return None
+
+
 def reviewed_pr995_wayfa_skill_cimd_source(repo:Path,path:str,contents:bytes):
     """Exact source-only first-party ChatGPT CIMD/Skill observer compatibility."""
     name='includes/class-mad4b-scp-skill-abilities.php'
@@ -1494,6 +1570,8 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     requested=reviewed_rc129_dormant_ollama_bootstrap_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_rc129_wayfa_source_followup_successor(repo,path,contents)
+    if requested is None:
+        requested=reviewed_pr997_wayfa_addon_site_bound_ring_source(repo,path,contents)
     if requested is None:
         requested=reviewed_pr995_wayfa_skill_cimd_source(repo,path,contents)
     if requested is None:

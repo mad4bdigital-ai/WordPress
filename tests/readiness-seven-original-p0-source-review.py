@@ -131,7 +131,18 @@ for source, git_blob, fixture, marker in CASES:
     ).strip()
     if actual_blob != git_blob:
         pair = REVIEWED_SUCCESSORS.get(source)
-        assert pair == (git_blob, actual_blob), (source, "unknown successor; exact original SHA remains protected")
+        assert pair is not None and pair[0] == git_blob, (
+            source, "unknown successor; exact original SHA remains protected")
+        if actual_blob != pair[1]:
+            # A second, independently SHA-pinned source review may follow the
+            # first historical Addon patch. Never rewrite either ancestor pin.
+            assert source == 'includes/class-mad4b-scp-addon-registry.php'
+            import sys
+            sys.path.insert(0, str(ROOT / 'tools'))
+            from qa31_release_source_gate import reviewed_pr997_wayfa_addon_site_bound_ring_source
+            assert reviewed_pr997_wayfa_addon_site_bound_ring_source(
+                ROOT, source, source_path.read_bytes()) == fixture, (
+                source, 'current dynamic ring successor lacks independent QA31 review')
         full_path = PLUGIN + source
         rows = [r for r in review_ledger["reviewed_changes"]
                 if r.get("path") == full_path and r.get("source_blob_sha") == actual_blob

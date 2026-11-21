@@ -98,7 +98,7 @@ A manifest is a **governance declaration, not a PHP sandbox or security boundary
     "circuit_breaker_or_quarantine": true,
     "reconcile_before_retry_after_uncertain_write": true
   },
-  "release_ring": "shadow|canary|active",
+  "release_ring": "shadow|canary|active|dynamic",
   "certified_pairs": [
     {
       "provider_version": "exact",
@@ -109,6 +109,37 @@ A manifest is a **governance declaration, not a PHP sandbox or security boundary
   ]
 }
 ```
+
+## Site-bound dynamic release ring
+
+`dynamic` is a **policy resolution mode**, not a fourth deployment environment and not a release approval. It extends the above manifest with exactly the following declaration:
+
+```json
+{
+  "release_ring": "dynamic",
+  "release_policy": {
+    "mode": "site_bound_certified_pair",
+    "requires_enrolled_site_profile": true,
+    "unknown_pair_fallback": "shadow",
+    "production_authorized": false
+  },
+  "certified_pairs": [
+    {
+      "provider_version": "exact runtime version",
+      "addon_version": "exact installed version",
+      "extension_points_sha256": "64 lowercase hexadecimal characters",
+      "addon_main_file_sha256": "SHA-256 of installed main PHP file",
+      "site_uuid": "the host-enrolled site UUID",
+      "site_profile_digest": "SHA-256 of the current enrolled Site Profile",
+      "release_ring": "shadow|canary|active"
+    }
+  ]
+}
+```
+
+The manifest's `release_policy` must match this contract exactly. The registry reads the **current** enrolled Site Profile, including origin and URL checks, and requires exactly one matching company-specific certificate. Unknown, malformed, duplicated or conflicting certificates resolve to `shadow` and do not certify the pair. A changed site/profile digest, installed file SHA, exact provider/add-on version, provider runtime status, add-on activation, or Registry epoch invalidates any previous plan fingerprints.
+
+A valid `shadow` or `canary` dynamic pair can be **certified for visibility** but is **ineligible for mutation** and must not receive `execution_binding`. Only an exact `active` dynamic pair is eligible for a binding; it still requires the independent registered operation policy, caller permission, signed plan/approval and commit-time `mutation_guard`. The registry must never itself approve Production, create a grant, activate a plugin, deploy an update, or promote a Release Ring. A legacy manifest explicitly set to `shadow`, `canary` or `active` keeps its existing exact-pair compatibility behavior; the new dynamic policy is opt-in and must not silently convert an existing manifest.
 
 ## Enforcement rules
 
