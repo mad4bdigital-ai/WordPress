@@ -398,6 +398,15 @@ def cpu_window():
     guard=run(['/usr/bin/python3',str(SOURCE/'public-route-cpu-guard.py')],timeout=8)
     return guard.returncode==0,guard.stdout.strip()[:110]
 
+def family_reader_window():
+    # A strictly bounded READ-only source-family report may accept exactly
+    # two existing WPCLI processes in a genuinely quiet 8-core host.
+    # The public route and first-fold Chromium lanes still call ONLY the
+    # unchanged original strict CPU guard above.
+    result=run(['/usr/bin/python3',str(SOURCE/'family-report-read-cpu-guard.py')],
+               timeout=8)
+    return result.returncode==0,result.stdout.strip()[:130]
+
 def source_recovery_budget(record,drift,now=None,load=None):
     """Separate conservative source-home recovery lane, never general QA.
 
@@ -624,6 +633,11 @@ def main():
                     if admitted:
                         print('WPCSS_CONFIRMED_HOME_RECOVERY_PRIORITY',site,
                               recovery_reason,flush=True)
+                if not admitted and job=='families':
+                    admitted,reader_reason=family_reader_window()
+                    if admitted:
+                        print('WPCSS_ORIGINAL_LIGHT_FAMILY_READ_ADMITTED',site,
+                              reader_reason,flush=True)
                 if not admitted:
                     if cheap_certified_first_fold(site,job,jid,key,history,reason,now):
                         continue

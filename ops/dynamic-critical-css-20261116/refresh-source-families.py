@@ -45,17 +45,29 @@ def main():
     guard=subprocess.run(['python3',str(D/'public-route-cpu-guard.py')],
                          capture_output=True,text=True,timeout=8)
     if guard.returncode:
-        print('DEFER_SOURCE_FAMILY_REFRESH',guard.stdout.strip()[:100])
-        # A reserved WP-CLI slot is not CPU pressure: keep cheap first-party
+        # The host's original site-owned worker permits only a bounded
+        # read-only source-family exception to the WPCLI slot count.
+        # The browser and certification CPU gates remain unchanged.
+        light=None
+        if len(sys.argv)==2 and sys.argv[1] in ('source','wayfa'):
+            light=subprocess.run(
+                ['python3',str(D/'family-report-read-cpu-guard.py')],
+                capture_output=True,text=True,timeout=8)
+        if light is not None and light.returncode==0:
+            print('ADMIT_SOURCE_FAMILY_READ_ONLY',
+                  light.stdout.strip()[:120],flush=True)
+        else:
+            print('DEFER_SOURCE_FAMILY_REFRESH',guard.stdout.strip()[:100])
+            # A reserved WP-CLI slot is not CPU pressure: keep cheap first-party
         # Variant observations moving from recently pinned source snapshots.
         # No cached identity may grant a new CSS certificate or HTML cache.
-        if guard.stdout.strip().endswith('central_wpcli_slots_reserved'):
-            try:
-                cached=load('cached_wp_template_variants','cached-variant-refresh.py')
-                cached.refresh()
-            except (OSError,ValueError,TypeError,KeyError) as exc:
-                print('DEFER_LIGHT_VARIANTS_NOT_POLICY_GATE',str(exc)[:120])
-        return
+            if guard.stdout.strip().endswith('central_wpcli_slots_reserved'):
+                try:
+                    cached=load('cached_wp_template_variants','cached-variant-refresh.py')
+                    cached.refresh()
+                except (OSError,ValueError,TypeError,KeyError) as exc:
+                    print('DEFER_LIGHT_VARIANTS_NOT_POLICY_GATE',str(exc)[:120])
+            return
     lock=Path('/run/lock/mad4b-public-source-family-refresh.lock')
     with lock.open('a+') as file:
         try:fcntl.flock(file,fcntl.LOCK_EX|fcntl.LOCK_NB)
