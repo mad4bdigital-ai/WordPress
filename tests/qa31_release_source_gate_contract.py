@@ -86,6 +86,7 @@ runpy.run_path(str(repo / 'tests/qa31_wayfa_classification_reconcile_source_cont
 runpy.run_path(str(repo / 'tests/qa31_wayfa_indexed_scan_readback_source_contract.py'), run_name='__main__')
 runpy.run_path(str(repo / 'tests/qa31_wayfa_host_pinned_site_uuid_source_contract.py'), run_name='__main__')
 runpy.run_path(str(repo / 'tests/qa31_wayfa_selective_operator_selfupdate_source_contract.py'), run_name='__main__')
+runpy.run_path(str(repo / 'tests/qa31_pr1014_native_forward_only_source_contract.py'), run_name='__main__')
 runpy.run_path(str(repo / 'tests/qa31_wayfa_skill_external_cimd_source_contract.py'), run_name='__main__')
 runpy.run_path(str(repo / 'tests/qa31_wayfa_addon_site_bound_ring_source_contract.py'), run_name='__main__')
 runpy.run_path(str(repo / 'tests/pr951_pr937_composite_source_gates_contract.py'), run_name='__main__')

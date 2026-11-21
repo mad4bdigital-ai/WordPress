@@ -1555,6 +1555,84 @@ def reviewed_rc129_context_title_authority_successor(repo:Path,path:str,contents
         return None
 
 
+def reviewed_pr1014_native_forward_only_source(repo:Path,path:str,contents:bytes):
+    """Current SHA-pinned successor to PR990 Self-Update source, never a release grant."""
+    key='includes/class-mad4b-scp-self-update.php'
+    if path!=key or not isinstance(contents,bytes):return None
+    parent='29fe79e3ae87bd10507186ae24704d2b331c5c3c'
+    manifest_path=repo/'governance/release-parity/qa31-pr1014-native-forward-only-source-review-20261121.json'
+    old_path=repo/'governance/release-parity/qa31-pr990-wayfa-selective-operator-selfupdate-source-20261121.json'
+    control_ids=['GOVERNANCE-02','SECURITY-01','UPDATES-01','CROSSPLUGIN-01','RECOVERY-01','ROLLOUT-01']
+    regression='tests/wordpress_native_archive_forward_only_contract.py'
+    negative='tests/qa31_pr1014_native_forward_only_source_contract.py'
+    try:
+        row=json.loads(manifest_path.read_text(encoding='utf-8'))
+        known={x['id'] for x in json.loads(
+            (repo/'governance/production-readiness/controls.json').read_text()
+            ).get('controls',[]) if isinstance(x,dict)}
+        prior_digest='f3a40adaa33ebd49a83d0876f995066070d9b0a6987b42ab192f1fbb8b35d6b4'
+        before_sha='1b8d2311268ee3b52d676339138a0ff08b57d5ae6ad80dd5d6bebcaaded00e6a'
+        before_blob='fc5ae1d7d75971cd3da9c1064319750252c7c40b'
+        after_sha='7a2691b1af6f2459bfed796fc56b325eff1276fa61276b010e2106b78ecb2546'
+        after_blob='226c489fb9d26ba85af5d77c36d57fab44f1052b'
+        if (row.get('contract')!='mad4b.qa31-pr1014-native-forward-only-source-review.v1'
+            or row.get('parent_head_sha')!=parent or row.get('source_path')!=key
+            or row.get('parent_source_sha256')!=before_sha
+            or row.get('parent_source_blob_sha')!=before_blob
+            or row.get('reviewed_source_sha256')!=after_sha
+            or row.get('reviewed_source_blob_sha')!=after_blob
+            or row.get('prior_review_path')!=str(old_path.relative_to(repo))
+            or row.get('prior_review_sha256')!=prior_digest
+            or digest(old_path)!=prior_digest
+            or row.get('regression')!=regression or row.get('negative_regression')!=negative
+            or row.get('control_ids')!=control_ids or not set(control_ids)<=known
+            or len(str(row.get('review_rationale','')))<240
+            or row.get('reviewed_for_ci_only') is not True or row.get('source_only') is not True
+            or row.get('live_evidence_required') is not True
+            or row.get('release_gate')!='BLOCKED_SOURCE_RECONCILIATION'
+            or row.get('historical_manifest_modified') is not False
+            or any(row.get(k) is not False for k in (
+                'authorizing','production_authorized','source_promotion_approved',
+                'host_grant_issued','archive_installed_by_ci','write_executed'))
+            or not (repo/regression).is_file() or (repo/regression).is_symlink()
+            or not (repo/negative).is_file() or (repo/negative).is_symlink()
+            or subprocess.run(['git','merge-base','--is-ancestor',parent,'HEAD'],cwd=repo,
+                stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=8).returncode!=0):
+            return None
+        before=subprocess.check_output(
+            ['git','show',parent+':wp-content/plugins/mad4b-site-control-plane/'+key],
+            cwd=repo,stderr=subprocess.DEVNULL,timeout=8)
+        sha=lambda b:hashlib.sha256(b).hexdigest()
+        blob=lambda b:hashlib.sha1(
+            b'blob '+str(len(b)).encode('ascii')+b'\0'+b).hexdigest()
+        if (sha(before)!=before_sha or blob(before)!=before_blob
+            or sha(contents)!=after_sha or blob(contents)!=after_blob):return None
+        code=contents.decode('utf-8')
+        marks=(
+            'private static function reviewed_archive_no_regression( $path )',
+            '$monotonic_archive = self::reviewed_archive_no_regression( $path );',
+            "if ( is_wp_error( $monotonic_archive ) ) return $monotonic_archive;",
+            "environment_allowed( array( 'staging' ), 'write' )",
+            "'site_bound_certified_pair'",
+            '$certified_pair = 1 === $matching_certificates',
+            'mad4b_forward_archive_duplicate_guarded_file',
+            'mad4b_forward_archive_guarded_file_missing',
+            'mad4b_forward_archive_regression_denied',
+            'MAD4B_Release_Source_Admission::require_for_release',
+        )
+        if not all(x in code for x in marks):return None
+        fn=code.index('private static function apply_verified_archive(')
+        part=code[fn:]
+        if not (part.index('MAD4B_Release_Source_Admission::require_for_release')
+                <part.index('$monotonic_archive = self::reviewed_archive_no_regression( $path );')
+                <part.index('MAD4B_SCP_Runtime_Maintenance_Lease::acquire( $lease_owner )')
+                <part.index('new Plugin_Upgrader(')):return None
+        return regression
+    except (OSError,ValueError,KeyError,TypeError,UnicodeError,
+            subprocess.CalledProcessError,subprocess.TimeoutExpired):
+        return None
+
+
 def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     """Accept exact, reviewed Git blobs for CI inventory only; never parity.
     Static legacy entries remain valid; rc129 successors are independently
@@ -1567,7 +1645,9 @@ def reviewed_ci_only_source_successor(root:Path,path:str,contents:bytes)->bool:
     source=root/path
     if source.is_symlink() or not source.is_file() or source.read_bytes()!=contents:
         return False
-    requested=reviewed_rc129_dormant_ollama_bootstrap_successor(repo,path,contents)
+    requested=reviewed_pr1014_native_forward_only_source(repo,path,contents)
+    if requested is None:
+        requested=reviewed_rc129_dormant_ollama_bootstrap_successor(repo,path,contents)
     if requested is None:
         requested=reviewed_rc129_wayfa_source_followup_successor(repo,path,contents)
     if requested is None:

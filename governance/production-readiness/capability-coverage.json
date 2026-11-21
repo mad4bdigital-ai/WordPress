@@ -24674,6 +24674,28 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+      "source_blob_sha": "226c489fb9d26ba85af5d77c36d57fab44f1052b",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "tests/wordpress_native_archive_forward_only_contract.py"
+      ],
+      "owner_role": "MAD4B Source Review and Host Release authority owners remain separate",
+      "review_rationale": "Append-only exact source successor for native Control Plane ZIP admission: signed Host preflight and master release provenance remain independent. Reject older site-bound Addon Registry release ring, removed Staging recovery safeguard, missing or duplicate protected files, oversized and unreadable guarded entries before any managed replacement. Preserves entire existing Signed Host/Original313/Operator grant and rollback chain; all unknown, old and ambiguous candidates remain ineligible. This review is code provenance and CI regression coverage only, never authorization to deploy to Production.",
+      "coverage_reuse_rationale": "Existing signed Host Release preflight, original Native WP Plugin_Upgrader rollback and registered site-bound security controls preserved; no new ability or broad authorization path is added.",
+      "execution_note": "Isolated PHP ZipArchive 6/6 on each production/staging runtime; no archive installed. Source negative mutations 6/6 and downstream QA31 tamper checks required. Live change evidenced separately from this CI source review.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
