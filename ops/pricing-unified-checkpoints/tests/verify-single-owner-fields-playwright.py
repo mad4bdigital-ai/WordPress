@@ -95,9 +95,13 @@ async def main():
     assert actual['overflow']<=12,(width,group,actual)
    await page.locator('.mad4b-ws-nav-btn[data-section="policies"]').evaluate('(e)=>e.click()')
    await page.locator('input[name="tax_percent"]').fill('7')
+   # A native repeater's existing vendor radio remains in the SAME original
+   # form; changing sections must neither clone it nor erase a pending edit.
+   await page.evaluate('() => {\n     const radio=document.querySelector(\n       \'input[name="shared_mode_policy_rows[item-0][enabled]"][value="true"]\');\n     radio.checked=true;\n     radio.dispatchEvent(new Event(\'change\',{bubbles:true}));\n   }')
    await page.locator('.mad4b-ws-nav-btn[data-section="sources"]').evaluate('(e)=>e.click()')
    await page.locator('.mad4b-ws-nav-btn[data-section="policies"]').evaluate('(e)=>e.click()')
    assert await page.locator('input[name="tax_percent"]').input_value()=='7'
+   assert await page.evaluate('() => document.querySelector(\n      \'input[name="shared_mode_policy_rows[item-0][enabled]"][value="true"]\').checked'),(width,'repeater edit lost during navigation')
    a11y=await page.evaluate("""() => {
       const original=[...document.querySelectorAll('#settings_top input')];
       const bad=original.filter(el=>!(el.getAttribute('aria-label')||
@@ -105,11 +109,35 @@ async def main():
       return {bad:bad.length,named:original.length-bad.length};
    }""")
    assert a11y['bad']==0,(width,a11y)
+   # JetEngine mutates repeater rows; an inserted row must be labeled
+   # immediately and retain a unique row index after reorder.
+   labels=await page.evaluate('() => {\n      const owner=document.querySelector(\n        \'[data-control-name="shared_mode_policy_rows"]\');\n      const list=owner.querySelector(\'.cx-ui-repeater-container\');\n      const first=list.querySelector(\'.cx-ui-repeater-item\');\n      const second=first.cloneNode(true);\n      for(const field of second.querySelectorAll(\'input\')){\n        field.name=field.name.replace(\'item-0\',\'item-1\');\n        field.removeAttribute(\'aria-label\');\n        field.removeAttribute(\'data-mad4b-generated-label\');\n      }\n      list.append(second);\n      return {first:list.firstElementChild.querySelector(\'input\').getAttribute(\'aria-label\'),\n       secondField:list.lastElementChild.querySelector(\'input\').name};\n   }')
+   await page.wait_for_function('() => {\n     const rows=document.querySelectorAll(\n       \'[data-control-name="shared_mode_policy_rows"] .cx-ui-repeater-item\');\n     return rows.length===2 &&\n       (rows[1].querySelector(\'input\').getAttribute(\'aria-label\')||\'\')\n        .includes(\'Row 2\');\n   }')
+   await page.evaluate('() => {\n     const list=document.querySelector(\n       \'[data-control-name="shared_mode_policy_rows"] .cx-ui-repeater-container\');\n     list.prepend(list.lastElementChild);\n   }')
+   await page.wait_for_function('() => {\n     const rows=document.querySelectorAll(\n       \'[data-control-name="shared_mode_policy_rows"] .cx-ui-repeater-item\');\n     return rows.length===2 && (rows[0].querySelector(\'input\')\n       .getAttribute(\'aria-label\')||\'\').includes(\'Row 1\') &&\n       (rows[1].querySelector(\'input\')\n        .getAttribute(\'aria-label\')||\'\').includes(\'Row 2\');\n   }')
+   # Keyboard activation must navigate the original controlled sections.
+   if width>=1024:
+    button=page.locator('.mad4b-ws-nav-btn[data-section="sources"]')
+    await button.focus()
+    await page.keyboard.press('Enter')
+    assert await button.get_attribute('aria-current')=='true',(width,'keyboard navigation')
+    visible=await page.evaluate("() => [...document.querySelectorAll('#settings_top .mad4b-ws-control')]\n      .filter(e=>e.getClientRects().length&&e.getBoundingClientRect().height)\n      .map(e=>e.dataset.controlName)")
+    assert set(visible)==set(GROUPS['sources']),(width,visible)
+    # Tabbing from company search must not land on a filtered field.
+    await page.locator('.mad4b-ws-search').focus()
+    focused=[]
+    for _ in range(65):
+     await page.keyboard.press('Tab')
+     focused.append(await page.evaluate(
+      '() => document.activeElement?.getAttribute("name")||""'))
+    forbidden=set(GROUPS['overview']+GROUPS['payments']+
+       GROUPS['policies']+GROUPS['advanced']+GROUPS['dates'])
+    assert not (set(focused)&forbidden),(width,'hidden fields are tabbable')
    assert not errors,(width,errors)
    results.append({'width':width,'groups':len(GROUPS),
       'one_owner_controls':45,'repeater_types':len(REPEATERS),
       'native_form_count':1,'all_inputs_named':a11y['named'],
-      'duplicate_controls_visible':0,'status':'PASS'})
+      'duplicate_controls_visible':0,'new_row_aria':True,'keyboard_checked':width>=1024,'status':'PASS'})
    await page.close()
   await browser.close()
   print('CP28_SINGLE_OWNER_45_NATIVE_FIELDS_PASS '+json.dumps(results))

@@ -227,3 +227,37 @@ and passed native WP tests. Follow-up changes need separate source/live
 verification and post-release browser QA. Additional missing pricing
 plugin source files were copied into the Git working tree, not deployed.
 Commercial supplier inputs and the original checkout remain unchanged.
+
+## CP3.0 — Native writer cross-connection lock and keyboard/repeater regression
+
+Date: 21 November 2026.
+
+The original JetEngine save admission was verified on Tours.dev and Wayfatours,
+using real WP-CLI WordPress bootstrap, real capability/nonce/revision checks
+and the real MariaDB connection. Four guarded request modes passed on both:
+GET denied, unsigned POST denied, stale signed revision denied, current signed
+revision admitted without calling vendor save.
+
+A new test, verify-native-pricing-cas-two-connection-lock.php, uses two distinct
+live MySQL connections. While the legitimate pricing CAS lock is held by the
+first, GET_LOCK(...,0) from the second returns 0. Immediately after release
+the second connection acquires and releases the same key successfully.
+The original pricing option HMAC before/after stays unchanged, and no native
+Save is executed or pricing option is written. This demonstrates real database
+serialization but is NOT an authenticated form submission / full save-write E2E.
+
+Playwright cross-tab UI test extended: 45 unique fields across six navigation
+tabs and six responsive widths; no hidden field becomes tabbable while another
+section is active. Keyboard Enter activates original section navigation on
+desktop widths. Newly inserted repeater switcher inputs receive accessible
+On/Off names; reordering a row updates names and row ordinals. A pending
+tax_percent input and original repeater switcher edit both survive switching
+away and back within the same native form. Neither is submitted to a live site.
+This is an isolated rendered-form interaction test, not an axe certification.
+
+Real JetEngine Option Page registry inventory across both companies found
+three registered pricing-related pages: Pricing Controls (45 editable fields),
+calculate-booking-price (2), and Company Policy Library (89). They have zero
+identical native option field keys across page pairs. This rules out exact-key
+duplicates among these page factories, NOT semantic duplicates between
+separately owned Pricing Lab / Product CPT / Transport controls.

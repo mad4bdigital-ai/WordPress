@@ -151,3 +151,21 @@ Native input ARIA labeling improved 116/177 to 177/177 in read-only
 real-HTML Chromium; this is not a full WCAG audit.
 The original native form, source CAS, prices, rates and checkout were
 not changed. The logged-in browser Save and commercial E2E remain OPEN.
+
+### CP3.0 — 21 November continuation
+
+- Both sites: native CAS request modes GET, missing nonce, stale signed
+  revision and current signed admission passed. Admin rights and real
+  database advisory lock availability passed without writing settings.
+- Both sites: two distinct MySQL connections contested the exact same
+  CAS lock; the contender was blocked while held and could acquire after
+  release. Original source revisions remained unchanged.
+- Chromium Playwright: six widths by six tabs passed unique-owner control
+  visibility. Native field and repeater pending edits persist during navigation;
+  new repeater rows are labeled with row index and edited after reorder.
+  Desktop keyboard Enter changes sections, and tab traversal skips hidden
+  native settings.
+- Full authenticated browser Save and two-browser editing conflict remain open:
+  request/lock admission is not a substitute for a real original writer commit
+  and native JetEngine response. The connected browser tab could be listed,
+  but its page context was unavailable to the read-only browser connector.
