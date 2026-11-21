@@ -6,7 +6,7 @@ it calls only the already enrolled first-party CSS workers. One task per site
 per invocation. Cross-company locks, source QA and CSS integrity remain owned
 by their original consumers.
 """
-import hashlib,json,os,re,stat,subprocess,sys,time
+import hashlib,json,os,re,runpy,stat,subprocess,sys,time
 from pathlib import Path
 
 ROOT=Path('/opt/mad4b-company-provisioning')
@@ -167,7 +167,13 @@ def available_candidates(site,data,history,now):
     rows=[]
     ordering={'families':0,'public':1,'first_fold':2,'visual':3,'audit':4,'retention':5}
     for job,rec in data.get('pending',{}).items():
-        if job not in TASKS or job not in PROFILE['tasks']:
+        if job not in TASKS or job not in PROFILE['tasks'] or not isinstance(rec,dict):
+            continue
+        issued_at=rec.get('requested_at')
+        # WordPress 429 is the only ticket issuer. Unknown, malformed or
+        # future timestamps must never crash worker scheduling, especially
+        # while an overdue health task is waiting.
+        if type(issued_at) is not int or issued_at<0 or issued_at>now+300:
             continue
         jid=rec.get('id')
         if not isinstance(jid,int) or isinstance(jid,bool) or jid<=0:continue
@@ -184,9 +190,15 @@ def available_candidates(site,data,history,now):
             and prior.get('worker_release')!=str(SOURCE)):
             next_retry=0
         if now<next_retry:continue
-        priority=0 if (rec.get('reason') in ('source_changed','home_changed')
-                       or (job=='first_fold' and site=='source')) else 1
-        rows.append((priority,int(rec.get('requested_at') or 0),ordering[job],job,jid,key))
+        # An overdue health ticket is not starved behind endless new
+        # source-change QA. This alters priority only, never bypasses the
+        # CPU/WP-CLI guard, existing retry cooldown, or WordPress ACK.
+        audit_due=(job=='audit' and type(issued_at) is int
+                   and 0<issued_at<=now and now-issued_at>=3600)
+        priority=(-1 if audit_due else
+                  0 if (rec.get('reason') in ('source_changed','home_changed')
+                        or (job=='first_fold' and site=='source')) else 1)
+        rows.append((priority,issued_at,ordering[job],job,jid,key))
     rows.sort()
     return rows
 def invoke(site,job,jid,key,history,timeout=None):
@@ -211,7 +223,7 @@ def invoke(site,job,jid,key,history,timeout=None):
     # source-bound CSS candidate, then test in Chrome. No CI or browser
     # performance report is a certificate *issuance* prerequisite.
     release_env=None
-    if site=='wayfa' and job=='public':
+    if site in ('source','wayfa') and job=='public':
         release_env=dict(os.environ)
         release_env.update({
             'MAD4B_MULTI_CSS_V2_RELEASE_FIRST':'1',
@@ -550,10 +562,46 @@ def observe_source_only_variant_progress(site,job,reason,history,now):
           (result.stdout+' '+result.stderr).strip()[-180:],flush=True)
     return bool(result.returncode==0 and accepted)
 
+def update_readonly_health_rollup():
+    """Site-owned Cron wake: merge root-attested reports without PHP/Chrome.
+
+    The existing site-owned first-party health module enforces report
+    ownership, site identity, a one-hour TTL and atomic root-only writes.
+    A missing/expired report stays deferred; it can NEVER be counted as
+    healthy merely because it was healthy yesterday.
+    """
+    try:
+        audit=runpy.run_path(str(SOURCE/'health-audit.py'),
+                             run_name='css_site_owned_health_summary')
+        merged=audit['aggregate_company_health']()
+        if (not isinstance(merged,dict)
+            or merged.get('contract')!='mad4b.critical-css.integrity-audit.v1'
+            or merged.get('source')!='site_owned_company_reports'
+            or set(merged.get('sites',{}))!={'source','wayfa'}
+            or any(not isinstance(row,dict) or row.get('status') not in
+                   ('healthy','healthy_with_safe_fallback','degraded','error','deferred')
+                   for row in merged['sites'].values())):
+            raise ValueError('health-summary-first-party-contract-drift')
+        audit['write'](audit['REPORT']/'latest.json',merged)
+        print('WPCSS_HEALTH_SUMMARY_UPDATED',SITE,
+              *(name+':'+merged['sites'][name]['status']
+                for name in ('source','wayfa')),flush=True)
+        return True
+    except (OSError,ValueError,TypeError,KeyError,UnicodeError,
+            RuntimeError,subprocess.CalledProcessError) as exc:
+        print('WPCSS_HEALTH_SUMMARY_DEFERRED',SITE,
+              type(exc).__name__,str(exc)[:150],flush=True)
+        return False
+
+
 def main():
     REPORT.mkdir(parents=True,exist_ok=True,mode=0o700)
     if REPORT.is_symlink():raise ValueError('invalid_report_root')
     history=safe_state();now=int(time.time());started=time.monotonic()
+    if '--inspect' not in sys.argv:
+        # Cheap, source-verified report aggregation does not consume any
+        # WordPress CSS ticket or run Chrome; safe even when CPU defers QA.
+        update_readonly_health_rollup()
     if '--inspect' not in sys.argv and SITE=='source':
         observe_source_home_without_browser()
         observe_source_css_profiles()
