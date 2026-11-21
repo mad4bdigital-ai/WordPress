@@ -1,0 +1,41 @@
+name: MAD4B Experience First Paint V2.3
+on:
+  pull_request:
+    paths:
+      - 'ops/experience-first-paint-v1/**'
+      - 'tests/test_experience_first_paint_v230.py'
+      - '.github/workflows/mad4b-experience-first-paint-v230.yml'
+  push:
+    branches: ['fix/experience-first-paint-live-source-20261121']
+    paths:
+      - 'ops/experience-first-paint-v1/**'
+      - 'tests/test_experience_first_paint_v230.py'
+      - '.github/workflows/mad4b-experience-first-paint-v230.yml'
+permissions:
+  contents: read
+concurrency:
+  group: mad4b-render-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  exact-source:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4','8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: none
+          coverage: none
+      - name: Lint loader and content-addressed JS
+        run: |
+          php -l ops/experience-first-paint-v1/release/366-mad4b-city-visible-image.php
+          node --check ops/experience-first-paint-v1/release/mad4b-city-visible-image.339807974258.js
+      - name: Check release hash, isolated scope and legacy fallback
+        run: python3 -m unittest discover -s tests -p 'test_experience_first_paint_v230.py' -v
