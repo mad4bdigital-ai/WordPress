@@ -169,3 +169,23 @@ not changed. The logged-in browser Save and commercial E2E remain OPEN.
   request/lock admission is not a substitute for a real original writer commit
   and native JetEngine response. The connected browser tab could be listed,
   but its page context was unavailable to the read-only browser connector.
+
+### CP3.1 — Repeater modernisation and source drift repair (21 Nov)
+
+- Native pricing Repeaters no longer show a duplicate full Live overview
+  above their original row editors by default. The operator can expand
+  a read-only preview via native details/summary, including keyboard Enter.
+  Closed previews generate no idle/background AJAX requests.
+- Playwright regression passed: one original Save, one original row,
+  no changed checkbox or form, one per-row summary. Pricing mode performs
+  AJAX only after explicit expansion. Other JetEngine pages retain their
+  normal overview. Existing one-owner and layout tests also passed.
+- A previously missed live-only drift was found in Wayfatours:
+  repeater-overview.js was an older 188-line version without the later
+  full-width Price Source Mode fix already present in Git/Tours.dev.
+  After reviewing the exact diff and taking backups, the newer file and
+  CP3.1 CSS were deployed on Wayfatours. Tours.dev received the CP3.1
+  modification first. Both sites now have matching SHA for both assets.
+- Both sites: original native JetEngine form source check and protected
+  CAS markup source tests passed; public pages responded 200. No vendor
+  Save action or ecommerce modification was run.

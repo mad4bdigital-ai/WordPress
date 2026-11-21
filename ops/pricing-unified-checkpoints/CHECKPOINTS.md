@@ -261,3 +261,37 @@ calculate-booking-price (2), and Company Policy Library (89). They have zero
 identical native option field keys across page pairs. This rules out exact-key
 duplicates among these page factories, NOT semantic duplicates between
 separately owned Pricing Lab / Product CPT / Transport controls.
+
+## CP3.1 — Repeater duplicate overview and production-source parity
+
+Date: 21 November 2026.
+
+The large second read-only Live overview rendered above nine original
+JetEngine Repeater editors caused stacked nested cards and redundant
+descriptions. Pricing Controls now mounts its former overview in a
+keyboard-operable, closed-by-default native details disclosure inside
+the original field information block. Original row controls, contextual
+row summaries and JetEngine Save remain unchanged. No source or price
+policy is copied to a new editor. Other non-pricing JetEngine pages
+preserve their historical overview presentation.
+
+The preview AJAX call is deferred until the operator opens a disclosure.
+No preview call is sent during a normal Pricing Controls page load with
+all disclosures closed. Opening by keyboard Enter fetches exactly one
+read-only preview; closing hides it without affecting the saved fields.
+New Playwright test verify-repeater-optional-overview-playwright.py covers
+both pricing and nonpricing behavior.
+
+The Wayfatours live repeater-overview.js was older than the Git/source
+file: it inserted a duplicate sibling overview for Price Source Modes,
+whereas the source already had a compact per-rule summary and no large
+source mode overview. After source diff review and exact predeploy SHA
+verification, both sites now run the latest source file plus CP3.1
+changes. Each has a separate on-host backup of both modified UI assets.
+WordPress native UI and CAS markup tests passed after the deployment
+on each site, with both sites returning HTTP 200. No pricing values,
+payment status, booking orders or live Tour Rates were changed.
+
+Open after CP3.1: full authenticated browser vendor Save and dual-session
+real form E2E, completion of CSS design-system consolidation, and the
+separate commercial supplier cost/FX/children readiness work.
