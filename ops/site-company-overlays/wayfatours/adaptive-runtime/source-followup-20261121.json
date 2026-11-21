@@ -1,0 +1,18 @@
+{
+  "contract": "mad4b.adaptive-asset-source-followup.v1",
+  "prior_historical_candidate": "ops/site-company-overlays/wayfatours/adaptive-runtime/source-forward-port-20261116.json",
+  "prior_candidate_sha256": "3bfee56f880102868adb4f9e50f1976dfbeec67bb990ead1a205f21030e7b180",
+  "prior_candidate_git_blob_sha1": "e6422d6665e9733f6a20dc06ee86f667cd490e3d",
+  "updated_source_file": "wp-content/plugins/mad4b-adaptive-asset-intelligence/includes/class-mad4b-scp-adaptive-asset-intelligence.php",
+  "updated_source_sha256": "1ff027d07dea9131f6b2df82c77cc98566679b5c98d6190dc086f7b69af779ba",
+  "updated_source_git_blob_sha1": "8f3d0fde0914bceb4a1681fc0228480157571551",
+  "change": "read_only_current_original_429_receipt_projection",
+  "owner": "MAD4B_SCP_Adaptive_Asset_Intelligence",
+  "no_parallel_worker": true,
+  "no_parallel_queue": true,
+  "no_css_certification_from_worker_ack": true,
+  "previous_historical_receipt_unchanged": true,
+  "site_specific_rollback_receipts": "/opt/mad4b-company-provisioning/reports/css-existing-owner-repair-20261121",
+  "live_readback": "2026-11-21 Wayfatours Production and Tours.dev Staging both exact updated PHP SHA, PHP8.5 lint and 429 status readback passed",
+  "no_auto_promotion": true
+}
