@@ -77,6 +77,41 @@ final class MAD4B_Host_V3_Human_UI {
             JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
             | JSON_UNESCAPED_SLASHES);
         if (!is_string($json)) return;
+
+        // Render an actual, selectable input from the existing v134 contract.
+        // This is server HTML, independent of DOMContentLoaded, JavaScript
+        // hydration, and stale client-side state. It is NOT an authorization.
+        $locale = strtolower(strtok(str_replace('-', '_', (string)get_user_locale()), '_'));
+        $translations = array(
+            'en' => array('copy'=>'Copy exact confirmation','label'=>'Exact review confirmation (not a signature)',
+                'notice'=>'Your review is already recorded; do not submit another request.',
+                'copied'=>'Exact confirmation copied. This does not authorize Write.',
+                'manual'=>'Select the text and press Ctrl+C.'),
+            'ar' => array('copy'=>'نسخ عبارة التأكيد','label'=>'عبارة تأكيد المراجعة (ليست توقيعًا)',
+                'notice'=>'مراجعتك مسجّلة بالفعل؛ لا ترسل طلبًا جديدًا.',
+                'copied'=>'تم نسخ التأكيد. هذا لا يمنح صلاحية الكتابة.',
+                'manual'=>'حدّد النص واضغط Ctrl+C.'),
+            'fr' => array('copy'=>'Copier la confirmation','label'=>'Confirmation de révision (pas une signature)',
+                'notice'=>'Votre demande est enregistrée ; inutile de la renvoyer.',
+                'copied'=>'Confirmation copiée. Cela n’autorise pas l’écriture.',
+                'manual'=>'Sélectionnez le texte et appuyez sur Ctrl+C.'),
+            'de' => array('copy'=>'Bestätigung kopieren','label'=>'Bestätigung der Prüfung (keine Unterschrift)',
+                'notice'=>'Ihre Anfrage liegt bereits vor; nicht erneut senden.',
+                'copied'=>'Bestätigung kopiert. Keine Schreibfreigabe.',
+                'manual'=>'Text markieren und Strg+C drücken.'),
+            'es' => array('copy'=>'Copiar confirmación','label'=>'Confirmación de revisión (no es firma)',
+                'notice'=>'Tu solicitud ya está registrada; no la envíes de nuevo.',
+                'copied'=>'Confirmación copiada. No autoriza la escritura.',
+                'manual'=>'Selecciona el texto y pulsa Ctrl+C.'),
+            'it' => array('copy'=>'Copia conferma','label'=>'Conferma della revisione (non è una firma)',
+                'notice'=>'La richiesta è già registrata; non inviarne un’altra.',
+                'copied'=>'Conferma copiata. Non autorizza la scrittura.',
+                'manual'=>'Seleziona il testo e premi Ctrl+C.'),
+        );
+        $l = $translations[$locale] ?? $translations['en'];
+        $copyable = MAD4B_Host_V3_Owner_Console::CONFIRM;
+        $existing = is_array($bootstrap['latestReview']) &&
+            is_string($bootstrap['latestReview']['request_id'] ?? null);
         ?>
 <style id="mad4b-host-v136-human-css">
 .mad4b-host-v3 .mad4b-human {
@@ -200,6 +235,76 @@ final class MAD4B_Host_V3_Human_UI {
   .mad4b-host-v3 .mad4b-human .human-actions .button {width:100%;margin:4px 0}
 }
 </style>
+<style id="mad4b-host-v140-server-copy-style">
+#mad4b-owner-copy-ssr-v140 {
+  box-sizing:border-box; margin:12px 0; padding:12px;
+  background:#f6f7f7; border:1px solid #c3c4c7; border-radius:4px;
+  max-width:600px; color:#1d2327; line-height:1.5;
+}
+#mad4b-owner-copy-ssr-v140 label {display:block;font-weight:600;margin-bottom:6px}
+#mad4b-owner-copy-ssr-v140 .v140-exact-input {
+  display:block;width:100%;max-width:540px;min-height:38px;
+  direction:ltr;text-align:left;font-size:13px;
+  font-family:monospace;background:#fff;user-select:all;
+  margin:8px 0;
+}
+#mad4b-owner-copy-ssr-v140 .button {min-height:36px;padding:6px 14px}
+#mad4b-owner-copy-ssr-v140 .v140-message {font-size:13px;color:#50575e;margin:8px 0 0}
+#mad4b-owner-copy-ssr-v140 [hidden] {display:none !important}
+</style>
+<div id="mad4b-owner-copy-ssr-v140" data-ui-version="v140"
+     role="group" aria-label="<?php echo esc_attr($l['label']); ?>">
+  <label for="mad4b-exact-confirm-select-v140"><?php echo esc_html($l['label']); ?></label>
+  <input id="mad4b-exact-confirm-select-v140" class="v140-exact-input"
+     type="text" readonly value="<?php echo esc_attr($copyable); ?>"
+     autocomplete="off" spellcheck="false" aria-readonly="true">
+  <button type="button" class="button button-secondary"
+    id="mad4b-owner-copy-btn-v140"><?php echo esc_html($l['copy']); ?></button>
+  <p class="v140-message" role="status" aria-live="polite"
+     id="mad4b-owner-copy-status-v140"></p>
+  <?php if ($existing) : ?>
+  <p class="v140-message"><?php echo esc_html($l['notice']); ?></p>
+  <?php endif; ?>
+</div>
+<script id="mad4b-owner-v140-copy-standalone">
+(function(){
+"use strict";
+const area=document.getElementById("mad4b-owner-copy-ssr-v140");
+const target=document.getElementById("v3-confirm");
+const input=document.getElementById("mad4b-exact-confirm-select-v140");
+const button=document.getElementById("mad4b-owner-copy-btn-v140");
+const status=document.getElementById("mad4b-owner-copy-status-v140");
+const copied=<?php echo wp_json_encode($l['copied'],JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+const fallback=<?php echo wp_json_encode($l['manual'],JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+if(!area||!input||!button||!status)return;
+if(target && typeof target.insertAdjacentElement==="function") {
+  target.insertAdjacentElement("afterend",area);
+}
+input.addEventListener("focus",()=>input.select());
+input.addEventListener("click",()=>input.select());
+button.addEventListener("click",async()=>{
+ try{
+   if(!navigator.clipboard || typeof navigator.clipboard.writeText!=="function")
+     throw Error("CLIPBOARD_NOT_AVAILABLE");
+   await navigator.clipboard.writeText(input.value);
+   status.textContent=copied;
+ }catch(e){
+   input.focus();
+   input.select();
+   status.textContent=fallback;
+ }
+});
+<?php if ($existing) : ?>
+const oldSubmit=document.getElementById("v3-submit");
+if(oldSubmit){
+  oldSubmit.hidden=true;
+  oldSubmit.style.display="none";
+  oldSubmit.disabled=true;
+  oldSubmit.setAttribute("aria-hidden","true");
+}
+<?php endif; ?>
+})();
+</script>
 <script id="mad4b-host-v136-human-script">
 (function() {
 "use strict";
@@ -321,7 +426,9 @@ function init() {
     // The source is the v134-owned field, not another hardcoded value.
     const exactInput = typeof document.getElementById === "function"
         ? document.getElementById("v3-confirm") : null;
-    if (exactInput && typeof exactInput.placeholder === "string"
+    if (!(typeof document.getElementById === "function" &&
+        document.getElementById("mad4b-owner-copy-ssr-v140")) &&
+        exactInput && typeof exactInput.placeholder === "string"
         && exactInput.placeholder.length > 0) {
         const exact = exactInput.placeholder;
         const copyArea=elm("div","human-exact-copy");

@@ -21,6 +21,7 @@ $cases="__SCENARIO__";
 $privileged=__PRIV__;
 class MAD4B_Host_V3_Owner_Console {
     const SITE="e5e64bca-ed62-48d2-b2b3-dff693cd702a";
+    const CONFIRM="REQUEST EXACT V3 OWNER STEP-UP";
     public static function site_binding_valid(){return true;}
 }
 class MAD4B_Host_V3_Remote_Handoff {}
@@ -44,6 +45,8 @@ function add_action($hook,$cb,$priority=10){}
 function rest_url($path){return "https://tours.dev.mad4b.com/wp-json/".$path;}
 function wp_create_nonce($action){return "testing-rest-nonce";}
 function wp_json_encode($v,$flags=0){return json_encode($v,$flags|JSON_THROW_ON_ERROR);}
+function esc_attr($v){return htmlspecialchars((string)$v,ENT_QUOTES|ENT_SUBSTITUTE,"UTF-8");}
+function esc_html($v){return htmlspecialchars((string)$v,ENT_QUOTES|ENT_SUBSTITUTE,"UTF-8");}
 function get_option($name,$default=false){
     global $cases;
     $user= $name==="mad4b_v3_remote_req_".str_repeat("a",32)?43:42;
