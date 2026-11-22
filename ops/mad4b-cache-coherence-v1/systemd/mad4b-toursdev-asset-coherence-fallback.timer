@@ -1,0 +1,11 @@
+[Unit]
+Description=MAD4B Tours.dev cache coherence fallback every minute
+
+[Timer]
+OnBootSec=90s
+OnUnitInactiveSec=60s
+RandomizedDelaySec=7s
+Unit=mad4b-toursdev-asset-coherence-fallback.service
+
+[Install]
+WantedBy=timers.target
