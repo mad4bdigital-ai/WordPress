@@ -1,0 +1,48 @@
+name: MAD4B Live Toursdev Wayfa 0.7.1 Source Parity
+
+on:
+  pull_request:
+    paths:
+      - 'ops/mad4b-live-first-wayfa-parity-v1/**'
+      - '.github/workflows/mad4b-live-first-wayfa-mcp071.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'ops/mad4b-live-first-wayfa-parity-v1/**'
+      - '.github/workflows/mad4b-live-first-wayfa-mcp071.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-live-first-wayfa-parity-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-parity:
+    name: Exact live-source package checks without browser or WP mutation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify SHA256 lock and MCP 0.7.1 profile
+        run: python3 ops/mad4b-live-first-wayfa-parity-v1/verify.py --site package
+      - name: Check Python syntax
+        run: python3 -m compileall -q ops/mad4b-live-first-wayfa-parity-v1
+      - name: Native source contract tests
+        run: python3 -m unittest discover -s ops/mad4b-live-first-wayfa-parity-v1/tests -p 'test_*.py' -v
+      - name: Read-only PHP source lint
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='ops/mad4b-live-first-wayfa-parity-v1/runtime'
+          php -l "$root/includes/class-mad4b-scp-deferred-admin-reports.php"
+          php -l "$root/includes/class-mad4b-scp-admin-settings-persistence.php"
+          python3 -m json.tool "$root/config/certified-provider-profiles.json" >/dev/null
+          python3 -m json.tool "$root/config/mcp-protocol-profiles.json" >/dev/null
+          python3 -m json.tool "$root/config/runtime-release-policy.json" >/dev/null
+          node --check "$root/assets/deferred-admin-reports.js"
+          node --check "$root/assets/admin-settings-persistence.js"
