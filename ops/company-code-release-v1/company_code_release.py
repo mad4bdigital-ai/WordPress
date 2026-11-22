@@ -1727,7 +1727,7 @@ def parse_json(file: Path, max_size: int = 2_000_000) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("plan", "doctor", "prepare", "readback", "apply", "rollback", "live-staging-plan"))
+    parser.add_argument("action", choices=("plan", "doctor", "prepare", "readback", "apply", "rollback"))
     parser.add_argument("--request", type=Path)
     parser.add_argument("--plan", type=Path)
     parser.add_argument("--policy", type=Path, default=POLICY_PATH)
@@ -1735,23 +1735,6 @@ def main() -> int:
     parser.add_argument("--receipts", type=Path)
     args = parser.parse_args()
 
-    if args.action == "live-staging-plan":
-        # Additive read-only mode in original release tool; never uses caller
-        # supplied preview policy or turns this preview into a v1 apply plan.
-        import importlib.util
-        module_path=Path(__file__).with_name("live_source_staging_preview.py")
-        meta=module_path.lstat()
-        fail_if(not stat.S_ISREG(meta.st_mode) or meta.st_uid != 0 or
-                stat.S_IMODE(meta.st_mode) & 0o022 or
-                hashlib.sha256(module_path.read_bytes()).hexdigest() != "fae30fd53b945663c28c421b8e1956a8266964116fe7101b13b49d6173295e76",
-                "LIVE_SOURCE_PREVIEW_HELPER_NOT_PINNED")
-        spec=importlib.util.spec_from_file_location("_mad4b_live_staging_preview",module_path)
-        fail_if(spec is None or spec.loader is None, "LIVE_SOURCE_PREVIEW_UNAVAILABLE")
-        module=importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        result=module.preview_from_original_pins(trusted_config(POLICY_PATH))
-        print(json.dumps(result,ensure_ascii=False,sort_keys=True,indent=2))
-        return 0
     if args.action == "plan":
         # A non-authorizing preview may use a supplied policy; never grants
         # write ability and does not install or alter target code.
