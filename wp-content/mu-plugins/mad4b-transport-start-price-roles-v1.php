@@ -70,6 +70,12 @@ final class MAD4B_Transport_Start_Price_Roles_V1 {
         $out['mode']=$settings['mode'];
         $out['role_configured']=$settings['configured'];
         $out['policy_revision']=$settings['revision'];
+        // A separately verified public tariff matrix never becomes a
+        // generic starting price, supplier receipt, or native Rate.
+        $reference=get_post_meta($id,'_mad4b_abela_public_tariff_evidence_v1',true);
+        $out['published_public_tariff_evidence']=is_array($reference)&&
+            ($reference['contract']??'')==='mad4b.abela.public-tariff-evidence.v1'
+             ?$reference:null;
         $start=self::money(get_post_meta($id,'trans_start_price',true));
         $cur=self::currency(get_post_meta($id,'trans_base_currency',true));
         $unit=self::unit($id);
@@ -265,6 +271,32 @@ final class MAD4B_Transport_Start_Price_Roles_V1 {
             ?' — '.esc_html((string)$d['planning_cost_amount'].' '.
              $d['planning_cost_currency'].' / '.$d['planning_cost_unit']):'').
           '. <strong>Supplier-cost / date / cabin authority:</strong> not certified.</p>';
+        $evidence=$d['published_public_tariff_evidence']??null;
+        if(is_array($evidence)){
+            $published=$evidence['money']['foreign_usd_one_way_per_person']??[];
+            echo '<div class="mad4b-abela-public-fare-evidence" data-customer-segment="foreign" data-commercial-authorization="false">';
+            echo '<h3>Abela published fare evidence · 2026</h3>';
+            echo '<p>Per foreign adult, one-way journey, USD. This is NOT a price for Egyptians/Arabs, a supplier trade cost, or a dated ticket quote.</p>';
+            echo '<table class="widefat striped"><thead><tr><th>Season</th><th>Cabin</th><th>Sharing, per person</th><th>Single sole use, per person</th></tr></thead><tbody>';
+            foreach(['off_peak'=>'Outside peak','peak'=>'Peak dates'] as $season=>$title){
+              foreach(['standard'=>'Standard','elite'=>'Elite'] as $class=>$label){
+                $fare=$published[$season][$class]??[];
+                if(!isset($fare['shared_double'],$fare['single_sole_use']))continue;
+                echo '<tr><td>'.esc_html($title).'</td><td>'.esc_html($label).'</td><td>USD '.esc_html(number_format((float)$fare['shared_double'],2)).'</td><td>USD '.esc_html(number_format((float)$fare['single_sole_use'],2)).'</td></tr>';
+              }
+            }
+            echo '</tbody></table>';
+            echo '<p><strong>Children:</strong> evidence differs between sources; prices are deliberately NOT approved for automatic calculations.</p>';
+            echo '<p><strong>Season limits:</strong> 2026 dated public calendar only. No inferred 2027 dates, inventory or bank fee.</p>';
+            $links=$evidence['sources']??[];
+            foreach(['official_2026_current_link'=>'Operator latest displayed tariff link',
+                  'seat61_2026'=>'Independent rail fare guide',
+                  'this_is_egypt_oct_2026_abella_booking'=>'October 2026 booking observation'] as $key=>$label){
+              if(!empty($links[$key]))echo '<p><a target="_blank" rel="noopener noreferrer" href="'.esc_url($links[$key]).'">'.esc_html($label).'</a></p>';
+            }
+            echo '<p><strong>Operational status:</strong> verified public reference data only; no generic Starting Price, direct Cost Source, Rate or Checkout was changed.</p>';
+            echo '</div>';
+        }
         echo '<p><small>Save the native start price, currency and unit in this Transportation first. Selecting Cost or Both changes planning source eligibility only. Commercial Tour Rates still require signed supplier cost, dates, capacity, occupancy and authorization.</small></p>';
         echo '</section>';
     }
