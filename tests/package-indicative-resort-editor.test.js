@@ -2,8 +2,11 @@
 const assert=require('node:assert/strict');
 const {test}=require('node:test');
 const fs=require('node:fs');
-const smart=process.env.SMART_FILE;
-const pricing=process.env.LAB_FILE;
+const path=require('node:path');
+const smart=process.env.SMART_FILE || path.resolve(__dirname,
+  '../wp-content/mu-plugins/assets/mad4b-smart-itinerary-overnight-v1.js');
+const pricing=process.env.LAB_FILE || path.resolve(__dirname,
+  '../wp-content/mu-plugins/assets/mad4b-package-pricing-lab-readiness-v1.js');
 const m=require(smart);
 const source=fs.readFileSync(pricing,'utf8');
 
