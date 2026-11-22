@@ -34,6 +34,7 @@ final class MAD4B_Smart_Itinerary_Choices_V1 {
             'properties'=>'منشأة مؤهلة','no_tiers'=>'مستويات الباقة غير محددة لهذه الرحلة؛ راجع تصنيف Silver / Gold / Diamond',
             'no_resort'=>'لا توجد منشأة Resort معتمدة للتأهيل لهذه المدينة والمستوى',
             'no_train'=>'خدمة قطار النوم غير مؤهلة أو مرتبطة بمورد معتمد بعد',
+            'save_first'=>'احفظ مسودة الرحلة وحدد مستوياتها ووجهاتها أولًا لتفعيل الخيارات المؤهلة',
             'no_cruise'=>'يجب ربط برنامج كروز مؤهل بهذه المرحلة أولًا'
         ];
         if($l==='es')return [
@@ -47,6 +48,7 @@ final class MAD4B_Smart_Itinerary_Choices_V1 {
             'no_tiers'=>'Asigna el nivel Silver / Gold / Diamond a esta ruta',
             'no_resort'=>'No hay resort elegible en este destino y nivel',
             'no_train'=>'Proveedor de tren nocturno sin calificación verificada',
+            'save_first'=>'Guarda primero el borrador y define destinos y niveles',
             'no_cruise'=>'Se requiere un programa de crucero válido para esta etapa',
             'level'=>'Niveles de paquete',
             'kind'=>'Tipo de alojamiento','destination'=>'Destino de pernoctación'
@@ -66,6 +68,7 @@ final class MAD4B_Smart_Itinerary_Choices_V1 {
             'no_tiers'=>'This tour has no assigned Silver / Gold / Diamond package level',
             'no_resort'=>'No qualifying Resort property for this city and tier',
             'no_train'=>'Sleeper train supplier eligibility has not been verified',
+            'save_first'=>'Save the Tour draft with destinations and tiers to enable qualifying overnight choices',
             'no_cruise'=>'No verified cruise program is linked to this stage',
             'level'=>'Package tiers','kind'=>'Accommodation type','destination'=>'Overnight city'
         ];
@@ -340,7 +343,12 @@ final class MAD4B_Smart_Itinerary_Choices_V1 {
         $screen=function_exists('get_current_screen')?get_current_screen():null;
         if(!$screen || ($screen->post_type??'')!=='tours-and-activities')return;
         $post=isset($_GET['post'])?absint($_GET['post']):0;
-        if(!$post || !self::canEdit($post))return;
+        if($post && !self::canEdit($post))return;
+        if(!$post){
+            if($hook!=='post-new.php')return;
+            $pt=get_post_type_object('tours-and-activities');
+            if(!$pt || !current_user_can($pt->cap->edit_posts))return;
+        }
         $path=__DIR__.'/assets/mad4b-smart-itinerary-overnight-v1.js';
         if(!is_readable($path))return;
         $handle='mad4b-smart-itinerary-overnight-v1';
@@ -350,7 +358,7 @@ final class MAD4B_Smart_Itinerary_Choices_V1 {
           'window.MAD4BSmartOvernightV1='.wp_json_encode([
             'ajax_url'=>admin_url('admin-ajax.php'),
             'action'=>self::ACTION,'nonce'=>wp_create_nonce(self::NONCE),
-            'tour_id'=>$post,'labels'=>self::labels()
+            'tour_id'=>$post,'new_post'=>($post===0),'labels'=>self::labels()
           ],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE).';','before');
     }
 }
