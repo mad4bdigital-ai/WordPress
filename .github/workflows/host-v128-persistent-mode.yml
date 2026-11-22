@@ -20,6 +20,7 @@ on:
       - 'tests/host-v142/**'
       - 'tests/host-v143/**'
       - 'tests/host-v144/**'
+      - 'tests/host-v145/**'
       - 'tests/release-qualification/**'
       - 'tools/mad4b_release_qualification_mode.py'
       - 'tools/mad4b_host_runner.py'
@@ -130,6 +131,10 @@ jobs:
         run: python -B -m unittest discover -s tests/host-v143 -p 'test_*.py' -v
       - name: Verify VPS-host SSH-only remote repair path, three pinned hosts and no unsigned write
         run: python -B -m unittest discover -s tests/host-v144 -p 'test_*.py' -v
+      - name: Verify v145 Owner Remote Operations admin REST projection and original endpoint invocation
+        env:
+          MAD4B_TEST_PHP: php
+        run: python -B -m unittest discover -s tests/host-v145 -p 'test_*.py' -v
       - name: Verify existing bounded Host Runner write limits and path safety
         run: |
           python -B wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py
