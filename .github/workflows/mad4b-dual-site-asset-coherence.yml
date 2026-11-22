@@ -1,0 +1,51 @@
+name: MAD4B Dual Site Asset Coherence (native, no browser)
+
+on:
+  pull_request:
+    paths:
+      - 'ops/mad4b-cache-coherence-v1/**'
+      - '.github/workflows/mad4b-dual-site-asset-coherence.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'ops/mad4b-cache-coherence-v1/**'
+      - '.github/workflows/mad4b-dual-site-asset-coherence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-cache-coherence-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-recovery-contract:
+    name: Per-site inotify, lock and FastCGI recovery
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify pinned, live-origin bundle
+        run: python3 ops/mad4b-cache-coherence-v1/install.py --verify-package
+      - name: Verify Python syntax
+        run: python3 -m compileall -q ops/mad4b-cache-coherence-v1
+      - name: Native cache recovery without a browser
+        run: python3 -m unittest discover -s ops/mad4b-cache-coherence-v1/tests -p 'test_*.py' -v
+      - name: Inspect independent per-site systemd timers
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=ops/mad4b-cache-coherence-v1
+          test "$(find "$root/systemd" -maxdepth 1 -type f | wc -l)" -eq 6
+          test "$(find "$root/bin" -maxdepth 1 -type f -name '*.py' | wc -l)" -eq 4
+          for unit in "$root"/systemd/*.timer; do
+            grep -q '^OnUnitInactiveSec=60s' "$unit"
+            grep -q '^WantedBy=timers.target' "$unit"
+          done
+          for unit in "$root"/systemd/*event-watch*.service; do
+            grep -q '^Restart=always' "$unit"
+            grep -q 'inotify' "$unit"
+          done
