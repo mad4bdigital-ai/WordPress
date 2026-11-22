@@ -97,3 +97,29 @@ consumer SHA, CSS epoch, full ordered CSS dependency manifest and compiler
 source hash. The original 422 publisher independently recompiles source and
 executes CAS on the live certificate. No cross-route/market certificate reuse.
 The per-site 96-record retention bound and browser/CPU gates remain unchanged.
+
+
+### WordPress Menu Header Global Event Coalescing
+
+The first-party 421 route/market/locale invalidation still treats actual
+navigation and Theme Builder mutations as global and invalidates affected
+shared-header CSS. One WordPress PHP menu-save request can update many menu
+item fields; the original plugin incremented global/listing CSS generations
+for each such metadata write (18 items x 9 writes = 162 generations).
+
+The revised 421 invalidates on the FIRST menu mutation immediately, then
+performs a FINAL global invalidation on WordPress shutdown in that same PHP
+request. Any new CSS certificate issued during menu editing is invalidated
+by the final mark. A subsequent PHP request still gets an independent first
+and final mark. No time-based debounce, cross-request suppression, unverified
+event exclusions, or changes to post/taxonomy/commerce dependencies.
+
+The existing 422 V2 runtime and consumer SHA remain byte-for-byte unchanged
+and retain the existing certificates. Both the legacy first-party 421 SHA
+and the source-backed batched 421 SHA are explicitly admitted by the
+original renderer's immutable source allowlist for rollback continuity.
+An unknown 421 implementation still fails closed.
+
+Hermetic test coverage: 58 original and new event invariants, including
+162 repeated native menu metadata writes, first and final CSS invalidation,
+request-boundary behavior and existing WPML/Elementor routing rules.

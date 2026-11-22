@@ -12,6 +12,33 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
     private const TYPES = ['page','post','tours-and-activities','properties'];
     private const TAXONOMIES = ['category','destinations','tour-types','property-types','tour-categories'];
     private const HOSTS = ['tours.dev.mad4b.com','wayfatours.com'];
+    private static bool $navigation_dirty_in_request=false;
+    /**
+     * Header and menu changes affect all locales and markets. Keep the
+     * *first* global generation bump immediate so an ongoing request
+     * cannot issue an earlier CSS proof against a changed header.
+     *
+     * Elementor/WordPress menu saves can trigger updated_post_meta
+     * for 8-12 fields on each item in one PHP request. Coalesce the
+     * remaining same-request events and mark once at shutdown too:
+     * a CSS certification that races between the first and final menu
+     * mutation is invalidated by the final generation.
+     *
+     * The event itself is never ignored, no timestamp debounce, and
+     * separate PHP requests still get a fresh immediate bump.
+     */
+    private static function navigation_changed(int $id=0): void {
+        if (!self::authorized())return;
+        if (self::$navigation_dirty_in_request)return;
+        self::$navigation_dirty_in_request=true;
+        self::mark('navigation',$id,true);
+        add_action('shutdown',[__CLASS__,'navigation_flushed'],PHP_INT_MAX,0);
+    }
+    public static function navigation_flushed(): void {
+        if (!self::$navigation_dirty_in_request)return;
+        self::$navigation_dirty_in_request=false;
+        self::mark('navigation',0,true);
+    }
 
     public static function authorized(): bool {
         $host = strtolower((string)wp_parse_url((string)get_option('home',''),PHP_URL_HOST));
@@ -117,7 +144,8 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
                 $scope=$type==='elementor_library'?'template':
                     ($type==='nav_menu_item'?'navigation':
                      ($type==='tour-rates'?'pricing':'post:'.$type));
-                self::mark($scope,$id,in_array($type,['elementor_library','nav_menu_item'],true));
+                if ($type==='nav_menu_item')self::navigation_changed($id);
+                else self::mark($scope,$id,$type==='elementor_library');
                 if ($type==='page' && (int)get_option('page_on_front')===$id) self::mark('home',$id,true);
                 return;
             }
@@ -128,7 +156,7 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
             || (string)($post->post_status??'')!=='publish') return;
         $type=(string)($post->post_type??'');
         if ($type==='nav_menu_item') {
-            self::mark('navigation',$id,true);
+            self::navigation_changed($id);
         }elseif ($type==='elementor_library') {
             self::mark('template',$id,true);
         }elseif (self::supported_type($type)) {
@@ -141,7 +169,7 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
         if (!self::authorized() || !is_object($post)) return;
         $type=(string)($post->post_type??'');
         if ($type==='nav_menu_item') {
-            self::mark('navigation',$id,true);
+            self::navigation_changed($id);
         }elseif ($type==='elementor_library') {
             self::mark('template',$id,true);
         }elseif (self::supported_type($type)) {
@@ -158,7 +186,7 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
         sort($current);sort($prior);
         if ($current===$prior)return;
         if ($taxonomy==='nav_menu') {
-            self::mark('navigation',$id,true);
+            self::navigation_changed($id);
             return;
         }
         if (!in_array($taxonomy,self::TAXONOMIES,true))return;
@@ -177,7 +205,7 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
             // Native menu links/order/activation are stored in post meta,
             // not the post_content itself. The header is shared by every
             // public page and its first-screen CSS evidence depends on it.
-            if (str_starts_with($key,'_menu_item_'))self::mark('navigation',$post_id,true);
+            if (str_starts_with($key,'_menu_item_'))self::navigation_changed($post_id);
             return;
         }
         if (!self::supported_type($type)
@@ -194,7 +222,7 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
     }
     public static function term_updated(int $id,int $tt_id=0,string $taxonomy=''): void {
         if ($taxonomy==='nav_menu') {
-            self::mark('navigation',$id,true);
+            self::navigation_changed($id);
             return;
         }
         if (!in_array($taxonomy,self::TAXONOMIES,true)) return;
@@ -213,7 +241,7 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
         self::mark('taxonomy:'.$term->taxonomy,$term_id,true);
     }
     public static function menu_updated(int $menu_id=0): void {
-        self::mark('navigation',max(0,$menu_id),true);
+        self::navigation_changed(max(0,$menu_id));
     }
     public static function option_added(string $key,$value): void {
         self::option_updated($key,null,$value);

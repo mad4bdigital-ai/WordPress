@@ -132,6 +132,7 @@ $oldGlobal=(int)$GLOBALS['options']['mad4b_ccss_global_generation_v1'];
 MAD4B_Public_Critical_CSS_Coverage_V1::changed_meta(1,901,'_menu_item_url','/es/egipto/');
 check('edited native menu URL invalidates company header',
  (int)$GLOBALS['options']['mad4b_ccss_global_generation_v1']>$oldGlobal);
+MAD4B_Public_Critical_CSS_Coverage_V1::navigation_flushed();
 $oldGlobal=(int)$GLOBALS['options']['mad4b_ccss_global_generation_v1'];
 $oldNav=(object)['post_type'=>'nav_menu_item','post_status'=>'publish',
  'post_title'=>'Egypt','post_content'=>'','menu_order'=>1];
@@ -139,10 +140,12 @@ $newNav=clone $oldNav;$newNav->menu_order=2;
 MAD4B_Public_Critical_CSS_Coverage_V1::post_updated(901,$newNav,$oldNav);
 check('native menu reordering invalidates first screen',
  (int)$GLOBALS['options']['mad4b_ccss_global_generation_v1']>$oldGlobal);
+MAD4B_Public_Critical_CSS_Coverage_V1::navigation_flushed();
 $oldHome=(int)$GLOBALS['options']['mad4b_critical_css_home_dirty_v1'];
 MAD4B_Public_Critical_CSS_Coverage_V1::menu_updated(11);
 check('native WordPress menu save triggers first screen change event',
  (int)$GLOBALS['options']['mad4b_critical_css_home_dirty_v1']>$oldHome);
+MAD4B_Public_Critical_CSS_Coverage_V1::navigation_flushed();
 $oldHome=(int)$GLOBALS['options']['mad4b_critical_css_home_dirty_v1'];
 MAD4B_Public_Critical_CSS_Coverage_V1::term_updated(665,1,'destinations');
 check('destination category rename invalidates header and home proof',
@@ -168,16 +171,19 @@ MAD4B_Public_Critical_CSS_Coverage_V1::post_inserted(978,
  (object)['post_type'=>'tours-and-activities','post_status'=>'draft'],false,null);
 check('unpublished draft cannot trigger expensive browser QA',
  (int)$GLOBALS['options']['mad4b_ccss_listing_generation_v1']===$oldList);
+MAD4B_Public_Critical_CSS_Coverage_V1::navigation_flushed();
 $oldGlobal=(int)$GLOBALS['options']['mad4b_ccss_global_generation_v1'];
 MAD4B_Public_Critical_CSS_Coverage_V1::post_inserted(979,
  (object)['post_type'=>'nav_menu_item','post_status'=>'publish'],false,null);
 check('new native header menu item invalidates old first paint',
  (int)$GLOBALS['options']['mad4b_ccss_global_generation_v1']>$oldGlobal);
+MAD4B_Public_Critical_CSS_Coverage_V1::navigation_flushed();
 $oldGlobal=(int)$GLOBALS['options']['mad4b_ccss_global_generation_v1'];
 MAD4B_Public_Critical_CSS_Coverage_V1::post_deleted(979,
  (object)['post_type'=>'nav_menu_item','post_status'=>'publish']);
 check('deleted header menu item also invalidates old certificate',
  (int)$GLOBALS['options']['mad4b_ccss_global_generation_v1']>$oldGlobal);
+MAD4B_Public_Critical_CSS_Coverage_V1::navigation_flushed();
 $oldRoute=(int)$GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation'];
 MAD4B_Public_Critical_CSS_Coverage_V1::terms_set(77,[2,3],[3,2],'destinations',false,[2,3]);
 check('unchanged destination membership does not invalidate browser proof',
@@ -189,4 +195,49 @@ $oldHome=(int)$GLOBALS['options']['mad4b_critical_css_home_dirty_v1'];
 MAD4B_Public_Critical_CSS_Coverage_V1::terms_set(979,[11],[11],'nav_menu',false,[]);
 check('changed menu taxonomy membership invalidates shared header',
  (int)$GLOBALS['options']['mad4b_critical_css_home_dirty_v1']>$oldHome);
+// Hermetic simulation of 18 items x 9 native menu-meta fields in one
+// WordPress request. The first invalidation is immediate, and a final
+// shutdown invalidation protects any mid-request CSS certificate.
+MAD4B_Public_Critical_CSS_Coverage_V1::navigation_flushed();
+$before=(int)$GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation'];
+$beforeGlobal=(int)$GLOBALS['options']['mad4b_ccss_global_generation_v1'];
+$beforeHome=(int)$GLOBALS['options']['mad4b_critical_css_home_dirty_v1'];
+for ($item=26127;$item<26145;$item++) {
+    $GLOBALS['post_types'][$item]='nav_menu_item';
+    for ($field=0;$field<9;$field++) {
+        MAD4B_Public_Critical_CSS_Coverage_V1::changed_meta(
+          1000+$field,$item,'_menu_item_field_'.$field,'value_'.$field);
+    }
+}
+// Additional native menu entrypoints during that same request cannot
+// trigger extra global generations, while the final shutdown still does.
+$changedNav=(object)['post_type'=>'nav_menu_item','post_status'=>'publish',
+    'post_title'=>'Egypt','post_content'=>'','menu_order'=>2];
+$previousNav=clone $changedNav;$previousNav->menu_order=1;
+MAD4B_Public_Critical_CSS_Coverage_V1::post_updated(26127,$changedNav,$previousNav);
+MAD4B_Public_Critical_CSS_Coverage_V1::menu_updated(11);
+MAD4B_Public_Critical_CSS_Coverage_V1::terms_set(26127,[11],[11],'nav_menu',false,[]);
+check('mixed native menu entrypoints in one request do not create extra invalidations',
+ (int)$GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation']===$before+1);
+check('18 menu items x9 fields yield one immediate generation',
+ (int)$GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation']===$before+1
+ && (int)$GLOBALS['options']['mad4b_ccss_global_generation_v1']===$beforeGlobal+1);
+check('first menu change invalidates header immediately',
+ (int)$GLOBALS['options']['mad4b_critical_css_home_dirty_v1']===$beforeHome+1);
+check('WordPress shutdown hook was registered',
+ isset($GLOBALS['hooked']['shutdown']));
+MAD4B_Public_Critical_CSS_Coverage_V1::navigation_flushed();
+check('final menu mark invalidates any intermediate CSS certification',
+ (int)$GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation']===$before+2
+ && (int)$GLOBALS['options']['mad4b_ccss_global_generation_v1']===$beforeGlobal+2);
+MAD4B_Public_Critical_CSS_Coverage_V1::navigation_flushed();
+check('repeated shutdown is idempotent',
+ (int)$GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation']===$before+2);
+$after=(int)$GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation'];
+MAD4B_Public_Critical_CSS_Coverage_V1::changed_meta(1,26127,'_menu_item_url','/tours/');
+check('next separate request immediately invalidates again',
+ (int)$GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation']===$after+1);
+MAD4B_Public_Critical_CSS_Coverage_V1::navigation_flushed();
+check('next request finishes with its own final invalidation',
+ (int)$GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation']===$after+2);
 echo "PASS ".$GLOBALS['checks_count']."/".$GLOBALS['checks_count']." dynamic public coverage route and dependency event invariants\n";

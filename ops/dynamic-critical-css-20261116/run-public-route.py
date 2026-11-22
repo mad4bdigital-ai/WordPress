@@ -310,6 +310,13 @@ def approved_native_runtime_sha(site,wp):
     current_git_release=('13e98efebaef87918d38c1d5be30bd6cf45c9f40c0e3264a31beca79b4663a36',
                          '249083d5aa0124ea1280a88f5062945cdff2885eca63b36ba5c66682b0faf3d1')
 
+    # Two *exact* first-party 421 releases: original rollback + source-backed
+    # batched menu-write event version. Both retain identical route and
+    # taxonomy invalidation; no 422 runtime or consumer SHA is changed.
+    approved_421_sha={
+      'ae7936c7ad09b059375e1960d4c59144af0b4325933db34bcfa63c26e49233bb',
+      '78be6cfeeff27fbf5c336372cf1bd59fc939955d0fc41777fb2d6e1c62209bf4'}
+
     # Immutable original source Git objects, verified against GitHub.
     # Previously this trusted branch's 421/422 bytes via an ephemeral
     # /worktrees/pr814-* checkout. Worktree GC is NOT source drift.
@@ -338,6 +345,9 @@ def approved_native_runtime_sha(site,wp):
                 raise ValueError('MULTI_CSS_V2_RUNTIME_COMPANION_PAIR_DRIFT')
         elif site=='source' and name=='422-mad4b-public-critical-css-runtime.php':
             if actual_sha!=approved_stage_422:
+                raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
+        elif name=='421-mad4b-public-critical-css-coverage.php':
+            if actual_sha not in approved_421_sha:
                 raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
         else:
             if actual_sha!=approved_original_sha.get(name):
