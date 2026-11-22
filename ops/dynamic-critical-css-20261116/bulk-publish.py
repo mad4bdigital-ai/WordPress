@@ -15,6 +15,20 @@ MAX_PER_TICKET=4
 MAX_ACTIVE_PENDING=12
 MAX_TICKET_SECONDS=1100
 RESERVE_FOR_ONE_ROUTE=460
+# Never issue new provisional public CSS faster than original postrelease QA
+# can certify/revoke the older, already-visible leases.
+MAX_PENDING_AGE_WITH_NEW_RELEASE=90*60
+MIN_PENDING_FOR_BACKPRESSURE=4
+def qa_backpressure(pending,now):
+    if not isinstance(pending,list) or type(now)is not int:return True
+    if len(pending)<MIN_PENDING_FOR_BACKPRESSURE:return False
+    ages=[]
+    for item in pending:
+        if (not isinstance(item,tuple) or len(item)!=3
+            or type(item[0]) is not int or not 0<item[0]<=now+300):
+            return True
+        ages.append(item[0])
+    return bool(ages and min(ages)<=now-MAX_PENDING_AGE_WITH_NEW_RELEASE)
 def atomic(path,doc):
     temp=path.with_name('.'+path.name+'.pending-'+str(os.getpid()))
     with temp.open('x') as out:
@@ -44,6 +58,12 @@ def run(site):
         or plan.get('ready_for_public_release')!=0):
         raise ValueError('invalid-untrusted-publish-plan')
     pending=qa.pending_rows(site)
+    if qa_backpressure(pending,int(time.time())):
+        oldest_age=(max(0,int(time.time())-pending[0][0])//60
+                    if pending else 0)
+        print('BULK_CCSS_PUBLISH_PENDING_CAP',site,len(pending),
+              'original_QA_backpressure_oldest_age_min',oldest_age,flush=True)
+        return
     if len(pending)>=MAX_ACTIVE_PENDING:
         print('BULK_CCSS_PUBLISH_PENDING_CAP',site,len(pending));return
     attempts,p,cursor=history(root,site)

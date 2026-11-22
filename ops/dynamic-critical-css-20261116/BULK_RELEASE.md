@@ -123,3 +123,33 @@ An unknown 421 implementation still fails closed.
 Hermetic test coverage: 58 original and new event invariants, including
 162 repeated native menu metadata writes, first and final CSS invalidation,
 request-boundary behavior and existing WPML/Elementor routing rules.
+
+
+### Aged original post-release QA priority and bounded publish backpressure
+
+The first-party WordPress 429 site-owned scheduler remains the sole ticket
+issuer. The original host worker now grants an already-issued native
+bulk_qa ticket priority over younger first_fold/public/families/bulk_publish
+tasks if an original **root-owned, company- and host-bound** provisional
+source has waited at least **60 minutes**. The worker only performs a
+strict read-only 422 source-record check for this priority. It may never
+invent or acknowledge a ticket, skip CPU admission, bypass an overdue
+site-integrity audit, run a second Chromium worker or approve a CSS
+certificate. Original 422 bulk_qa performs independent source/catalog
+readback plus real five-viewport Chromium testing, or atomically reverts
+an expired or failing provisional route with its original CAS and
+route-scoped Native CSS cache recovery.
+
+Publishing now applies an additional source-backed backpressure rule:
+when **four or more** original public pending QA leases exist and their
+oldest has waited **90 minutes**, new releases are deferred until the
+original QA queue clears. The original 12-pending hard cap remains as
+a second guard. Deferred publisher tickets remain pending in WordPress
+with normal resource-style retry, never misreported as complete. The
+existing public six-hour lease (Native CSS fallback after expiry), 24-hour
+PRIVATE source chunk cache, exact market/currency SHA checks and global
+Chromium serialization are unchanged.
+
+This fixes an observed Wayfa 12-lease queue in which three provisional
+leases expired while source and public tickets continued to run. It is
+a scheduler/feedback correction, not a claims-based certification.

@@ -318,6 +318,74 @@ def bounded_bulk_fair_slot(site,selected,candidates,history,now,headroom):
         return selected
     return proposed
 
+def aged_original_bulk_qa_exists(site,now,root=None):
+    """Proof-only scan of original WordPress-owned route release queue.
+
+    Only root-owned and company-bound pending records may influence ticket
+    order. Never recover an intent, mutate files or invent a WP ticket.
+    A lease may be expired: the original qa_one handles CAS revert safely.
+    """
+    if site not in ('source','wayfa') or type(now)is not int:return False
+    base=(Path(root) if root is not None
+          else ROOT/'reports/public-critical-css-v1'/site)
+    try:
+        if (base.is_symlink() or not base.is_dir()
+            or base.stat().st_uid!=0 or base.stat().st_mode&0o022):
+            return False
+        host={'source':'tours.dev.mad4b.com','wayfa':'wayfatours.com'}[site]
+        with os.scandir(base) as entries:
+            for entry in entries:
+                if (not entry.is_dir(follow_symlinks=False)
+                    or not re.fullmatch(r'20[0-9]{6}T[0-9]{6}Z',entry.name)):
+                    continue
+                path=Path(entry.path)
+                if (path/'bulk-complete.json').exists():continue
+                f=path/'bulk-pending.json'
+                try:
+                    fd=os.open(f,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+                    try:
+                        st=os.fstat(fd)
+                        if (not stat.S_ISREG(st.st_mode) or st.st_uid!=0
+                            or st.st_mode&0o022 or st.st_nlink!=1
+                            or not 150<=st.st_size<=8192):
+                            continue
+                        raw=os.read(fd,8193)
+                        if len(raw)!=st.st_size:continue
+                    finally:os.close(fd)
+                    row=json.loads(raw)
+                    if (row.get('contract')!='mad4b.css.v2.bulk.pending.v1'
+                        or row.get('site')!=site or row.get('host')!=host
+                        or row.get('jobdir')!=str(path)
+                        or row.get('state')!='pending_qa'
+                        or not re.fullmatch('[a-f0-9]{64}',str(row.get('route_key','')))):
+                        continue
+                    released=row.get('released_at')
+                    if (type(released) is int
+                        and now-86400<=released<=now-3600):
+                        return True
+                except (OSError,ValueError,TypeError,KeyError,json.JSONDecodeError):
+                    continue
+    except (OSError,ValueError,TypeError):return False
+    return False
+
+def prioritize_aged_original_bulk_qa(site,chosen,candidates,now,headroom,root=None):
+    """Give an old signed-WordPress QA ticket priority over more publish.
+
+    Safety audit overdue (priority -1), strict source CPU, original global
+    Chromium serialization and per-route 422 CAS are NOT bypassed.
+    """
+    if (site not in ('source','wayfa') or not headroom
+        or chosen is None or chosen[0]<0
+        or not isinstance(candidates,list) or not candidates):
+        return chosen
+    ticket=next((x for x in candidates
+        if isinstance(x,tuple) and len(x)>=6 and x[3]=='bulk_qa'
+        and x[5].startswith(site+':bulk_qa:')
+        and type(x[1])is int and 0<x[1]<=now),None)
+    if ticket is None or ticket==chosen:return chosen
+    if not aged_original_bulk_qa_exists(site,now,root):return chosen
+    return ticket
+
 def invoke(site,job,jid,key,history,timeout=None):
     stamp=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime())
     prior=history.get(key,{})
@@ -967,6 +1035,12 @@ def main():
                 print('WPCSS_BULK_FAIR_SLOT_AFTER_ORIGINAL_PUBLIC',
                       site,fair[4],flush=True)
                 chosen=fair
+            urgent=prioritize_aged_original_bulk_qa(
+                site,chosen,pending,now,headroom)
+            if urgent!=chosen:
+                print('WPCSS_AGED_BULK_QA_BEFORE_MORE_RELEASES',
+                      site,urgent[4],flush=True)
+                chosen=urgent
             _,_,_,job,jid,key=chosen
             if '--inspect' in sys.argv:
                 print('WPCSS_INSPECT_NEXT',site,job,jid,flush=True)
