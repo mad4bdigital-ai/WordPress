@@ -82,7 +82,7 @@ final class MAD4B_Smart_Itinerary_Choices_V1 {
             'destination'=>['cairo'=>'القاهرة / الجيزة','luxor'=>'الأقصر',
                 'aswan'=>'مدينة أسوان','sharm'=>'شرم الشيخ','hurghada'=>'الغردقة',
                 'nile_cruise'=>'رحلة كروز النيل','train'=>'قطار النوم','none'=>'لا توجد إقامة'],
-            'tiers'=>[2353=>'Silver',2354=>'Gold',2356=>'Diamond']
+            'tiers'=>[2353=>'Silver',2354=>'Gold',2356=>'Diamond',2355=>'Platinum']
         ];
         if($locale==='es') return [
             'kind'=>['hotel'=>'Hotel','resort'=>'Resort','cruise'=>'Crucero por el Nilo',
@@ -90,7 +90,7 @@ final class MAD4B_Smart_Itinerary_Choices_V1 {
             'destination'=>['cairo'=>'El Cairo / Guiza','luxor'=>'Lúxor','aswan'=>'Asuán',
                 'sharm'=>'Sharm el-Sheij','hurghada'=>'Hurgada','nile_cruise'=>'Crucero por el Nilo',
                 'train'=>'Tren nocturno','none'=>'Sin alojamiento'],
-            'tiers'=>[2353=>'Silver',2354=>'Gold',2356=>'Diamond']
+            'tiers'=>[2353=>'Silver',2354=>'Gold',2356=>'Diamond',2355=>'Platinum']
         ];
         return [
             'kind'=>['hotel'=>'Hotel','resort'=>'Resort','cruise'=>'Nile cruise',
@@ -99,7 +99,7 @@ final class MAD4B_Smart_Itinerary_Choices_V1 {
                 'sharm'=>'Sharm El Sheikh','hurghada'=>'Hurghada',
                 'nile_cruise'=>'Nile cruise sailing','train'=>'Sleeper train',
                 'none'=>'None'],
-            'tiers'=>[2353=>'Silver',2354=>'Gold',2356=>'Diamond']
+            'tiers'=>[2353=>'Silver',2354=>'Gold',2356=>'Diamond',2355=>'Platinum']
         ];
     }
     public static function program(int $tour):array {
@@ -127,10 +127,10 @@ final class MAD4B_Smart_Itinerary_Choices_V1 {
            if(!is_array($projection)||!hash_equals((string)($projection['source_digest']??''),$digest)
               ||($sync['status']??'')!=='source_stage_geometry_matches')return [];
         }
-        $tiers=wp_get_object_terms($en,'package_levels',['fields'=>'ids']);
-        if(is_wp_error($tiers))$tiers=[];
-        $known=[2353,2354,2356];
-        $tiers=array_values(array_intersect($known,array_map('intval',$tiers)));
+        $tierDecision=class_exists('MAD4B_Company_Package_Levels_V1',false)
+            ?MAD4B_Company_Package_Levels_V1::resolve($en):[];
+        $tiers=array_values(array_map('intval',
+            (array)($tierDecision['effective_tier_ids']??[])));
         // The stage plan is used solely to determine relevant route cities and
         // already verified cruise/rail programs; it never grants sales authority.
         $cities=[];
@@ -232,7 +232,10 @@ final class MAD4B_Smart_Itinerary_Choices_V1 {
         // unless that city is part of itinerary-derived overnight context.
         return [
             'tour_id'=>$en,'viewed_post_id'=>$tour,
-            'tiers'=>$tiers, 'cities'=>array_keys($cities),
+            'tiers'=>$tiers,
+            'tier_source'=>$tierDecision['source']??'provider_missing',
+            'company_policy_rule_id'=>$tierDecision['company_rule_id']??null,
+            'cities'=>array_keys($cities),
             'itinerary_days'=>count($raw), 'existing_programs'=>$stageData,
             'plan_matches_source'=>is_array($plan)&&
               ($plan['tour_days']??0)===count($raw),
@@ -297,6 +300,8 @@ final class MAD4B_Smart_Itinerary_Choices_V1 {
         $out=['contract'=>'mad4b.editorial-overnight-smart-options.v1',
           'tour_id'=>$p['tour_id'],
           'tiers'=>$p['tiers'],
+          'tier_source'=>$p['tier_source'],
+          'company_policy_rule_id'=>$p['company_policy_rule_id'],
           'days'=>$p['itinerary_days'],
           'cities'=>$p['cities'],
           'hotels'=>[],
