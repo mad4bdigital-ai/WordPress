@@ -1,0 +1,72 @@
+--- a/toursdev/nginx.conf
++++ b/toursdev/nginx.conf
+@@ -1,3 +1,29 @@
++# MAD4B CACHE CLASSIFICATION TELEMETRY v1 — privacy-safe sampled log.
++# No IP, raw URI, cookies, headers, user agent or session values logged.
++split_clients "$request_id|mad4b-cache-classifier-v1" $mad4b_cache_obs_sample {
++    20% 1;
++    * 0;
++}
++map $request_uri $mad4b_cache_obs_route {
++    default other;
++    "/" home;
++    "/es/" localized_home;
++    ~^/(?:ar|fr|de|it)/$ localized_home;
++    ~^/(?:es/|ar/|fr/|de/|it/)?tours-and-activities/$ tour_archive;
++    ~^/(?:es/|ar/|fr/|de/|it/)?tours-and-activities/[^?]+/$ tour_detail;
++    ~^/(?:es/|ar/|fr/|de/|it/)?egypt-tour-packages/?$ packages;
++}
++# Request ids are random Nginx values, used only for event correlation.
++# END MAD4B CACHE CLASSIFICATION TELEMETRY v1
++map $upstream_http_set_cookie $mad4b_cache_obs_origin_cookie { default 1; "" 0; }
++log_format mad4b_cache_decision_v1
++    'MAD4B_CACHE_DECISION_V1 site=source ts=$msec rid=$request_id route=$mad4b_cache_obs_route '
++    'status=$status cache=$upstream_cache_status rt=$request_time origin=$upstream_response_time '
++    'reqskip=$company_perf_skip cookie=$mad4b_effective_cookie_unsafe_v2 auth=$company_perf_has_auth '
++    'query=$company_perf_has_query context=$company_perf_has_context_headers ip_hold=$mad4b_market_html_block '
++    'optin=$company_perf_no_origin_optin private=$company_perf_upstream_private '
++    'policy_private=$company_perf_private_policy set_cookie=$mad4b_cache_obs_origin_cookie';
++
+ # MAD4B EDGE CANARY CACHE SEPARATION v1 — edge-owned request split.
+ # No visitor-controlled cookie or header selects a candidate.
+ # Fail-closed release lease: edge cohort selection alone never exposes
+@@ -346,6 +372,7 @@
+    fastcgi_pass php:9000;
+    fastcgi_read_timeout 30s;
+    fastcgi_cache etg_woo_perf_v1;
++   access_log /dev/stdout mad4b_cache_decision_v1 if=$mad4b_cache_obs_sample;
+    auth_request /__mad4b_path_generation;
+    auth_request_set $mad4b_path_etag $sent_http_etag;
+    fastcgi_cache_key "mad4b-ip-market-v1|client=$remote_addr|ua=$http_user_agent|lang=$http_accept_language|$host|$request_uri|$request_method|$mad4b_device_class$mad4b_fastcgi_version$mad4b_public_html_global_epoch|accept=$mad4b_css_accept_family";
+@@ -395,6 +422,7 @@
+    fastcgi_pass php:9000;
+    fastcgi_read_timeout 120s;
+    fastcgi_cache etg_woo_perf_v1;
++   access_log /dev/stdout mad4b_cache_decision_v1 if=$mad4b_cache_obs_sample;
+    # Public-origin opt-in, cookie/auth/query/geo bypass, Set-Cookie no-store remain enforced.
+    # Nginx cache key already partitions by trusted mobile/desktop device class.
+    # Ignore origin Vary: User-Agent only for Nginx internal cache partition:
+@@ -447,6 +475,7 @@
+    fastcgi_pass php:9000;
+    fastcgi_read_timeout 120s;
+    fastcgi_cache etg_woo_perf_v1;
++   access_log /dev/stdout mad4b_cache_decision_v1 if=$mad4b_cache_obs_sample;
+    # Public-origin opt-in, cookie/auth/query/geo bypass, Set-Cookie no-store remain enforced.
+    # Nginx cache key already partitions by trusted mobile/desktop device class.
+    # Ignore origin Vary: User-Agent only for Nginx internal cache partition:
+@@ -499,6 +528,7 @@
+    fastcgi_pass php:9000;
+    fastcgi_read_timeout 120s;
+    fastcgi_cache etg_woo_perf_v1;
++   access_log /dev/stdout mad4b_cache_decision_v1 if=$mad4b_cache_obs_sample;
+    # Public-origin opt-in, cookie/auth/query/geo bypass, Set-Cookie no-store remain enforced.
+    # Nginx cache key already partitions by trusted mobile/desktop device class.
+    # Ignore origin Vary: User-Agent only for Nginx internal cache partition:
+@@ -647,6 +677,7 @@
+    fastcgi_pass php:9000;
+    fastcgi_read_timeout 120s;
+    fastcgi_cache etg_woo_perf_v1;
++   access_log /dev/stdout mad4b_cache_decision_v1 if=$mad4b_cache_obs_sample;
+    auth_request /__mad4b_path_generation;
+    auth_request_set $mad4b_path_etag $sent_http_etag;
+    fastcgi_cache_key "mad4b-ip-market-v1|client=$remote_addr|ua=$http_user_agent|lang=$http_accept_language|mad4b-public-general-v1|$host|$request_uri|$request_method|$mad4b_device_class|$mad4b_render_ua_family$mad4b_fastcgi_version$mad4b_public_html_global_epoch|accept=$mad4b_css_accept_family";

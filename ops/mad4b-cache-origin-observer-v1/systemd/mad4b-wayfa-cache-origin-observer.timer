@@ -1,0 +1,11 @@
+[Unit]
+Description=MAD4B wayfa independent cache and uncached origin observation
+
+[Timer]
+OnBootSec=300s
+OnUnitInactiveSec=1800s
+RandomizedDelaySec=45s
+Unit=mad4b-wayfa-cache-origin-observer.service
+
+[Install]
+WantedBy=timers.target

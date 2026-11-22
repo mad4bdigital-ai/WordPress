@@ -1,0 +1,18 @@
+{
+  "contract": "mad4b.cache-origin-observer-source-locked.v1",
+  "version": "1.0.0",
+  "reference": "live-2026-11-22",
+  "source_site": "https://tours.dev.mad4b.com",
+  "wayfa_site": "https://wayfatours.com",
+  "source_live_classifier_enabled": true,
+  "wayfa_live_classifier_enabled": false,
+  "production_write_authority": false,
+  "files": {
+    "bin/mad4b-cache-origin-observer-v1.py": "3608d9c9eaaec0b51a1f4565fdfddbd46e1e8bc599bce9c07ca1794669fc41af",
+    "patches/toursdev-nginx-cache-classifier-v1.patch": "c203e12b00d3883e16803cf89a8f2b8bc332a782a26936345468786ebbff4dc4",
+    "systemd/mad4b-source-cache-origin-observer.service": "edcd42fdf68040f62bed5065e808e85f84230a014bdd9b467175eae783d595f1",
+    "systemd/mad4b-source-cache-origin-observer.timer": "54feb57e66d5dd139e847c18be95051333ca766d6be86840903cd402b79d4379",
+    "systemd/mad4b-wayfa-cache-origin-observer.service": "b35288693111b477c7dc82adfbb194ac22d7dac8d37395c20573eb191bced3bc",
+    "systemd/mad4b-wayfa-cache-origin-observer.timer": "5fcf54a96b8682747ab3a6a6be79ccbd355ec6f8d3aeeb6159218aec3cf113fa"
+  }
+}
