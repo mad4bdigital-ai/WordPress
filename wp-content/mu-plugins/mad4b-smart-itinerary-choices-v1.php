@@ -297,11 +297,57 @@ final class MAD4B_Smart_Itinerary_Choices_V1 {
                 ];
             }
         }
+        // Operationally tiered and genuinely classified Resorts may be used
+        // for the ITINERARY overnight-kind decision before a supplier contract.
+        // They remain distinct from generator-ready lodging candidates.
+        $previewResorts=[];
+        $plan=get_post_meta($p['tour_id'],
+            '_mad4b_package_accommodation_source_plan_v1',true);
+        $hasSharmResort=false;
+        foreach((array)($plan['stages']??[]) as $st) {
+            if(($st['lodging_kind']??'')==='resort' &&
+                ($st['destination_key']??'')==='sharm'){$hasSharmResort=true;break;}
+        }
+        if($hasSharmResort && isset($catalog['sharm']) &&
+           class_exists('MAD4B_Package_Indicative_Offer_V1',false)){
+            $editable=[];
+            $scout=[];
+            foreach($p['tiers'] as $tier){
+                foreach(MAD4B_Package_Indicative_Offer_V1::pool(
+                    $p['tour_id'],(int)$tier,[
+                      'lodging_kind'=>'resort','destination_key'=>'sharm','nights'=>3
+                    ]) as $property){
+                    $id=(int)$property['property_id'];
+                    $scout[$id]=$property;
+                    if($property['planning_eligible_by_operator_tier']){
+                        $editable[$id][$tier]=(int)$tier;
+                    }
+                }
+            }
+            foreach($editable as $id=>$levels){
+                $already=false;
+                foreach($catalog['sharm']['resort'] as $found)
+                    if((int)$found['property_id']===$id)$already=true;
+                if(!$already)$catalog['sharm']['resort'][]=[
+                    'property_id'=>$id,'tier_ids'=>array_values($levels),
+                    'editorial_only'=>true,'supplier_cost_approved'=>false,
+                    'reservations_review_pending'=>true
+                ];
+            }
+            $previewResorts=[
+                'all_web_offer_property_count'=>count($scout),
+                'operations_tier_matched_count'=>count($editable),
+                'unassigned_tier_property_count'=>count($scout)-count($editable),
+                'editorial_only'=>true,'rate_generator_eligible'=>false,
+                'checkout_authorized'=>false
+            ];
+        }
         $out=['contract'=>'mad4b.editorial-overnight-smart-options.v1',
           'tour_id'=>$p['tour_id'],
           'tiers'=>$p['tiers'],
           'tier_source'=>$p['tier_source'],
           'company_policy_rule_id'=>$p['company_policy_rule_id'],
+          'planning_resort_scout'=>$previewResorts,
           'days'=>$p['itinerary_days'],
           'cities'=>$p['cities'],
           'hotels'=>[],
@@ -317,7 +363,12 @@ final class MAD4B_Smart_Itinerary_Choices_V1 {
                 'count'=>count($matches),
                 'property_ids'=>array_column($matches,'property_id'),
                 'tiers'=>array_values(array_unique(array_merge(...array_map(
-                  static fn($x)=>$x['tier_ids'],$matches) ?: [[]])))
+                  static fn($x)=>$x['tier_ids'],$matches) ?: [[]]))),
+                'planning_only'=>count(array_filter($matches,
+                    static fn($x)=>($x['editorial_only']??false)===true))>0,
+                'reservations_review_pending'=>count(array_filter($matches,
+                    static fn($x)=>($x['editorial_only']??false)===true))>0,
+                'commercial_price_authorized'=>false
             ];
         }
         // Cruise and sleeper stages must be considered within the specific
