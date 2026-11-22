@@ -148,16 +148,20 @@
         var more = type === 'cruise' || type === 'sleeper_train'
           ? (lang.pending || 'Planning eligible; inventory not confirmed')
           : (lang.ready || 'Eligible by city and tier; inventory not confirmed');
+        var editorialPlanning=false;
         if ((type === 'hotel' || type === 'resort') && data.hotels[currentDest]
           && data.hotels[currentDest][type]) {
-          var group = data.hotels[currentDest][type], names = (group.tiers || []).map(function (tid) {
+          var group = data.hotels[currentDest][type];
+          editorialPlanning=Boolean(group.planning_only);
+          if (editorialPlanning) more='Planning option only — Reservations Cost Review pending; no confirmed supplier price, inventory or booking';
+          var names = (group.tiers || []).map(function (tid) {
             return data.choice_labels && data.choice_labels.tiers
               && data.choice_labels.tiers[String(tid)] || String(tid);
           });
           more += ' · ' + group.count + ' ' + (lang.properties || 'qualifying properties') + (names.length ? ' · ' + names.join(' / ') : '');
         }
         note.textContent = more;
-        note.style.color = '#335f48';
+        note.style.color = editorialPlanning ? '#9a4c0a' : '#335f48';
       }
     }
   }
