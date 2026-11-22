@@ -284,6 +284,40 @@ def source_recovery_public_turn(site,candidates,strict_cpu_admitted,now,report_p
         os.close(fd)
 
 
+def bounded_bulk_fair_slot(site,selected,candidates,history,now,headroom):
+    """Grant aged original Bulk Publish one turn after public source work.
+
+    Source-changed public tickets can remain pending after transient browser
+    QA failures and otherwise starve the newer Bulk tickets for many cycles.
+    Only the same first-party WordPress ticket source is eligible here.
+    This changes ordering, NEVER source admission, resource/Chrome locks,
+    original audit priority, WordPress ACK or route-level CSS certificate.
+    """
+    if (site not in ('source','wayfa') or not headroom
+        or selected is None or len(selected)<6
+        or selected[0]<0 or selected[3]!='public'
+        or not isinstance(candidates,list) or not candidates
+        or selected!=candidates[0] or not isinstance(history,dict)):
+        return selected
+    proposed=next((x for x in candidates
+       if isinstance(x,tuple) and len(x)>=6
+       and x[3]=='bulk_publish' and x[5].startswith(site+':bulk_publish:')
+       and type(x[1])is int and 0<x[1]<=now-600),None)
+    if proposed is None:return selected
+    def last_attempt(key):
+        row=history.get(key,{})
+        if isinstance(row,dict):
+            value=row.get('last_attempt',0)
+            return value if type(value)is int and 0<=value<=now else 0
+        return row if type(row)is int and 0<=row<=now else 0
+    latest_bulk=last_attempt(proposed[5])
+    latest_public=last_attempt(selected[5])
+    # After one admitted Bulk attempt, public gets its original turn before
+    # Bulk can preempt again, unless the public job itself was attempted later.
+    if latest_bulk and latest_public<=latest_bulk:
+        return selected
+    return proposed
+
 def invoke(site,job,jid,key,history,timeout=None):
     stamp=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime())
     prior=history.get(key,{})
@@ -928,6 +962,11 @@ def main():
             if chosen is not None and chosen!=pending[0]:
                 print('WPCSS_RECOVERY_PUBLIC_SLOT_BEFORE_REPEAT_FAMILY',site,
                       chosen[4],flush=True)
+            fair=bounded_bulk_fair_slot(site,chosen,pending,history,now,headroom)
+            if fair!=chosen:
+                print('WPCSS_BULK_FAIR_SLOT_AFTER_ORIGINAL_PUBLIC',
+                      site,fair[4],flush=True)
+                chosen=fair
             _,_,_,job,jid,key=chosen
             if '--inspect' in sys.argv:
                 print('WPCSS_INSPECT_NEXT',site,job,jid,flush=True)
