@@ -90,8 +90,43 @@ Validated native protected AJAX matrix for Tour 60437:
 - **Tours.dev:** Cairo 9 qualifying Hotels, Aswan 1, Resort 0; EN tier IDs Silver/Gold.
 - **Wayfatours:** Cairo 15 qualifying Hotels, Aswan 1, Resort 0; EN tier IDs Silver/Gold/Diamond.
 - Both sites: native Cruise Program days 4–6 eligible for itinerary planning; overnight Train at that stage not supplier-qualified; no Checkout.
-- 8 package Tours / 66 itinerary day records audited per site. Existing selections requiring review are **9 source, 5 Wayfa**. Reasons: source Tour 57562 missing native package-tier terms (4 Hotel nights); 2 Sleeper Train nights in Tour 60623 without qualified overnight supplier (both sites); 3 Sharm Resort nights in Tour 60629 without owner-approved and correctly categorized Resort cost Property (both sites). **All remain intact; they are flagged, not auto-rewritten.**
+- 8 package Tours / 66 itinerary day records audited per site. **Historical pre-company-policy audit**: selections requiring review were **9 source, 5 Wayfa**. The 57562 source Tour previously had no explicit Package Levels, affecting four Hotel nights; 2 Sleeper Train nights in Tour 60623 without qualified overnight supplier (both sites); 3 Sharm Resort nights in Tour 60629 without owner-approved and correctly categorized Resort cost Property (both sites). **All remain intact; they are flagged, not auto-rewritten.**
 
 Tests: `node --test tests/mad4b-smart-itinerary-overnight-v1.test.js` (**10/10** with a synthetic matrix on both runs). With real private AJAX evidence on an authorized VPS environment, the same test reads `MAD4B_MATRIX_JSON=<signed-backend-result.json>` and validates the real nonbookable contract. Live PHP lint, source and Wayfa native editor-only script registration, signed AJAX, permission-denial, and HTTPS URL (HTTP 200) were verified. A GUI login-based browser walkthrough of actual JetEngine Vue controls **has not been independently certified**; do not claim browser QA. In particular, any future switch to a non-native custom select renderer needs UI adapter testing.
 
 Evidence: `/opt/mad4b-package-checkpoints/2026-11-22-smart-itinerary-options/`. Existing native JetEngine option data is deliberately kept as an emergency editorial fallback if the overlay is removed; normal editor mode uses a fail-closed authenticated filter, and missing eligibility data does not authorize newly selected services.
+
+
+## 2026-11-22 operational Company Package Levels — global fallback, explicit override
+
+**Implemented and verified on both live companies**, with a versioned, tenant-local rule in the **existing Company Policy Registry V2**. No extra settings screen, copied Tour taxonomy, or second pricing engine is introduced.
+
+Authority order:
+1. **Explicit operational Tour `package_levels` taxonomy**: if any Level is assigned, its supported values control this Tour; **Company Default does not add to or replace them**. Unsupported future operator term IDs fail closed, instead of silently falling back.
+2. **Company-local active `pricing.package.levels` rule**: consulted **only** when the Tour has no explicit tier assignment at all. Its `tier_mask` is one of 15 valid combinations of Silver / Gold / Diamond / Platinum, managed in the original Dynamic Pricing Controls → Company Policy Registry V2 section with per-rule revision/history and admin permissions.
+3. **No explicit Tour tier and no active Company rule**: no levels available, with a clear blocking reason. A paused global rule never guesses a level.
+
+**Company baseline activation**, grounded in published Package Tour operational assignment frequency:
+- **Tours.dev**: 7 of 8 published packages explicitly assigned; Silver 7/7, Gold 7/7, Diamond 1/7, Platinum 1/7. Active company default `mask_03` = **Silver + Gold**; Tour `57562` inherits Silver and Gold **without adding taxonomy terms**.
+- **Wayfatours**: all 8 published packages explicitly assigned; Silver 7/8, Gold 8/8, Diamond 7/8, Platinum 1/8. Active default `mask_07` = **Silver + Gold + Diamond** for **future unassigned Tours**; Tour `57562` explicitly remains **Gold + Diamond**.
+- Platinum is recognized by Pricing Lab as an **explicit operational level** (e.g. `60439` on both companies), never globally enabled merely because its term exists. **Commercial readiness is separate**.
+- Both sites' Registry revision moved **1 → 2** with active company rule ID `company_package_levels_from_operations`. The rule is a deliberate baseline snapshot of the team’s existing assignment pattern, not an unapproved change to every Tour's Taxonomy. Managers may revise it through Registry V2; read-time inheritance responds immediately, while explicit Tour overrides remain untouched.
+
+**Integrated consumers**:
+- `wp-content/mu-plugins/mad4b-company-package-levels-v1.php`: supported taxonomy-term catalog, company default masking, WPML canonical English resolution, provider registration and operational source audit.
+- `shared-product-core/pricing/package-stage-rate-guard-v1.php`: blocks any tier not in this Tour's effective assignment, even if an old Stage Plan lists that tier as a hypothetical alternative. It does not waive date, supplier, cabin, occupancy, inventory or checkout gates.
+- `mad4b-package-pricing-lab-readiness-v1.php`: server-side Package/tier authorization and operator/company source receipt; Platinum recognized only where assigned.
+- `assets/mad4b-package-pricing-lab-readiness-v1.js`: **per Tour** dropdown restriction, live switch between Tour assignment and Company fallback, avoids selecting disabled deep links; displays source of the level.
+- `mad4b-smart-itinerary-choices-v1.php`: Hotel/Resort planning eligibility uses the effective tier source; no new service invented.
+- Versioned migration: `tools/wp-cli/seed-company-package-defaults-from-operations-20261122.php`. **Audit-specific** safety receipts include exact operational assignment digests; do not run it on a new company or changed live data without review.
+
+**Post-deployment readback:**
+- 32 native Rate Guard cases per site (8 tours × 4 levels): **source 18 accepted tier selections / 14 rejected**, **Wayfa 23 accepted / 9 rejected**. Every rejected selection is blocked before any Rate authorization.
+- Source `57562`: **Silver + Gold inherited**; Wayfa `57562`: **Gold + Diamond explicitly assigned**; `60439`: Platinum remains an explicit supported inspection choice on both.
+- **66 itinerary day records/site**: source's previous **9** editorial eligibility warnings dropped to **5**; Wayfa remains at **5**. Only 2 unqualified Sleeper Train nights (Tour `60623`) and 3 unqualified Sharm Resort nights (Tour `60629`) remain per site. These require real supplier/property qualification, not a tier-policy workaround.
+- Pure non-writing company-policy change/pause tests: **9/9 source, 8/8 Wayfa** passed. Pricing Lab per-Tour selector source-function tests: **6/6** cases. Original Tour taxonomy and stages not edited.
+- Global profit target unchanged **20% source / 25% Wayfa**; owner-approved Property cost reference Rates remain Stop Sale; no commercial Booking/Checkout activation.
+
+**Evidence and rollback:** `/opt/mad4b-package-checkpoints/2026-11-22-company-package-level-fallback/`. Undo company defaults by pausing the rule in Company Policy Registry V2, rather than removing Tour taxonomy or destroying historical Stage Plans. Source code is reconciled on this Draft PR, **not merged**. Native authenticated browser interactions are not claimed as tested.
+
+**Scope boundary:** This is the **pricing, Rate Guard and admin Itinerary source of truth**. WordPress's native taxonomy-based public archive filters still inspect physically assigned terms; read-time Company inheritance does **not** manufacture permanent archive taxonomy terms. If a public package-level archive must include inherited Tours, extend its specific query against this effective-tier contract rather than mutating operational assignments.
