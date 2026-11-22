@@ -38,3 +38,11 @@ Next: Operations assigns tiers for the six Resort properties where appropriate. 
 
 Live evidence, backups, and rollback preimages are held under /opt/mad4b-package-checkpoints/2026-11-22-package-indicative-quote-v1/.
 
+
+## Post-release WPML source-locale correction (22 Nov 2026)
+
+During live EN/ES QA, the new Sharm pool originally disappeared under ES on both companies because WPML scoped an original-English Property taxonomy query to the active editor language. Fixed the new provider with a canonical source-locale wrapper that always restores the original admin language in a finally block. This changes only read-time editorial offer discovery, not saved taxonomies, tickets, cost or checkout.
+
+Verified live: Tours.dev EN, ES, FR, DE, AR and IT all resolve **7** public Sharm web offers and **1** operations-tier-matched planning-only Resort (Gold). Wayfatours EN and ES pass the same checks. No price total is produced, and checkout stays false. WPML restoration was checked for both EN and ES.
+
+Native Pricing Lab output stays protected by the original Tour edit permission and authenticated nonce. The provider supplies no new public quote endpoint; its staff-only draft response is attached to the existing protected report.
