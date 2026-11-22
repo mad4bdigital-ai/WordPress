@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Remote Operations & Authorization
  * Description: Owner-facing readback and exact Original305/306 operation workflow, no parallel signing authority.
- * Version: 0.1.0
+ * Version: 0.2.0
  */
 defined('ABSPATH') || exit;
 
@@ -15,6 +15,13 @@ final class MAD4B_Remote_Operations_Admin_V145 {
     const REQUEST_PREFIX = 'mad4b_central_ssh_request_v1_';
     const BROKER_PREFIX = 'mad4b_central_broker_job_v1_';
     const REGISTRY = 'mad4b_company_environment_registry_v2';
+    const EXTERNAL_READBACK = 'mad4b_remote_external_host_readonly_v146';
+    const EXTERNAL_CONTRACT = 'mad4b.host-v146.external-host-exact-site-ssh-readback.v1';
+    const EXTERNAL_COMPANY_HOSTS = array(
+        'tourism-almallahgroup'=>'hosting-1',
+        'all-royal-egypt'=>'hosting-2',
+        'egypt-tour-gates'=>'hosting-3',
+    );
 
     public static function boot(): void {
         add_action('admin_menu', array(__CLASS__, 'menu'), 95);
@@ -133,6 +140,54 @@ final class MAD4B_Remote_Operations_Admin_V145 {
         }
         return $rows;
     }
+    /** Read-only Root SSH evidence; never an authority record or fallback grant. */
+    public static function external_host_evidence(array $companies): array {
+        $source = get_option(self::EXTERNAL_READBACK, false);
+        if (!is_array($source)
+            || ($source['contract'] ?? null) !== self::EXTERNAL_CONTRACT
+            || ($source['write_authorized'] ?? true) !== false
+            || ($source['owner_stepup_v3_satisfied_by_ssh'] ?? true) !== false
+            || ($source['ssh_identity_does_not_authorize_write'] ?? false) !== true
+            || !is_array($source['sites'] ?? null)
+            || count($source['sites']) > 5
+            || count($source['sites']) < 1
+        ) return array();
+        $at = $source['observed_epoch'] ?? 0;
+        if (!is_int($at) || $at < 1 || $at > time() + 60 || $at < time() - 7200)
+            return array();
+        $rows = array();
+        $seen = array();
+        foreach ($source['sites'] as $row) {
+            if (!is_array($row)) continue;
+            $company = $row['company'] ?? null;
+            $env = $row['environment'] ?? null;
+            if (!is_string($company) || !is_string($env)
+                || !isset($companies[$company][$env])
+                || !isset(self::EXTERNAL_COMPANY_HOSTS[$company])
+                || ($row['host_id'] ?? null) !== self::EXTERNAL_COMPANY_HOSTS[$company]
+                || ($row['site_uuid'] ?? null) !== $companies[$company][$env]['site_uuid']
+                || ($row['canonical_origin'] ?? null) !== $companies[$company][$env]['origin'])
+                continue;
+            $id = $company . ':' . $env;
+            if (isset($seen[$id])) continue;
+            $seen[$id] = true;
+            $verified = ($row['identity_verified'] ?? false) === true
+                && ($row['pinned_ssh_verified'] ?? false) === true
+                && ($row['host_company_binding_readonly_verified'] ?? false) === true;
+            $rows[] = array(
+                'company'=>$company,'environment'=>$env,
+                'site_uuid'=>$companies[$company][$env]['site_uuid'],
+                'origin'=>$companies[$company][$env]['origin'],
+                'host'=>$row['host_id'],
+                'site_host_identity_verified'=>$verified,
+                'source_observed_epoch'=>$at,
+                'authorization_state'=>'ORIGINAL_SIGNED_GRANT_REQUIRED',
+                'v3_signed_predecessor_verified'=>false,
+                'host_write_authorized'=>false,
+            );
+        }
+        return $rows;
+    }
     public static function overview(): array {
         if (!self::authorized()) {
             return array('contract'=>self::CONTRACT,'authorized'=>false,
@@ -144,6 +199,7 @@ final class MAD4B_Remote_Operations_Admin_V145 {
         $transports = self::records('transport', self::TRANSPORT_PREFIX, $companies);
         $requests = self::records('request', self::REQUEST_PREFIX, $companies);
         $jobs = self::records('broker', self::BROKER_PREFIX, $companies);
+        $external = self::external_host_evidence($companies);
         $v3 = class_exists('MAD4B_Host_V3_Owner_Console', false)
             ? MAD4B_Host_V3_Owner_Console::status_data() : array();
         $current = is_array($v3['current'] ?? null) ? $v3['current'] : array();
@@ -153,6 +209,7 @@ final class MAD4B_Remote_Operations_Admin_V145 {
             'owner_is_enrolled_for_central'=>true,
             'company_scope_source'=>'mad4b_company_environment_registry_v2',
             'companies'=>$companies,
+            'external_hosts'=>$external,
             'grants'=>$grants,'transports'=>$transports,
             'requests'=>$requests,'jobs'=>$jobs,
             'v3'=>array(
@@ -169,6 +226,7 @@ final class MAD4B_Remote_Operations_Admin_V145 {
                 'dispatch_route'=>'mad4b/v1/central-execution-lanes/{company}/broker-dispatch',
                 'original_authority_always_rechecked'=>true,
                 'new_write_authority_from_this_page'=>false,
+                'ssh_company_binding_is_owner_signature'=>false,
                 'no_raw_ssh_or_signer_endpoint'=>true,
             ),
         );
@@ -205,6 +263,9 @@ final class MAD4B_Remote_Operations_Admin_V145 {
         echo '<button type="button" id="m-grant" class="button button-primary" disabled>Request Original305 grant</button>';
         echo '<p id="m-grant-note" class="m-muted">A verified transport and enrolled administrator are required.</p></section>';
         echo '</div>';
+        echo '<section class="m-card"><h2>External companies · Verified site and hosting binding</h2>';
+        echo '<p class="m-muted">A live VPS SSH and WordPress identity readback is required for each external site. Company identity is not a Host Write grant.</p>';
+        echo '<div id="m-hosts">Loading exact host bindings…</div></section>';
         echo '<div class="m-grid"><section class="m-card"><h2>3 · Existing operation grants</h2><div id="m-grants">Loading…</div></section>';
         echo '<section class="m-card"><h2>4 · Admitted requests / dispatch</h2><div id="m-requests">Loading…</div></section></div>';
         echo '<section class="m-card"><h2>5 · VPS Broker / independent readback</h2><div id="m-jobs">Loading…</div>';
@@ -254,12 +315,28 @@ function draw() {
  authority.append(t("p","Signed current: "+(v.signature_verified&&v.readback_verified?"Verified":"Missing or incomplete")));
  authority.append(t("p","The company registry—not SSH login—defines company identity."));
  const existing=el("m-transport");clear(existing);
- const options=d.transports.filter(x=>permittedCompany(x.company)&&x.site_uuid===d.companies[x.company][x.environment]?.site_uuid);
+ const options=d.transports.filter(x=>
+   permittedCompany(x.company)&&d.companies[x.company][x.environment]&&
+   x.site_uuid===d.companies[x.company][x.environment].site_uuid&&
+   (x.state==="PENDING_INDEPENDENT_SSH_VERIFICATION"||
+    x.state==="REMOTE_HOSTINGER_WPCLI_ACCESS_VERIFIED")&&
+   (d.external_hosts||[]).some(site=>site.company===x.company&&
+     site.environment===x.environment&&site.host===x.host&&
+     site.site_uuid===x.site_uuid&&site.site_host_identity_verified===true));
  options.forEach(x=>{const o=t("option",x.company+" · "+x.environment+" · "+x.host+" · "+x.state);o.value=x.id;existing.append(o);});
  const empty=options.length===0;
  el("m-grant").disabled=empty;
  if(empty){const o=t("option","No enrolled transport available");o.value="";existing.append(o);}
  el("m-grant-note").textContent=empty?"Register a transport using Original305 before issuing a grant.":"Grant issuance uses the original endpoint; a grant does not itself authorize an SSH write.";
+ const hosts=table("m-hosts",["Company / environment","Verified SSH host","Site identity","Write authority"]);
+ (d.external_hosts||[]).forEach(x=>{
+   const rowValue=row(hosts,[x.company+" / "+x.environment,x.host,
+      x.site_host_identity_verified?"Site UUID and WordPress origin verified":"Verification missing",
+      x.host_write_authorized?"SIGNED WRITE VERIFIED":"Independent signed grant still required"]);
+   rowValue.lastChild.className=x.host_write_authorized?"m-good":"m-muted";
+ });
+ if(!(d.external_hosts||[]).length)row(hosts,["No current verified external-site evidence","—",
+   "SSH identity and original registry readback required","No Write inferred"]);
  const grants=table("m-grants",["Company / environment","Operation","Grant state","Scope / expiry"]);
  d.grants.forEach(g=>{const tr=row(grants,[g.company+" / "+g.environment,g.operation||"Not specified",g.state,
   (g.mode||"unknown")+" · "+g.host+" · "+moment(g.expires_epoch)]);
@@ -295,7 +372,9 @@ async function refresh(){
  status("Reading original grants, existing requests and independent status…");
  try { const d=await original(cfg.overview);if(d.contract!=="mad4b.remote-operations-owner-console.v145"||d.authorized!==true)throw Error("Unexpected contract");
  state.data=d;draw();
- status("Loaded "+d.grants.length+" grants, "+d.requests.length+" requests, "+d.jobs.length+" broker jobs. No write authority is inferred.");
+ status("Verified external site bindings: "+(d.external_hosts||[]).filter(x=>x.site_host_identity_verified).length+
+  " · "+d.grants.length+" grants · "+d.requests.length+" requests · "+d.jobs.length+
+  " broker jobs. SSH identity does not grant Write.");
  }catch(e){status("Readback failed: "+e.message,true);}
 }
 async function submitGrant(){
