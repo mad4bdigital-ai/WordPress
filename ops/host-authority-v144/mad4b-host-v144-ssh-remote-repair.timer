@@ -1,0 +1,12 @@
+[Unit]
+Description=MAD4B VPS registered hosting SSH diagnostics (30m)
+
+[Timer]
+OnCalendar=*-*-* *:15,45:00
+Persistent=true
+RandomizedDelaySec=45
+AccuracySec=1min
+Unit=mad4b-host-v144-ssh-remote-repair.service
+
+[Install]
+WantedBy=timers.target
