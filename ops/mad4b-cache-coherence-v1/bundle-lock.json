@@ -1,0 +1,19 @@
+{
+  "contract": "mad4b.cache-coherence-live-release-lock.v1",
+  "files": {
+    "bin/toursdev-litespeed-asset-event-watch-v2.py": "61ba1ae60b81c850e88c801945e930cab5663c11b5c00d46e116e0a67d8c87d9",
+    "bin/toursdev-litespeed-fastcgi-coherence-v1.py": "82b25198f9055eb0acad4488bbe9f2016c6797014b5fa1a8656817c5d236631d",
+    "bin/wayfa-litespeed-asset-event-watch-v2.py": "dc503b0987b1336dc217ce0385dd9e07d1790f6826cb6f9bed1f46505e25c3f8",
+    "bin/wayfa-litespeed-fastcgi-asset-coherence-v1.py": "d16b32518b6369e812e1d4a3c3cdbc0c1cac17c0d1f929f47f5f412a051c1f41",
+    "systemd/mad4b-toursdev-asset-coherence-fallback.service": "9fc397e7971fe0d1f3fa51d564f215fa8c6639e530ecc566a8ef2a1c6652b644",
+    "systemd/mad4b-toursdev-asset-coherence-fallback.timer": "5a127c42b0a69d39302f1aa7f80663e0d1256a9cdd6e8b569a9c1e2d0a6161aa",
+    "systemd/mad4b-toursdev-asset-event-watch-v2.service": "46b40ccc31ca750ad4cf8bcecb958e646f118b33f776d0be9fa182ee040b7ec8",
+    "systemd/mad4b-wayfa-tour-asset-coherence.service": "1be290bedacf575c71c410ac86059ba329754a98e8aa07ecb5b7afc5e2c1f480",
+    "systemd/mad4b-wayfa-tour-asset-coherence.timer": "a31da1cbb9acff27d6a5ed806d370f3fab3612ef206d7a7318280ced5f1d254c",
+    "systemd/mad4b-wayfa-tour-asset-event-watch-v2.service": "730c73cb04fc1af712465fbe50b8ce1fce2971c58ee1681d102e7d6d710bc35d"
+  },
+  "owner_write_authority": false,
+  "reference": "live-sites-2026-11-22",
+  "signed_release_provenance": false,
+  "version": "1.0.0"
+}
