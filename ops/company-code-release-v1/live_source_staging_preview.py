@@ -118,3 +118,13 @@ def build_preview(policy: dict, manifest: dict, host: dict, backup: dict, *,
 
 def preview_from_original_pins(policy: dict) -> dict:
     return build_preview(policy,load_root_json(MANIFEST),load_root_json(HOST_EVIDENCE),load_root_json(PREIMAGES),source_root=SOURCE_ROOT,package=PACKAGE)
+
+
+if __name__ == '__main__':
+    # Direct, read-only host preview. No signed apply or privileged dispatch.
+    own = Path(__file__).lstat()
+    require(stat.S_ISREG(own.st_mode) and own.st_uid == 0 and
+            not (own.st_mode & 0o022), 'UNTRUSTED_PREVIEW_TOOL')
+    installed_policy = load_root_json(Path('/etc/mad4b/company-code-release-policy.json'))
+    print(json.dumps(preview_from_original_pins(installed_policy),
+                     ensure_ascii=False, sort_keys=True, indent=2))
