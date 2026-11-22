@@ -8,6 +8,26 @@ runner=importlib.util.module_from_spec(spec);spec.loader.exec_module(runner)
 isspec=importlib.util.spec_from_file_location('mad4b_original_v2_issuer',HERE/'public-ordered-critical-certificate-v2.py')
 issuer=importlib.util.module_from_spec(isspec);isspec.loader.exec_module(issuer)
 ROOT=runner.ROOT/'reports/public-critical-css-v1'
+# Only already-expired 422 leases may be retracted in a small batch. Active
+# provisional sources still require one independent five-width browser QA.
+MAX_EXPIRED_CAS_PER_TICKET=3
+MAX_EXPIRED_CLEANUP_SECONDS=150
+LEASE_EXPIRY_GRACE_SECONDS=60
+def expired_cleanup_targets(pending,now):
+    if type(now) is not int or not isinstance(pending,list):return []
+    result=[]
+    for item in pending:
+        if (not isinstance(item,tuple) or len(item)!=3
+            or type(item[0]) is not int
+            or not 0<item[0]<=now):
+            break
+        # The original 422 cert may have been CAS-issued seconds before
+        # bulk-pending.json was stored. A one-minute grace prevents
+        # treating a valid lease as expired based on the queue timestamp.
+        if item[0]+21600+LEASE_EXPIRY_GRACE_SECONDS>now:break
+        result.append(item)
+        if len(result)>=MAX_EXPIRED_CAS_PER_TICKET:break
+    return result
 def read(p,limit=2500000):
     if p.is_symlink() or not p.is_file() or not 0<p.stat().st_size<=limit:
         raise ValueError('unsafe-or-missing-original-bulk-record')
@@ -77,7 +97,7 @@ def cert_path(site,doc):
     name=hashlib.sha256((host+'|'+doc['language']+'|'+doc['path']+'|'+
        doc['market_country']+'|'+doc['currency']).encode()).hexdigest()+'.json'
     return wp/'mad4b-public-critical-css-v1/certs-v2'/name
-def qa_one(site,folder,doc):
+def qa_one(site,folder,doc,only_expired=False):
     host,php,wp,environment=runner.CONFIG[site]
     job=read(folder/'selected.json')
     route=read(folder/'route.json')
@@ -107,6 +127,22 @@ def qa_one(site,folder,doc):
           'site':site,'outcome':'superseded_or_expired',
           'at':int(time.time()),'route_key':doc['route_key']})
         return 'superseded_or_expired'
+    # An older queue marker must never cause the no-browser expiry lane
+    # to process a newly reissued current 422 public lease. The actual
+    # installed 422 CAS deadline wins over any private ticket timestamp.
+    if only_expired and cert.get('post_release_deadline',0)>int(time.time()):
+        # Another newer, source/market-identical V2 provisional lease may
+        # have superseded this older original queue marker. Complete only
+        # the obsolete marker; NEVER revoke or certify the newer live CAS.
+        released=cert.get('released_at')
+        if (type(released) is int and released>doc['released_at']
+            and cert.get('post_release_deadline')==released+21600):
+            atomic(folder/'bulk-complete.json',{
+                'contract':'mad4b.css.v2.bulk.qa-result.v1',
+                'site':site,'outcome':'superseded_newer_pending',
+                'at':int(time.time()),'route_key':doc['route_key']})
+            return 'superseded_newer_pending'
+        return 'rollback_retry'
     args=['python3',str(HERE/'public-ordered-critical-certificate-v2.py'),
           str(folder/'catalog.json'),str(folder/'route.json'),
           str(folder/'measured-site-v2.json'),str(folder),str(wp),
@@ -219,6 +255,28 @@ def main():
     rows=pending_rows(site)
     if not rows:
         print('BULK_CCSS_QA_IDLE',site);return
+    expired=expired_cleanup_targets(rows,int(time.time()))
+    if expired:
+        started=time.monotonic()
+        processed=0
+        for _,folder,doc in expired:
+            if time.monotonic()-started>MAX_EXPIRED_CLEANUP_SECONDS:
+                break
+            # qa_one checks the current original 422 CAS certificate and
+            # independently handles genuine expiry, supersession and rollback.
+            # Absolutely no Chromium QA can run for these grace-expired rows.
+            outcome=qa_one(site,folder,doc,only_expired=True)
+            if outcome=='rollback_retry':
+                print('BULK_CCSS_QA_ROLLBACK_PENDING',site,doc['route_key'])
+                break
+            processed+=1
+            print('BULK_CCSS_QA_COMPLETED',site,outcome,doc['route_key'],
+                  doc['language'],doc['path'],flush=True)
+        if processed:
+            print('BULK_CCSS_EXPIRED_SOURCE_LEASES_CAS_CLEANED',
+                  site,processed,'cap',MAX_EXPIRED_CAS_PER_TICKET,
+                  flush=True)
+        return
     _,folder,doc=rows[0]
     outcome=qa_one(site,folder,doc)
     if outcome=='rollback_retry':

@@ -153,3 +153,32 @@ Chromium serialization are unchanged.
 This fixes an observed Wayfa 12-lease queue in which three provisional
 leases expired while source and public tickets continued to run. It is
 a scheduler/feedback correction, not a claims-based certification.
+
+
+### Bounded expired-CAS cleanup in the original postrelease queue
+
+When the first-party native bulk_qa ticket acquires the original site and
+global Chromium locks and passes the unchanged strict host CPU guard,
+its oldest **already-expired** V2 public source leases can now be cleaned
+in batches of at most THREE expired records and 150 seconds per ticket,
+using the same independently source/market/route-verified original
+qa_one and 422 compare-and-swap retract, route-only cache recovery and
+native CSS fallback. The private bulk-pending timestamp alone cannot
+revoke a newly reissued public certificate: the currently installed
+422 certificate's own six-hour deadline is independently verified. A
+strict 60-second extra grace excludes apparently expired queue timestamps
+whose original 422 release timestamp may differ slightly. A genuinely
+newer, market/source-identical 422 lease only supersedes the old *private*
+queue record without revoking or certifying the newer public lease.
+
+Newer or still-active CSS candidates continue to receive exactly ONE
+original full real-viewport (320/390/414/767/768) postrelease browser
+QA per ticket. No Chromium jobs are batched, no public CSS certificate is
+issued from cleanup and no WordPress tickets are fabricated or ACKed
+until the original worker verifies completion. Resource deferral and
+rollback errors remain retriable under original WP-Cron. This speeds
+cleanup of inherited expired provisional leases only and never relaxes
+the V2 CSS readiness or CSS source signature requirements.
+
+Original expiry batching and same-route supersession are covered by
+13 isolated fixture checks plus the 19 prior original Bulk invariants.
