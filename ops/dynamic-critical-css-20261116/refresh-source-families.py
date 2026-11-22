@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Autonomous low-cost unified source registry refresh; never runs Chromium or publishes CSS."""
-import fcntl,hashlib,importlib.util,os,pathlib,subprocess,sys,time
+import fcntl,hashlib,importlib.util,json,os,pathlib,re,shutil,subprocess,sys,time
 from pathlib import Path
 D=Path(__file__).resolve().parent
 
@@ -38,6 +38,66 @@ def selected_sites(argv):
     if len(argv)!=1 or argv[0] not in ('source','wayfa'):
         raise ValueError('css_site_scope_invalid')
     return (argv[0],)
+
+def paired_original_family_source_snapshot(site,catalog,state,report,root,atom):
+    """Persist one read-only 421+422 WPML/WCML pair for the existing Bulk planner.
+
+    Only native authenticated WordPress family refresh may generate this
+    source-snapshot. Other jobdirs are never chosen as a proxy for current
+    catalog; publisher still freshly reads and revalidates original WP.
+    """
+    expected={'source':'tours.dev.mad4b.com','wayfa':'wayfatours.com'}.get(site)
+    if (not expected or not isinstance(catalog,dict)
+        or catalog.get('contract')!='mad4b.public-critical-css.routes.v1'
+        or catalog.get('host')!=expected or not isinstance(state,dict)
+        or state.get('site_host')!=expected or state.get('critical_css')!='on'
+        or not isinstance(report,dict) or report.get('host')!=expected
+        or type(state.get('css_epoch')) is not int
+        or state['css_epoch']!=report.get('css_epoch')
+        or state.get('global_generation')!=catalog.get('global_generation')
+        or state.get('listing_generation')!=catalog.get('listing_generation')
+        or report.get('global_generation')!=catalog.get('global_generation')
+        or report.get('listing_generation')!=catalog.get('listing_generation')
+        or not re.fullmatch('[a-f0-9]{64}',str(state.get('runtime_sha','')))
+        or not re.fullmatch('[a-f0-9]{64}',str(state.get('consumer_v2_sha','')))):
+        raise ValueError('original-421-422-family-source-catalog-read-drift')
+    root=Path(root)
+    if (root.is_symlink() or not root.is_dir()
+        or root.stat().st_uid!=0 or root.stat().st_mode&0o077):
+        raise ValueError('untrusted-root-private-421-family-source-snapshot')
+    # Original 421 schema, not guessed profile source IDs or stale URL list.
+    q=load('family_paired_exact_source_routes','public-route-queue.py')
+    q.safe_catalog(catalog,site)
+    timestamp=time.strftime('%Y%m%dT%H%M%SZ',time.gmtime())
+    name='family-source-'+timestamp+'-'+str(os.getpid())
+    target=root/name
+    if target.exists() or target.is_symlink():
+        raise ValueError('duplicate-immutable-source-snapshot')
+    target.mkdir(mode=0o700)
+    try:
+        atom(target/'catalog.json',catalog)
+        atom(target/'site.json',state)
+        contents=(target/'catalog.json').read_bytes()
+        statebytes=(target/'site.json').read_bytes()
+        verifycat=json.loads(contents);verifystate=json.loads(statebytes)
+        if verifycat!=catalog or verifystate!=state:
+            raise ValueError('paired-original-source-write-readback-failed')
+    except BaseException:
+        shutil.rmtree(target)
+        raise
+    # The family report is published AFTER these two files, so its pointer
+    # is an exact SHA-bound all-or-nothing read-only planning proof.
+    report['paired_source_snapshot']=str(target)
+    report['paired_catalog_sha256']=hashlib.sha256(contents).hexdigest()
+    report['paired_state_sha256']=hashlib.sha256(statebytes).hexdigest()
+    recent=sorted((x for x in root.iterdir() if x.is_dir()
+        and not x.is_symlink()
+        and re.fullmatch(r'family-source-[0-9]{8}T[0-9]{6}Z-[0-9]+',x.name)),
+        key=lambda x:x.stat().st_mtime)
+    for old in recent[:-3]:
+        if old!=target and old.stat().st_uid==0:
+            shutil.rmtree(old)
+    return target
 
 def main():
     # A fresh first-party CPU budget is required before both WordPress CLI
@@ -110,7 +170,11 @@ def main():
                 except (ValueError,OSError,KeyError,TypeError):index=variants.empty(site)
             result=families.build(site,catalog,state,ledger,wp,variant_index=index)
             result['refreshed_at_utc']=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime())
+            pair=paired_original_family_source_snapshot(
+                site,catalog,state,result,root,families.queue.atom)
             families.queue.atom(root/'source-families-latest.json',result)
+            print('SOURCE_FAMILY_PAIRED_421_422_SNAPSHOT',site,
+                  pair.name,'css_epoch',state['css_epoch'],flush=True)
             print('SOURCE_FAMILY_REGISTRY_REFRESH',site,'routes',result['routes_discovered'],
                   'families',result['source_groups_total'],
                   'qualified',result['source_canary_qualified_groups'],

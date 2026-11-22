@@ -210,3 +210,46 @@ A hermetic 421 PHP behavioral fixture proves 68/68 invariants including
 post/listing events, one-event property saves retaining original semantics,
 13 separate tour visual updates, independent two-tour revisions, home
 and WordPress page changes, plus prior native navigation conditions.
+
+
+### Native WPML/421 source snapshot consistency and stale V2 recertification
+
+The original 5-minute WordPress family refresh already reads and attests
+the live 421 WPML catalog and 422 runtime/consumer/CSS policy source.
+Its family report now atomically references an immutable **paired** root-
+private catalog/site snapshot, with both exact SHA256 hashes, matching
+CSS epoch, 421 global and listing generations. The original Bulk planner
+reads exactly that report-bound pair rather than guessing which historic
+jobdir happens to have the latest filesystem mtime. Any missing pairing,
+mismatched CSS epoch, 421 generations, company scope or tampered snapshot
+fails closed; old reports retain the original strict snapshot behavior.
+Only the three latest root-private family source snapshots are retained.
+This fixes Source CSS epoch 154 family report paired to stale epoch 153
+historic jobdir (which had previously blocked original Bulk planning).
+
+The original Bulk issuer scans only the root-owned 422 **certified** route
+certificates whose exact host|language|path|market|currency SHA matches
+their filename, and identifies candidates with a source-bound mismatch in
+the report's global, route or listing generation, CSS epoch, immutable
+422 runtime SHA or consumer SHA. Such files are never reused, re-certified
+from a snapshot or publicly marked Ready. They are scheduling hints only.
+At most **one** of the unattempted source-mismatched certificates gets
+priority per native publish ticket; it must have a 2-hour no-repeat
+cooldown and no already-open original QA lease. The native route publisher
+re-reads current original 421/422 WordPress source, fresh HTML, original
+full ordered stylesheet SHA, actual WCML country/currency, Elementor graph,
+Chrome extraction and 422 CAS before issuing a new six-hour provisional
+certificate. Five-width performance QA still runs after public release
+and can revert each exact route to Native CSS. Prioritizing a repair never
+advances the existing normal family+language publication cursor; all
+remaining ticket capacity still goes to routes in original native order.
+
+Old V2 certificates that are still acceptable through 422's narrow
+original unrelated-property proof are not globally invalidated here:
+the issuer has the final authority. Any market/route/context mismatch
+fails the same strict existing source checks and cannot grant public CSS.
+No 421 or 422 PHP changes, no manual certificate status or generation
+changes, no new ticket issuer, no CPU/Chromium bypass and no forced
+HTML cache purge. Fixtures cover the 21 priority safety/fairness cases
+and 12 paired-original-source/Tamper cases; old 19 bounded-Bulk and
+13 release-first tests remain required.

@@ -20,10 +20,24 @@ def clean_site(site,snapshot=None):
              (x/'catalog.json').is_file() and (x/'site.json').is_file()),
              key=lambda p:p.stat().st_mtime)
  if not jobs:raise ValueError('no-catalog-source')
- source=Path(snapshot) if snapshot else jobs[-1]
- if source not in jobs:raise ValueError('untrusted-catalog-snapshot')
- cat=q.read(source/'catalog.json');state=q.read(source/'site.json')
  report=q.read(root/'source-families-latest.json')
+ paired=report.get('paired_source_snapshot')
+ if paired is not None and not snapshot:
+  if (not isinstance(paired,str) or not paired.startswith(str(root)+'/')
+      or not re.fullmatch(r'family-source-[0-9]{8}T[0-9]{6}Z-[0-9]+',
+                          Path(paired).name)):
+   raise ValueError('untrusted-family-paired-source-location')
+  source=Path(paired)
+ else:
+  source=Path(snapshot) if snapshot else jobs[-1]
+ if source not in jobs:raise ValueError('untrusted-catalog-snapshot')
+ if paired is not None and source==Path(paired):
+  if (hashlib.sha256((source/'catalog.json').read_bytes()).hexdigest()!=
+      report.get('paired_catalog_sha256') or
+      hashlib.sha256((source/'site.json').read_bytes()).hexdigest()!=
+      report.get('paired_state_sha256')):
+   raise ValueError('family-paired-source-content-hash-drift')
+ cat=q.read(source/'catalog.json');state=q.read(source/'site.json')
  if cat['host']!=report['host'] or state['site_host']!=cat['host'] or state['critical_css']!='on':
   raise ValueError('source-host-or-policy-mismatch')
  if state['css_epoch']!=report.get('css_epoch'):
