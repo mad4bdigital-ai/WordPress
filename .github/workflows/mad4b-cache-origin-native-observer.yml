@@ -1,0 +1,47 @@
+name: MAD4B Cache Origin Native Observer
+
+on:
+  pull_request:
+    paths:
+      - 'ops/mad4b-cache-origin-observer-v1/**'
+      - '.github/workflows/mad4b-cache-origin-native-observer.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'ops/mad4b-cache-origin-observer-v1/**'
+      - '.github/workflows/mad4b-cache-origin-native-observer.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-cache-origin-observer-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  safe-native-observability:
+    name: Privacy, SHA lock, Nginx additive policy, and synthetic observer
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Exact live-origin release byte lock
+        run: python3 ops/mad4b-cache-origin-observer-v1/verify.py
+      - name: Python syntax and privacy regression
+        run: |
+          python3 -m compileall -q ops/mad4b-cache-origin-observer-v1
+          python3 -m unittest discover -s ops/mad4b-cache-origin-observer-v1/tests -p 'test_*.py' -v
+      - name: Verify independent per-site timers and fail-closed patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=ops/mad4b-cache-origin-observer-v1
+          test "$(find "$root/systemd" -maxdepth 1 -type f | wc -l)" -eq 4
+          for unit in "$root"/systemd/*.timer; do
+            grep -q '^OnUnitInactiveSec=1800s' "$unit"
+          done
+          grep -q 'MAD4B_CACHE_DECISION_V1' "$root/patches/toursdev-nginx-cache-classifier-v1.patch"
+          test "$(grep -c '^+.*fastcgi_cache_key\|^+.*fastcgi_no_cache\|^+.*fastcgi_cache_bypass' "$root/patches/toursdev-nginx-cache-classifier-v1.patch" || true)" -eq 0
