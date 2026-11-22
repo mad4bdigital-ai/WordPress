@@ -11,7 +11,8 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
     const AJAX='mad4b_package_pricing_lab_read_v1';
     const SOURCE='_mad4b_package_accommodation_source_plan_v1';
     const BINDINGS='_mad4b_package_stay_verified_room_program_links_v1';
-    const TIERS=['silver-package'=>'Silver','gold-package'=>'Gold','diamond-package'=>'Diamond'];
+    const TIERS=['silver-package'=>'Silver','gold-package'=>'Gold',
+       'diamond-package'=>'Diamond','platinum-package'=>'Platinum'];
     private static function allowed():bool {
         return current_user_can('commerce_manage_pricing') &&
             (current_user_can('manage_woocommerce') ||
@@ -41,10 +42,15 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
                 !current_user_can('edit_post',$tour)||isset($out[$tour]))continue;
             $plan=get_post_meta($tour,self::SOURCE,true);
             if(!is_array($plan)||!is_array($plan['stages']??null))continue;
+            $policy=class_exists('MAD4B_Company_Package_Levels_V1',false)
+                ?MAD4B_Company_Package_Levels_V1::resolve($tour):[];
             $out[$tour]=['id'=>$tour,
                 'title'=>wp_strip_all_tags(html_entity_decode(get_the_title($tour),ENT_QUOTES,'UTF-8')),
                 'day_count'=>(int)($plan['tour_days']??0),
-                'night_count'=>(int)($plan['tour_nights']??0)];
+                'night_count'=>(int)($plan['tour_nights']??0),
+                'effective_tier_ids'=>$policy['effective_tier_ids']??[],
+                'tier_source'=>$policy['source']??'provider_missing',
+                'company_rule_id'=>$policy['company_rule_id']??null];
         }
         return array_values($out);
     }
@@ -273,6 +279,10 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
         $tiers=self::tierIds();
         if(!in_array($tierId,array_column($tiers,'id'),true))
             return new WP_Error('package_lab_tier_invalid');
+        $resolution=class_exists('MAD4B_Company_Package_Levels_V1',false)
+            ?MAD4B_Company_Package_Levels_V1::resolve($tour):[];
+        if(!in_array($tierId,(array)($resolution['effective_tier_ids']??[]),true))
+            return new WP_Error('package_lab_level_not_assigned_by_operations_or_company_default');
         $plan=get_post_meta($tour,self::SOURCE,true);
         $bindings=get_post_meta($tour,self::BINDINGS,true);
         if(!is_array($plan)||!is_array($plan['stages']??null))
@@ -627,6 +637,10 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
             'tour_edit_url'=>self::editLink($tour),
             'tier_id'=>$tierId,'tier'=>array_values(array_filter($tiers,
                 static fn($t)=>(int)$t['id']===$tierId))[0]['label'],
+            'tier_source'=>$resolution['source']??'not_configured',
+            'effective_tier_ids'=>$resolution['effective_tier_ids']??[],
+            'company_default_tier_ids'=>$resolution['company_default_tier_ids']??[],
+            'company_policy_rule_id'=>$resolution['company_rule_id']??null,
             'day_count'=>(int)($plan['tour_days']??0),
             'night_count'=>(int)($plan['tour_nights']??0),
             'plan_status'=>(string)($plan['source_review_status']??'not_certified'),
