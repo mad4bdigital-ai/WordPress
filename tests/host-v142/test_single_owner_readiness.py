@@ -45,8 +45,8 @@ class Monitor(unittest.TestCase):
         self.assertIn("independent_owner_signer_enrolled",x["blockers"])
         self.assertFalse(x["write_authorized"])
         self.assertEqual(x["owner_action"],
-                         "PREPARE_DEVICE_HELD_OWNER_PUBLIC_KEY_"
-                         "AND_REGISTER_WITH_INDEPENDENT_FIRSTPARTY_IDENTITY_AUTHORITY")
+                         "VPS_HOST_SSH_TRANSPORT_SUPPORTED__"
+                         "EXISTING_OWNER_V3_SIGNER_TRUST_GATE_SEPARATE")
     def test_remaining_issuer_gates_are_independent(self):
         e=evidence()
         e[1]["complete_cross_generation_history_verified"]=True

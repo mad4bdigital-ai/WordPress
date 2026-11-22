@@ -109,8 +109,8 @@ def evaluate(*,original305:dict, archive313:dict,
     code=("FIRSTPARTY_ISSUANCE_READBACK_REQUIRED" if not blockers
           else "WAITING_FOR_INDEPENDENT_FIRSTPARTY_EVIDENCE")
     if not checks["independent_owner_signer_enrolled"]:
-        owner_action=("PREPARE_DEVICE_HELD_OWNER_PUBLIC_KEY_"
-                      "AND_REGISTER_WITH_INDEPENDENT_FIRSTPARTY_IDENTITY_AUTHORITY")
+        owner_action=("VPS_HOST_SSH_TRANSPORT_SUPPORTED__"
+                      "EXISTING_OWNER_V3_SIGNER_TRUST_GATE_SEPARATE")
     elif not checks["complete_original313_history"] or not checks["fresh_signed_original313_predecessor"]:
         owner_action="WAIT_FOR_INDEPENDENT_ORIGINAL313_SIGNED_OFFER"
     elif not checks["human_owner_stepup_registered"]:
@@ -124,6 +124,9 @@ def evaluate(*,original305:dict, archive313:dict,
       "single_owner_identity_cryptographically_enrolled":
          checks["independent_owner_signer_enrolled"],
       "owner_wordpress_review_must_not_be_repeated":True,
+      "remote_repair_ssh_transport":"VPS_TO_REGISTERED_HOSTS_ONLY",
+      "owner_workstation_required_for_hosting_ssh":False,
+      "host_ssh_key_counts_as_owner_signature":False,
       "checks":checks,"blockers":blockers,
       "archive_v2_verified_chains":archive313["v2_signed_current_pairs_verified"],
       "original313_archive_sha256":archive313["root_archive_sha256"],
