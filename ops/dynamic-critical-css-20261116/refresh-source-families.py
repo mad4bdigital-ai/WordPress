@@ -115,6 +115,20 @@ def main():
                   'families',result['source_groups_total'],
                   'qualified',result['source_canary_qualified_groups'],
                   'pending',result['source_groups_by_status'].get('source_canary_pending',0),flush=True)
+            # Prepare only *source-bound* HTML/CSS assets for the next 24
+            # pages in the native publisher cursor's Elementor/WPML order.
+            # This never runs Chromium, does not issue any CSS certificate
+            # or influence whether source-family registry itself is valid.
+            try:
+                preflight=load('mad4b_source_family_preparer','bulk-family-prepare.py')
+                prep=preflight.prepare(site,catalog,state,wp,budget=24)
+                print('BULK_FAMILY_SOURCE_PREPARED',site,
+                    'attempted',prep['attempted'],'fresh',prep['prepared'],
+                    'reused',prep['reused'],'deferred',prep['deferred'],
+                    'source_profiles',prep['source_profiles'],flush=True)
+            except (OSError,ValueError,KeyError,TypeError,UnicodeError) as exc:
+                print('BULK_FAMILY_PREPARATION_DEFERRED_NOT_PUBLISH_GATE',
+                      site,type(exc).__name__,str(exc)[:140],flush=True)
 
 if __name__=='__main__':
     try:main()

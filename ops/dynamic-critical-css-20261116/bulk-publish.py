@@ -11,8 +11,10 @@ spec=importlib.util.spec_from_file_location('mad4b_bulk_plan',HERE/'bulk-release
 planner=importlib.util.module_from_spec(spec);spec.loader.exec_module(planner)
 spec=importlib.util.spec_from_file_location('mad4b_bulk_qa',HERE/'bulk-postrelease-qa.py')
 qa=importlib.util.module_from_spec(spec);spec.loader.exec_module(qa)
-MAX_PER_TICKET=2
-MAX_ACTIVE_PENDING=8
+MAX_PER_TICKET=4
+MAX_ACTIVE_PENDING=12
+MAX_TICKET_SECONDS=1100
+RESERVE_FOR_ONE_ROUTE=460
 def atomic(path,doc):
     temp=path.with_name('.'+path.name+'.pending-'+str(os.getpid()))
     with temp.open('x') as out:
@@ -56,8 +58,13 @@ def run(site):
     if not ordered:print('BULK_CCSS_PUBLISH_NO_ROUTES',site);return
     cursor=cursor%len(ordered)
     launched=0;deferrals=0;last_reason=''
+    started=time.monotonic()
     for offset in range(len(ordered)):
-        if launched>=limit or launched+deferrals>=max(4,limit*3):break
+        # Original host WordPress wake is bounded to 1,380s; leave time for
+        # the last exact-market source capture, WP ACK and safe retreat.
+        if (launched>=limit or launched+deferrals>=max(4,limit*3)
+            or time.monotonic()-started>MAX_TICKET_SECONDS-RESERVE_FOR_ONE_ROUTE):
+            break
         selected_index=(cursor+offset)%len(ordered)
         candidate=ordered[selected_index]
         key=candidate['route_key']

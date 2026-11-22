@@ -6,6 +6,8 @@ client URL), makes immutable first-party CSS dependency evidence, and keeps
 all compiled CSS private until separate Chromium performance and delivery QA.
 """
 import importlib.util
+import hashlib
+import time
 import json
 import os
 import pathlib
@@ -21,6 +23,7 @@ HERE=Path(__file__).resolve().parent
 sp=importlib.util.spec_from_file_location('mad4b_ordered_css_source',HERE/'public-css-dependency-manifest.py')
 ordered=importlib.util.module_from_spec(sp);sp.loader.exec_module(ordered)
 CONTRACT='mad4b.public-css.manifest-observer.v1'
+FAMILY_PREPARED_ROOT=Path('/opt/mad4b-company-provisioning/reports/public-critical-css-v1')
 UA='Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Mobile Safari/537.36'
 ACCEPT='text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8'
 
@@ -67,6 +70,80 @@ def original_proven_fresh(host,headers):
     return False
 
 
+def _fresh_family_compiled(catalog,route,manifest,market,currency,css_epoch,runtime_sha,consumer_sha):
+    # Private family source preparation can ONLY skip repeated compilation.
+    # It never reuses CSS coverage or a certificate from a sibling route.
+    host=catalog.get('host')
+    site={'tours.dev.mad4b.com':'source','wayfatours.com':'wayfa'}.get(host)
+    if (site is None or not re.fullmatch('[a-f0-9]{64}',str(route.get('route_key','')))
+        or not isinstance(css_epoch,int) or isinstance(css_epoch,bool)):
+        return None
+    directory=FAMILY_PREPARED_ROOT/site/'family-prepared-v1'/route['route_key']
+    try:
+        if (directory.is_symlink() or not directory.is_dir()
+            or directory.stat().st_uid!=0 or directory.stat().st_mode&0o077):
+            return None
+        def protected(name,max_bytes):
+            f=directory/name
+            if (f.is_symlink() or not f.is_file() or f.stat().st_uid!=0
+                or f.stat().st_mode&0o022 or not 0<f.stat().st_size<=max_bytes):
+                raise ValueError('untrusted-family-cache-object')
+            return f
+        metadata=json.loads(protected('prepared.json',8192).read_text())
+        if (metadata.get('contract')!='mad4b.css.v2.family-prepared-source.v1'
+            or metadata.get('site')!=site or metadata.get('host')!=host
+            or metadata.get('route_key')!=route['route_key']
+            or metadata.get('path')!=route['path']
+            or metadata.get('language')!=route['language']
+            or metadata.get('source_profile')!=route.get('source_profile')
+            or metadata.get('source_graph')!=route.get('source_graph')
+            or metadata.get('route_revision')!=route.get('revision')
+            or metadata.get('css_epoch')!=css_epoch
+            or metadata.get('runtime_sha')!=runtime_sha
+            or metadata.get('consumer_v2_sha')!=consumer_sha
+            or metadata.get('market_country')!=market
+            or metadata.get('currency')!=currency
+            or metadata.get('compiler_sha')!=hashlib.sha256(
+                (HERE/'public-css-dependency-manifest.py').read_bytes()).hexdigest()
+            or metadata.get('manifest_sha256')!=manifest['manifest_sha256']
+            or type(metadata.get('prepared_at'))is not int
+            or not 0<=int(time.time())-metadata['prepared_at']<=3600):
+            return None
+        historical=json.loads(protected('css-dependencies.json',3_000_000).read_text())
+        if historical!=manifest:return None
+        values=json.loads(protected('compiled-chunks.json',200000).read_text())
+        rows=values.get('chunks')
+        if (values.get('contract')!=ordered.CONTRACT
+            or values.get('manifest_sha256')!=manifest['manifest_sha256']
+            or not isinstance(rows,list) or not 1<=len(rows)<=256):
+            return None
+        # Cascade slots come from fresh, source-verified HTML. A cached
+        # compiled chunk cannot move a style across an inline CSS boundary.
+        expected_slots=list(dict.fromkeys(
+            entry['slot'] for entry in manifest['files']))
+        if [row.get('slot') for row in rows]!=expected_slots:
+            return None
+        chunks=[]
+        for row in rows:
+            name=row.get('sha256','')
+            if not isinstance(name,str) or not re.fullmatch('[a-f0-9]{64}',name):
+                return None
+            raw=protected(name+'.css',ordered.MAX_TOTAL).read_bytes()
+            if len(raw)!=row.get('bytes') or ordered.sha(raw)!=name:return None
+            chunks.append({**row,'css':raw})
+        compiled=b'\n'.join(v['css'] for v in chunks)
+        if (len(compiled)!=metadata.get('compiled_bytes')
+            or ordered.sha(compiled)!=metadata.get('compiled_sha256')):
+            return None
+        return {'manifest_sha256':manifest['manifest_sha256'],
+                'compiled_sha256':metadata['compiled_sha256'],
+                'compiled_bytes':len(compiled),
+                'css':compiled,'chunks':chunks,
+                'slot_preserving_delivery_required':len(chunks)>1}
+    except (OSError,ValueError,KeyError,TypeError,UnicodeError):
+        # A cache defect must never block native CSS source compilation.
+        return None
+
 def observe(catalog,route,root,*,expected_host,fetch=public_fetch,include_html=False):
     host=catalog.get('host')
     if (catalog.get('contract')!='mad4b.public-critical-css.routes.v1'
@@ -92,7 +169,15 @@ def observe(catalog,route,root,*,expected_host,fetch=public_fetch,include_html=F
         or not re.fullmatch(r'(?:[A-Z]{2}|base|static)',market)):
         raise ValueError('missing-original-wcml-market-identity')
     manifest=ordered.inspect(html,host,wp)
-    compiled=ordered.compile_manifest(manifest,wp)
+    epoch=os.environ.get('MAD4B_FAMILY_PREPARED_EPOCH','')
+    runtime=os.environ.get('MAD4B_FAMILY_PREPARED_RUNTIME_SHA','')
+    consumer=os.environ.get('MAD4B_FAMILY_PREPARED_CONSUMER_SHA','')
+    prepared=(_fresh_family_compiled(catalog,route,manifest,market,currency,
+                int(epoch),runtime,consumer) if
+                os.environ.get('MAD4B_FAMILY_PREPARED_SOURCE')=='1'
+                and re.fullmatch('[0-9]{1,9}',epoch) else None)
+    compiled=(prepared if prepared is not None
+              else ordered.compile_manifest(manifest,wp))
     report={'contract':CONTRACT,'host':host,'path':path,
         'route_key':route.get('route_key'),
         'language':route.get('language'),
@@ -102,6 +187,7 @@ def observe(catalog,route,root,*,expected_host,fetch=public_fetch,include_html=F
         'original_html_sha256':ordered.sha(html.encode()),
         'compiled_sha256':compiled['compiled_sha256'],
         'compiled_bytes':compiled['compiled_bytes'],
+        'family_source_prepared_reused':prepared is not None,
         'css_source_proven':True,
         'browser_fcp_lcp_cls_qa_complete':False,
         'public_css_route_certificate_issued':False,

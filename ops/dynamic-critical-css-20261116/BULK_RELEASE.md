@@ -20,8 +20,20 @@ issue re-reads the source catalog, CSS epoch, runtime and 422 consumer.
 At the 22 November 2026 source snapshot, 1,027 Source routes and 239 Wayfa
 routes are eligible for original preflight. None is marked published by a plan.
 
-The bulk-publish.py worker admits up to two independently source-captured routes
-per WordPress ticket and at most eight unverified provisional certificates
+The original families WP-Cron job also prepares the next 24 route-specific
+HTML/CSS manifest candidates in original source-family order, without running
+Chromium or altering WordPress/public HTML. Preparation runs with at most
+three source-only compiler threads, retains no more than 96 root-owned
+records per site and expires entries after one hour. A fresh uncached source
+GET must match original market, currency, Elementor graph, runtime, CSS epoch,
+stylesheet manifest and compiler SHA before using a prepared compiled chunk.
+A miss or mismatch reverts to original source compiler, never a sibling
+certificate. The original 422 issuer independently recompiles and verifies
+every CSS asset before publication, while browser QA remains post-release.
+A planned/prepared 24-route wave is NOT 24 published certificates.
+
+The bulk-publish.py worker admits up to four independently source-captured routes
+per WordPress ticket (bounded by a 1,100-second host wake budget) and at most twelve unverified provisional certificates
 per company. Five-width browser CSS coverage extraction builds the actual
 source-bound Critical CSS; it is not performance QA. A genuine original V2
 released_pending_qa certificate is published with a six-hour lease and

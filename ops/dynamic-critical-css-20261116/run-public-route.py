@@ -689,7 +689,11 @@ def run_core(site,bulk_route_key=None,publish_only=False):
     try:
         source_only=run(['python3',str(TOOLS/'public-css-manifest-observer.py'),
              str(catfile),str(jobdir/'route.json'),str(wp),str(jobdir)],
-             timeout=28,env={**os.environ,'MAD4B_EXPECTED_SITE_HOST':host})
+             timeout=28,env={**os.environ,'MAD4B_EXPECTED_SITE_HOST':host,
+                 'MAD4B_FAMILY_PREPARED_SOURCE':'1' if publish_only else '0',
+                 'MAD4B_FAMILY_PREPARED_EPOCH':str(state['css_epoch']),
+                 'MAD4B_FAMILY_PREPARED_RUNTIME_SHA':str(state['runtime_sha']),
+                 'MAD4B_FAMILY_PREPARED_CONSUMER_SHA':str(state.get('consumer_v2_sha',''))})
         print(source_only)
         receipts=[line.removeprefix('MULTICSS_SOURCE_ONLY ')
                   for line in source_only.splitlines()
