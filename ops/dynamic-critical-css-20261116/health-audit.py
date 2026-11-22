@@ -92,7 +92,12 @@ def unit_health(site):
     plugin=SITES[site]['root']/'mu-plugins/429-mad4b-css-wpcron-dispatch-v1.php'
     # Exact known Git source SHA for the first-party profile-based WP 429.
     # Never silently trust a locally modified PHP dispatcher.
-    approved_wp429='ee32f776be5c0c8db99cd0cb6a61bd8da446f5520ab34d46b4a667213c50437a'
+    # Exact source SHA256s for the legacy dispatcher and approved Bulk V2
+    # first-party 429 Git release; never trust self-reported live bytes.
+    approved_wp429={
+      'ee32f776be5c0c8db99cd0cb6a61bd8da446f5520ab34d46b4a667213c50437a',
+      '8d13c3fb0439ba621cd8ecc7a7001fca30de1eb108be9b67bd939317ff0f0a32'}
+
     expected=(
         '# MAD4B site-owned CSS Cron: '+comment+'\n'
         'SHELL=/bin/sh\n'
@@ -122,7 +127,7 @@ def unit_health(site):
         raise ValueError('site-owned-WP429-mode-or-identity-drift:'+site)
     if cronfile.read_text()!=expected:
         raise ValueError('site-owned-cron-entrypoint-not-source-matched:'+site)
-    if sha(plugin)!=approved_wp429:
+    if sha(plugin) not in approved_wp429:
         raise ValueError('site-owned-WP429-is-not-source-admitted:'+site)
     if command(['systemctl','is-active','cron'],8)!='active':
         raise ValueError('wpcron_host_wakeup_daemon_not_active')
