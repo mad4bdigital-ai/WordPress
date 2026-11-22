@@ -33,7 +33,7 @@
     module.exports = {lookup: lookup, choices: choices};
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
   var cfg = window.MAD4BSmartOvernightV1;
-  if (!cfg || !cfg.tour_id || !cfg.action || !cfg.nonce) return;
+  if (!cfg || !cfg.action || !cfg.nonce) return;
   var lang = cfg.labels || {}, data = null, state = 'loading', lastQueryHash = '';
   var selectors = [
     'select[name*="mad4b_overnight_kind"]',
@@ -108,6 +108,7 @@
         renderOptions(kind, allowedOnFailure, currentKind, 'kind');
         renderOptions(dest, allowedOnFailure, currentDest, 'destination');
         note.textContent = state === 'loading' ? (lang.checking || 'Checking eligibility…')
+           : state === 'new' ? (lang.save_first || 'Save the Tour draft first')
            : (lang.failed || 'Eligibility check unavailable');
         note.style.color = '#9a4c0a';
         continue;
@@ -197,6 +198,9 @@
     if (!document.body) return;
     obs.observe(document.body, {childList:true, subtree:true});
     render();
+    if (!cfg.tour_id) {
+      state = 'new'; scheduleRender(); return;
+    }
     var payload = new URLSearchParams();
     payload.set('action', cfg.action);
     payload.set('nonce', cfg.nonce);
