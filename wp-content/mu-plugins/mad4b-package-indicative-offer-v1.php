@@ -16,7 +16,22 @@ final class MAD4B_Package_Indicative_Offer_V1{
       ?MAD4B_Company_Package_Levels_V1::resolve($tour):[];
     return array_values(array_map('intval',(array)($tier['effective_tier_ids']??[])));
   }
+  private static function withSourceLocale(callable $fn){
+    // WPML may silently translate tax_query slugs and hide EN source
+    // Properties when the signed-in editor is working in ES/FR/DE/AR.
+    // Tour/Property source contracts and term IDs are canonical English.
+    $before=(string)apply_filters('wpml_current_language','');
+    $default=(string)apply_filters('wpml_default_language','');
+    if(!$before || !$default || $before===$default)return $fn();
+    do_action('wpml_switch_language',$default);
+    try { return $fn(); }
+    finally { do_action('wpml_switch_language',$before); }
+  }
   public static function pool(int $tour,int $tier,array $stage):array{
+    return self::withSourceLocale(static fn()=>
+       self::poolInSourceLocale($tour,$tier,$stage));
+  }
+  private static function poolInSourceLocale(int $tour,int $tier,array $stage):array{
     if(get_post_type($tour)!=='tours-and-activities'||
        (string)($stage['lodging_kind']??'')!=='resort'||
        (string)($stage['destination_key']??'')!=='sharm')return [];
