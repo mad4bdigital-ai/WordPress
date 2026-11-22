@@ -631,7 +631,7 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
             :['applies'=>true,'ready'=>false,
               'blockers'=>['native_package_rate_guard_unavailable'],
               'contract'=>'mad4b.package-rate-stage-guard.unavailable'];
-        return [
+        $report=[
             'contract'=>'mad4b.package-cost-readiness.v1',
             'tour_id'=>$tour,'tour_title'=>wp_strip_all_tags(html_entity_decode(get_the_title($tour),ENT_QUOTES,'UTF-8')),
             'tour_edit_url'=>self::editLink($tour),
@@ -675,6 +675,7 @@ final class MAD4B_Package_Pricing_Lab_Readiness_V1 {
             'stages'=>$detailed,
             'note'=>'Read-only candidate and unit inventory. No cost is calculated without approved room/cabin, dates, provider cost receipts, currency and occupancy. No QA Rate or legacy Tour Rate price is used.'
         ];
+        return apply_filters('mad4b/package_lab/inspected_report',$report,$tour,$tierId);
     }
     public static function ajax():void {
         if(!self::allowed())wp_send_json_error(['code'=>'package_lab_forbidden'],403);
