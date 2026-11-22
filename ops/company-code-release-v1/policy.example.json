@@ -18,5 +18,19 @@
   },
   "example_snapshot_only": true,
   "receipt_dir": "/var/lib/mad4b/company-code-release/receipts",
-  "environment_policy": "exact_enrolled_target_only_no_named_environment_exceptions"
+  "environment_policy": "exact_enrolled_target_only_no_named_environment_exceptions",
+  "live_source_staging_preview_targets": {
+    "all-royal-egypt:staging": {
+      "site_uuid": "49c562d1-8f2f-456f-b454-26816c6ba4cb",
+      "host_id": "hosting-2",
+      "origin": "https://staging.allroyalegypt.com",
+      "preview_only": true
+    },
+    "egypt-tour-gates:staging": {
+      "site_uuid": "d745d81f-6fc4-5c6a-99dd-d953c92137bf",
+      "host_id": "hosting-3",
+      "origin": "https://staging.egypttourgates.com",
+      "preview_only": true
+    }
+  }
 }
