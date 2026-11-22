@@ -315,7 +315,8 @@ def approved_native_runtime_sha(site,wp):
     # taxonomy invalidation; no 422 runtime or consumer SHA is changed.
     approved_421_sha={
       'ae7936c7ad09b059375e1960d4c59144af0b4325933db34bcfa63c26e49233bb',
-      '78be6cfeeff27fbf5c336372cf1bd59fc939955d0fc41777fb2d6e1c62209bf4'}
+      '78be6cfeeff27fbf5c336372cf1bd59fc939955d0fc41777fb2d6e1c62209bf4',
+      '010b0af3c27d605f5cba2e64d7a0b84c33692b1e7c44881bf06a794c6d6f40f8'}
 
     # Immutable original source Git objects, verified against GitHub.
     # Previously this trusted branch's 421/422 bytes via an ephemeral

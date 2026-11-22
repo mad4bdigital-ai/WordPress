@@ -52,6 +52,7 @@ check('changed tour records targeted dependency',(int)$GLOBALS['options']['mad4b
 check('changed tour does not invalidate unrelated home',!isset($GLOBALS['options']['mad4b_critical_css_home_dirty_v1']));
 check('changed tour records exact post revision',count($GLOBALS['meta_writes']??[])===1);
 check('changed tour invalidates only listing cohort',isset($GLOBALS['options']['mad4b_ccss_listing_generation_v1']));
+MAD4B_Public_Critical_CSS_Coverage_V1::public_post_flushed();
 $oldRevision=(int)$GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation'];
 $passwordAfter=clone $unchanged;
 $passwordAfter->post_password='temporary-public-post-password';
@@ -64,6 +65,7 @@ check('unrelated WPML option change ignored',!isset($GLOBALS['options']['mad4b_c
 MAD4B_Public_Critical_CSS_Coverage_V1::option_updated('icl_sitepress_settings',['active_languages'=>['en']],['active_languages'=>['en','es']]);
 check('WPML language changes invalidate home',(int)$GLOBALS['options']['mad4b_critical_css_home_dirty_v1']===1);
 check('cache contract stays event-only',!isset($GLOBALS['options']['mad4b_perf_critical_css_all_public_v1']));
+MAD4B_Public_Critical_CSS_Coverage_V1::public_post_flushed();
 $before=$GLOBALS['options']['mad4b_ccss_listing_generation_v1'];
 MAD4B_Public_Critical_CSS_Coverage_V1::changed_meta(1,77,'_thumbnail_id',458);
 check('tour featured image triggers targeted recertification',
@@ -73,6 +75,7 @@ MAD4B_Public_Critical_CSS_Coverage_V1::changed_meta(1,77,'_edit_lock','random');
 check('WordPress editor lock changes do not invalidate CSS proof',
  $GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation']===$before);
 MAD4B_Public_Critical_CSS_Coverage_V1::changed_meta(1,77,'rate_period',149);
+MAD4B_Public_Critical_CSS_Coverage_V1::public_post_flushed();
 check('price/rate field change triggers event generation',
  $GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation']>$before);
 $before=$GLOBALS['options']['mad4b_ccss_listing_generation_v1'];
@@ -161,6 +164,7 @@ check('new WordPress publication and taxonomy membership hooks registered',
        $GLOBALS['hooked']['deleted_post_meta'],
        $GLOBALS['hooked']['deleted_term_meta'],
        $GLOBALS['hooked']['delete_term']));
+MAD4B_Public_Critical_CSS_Coverage_V1::public_post_flushed();
 $oldList=(int)$GLOBALS['options']['mad4b_ccss_listing_generation_v1'];
 MAD4B_Public_Critical_CSS_Coverage_V1::post_inserted(977,
  (object)['post_type'=>'tours-and-activities','post_status'=>'publish'],false,null);
@@ -184,6 +188,7 @@ MAD4B_Public_Critical_CSS_Coverage_V1::post_deleted(979,
 check('deleted header menu item also invalidates old certificate',
  (int)$GLOBALS['options']['mad4b_ccss_global_generation_v1']>$oldGlobal);
 MAD4B_Public_Critical_CSS_Coverage_V1::navigation_flushed();
+MAD4B_Public_Critical_CSS_Coverage_V1::public_post_flushed();
 $oldRoute=(int)$GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation'];
 MAD4B_Public_Critical_CSS_Coverage_V1::terms_set(77,[2,3],[3,2],'destinations',false,[2,3]);
 check('unchanged destination membership does not invalidate browser proof',
@@ -240,4 +245,55 @@ check('next separate request immediately invalidates again',
 MAD4B_Public_Critical_CSS_Coverage_V1::navigation_flushed();
 check('next request finishes with its own final invalidation',
  (int)$GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation']===$after+2);
+// Fresh separate-source operation. Repeated Property updates for one
+// hotel must preserve first and final listing+post-route invalidation
+// without 20 repeated dirty generations and without touching global/home.
+MAD4B_Public_Critical_CSS_Coverage_V1::public_post_flushed();
+$before=(int)$GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation'];
+$beforeList=(int)$GLOBALS['options']['mad4b_ccss_listing_generation_v1'];
+$beforeGlobal=(int)$GLOBALS['options']['mad4b_ccss_global_generation_v1'];
+$GLOBALS['post_types'][35896]='properties';
+for ($field=0;$field<25;$field++) {
+    MAD4B_Public_Critical_CSS_Coverage_V1::changed_meta(
+       20+$field,35896,'_hotel_gallery_image_'.$field,17118+$field);
+}
+check('25 same-hotel Elementor/JetEngine media changes immediately dirty once',
+  (int)$GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation']===$before+1);
+check('first hotel meta event immediately invalidates its exact original listing',
+  (int)$GLOBALS['options']['mad4b_ccss_listing_generation_v1']===$before+1);
+check('property update never accidentally invalidates global header',
+  (int)$GLOBALS['options']['mad4b_ccss_global_generation_v1']===$beforeGlobal);
+MAD4B_Public_Critical_CSS_Coverage_V1::public_post_flushed();
+check('final 25-event hotel update marks changed source and listing again',
+  (int)$GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation']===$before+2
+  && (int)$GLOBALS['options']['mad4b_ccss_listing_generation_v1']===$before+2);
+check('subsequent content flush is idempotent',
+  (int)$GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation']===$before+2);
+$before=(int)$GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation'];
+$GLOBALS['post_types'][35897]='properties';
+MAD4B_Public_Critical_CSS_Coverage_V1::changed_meta(100,35897,'hotel_image_id',500);
+MAD4B_Public_Critical_CSS_Coverage_V1::public_post_flushed();
+check('one-edit Property save remains original single generation',
+  (int)$GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation']===$before+1);
+$before=(int)$GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation'];
+$GLOBALS['post_types'][60445]='tours-and-activities';
+for($i=0;$i<13;$i++) {
+ MAD4B_Public_Critical_CSS_Coverage_V1::changed_meta($i+1,60445,'tour_hero_image_'.$i,1000+$i);
+}
+MAD4B_Public_Critical_CSS_Coverage_V1::public_post_flushed();
+check('13 tour visual edits preserve final route proof with two events',
+ (int)$GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation']===$before+2);
+$before=(int)$GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation'];
+$GLOBALS['post_types'][60446]='tours-and-activities';
+MAD4B_Public_Critical_CSS_Coverage_V1::changed_meta(1,60446,'tour_hero_image',1000);
+MAD4B_Public_Critical_CSS_Coverage_V1::changed_meta(2,60445,'tour_hero_image',1001);
+MAD4B_Public_Critical_CSS_Coverage_V1::public_post_flushed();
+check('two independent tours preserve separate source revisions',
+ (int)$GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation']===$before+2);
+$before=(int)$GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation'];
+$GLOBALS['post_types'][18888]='page';
+MAD4B_Public_Critical_CSS_Coverage_V1::post_inserted(18888,
+ (object)['post_type'=>'page','post_status'=>'publish'],false,null);
+check('ordinary public page creation still invalidates original page route',
+ (int)$GLOBALS['options']['mad4b_ccss_public_dirty_v1']['generation']===$before+1);
 echo "PASS ".$GLOBALS['checks_count']."/".$GLOBALS['checks_count']." dynamic public coverage route and dependency event invariants\n";

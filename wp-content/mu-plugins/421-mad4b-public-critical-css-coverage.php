@@ -13,6 +13,41 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
     private const TAXONOMIES = ['category','destinations','tour-types','property-types','tour-categories'];
     private const HOSTS = ['tours.dev.mad4b.com','wayfatours.com'];
     private static bool $navigation_dirty_in_request=false;
+    private static array $public_post_dirty_in_request=[];
+    /**
+     * Native Property/tour/article saves can invoke post_updated plus many
+     * Elementor, JetEngine and WPML postmeta handlers in the same PHP
+     * request. The first *real* mutation invalidates its exact object and
+     * listing generation immediately. Later same-object events in this
+     * same request are coalesced, but a final object and listing mark at
+     * shutdown ALWAYS invalidates any concurrent CSS issued midway.
+     *
+     * One-edit saves have exactly their original single generation, so the
+     * existing 422 unrelated-property-only proof is not weakened.
+     * Multiple IDs each get independent first/final object revisions.
+     * There is no clock-based or cross-request invalidation exclusion.
+     */
+    private static function public_post_changed(string $type,int $id): void {
+        if (!self::authorized() || $id<=0 ||
+            !in_array($type,['post','tours-and-activities','properties'],true))return;
+        $key=$type.':'.$id;
+        if (!isset(self::$public_post_dirty_in_request[$key])) {
+            self::$public_post_dirty_in_request[$key]=['type'=>$type,'id'=>$id,'count'=>1];
+            self::mark('post:'.$type,$id);
+            add_action('shutdown',[__CLASS__,'public_post_flushed'],PHP_INT_MAX-2,0);
+            return;
+        }
+        self::$public_post_dirty_in_request[$key]['count']++;
+    }
+    public static function public_post_flushed(): void {
+        if (!self::$public_post_dirty_in_request)return;
+        $items=self::$public_post_dirty_in_request;
+        self::$public_post_dirty_in_request=[];
+        foreach ($items as $item) {
+            if (($item['count']??0)>1)
+                self::mark('post:'.$item['type'],$item['id']);
+        }
+    }
     /**
      * Header and menu changes affect all locales and markets. Keep the
      * *first* global generation bump immediate so an ongoing request
@@ -145,6 +180,8 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
                     ($type==='nav_menu_item'?'navigation':
                      ($type==='tour-rates'?'pricing':'post:'.$type));
                 if ($type==='nav_menu_item')self::navigation_changed($id);
+                elseif (in_array($type,['post','tours-and-activities','properties'],true))
+                    self::public_post_changed($type,$id);
                 else self::mark($scope,$id,$type==='elementor_library');
                 if ($type==='page' && (int)get_option('page_on_front')===$id) self::mark('home',$id,true);
                 return;
@@ -160,7 +197,8 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
         }elseif ($type==='elementor_library') {
             self::mark('template',$id,true);
         }elseif (self::supported_type($type)) {
-            self::mark('post:'.$type,$id);
+            if ($type==='page')self::mark('post:page',$id);
+            else self::public_post_changed($type,$id);
             if ($type==='page' && $id===(int)get_option('page_on_front'))
                 self::mark('home',$id,true);
         }
@@ -173,7 +211,8 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
         }elseif ($type==='elementor_library') {
             self::mark('template',$id,true);
         }elseif (self::supported_type($type)) {
-            self::mark('post:'.$type,$id);
+            if ($type==='page')self::mark('post:page',$id);
+            else self::public_post_changed($type,$id);
             if ($type==='page' && $id===(int)get_option('page_on_front'))
                 self::mark('home',$id,true);
         }
@@ -192,7 +231,9 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
         if (!in_array($taxonomy,self::TAXONOMIES,true))return;
         $post=get_post($id);
         if (!is_object($post) || !self::supported_type((string)($post->post_type??'')))return;
-        self::mark('post:'.$post->post_type,$id);
+        if (in_array($post->post_type,['post','tours-and-activities','properties'],true))
+            self::public_post_changed($post->post_type,$id);
+        else self::mark('post:'.$post->post_type,$id);
         if ($post->post_type==='page' && $id===(int)get_option('page_on_front'))
             self::mark('home',$id,true);
     }
@@ -217,7 +258,9 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
         if (!$isElementor && !$isVisual) return;
         $scope=$type==='elementor_library'?'template':
             ($type==='tour-rates'?'pricing':'post:'.$type);
-        self::mark($scope,$post_id,$type==='elementor_library');
+        if (in_array($type,['post','tours-and-activities','properties'],true))
+            self::public_post_changed($type,$post_id);
+        else self::mark($scope,$post_id,$type==='elementor_library');
         if ($type==='page' && (int)get_option('page_on_front')===$post_id) self::mark('home',$post_id,true);
     }
     public static function term_updated(int $id,int $tt_id=0,string $taxonomy=''): void {

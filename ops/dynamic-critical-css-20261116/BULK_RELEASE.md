@@ -182,3 +182,31 @@ the V2 CSS readiness or CSS source signature requirements.
 
 Original expiry batching and same-route supersession are covered by
 13 isolated fixture checks plus the 19 prior original Bulk invariants.
+
+
+### Per-object native WordPress content transaction coalescing
+
+The original first-party 421 WordPress dirty/event source now coalesces
+duplicate post/meta events for one Tour, Property or Blog Post **within
+a single PHP request**. Its first event immediately marks the original
+global listing generation and the exact object's post-meta generation.
+The final shutdown mark executes only when that same object received
+multiple events, invalidating any 422 CSS certificate issued during the
+remaining in-request content edits. Another HTTP/WP-CLI request always
+gets a new independent first and final mark. One-event updates retain
+their original single generation, preserving 422's existing strict
+unrelated-property-only proof for nonintersecting tours.
+
+This changes neither the PHP 422 consumer SHA (a change would itself
+invalidate many certificates) nor the source/Elementor/browser/CSS
+manifest admission and original six-hour provisional CAS. Page,
+global CSS, navigation, WPML and taxonomy events still follow the
+unchanged original paths; no post updates are globally waived. The
+original 421 SHA and previous first-party nav-coalescing SHA remain
+explicit exact rollback versions.
+
+A hermetic 421 PHP behavioral fixture proves 68/68 invariants including
+25 metadata writes on a single hotel generating exactly two original
+post/listing events, one-event property saves retaining original semantics,
+13 separate tour visual updates, independent two-tour revisions, home
+and WordPress page changes, plus prior native navigation conditions.
