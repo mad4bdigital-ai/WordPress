@@ -563,6 +563,25 @@ function renderReport(data){
             contract.append(el('p','mad4b-pcl-note',
               'Price admission notes: '+priceRole.reasons.join(', ')));
           }
+          const tariff=priceRole.published_public_tariff_evidence;
+          if(tariff && tariff.contract==='mad4b.abela.public-tariff-evidence.v1'){
+            const fares=tariff.money&&tariff.money.foreign_usd_one_way_per_person||{};
+            contract.append(el('h4','','Abela published fares · foreign adults · 2026 · USD per person one-way'));
+            for(const [season,seasonLabel] of [['off_peak','Outside peak'],['peak','Peak season']]){
+              for(const [kind,label] of [['standard','Standard'],['elite','Elite']]){
+                const row=fares[season]&&fares[season][kind];
+                if(!row)continue;
+                contract.append(el('p','mad4b-pcl-note',seasonLabel+' · '+label+
+                  ': shared two-berth $'+String(row.shared_double)+' / sole occupancy $'+
+                  String(row.single_sole_use)));
+              }
+            }
+            contract.append(el('p','mad4b-pcl-warning',
+              'Public tariff only. Children have conflicting published figures. Do not infer Egyptian/Arab, 2027, supplier contract, stock or commercial cost.'));
+            if(tariff.sources&&tariff.sources.official_2026_current_link)
+              contract.append(link(tariff.sources.official_2026_current_link,
+                'Abela current tariff publication'));
+          }
         }
         const todo=el('ul','');
         const tasks={
