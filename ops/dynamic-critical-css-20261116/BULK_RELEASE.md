@@ -24,7 +24,7 @@ The original families WP-Cron job also prepares the next 24 route-specific
 HTML/CSS manifest candidates in original source-family order, without running
 Chromium or altering WordPress/public HTML. Preparation runs with at most
 three source-only compiler threads, retains no more than 96 root-owned
-records per site and expires entries after one hour. A fresh uncached source
+records per site and expires entries after 24 hours. A fresh uncached source
 GET must match original market, currency, Elementor graph, runtime, CSS epoch,
 stylesheet manifest and compiler SHA before using a prepared compiled chunk.
 A miss or mismatch reverts to original source compiler, never a sibling
@@ -83,3 +83,17 @@ expire any actual 422 provisional certificates using exact CAS and route-only
 cache refresh; restore 429 WordPress task profiles and pinned worker/renderer
 as a matched release; and recheck original WordPress plus public readback.
 Never delete source chunks shared by certified routes or purge other markets.
+
+### Revision-safe prepared-source retention
+
+The immutable first-party compiled source cache may survive for 24 hours,
+rather than one hour, because the independent global Chromium QA and original
+WordPress ticket queues can delay publication beyond 60 minutes. Extending
+this PRIVATE source-cache lifetime does **not** extend the six-hour public
+provisional certificate or qualify an old CSS payload. Reuse still requires
+current fresh uncached original HTML, exact company, WordPress route revision,
+Elementor source graph, WPML language, WCML country/currency, 422 runtime and
+consumer SHA, CSS epoch, full ordered CSS dependency manifest and compiler
+source hash. The original 422 publisher independently recompiles source and
+executes CAS on the live certificate. No cross-route/market certificate reuse.
+The per-site 96-record retention bound and browser/CPU gates remain unchanged.

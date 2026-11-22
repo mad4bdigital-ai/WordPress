@@ -23,6 +23,7 @@ HERE=Path(__file__).resolve().parent
 sp=importlib.util.spec_from_file_location('mad4b_ordered_css_source',HERE/'public-css-dependency-manifest.py')
 ordered=importlib.util.module_from_spec(sp);sp.loader.exec_module(ordered)
 CONTRACT='mad4b.public-css.manifest-observer.v1'
+FAMILY_PREPARED_MAX_AGE_SECONDS=24*3600
 FAMILY_PREPARED_ROOT=Path('/opt/mad4b-company-provisioning/reports/public-critical-css-v1')
 UA='Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Mobile Safari/537.36'
 ACCEPT='text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8'
@@ -107,7 +108,7 @@ def _fresh_family_compiled(catalog,route,manifest,market,currency,css_epoch,runt
                 (HERE/'public-css-dependency-manifest.py').read_bytes()).hexdigest()
             or metadata.get('manifest_sha256')!=manifest['manifest_sha256']
             or type(metadata.get('prepared_at'))is not int
-            or not 0<=int(time.time())-metadata['prepared_at']<=3600):
+            or not 0<=int(time.time())-metadata['prepared_at']<=FAMILY_PREPARED_MAX_AGE_SECONDS):
             return None
         historical=json.loads(protected('css-dependencies.json',3_000_000).read_text())
         if historical!=manifest:return None

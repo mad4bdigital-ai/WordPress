@@ -20,7 +20,7 @@ CONTRACT='mad4b.css.v2.family-prepared-source.v1'
 MAX_PREPARE=24
 MAX_PARALLEL=3
 MAX_RETAIN=96
-TTL=3600
+TTL=24*3600
 
 def family_order(site,catalog):
     rows=queue.safe_catalog(catalog,site)

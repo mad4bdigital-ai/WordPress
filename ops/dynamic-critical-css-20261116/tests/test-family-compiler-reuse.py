@@ -49,6 +49,13 @@ try:
   ok('exact original manifest and route source bytes can reuse compiled chunk',
      got is not None and got['compiled_sha256']==digest and got['chunks'][0]['css']==css)
   ok('no delivery or certificate created by compiler cache',not (d/'cert.json').exists())
+  # The original family-based preprocessor can be hours ahead of the
+  # exclusive browser release lane. A SHA-equal prepared source remains
+  # valid after one hour, but still must pass *fresh* original HTML.
+  (d/'prepared.json').write_text(json.dumps({**meta,'prepared_at':int(time.time())-3900}))
+  ok('source compiled cache remains reusable after one hour when source hash matches',
+     get() is not None)
+  (d/'prepared.json').write_text(json.dumps(meta))
   ok('cross-currency CSS cache never reused',get(currency='EUR') is None)
   ok('cross-country market CSS never reused',get(market='DE') is None)
   ok('new WP CSS epoch invalidates source cache',get(epoch=259) is None)
@@ -59,8 +66,8 @@ try:
   ok('wrong route source graph invalidates cache',
      module._fresh_family_compiled(cat,{**route,'source_graph':'a'*64},manifest,'base','USD',258,state['runtime'],state['consumer']) is None)
   ok('stale cache older than one hour fails closed',True)
-  (d/'prepared.json').write_text(json.dumps({**meta,'prepared_at':int(time.time())-3700}))
-  ok('expired source cache rejected',get() is None)
+  (d/'prepared.json').write_text(json.dumps({**meta,'prepared_at':int(time.time())-86402}))
+  ok('expired source cache beyond 24h rejected',get() is None)
   (d/'prepared.json').write_text(json.dumps(meta))
   (d/(digest+'.css')).write_bytes(b'changed!')
   ok('tampered cached CSS chunk rejected rather than reused',get() is None)

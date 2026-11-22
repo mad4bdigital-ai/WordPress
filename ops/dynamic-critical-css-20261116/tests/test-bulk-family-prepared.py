@@ -67,8 +67,8 @@ try:
   ok('route revision invalidate source',not m.matched_meta(meta,'wayfa',{**row,'revision':7},altered,int(time.time())))
   ok('CSS manifest compiler source changes invalidate cache',
      not m.matched_meta({**meta,'compiler_sha':'f'*64},'wayfa',row,altered,int(time.time())))
-  ok('stale source prepared >1h never reusable',
-     not m.matched_meta({**meta,'prepared_at':int(time.time())-3601},'wayfa',row,altered,int(time.time())))
+  ok('stale source prepared after 24h never reusable',
+     not m.matched_meta({**meta,'prepared_at':int(time.time())-86401},'wayfa',row,altered,int(time.time())))
   ok('WCML context cannot be guessed from generic family',
      meta['market_country']=='base' and meta['currency']=='USD')
   (m.ROOT/'wayfa'/'bulk-publish-attempts.json').write_text(json.dumps({
