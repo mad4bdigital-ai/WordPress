@@ -1,0 +1,19 @@
+{
+  "authority_effect": "none",
+  "contract": "mad4b.wayfa-live-first-parity-candidate.v1",
+  "files": {
+    "runtime/assets/admin-settings-persistence.js": "6bf359c21d76c1856f70d73ed8468d475e0fd8cb30f1f506f586cdddea25a553",
+    "runtime/assets/deferred-admin-reports.js": "fde2a7a052938b26967061719d29d7aa9a42aad7699c1dc697a2e240d42bfab7",
+    "runtime/config/certified-provider-profiles.json": "b66d82c06ba735a3ea0e7c3b8035741d64ec57318809d6002b5cdb1c3c14c80b",
+    "runtime/config/mcp-protocol-profiles.json": "427cfc79b3e5fb46ee9ce874680ff219a988529eeab1206ea1246469967f1ecc",
+    "runtime/config/runtime-release-policy.json": "c08a542c11f9418f7ba443aeb612ae4a2acc9815f22e5fc1f0a824756894e16e",
+    "runtime/includes/class-mad4b-scp-admin-settings-persistence.php": "2bc7457c374ece48e4072d4bb1c8f8bac8826f18ceabe22cee81d9aafcf876b1",
+    "runtime/includes/class-mad4b-scp-deferred-admin-reports.php": "f94c1befb9c97183d4b860f623f9a5cab6e1259715677ccdd524badd80f9fb9d"
+  },
+  "runtime_deployed_separately": true,
+  "signed_release_provenance": false,
+  "snapshot_version": "1.0.0",
+  "source_origin": "https://tours.dev.mad4b.com",
+  "target_origin": "https://wayfatours.com",
+  "unreconciled_shared_file_count_at_capture": 78
+}
