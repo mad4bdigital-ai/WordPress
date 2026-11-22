@@ -71,6 +71,26 @@ with tempfile.TemporaryDirectory() as root:
   check('batch launches exactly 2 independent source keys',len(outputs)==2 and len(set(outputs))==2)
   ledger=json.loads((publisher.qa.ROOT/'wayfa'/'bulk-publish-attempts.json').read_text())
   check('private ledger safely persists exact per-route attempts',len(ledger['routes'])==2)
+  check('persistent cursor advances past both attempted routes',
+        ledger['next_index']==2)
+  # A later ticket after the original cooldown MUST continue with route 3,
+  # not return to the first two. This is what makes 53 waves achievable.
+  publisher.run('wayfa')
+  check('next ticket starts from previously unvisited source route',
+        outputs[2]==f'{3:064x}')
+  ledger=json.loads((publisher.qa.ROOT/'wayfa'/'bulk-publish-attempts.json').read_text())
+  check('cursor wraps fairly after the final route',ledger['next_index']==0)
+  publisher.run('wayfa')
+  check('fresh cooldown blocks immediate reissue of same three routes',
+        len(outputs)==3)
+  # Validate first-class storage input rejects forged cursor and continues
+  # to reject malformed route attempt receipts.
+  bad={**ledger,'next_index':-1}
+  (publisher.qa.ROOT/'wayfa'/'bulk-publish-attempts.json').write_text(json.dumps(bad))
+  try: publisher.history(publisher.qa.ROOT/'wayfa','wayfa')
+  except ValueError:pass
+  else:raise AssertionError('unsafe rotation cursor admitted')
+  check('negative or untrusted rotation cursor fails closed',True)
  finally:
   publisher.planner.write_plan=oldplan
   publisher.subprocess.run=oldproc

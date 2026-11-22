@@ -20,13 +20,16 @@ def atomic(path,doc):
     os.replace(temp,path)
 def history(base,site):
     path=base/'bulk-publish-attempts.json'
-    if not path.exists():return {},path
+    if not path.exists():return {},path,0
     doc=qa.read(path,250000)
     if doc.get('contract')!='mad4b.css.v2.bulk.publish-attempts.v1' or doc.get('site')!=site:
         raise ValueError('foreign-bulk-ledger')
     routes=doc.get('routes',{})
     if not isinstance(routes,dict) or len(routes)>30000:raise ValueError('unsafe-bulk-attempts')
-    return routes,path
+    cursor=doc.get('next_index',0)
+    if type(cursor) is not int or not 0<=cursor<1<<24:
+        raise ValueError('invalid-bulk-fair-rotation-cursor')
+    return routes,path,cursor
 def run(site):
     if site not in qa.runner.CONFIG:raise ValueError('unregistered-site')
     root=qa.ROOT/site
@@ -41,22 +44,26 @@ def run(site):
     pending=qa.pending_rows(site)
     if len(pending)>=MAX_ACTIVE_PENDING:
         print('BULK_CCSS_PUBLISH_PENDING_CAP',site,len(pending));return
-    attempts,p=history(root,site)
+    attempts,p,cursor=history(root,site)
     now=int(time.time())
     remaining=MAX_ACTIVE_PENDING-len(pending)
     limit=min(MAX_PER_TICKET,remaining)
     pending_routes={x[2]['route_key'] for x in pending}
-    # Avoid re-releasing routes pending QA or retrying the same failing
-    # source over and over. Original public queue is still the authority.
-    candidates=[r for wave in plan['waves'] for r in wave['routes']
-      if r['route_key'] not in pending_routes
-      and now-int(attempts.get(r['route_key'],0))>=1800]
-    # Batch-first default is fair spread across source families/WPML, not
-    # arbitrary path order. The source-bound planner already rotates families.
+    # Keep the source-family/WPML plan order, but preserve a cursor across
+    # tickets. A fixed prefix would reattempt the same pages every 30 minutes
+    # and starve later catalog routes forever. The cursor never grants CSS.
+    ordered=[r for wave in plan['waves'] for r in wave['routes']]
+    if not ordered:print('BULK_CCSS_PUBLISH_NO_ROUTES',site);return
+    cursor=cursor%len(ordered)
     launched=0;deferrals=0;last_reason=''
-    for candidate in candidates[:max(4,limit*3)]:
-        if launched>=limit:break
+    for offset in range(len(ordered)):
+        if launched>=limit or launched+deferrals>=max(4,limit*3):break
+        selected_index=(cursor+offset)%len(ordered)
+        candidate=ordered[selected_index]
         key=candidate['route_key']
+        if (key in pending_routes
+            or now-int(attempts.get(key,0))<1800):
+            continue
         if not re.fullmatch('[a-f0-9]{64}',key):raise ValueError('unsafe-bulk-route-key')
         # One original route CSS source capture, and release to the exact
         # source/market key. No performance QA runs in this phase.
@@ -70,8 +77,10 @@ def run(site):
         lines=out.stdout.splitlines()
         verified=[x for x in lines if x.startswith('BULK_CCSS_RELEASED '+site+' '+key+' ')]
         attempts[key]=int(time.time())
+        next_cursor=(selected_index+1)%len(ordered)
         atomic(p,{'contract':'mad4b.css.v2.bulk.publish-attempts.v1',
-            'site':site,'updated_at':int(time.time()),'routes':attempts})
+            'site':site,'updated_at':int(time.time()),'next_index':next_cursor,
+            'routes':attempts})
         if len(verified)==1 and out.returncode==0:
             launched+=1
             print(verified[0],flush=True)
