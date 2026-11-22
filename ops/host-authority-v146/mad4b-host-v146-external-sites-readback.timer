@@ -1,0 +1,12 @@
+[Unit]
+Description=Refresh exact managed external site/hosting bindings every 60 minutes
+
+[Timer]
+OnCalendar=*-*-* *:25:00
+Persistent=true
+RandomizedDelaySec=60
+AccuracySec=1min
+Unit=mad4b-host-v146-external-sites-readback.service
+
+[Install]
+WantedBy=timers.target

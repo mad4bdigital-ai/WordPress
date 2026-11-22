@@ -164,7 +164,7 @@ class Node {
 }
 const nodes=new Map();
 for(const id of ["m-status","m-authority","m-transport","m-grant","m-grant-note",
- "m-grants","m-requests","m-jobs","m-mode","m-reason","m-refresh"])
+ "m-grants","m-requests","m-jobs","m-hosts","m-mode","m-reason","m-refresh"])
  nodes.set(id,new Node(id));
 nodes.get("m-mode").value="one_time";
 nodes.get("m-reason").value="Specific controlled maintenance";
@@ -175,7 +175,8 @@ const document={getElementById:id=>id==="mad4b-remote-operations-v145"?root:null
 const calls=[];
 const overview={contract:"mad4b.remote-operations-owner-console.v145",
  authorized:true,companies:{},grants:[],transports:[],requests:[],jobs:[],
- v3:{state:"MISSING_OR_INVALID",write_authorized:false,signature_verified:false,readback_verified:false}};
+ v3:{state:"MISSING_OR_INVALID",write_authorized:false,signature_verified:false,readback_verified:false},
+ external_hosts:[]};
 const fetch=async (url,options)=>{calls.push({url,options});return {ok:true,status:200,json:async()=>overview};};
 const window={MAD4BRemoteOperationsV145:{overview:"/wp-json/mad4b-remote-operations/v1/overview",
 root:"/wp-json/mad4b/v1/central-execution-lanes/",nonce:"wpnonce",actor:42},
@@ -186,7 +187,7 @@ setImmediate(()=>{
  assert.equal(calls[0].options.method,"GET");
  assert.equal(calls[0].options.headers["X-WP-Nonce"],"wpnonce");
  assert.equal(nodes.get("m-grant").disabled,true);
- assert.match(nodes.get("m-status").textContent,/Loaded 0 grants/);
+ assert.match(nodes.get("m-status").textContent,/0 grants/);
  console.log("V145_UI_INITIAL_RENDER_READ_ONLY_PASS");
 });
 '''.replace("__JS__",json.dumps(js))
@@ -196,3 +197,39 @@ setImmediate(()=>{
 
 if __name__=="__main__":
     unittest.main()
+
+class ExternalHostProjection(unittest.TestCase):
+    def test_live_exact_host_evidence_bound_to_company_environment_and_freshness(self):
+        code=php_eval('''
+$reg=["all-royal-egypt"=>["staging"=>[
+  "site_uuid"=>"49c562d1-8f2f-456f-b454-26816c6ba4cb",
+  "origin"=>"https://staging.allroyalegypt.com"]]];
+$base=["company"=>"all-royal-egypt","environment"=>"staging",
+ "host_id"=>"hosting-2","site_uuid"=>"49c562d1-8f2f-456f-b454-26816c6ba4cb",
+ "canonical_origin"=>"https://staging.allroyalegypt.com",
+ "identity_verified"=>true,"pinned_ssh_verified"=>true,
+ "host_company_binding_readonly_verified"=>true];
+$source=["contract"=>MAD4B_Remote_Operations_Admin_V145::EXTERNAL_CONTRACT,
+ "write_authorized"=>false,"owner_stepup_v3_satisfied_by_ssh"=>false,
+ "ssh_identity_does_not_authorize_write"=>true,
+ "observed_epoch"=>time(),"sites"=>[$base]];
+$GLOBALS["mock_options"][MAD4B_Remote_Operations_Admin_V145::EXTERNAL_READBACK]=$source;
+$ok=MAD4B_Remote_Operations_Admin_V145::external_host_evidence($reg);
+$bad=$source;$bad["sites"][0]["host_id"]="hosting-1";
+$GLOBALS["mock_options"][MAD4B_Remote_Operations_Admin_V145::EXTERNAL_READBACK]=$bad;
+$wrong=MAD4B_Remote_Operations_Admin_V145::external_host_evidence($reg);
+$stale=$source;$stale["observed_epoch"]=time()-9000;
+$GLOBALS["mock_options"][MAD4B_Remote_Operations_Admin_V145::EXTERNAL_READBACK]=$stale;
+$expired=MAD4B_Remote_Operations_Admin_V145::external_host_evidence($reg);
+$hijack=$source;$hijack["write_authorized"]=true;
+$GLOBALS["mock_options"][MAD4B_Remote_Operations_Admin_V145::EXTERNAL_READBACK]=$hijack;
+$write=MAD4B_Remote_Operations_Admin_V145::external_host_evidence($reg);
+echo json_encode(["ok"=>$ok,"wrong"=>$wrong,"expired"=>$expired,"write"=>$write]);
+''')
+        data=json.loads(run_php(code))
+        self.assertEqual(len(data["ok"]),1)
+        self.assertTrue(data["ok"][0]["site_host_identity_verified"])
+        self.assertFalse(data["ok"][0]["host_write_authorized"])
+        self.assertEqual(data["wrong"],[])
+        self.assertEqual(data["expired"],[])
+        self.assertEqual(data["write"],[])
