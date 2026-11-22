@@ -249,6 +249,18 @@ final class MAD4B_Package_Stage_Rate_Guard_V1 {
         $tier = self::canonicalTier($tier);
         $out['tier_id'] = $tier;
         if (!$tier) $block('package_level_required');
+        // Operations' explicit Tour assignment always outranks Company
+        // defaults; Company Policy is inherited only for an unassigned Tour.
+        if(class_exists('MAD4B_Company_Package_Levels_V1',false)){
+            $operational=MAD4B_Company_Package_Levels_V1::resolve($parent);
+            $out['package_tier_source']=$operational['source'];
+            $out['effective_tier_ids']=$operational['effective_tier_ids'];
+            $out['company_tier_policy_rule']=$operational['company_rule_id'];
+            if(!$tier || !in_array($tier,$operational['effective_tier_ids'],true))
+                $block($operational['source']==='unassigned_company_policy_missing'
+                    ?'company_package_default_levels_not_configured'
+                    :'tour_package_level_not_in_effective_operational_assignment');
+        }else $block('package_level_operational_strategy_provider_unavailable');
         $plan = get_post_meta($parent,self::SOURCE,true);
         $binding = get_post_meta($parent,self::BINDINGS,true);
         if (!is_array($plan) || ($plan['schema']??'')!=='mad4b.package-accommodation-source-plan.v1' ||
