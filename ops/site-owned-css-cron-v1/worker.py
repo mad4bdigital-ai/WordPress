@@ -68,7 +68,7 @@ def read_site_profile(path=None):
     ) or not isinstance(host,str) or not re.fullmatch(r'[a-z0-9.-]{3,253}',host):
         raise ValueError('site_cron_identity')
     if environment not in ('staging','production') or (
-        not isinstance(tasks,list) or not tasks or len(tasks)>6
+        not isinstance(tasks,list) or not tasks or len(tasks)>8
     ) or len(set(tasks))!=len(tasks) or any(not isinstance(t,str) for t in tasks):
         raise ValueError('site_cron_tasks_invalid')
     # Conservative first-party runtime registration. A different company
@@ -93,6 +93,8 @@ CONTAINERS={SITE:PROFILE['php_container']}
 
 TASKS={
  'public':lambda s:['/usr/bin/python3',str(SOURCE/'run-public-route.py'),s],
+ 'bulk_publish':lambda s:['/usr/bin/python3',str(SOURCE/'bulk-publish.py'),s],
+ 'bulk_qa':lambda s:['/usr/bin/python3',str(SOURCE/'bulk-postrelease-qa.py'),s],
  'first_fold':lambda s:(
     ['/usr/bin/env','MAD4B_SOURCE_CSS_NETWORK_PROFILE=host',
      '/usr/bin/bash',str(SOURCE/'run-site.sh'),s] if s=='source'
@@ -110,7 +112,7 @@ PHP_CLASS='MAD4B_CCSS_WPCron_Dispatch_V1'
 TICK='mad4b_css_scheduler_tick_v1'
 DIRTY='mad4b_css_scheduler_dirty_v1'
 COOLDOWN=300
-JOB_TIMEOUT={'first_fold':1280,'public':1250,'families':300,'visual':400,
+JOB_TIMEOUT={'first_fold':1280,'public':1250,'bulk_publish':1400,'bulk_qa':1230,'families':300,'visual':400,
              'audit':300,'retention':300}
 HOST_WAKE_BUDGET=1380
 
@@ -165,7 +167,7 @@ def ack(site,job,jid):
     return result.returncode==0 and 'MAD4B_CSS_ACK=1' in result.stdout
 def available_candidates(site,data,history,now):
     rows=[]
-    ordering={'families':0,'public':1,'first_fold':2,'visual':3,'audit':4,'retention':5}
+    ordering={'families':0,'bulk_qa':1,'bulk_publish':2,'public':3,'first_fold':4,'visual':5,'audit':6,'retention':7}
     for job,rec in data.get('pending',{}).items():
         if job not in TASKS or job not in PROFILE['tasks'] or not isinstance(rec,dict):
             continue
@@ -367,6 +369,18 @@ def verified_task_outcome(site,job,returncode,stdout,stderr):
     if returncode != 0:
         return False,'worker_exit_nonzero'
     lines=[line.strip() for line in stdout.splitlines() if line.strip()]
+    if job in ('bulk_publish','bulk_qa'):
+        resource_markers=('BULK_CCSS_PUBLISH_PENDING_CAP '+site,
+                          'BULK_CCSS_QA_HOST_BUSY '+site,
+                          'BULK_CCSS_QA_DEFER_RESOURCE '+site)
+        if any(line.startswith(resource_markers) for line in lines):
+            return False,'host_resource_deferred'
+        if job=='bulk_publish':
+            good=any(line.startswith('BULK_CCSS_PUBLISH_COMPLETED '+site+' ') for line in lines)
+            return good,'verified_bounded_bulk_publication' if good else 'bulk_publication_deferred'
+        good=any(line.startswith(('BULK_CCSS_QA_COMPLETED '+site+' ',
+                                  'BULK_CCSS_QA_IDLE '+site)) for line in lines)
+        return good,'verified_independent_postrelease_qa' if good else 'bulk_qa_deferred'
     if job=='public':
         # Explicit resource/lock deferrals occur BEFORE browser QA. Never
         # convert them into failed source certificates or long backoff.
