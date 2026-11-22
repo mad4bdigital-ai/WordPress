@@ -356,7 +356,7 @@ final class MAD4B_Smart_Itinerary_Choices_V1 {
           [],substr(hash_file('sha256',$path),0,12),true);
         wp_add_inline_script($handle,
           'window.MAD4BSmartOvernightV1='.wp_json_encode([
-            'ajax_url'=>admin_url('admin-ajax.php'),
+            'ajax_url'=>set_url_scheme(admin_url('admin-ajax.php'),'https'),
             'action'=>self::ACTION,'nonce'=>wp_create_nonce(self::NONCE),
             'tour_id'=>$post,'new_post'=>($post===0),'labels'=>self::labels()
           ],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE).';','before');
