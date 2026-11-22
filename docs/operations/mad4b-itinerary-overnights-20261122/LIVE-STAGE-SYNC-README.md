@@ -72,3 +72,25 @@ Includes original CPT serialized schema, all eight English/Spanish itineraries a
 For rollback, restore the exact previous code files and prior CPT field definition and original posts using the checkpoint after validating that subsequent editors did not introduce newer legitimate changes. **Never bulk restore a stale DB backup over new user edits.** The added fields and stores are additive and do not authorize changing Rate/booking settings.
 
 This is a **review-only, live-first reconciliation branch**, independent of PR #1003 (transport). Check parity with already deployed live versions and integrate selectively; **do not wholesale deploy master** or merge a stale PR to production.
+
+
+## Smart JetEngine itinerary dropdowns — live extension 2026-11-22
+
+The `itinerary_item` native select fields are **not left as unconditional manual choices** in the WordPress editor. Two additive files, deployed identically on both live sites, overlay contextual editor-only eligibility on the native JetEngine `<select>` elements:
+
+- `wp-content/mu-plugins/mad4b-smart-itinerary-choices-v1.php`: private nonce-protected WordPress AJAX; `edit_post` + editor authorization. Uses the current tour's **own** attached Silver/Gold/Diamond tiers, actual overnight stage cities and exact tour destinations, the native `stageDestinationScope()` and `propertyEligibility()`, `prop_use_in_tour_rate_generation`, published owner-approved Hotels cost-source receipts and official property-type taxonomy. It must not import tier IDs from the other company or infer supplier availability from published state.
+- `wp-content/mu-plugins/assets/mad4b-smart-itinerary-overnight-v1.js`: scoped exclusively to the `post.php` editor of `tours-and-activities`. Per repeater day, hides/disables new selections without a qualified source; reacts to Hotel type vs city and the reverse; allows **None** only on the last departure day; allows a Nile Cruise only during the native, duration-and-direction-verified program days **and** when a published owner-approved Cruise Property exists in the company catalog. A cruise program is editorially admissible but not confirmed vessel or sailing inventory. Sleeper Train is hidden until its overnight supplier is certified. Actual legacy values remain visible/selectable with an explicit warning, never silently removed or replaced.
+- Day/locale rule: if an existing seeded itinerary has changed and its projection no longer matches source stage geometry, backend rejects new eligibility until repaired. WPML post day keys must match the canonical EN itinerary. No new commercial Rates, dates, supplier receipts, or checkout authority.
+- Site-wide setting is untouched: there is no new public itinerary panel, public REST endpoint, or behavior for editing unrelated posts. Admin-only choices are translated from **WordPress dashboard locale** (Arabic, English and Spanish); the script uses HTTPS with content-hash version for correct cache invalidation.
+
+**Important:** This is editor **structural eligibility**, not date-specific Hotel inventory. A published Hotel cost receipt or a verified Cruise Program can offer an itinerary choice without being commercially bookable.
+
+Validated native protected AJAX matrix for Tour 60437:
+- **Tours.dev:** Cairo 9 qualifying Hotels, Aswan 1, Resort 0; EN tier IDs Silver/Gold.
+- **Wayfatours:** Cairo 15 qualifying Hotels, Aswan 1, Resort 0; EN tier IDs Silver/Gold/Diamond.
+- Both sites: native Cruise Program days 4–6 eligible for itinerary planning; overnight Train at that stage not supplier-qualified; no Checkout.
+- 8 package Tours / 66 itinerary day records audited per site. Existing selections requiring review are **9 source, 5 Wayfa**. Reasons: source Tour 57562 missing native package-tier terms (4 Hotel nights); 2 Sleeper Train nights in Tour 60623 without qualified overnight supplier (both sites); 3 Sharm Resort nights in Tour 60629 without owner-approved and correctly categorized Resort cost Property (both sites). **All remain intact; they are flagged, not auto-rewritten.**
+
+Tests: `node --test tests/mad4b-smart-itinerary-overnight-v1.test.js` (**10/10** with a synthetic matrix on both runs). With real private AJAX evidence on an authorized VPS environment, the same test reads `MAD4B_MATRIX_JSON=<signed-backend-result.json>` and validates the real nonbookable contract. Live PHP lint, source and Wayfa native editor-only script registration, signed AJAX, permission-denial, and HTTPS URL (HTTP 200) were verified. A GUI login-based browser walkthrough of actual JetEngine Vue controls **has not been independently certified**; do not claim browser QA. In particular, any future switch to a non-native custom select renderer needs UI adapter testing.
+
+Evidence: `/opt/mad4b-package-checkpoints/2026-11-22-smart-itinerary-options/`. Existing native JetEngine option data is deliberately kept as an emergency editorial fallback if the overlay is removed; normal editor mode uses a fail-closed authenticated filter, and missing eligibility data does not authorize newly selected services.
