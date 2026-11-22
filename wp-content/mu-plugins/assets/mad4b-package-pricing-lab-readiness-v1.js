@@ -69,10 +69,14 @@ const linkedTier=query.get('mad4b_package_tier');
 if(linkedTour&&packages.some(x=>String(x.id)===linkedTour))p.value=linkedTour;
 const b=el('button','button button-primary','Inspect original sources');
 b.type='submit';
+const date=el('input','regular-text');
+date.type='date';date.id='mad4b-pcl-preview-start-date';
+date.setAttribute('aria-label','Tour travel start date for stage-date preview only');
 const form=el('form','mad4b-pcl-form');
 form.append(
   row('label',[el('span','','Package Tour'),p],'mad4b-pcl-label'),
   row('label',[el('span','','Package level'),t],'mad4b-pcl-label'),
+  row('label',[el('span','','Tour start date — operational preview only'),date],'mad4b-pcl-label'),
   b
 );
 // One primary editor per source: navigation never duplicates editable JetEngine fields.
@@ -110,7 +114,17 @@ const metric=(value,label)=>{
   return box;
 };
 const status=(yes,good,bad)=>el('span',yes?'mad4b-pcl-good':'mad4b-pcl-missing',yes?good:bad);
+function dayDate(offset){
+  const raw=date.value||'';
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(raw))return '';
+  const d=new Date(raw+'T12:00:00Z');
+  if(!Number.isFinite(d.getTime())||d.toISOString().slice(0,10)!==raw)return '';
+  d.setUTCDate(d.getUTCDate()+offset);
+  return d.toISOString().slice(0,10);
+}
+let latestReport=null;
 function renderReport(data){
+  latestReport=data;
   result.replaceChildren();
   const s=data.summary||{};
   const h=el('div','mad4b-pcl-summary');
@@ -498,6 +512,76 @@ function renderReport(data){
         ' → '+(route.to||'?')+' · '+trains.length+' published train candidate(s)'));
       scout.append(el('p','mad4b-pcl-warning',
         'Train station order is a route proposal, not a verified operating timetable, booked sleeper cabin or approved supplier fare.'));
+      const proposed=source.operational_route_proposal||null;
+      if(proposed && proposed.commercially_selected===false &&
+         proposed.rate_generation_authorized===false){
+        const contract=el('div','mad4b-pcl-rail-qualification');
+        const seg=proposed.segment||{};
+        const serviceDate=dayDate(Number(proposed.day_offset||0));
+        contract.append(el('h4','','Rail Supplier Qualification · Day '+String(proposed.day_number)));
+        contract.append(el('p','',
+          'Route: '+String(proposed.route_from||'?')+' → '+String(proposed.route_to||'?')+
+          ' · suggested train #'+String(proposed.train_number||'?')+
+          ' · declared operator '+String(proposed.declared_operator||'Not declared')));
+        contract.append(el('p','',
+          'Boarding station #'+String(seg.boarding_station_id||'?')+
+          ' at '+String(seg.boarding_time||'?')+
+          ' → arrival station #'+String(seg.arrival_station_id||'?')+
+          ' at '+String(seg.arrival_time||'?')+
+          '. These times are source records, NOT a confirmed timetable.'));
+        contract.append(el('p','mad4b-pcl-note',
+          'Planned service date: '+(serviceDate||'select a Tour start date above')+
+          ' · cabin types to quote: Standard or Elite · possible supplier cost basis: per cabin per trip or per passenger per trip.'));
+        const priceRole=proposed.direct_or_rate_price_source_review||null;
+        if(priceRole && priceRole.contract==='mad4b.transport.start-price-roles-and-source-weight.v1'){
+          const order=priceRole.global_priority||{};
+          const modeLabels={
+            indicative_only:'Indicative only',
+            cost_reference_only:'Cost reference for planning only',
+            both:'Both: indicative + planning cost'
+          };
+          contract.append(el('h4','','Transportation Price Source and Fallback'));
+          contract.append(el('p','',
+            'Source usage: '+(modeLabels[priceRole.mode]||String(priceRole.mode))+
+            ' · direct: '+(priceRole.direct&&priceRole.direct.price_present
+              ?String(priceRole.direct.amount)+' '+String(priceRole.direct.currency)+' / '+String(priceRole.direct.unit)
+              :'not entered')+
+            ' · published eligible cost Rate candidates: '+
+               String((priceRole.rate_cost_candidates||[]).filter(x=>x.planning_cost_candidate).length)));
+          contract.append(el('p','mad4b-pcl-note',
+            'Weights: Rate '+String(order.rate_weight??'—')+
+            ' / Direct '+String(order.direct_weight??'—')+
+            ' · fallback '+String(order.fallback||'—')+
+            ' · one qualifying source wins, amounts are never blended.'));
+          contract.append(el('p','mad4b-pcl-warning',
+            'Planning cost: '+(priceRole.planning_cost_source
+             ?priceRole.planning_cost_source+' '+String(priceRole.planning_cost_amount)+' '+
+                String(priceRole.planning_cost_currency)+' / '+String(priceRole.planning_cost_unit)
+             :'not available')+
+            '. Mode activation is not a signed supplier price or booking authorization.'));
+          if((priceRole.reasons||[]).length){
+            contract.append(el('p','mad4b-pcl-note',
+              'Price admission notes: '+priceRole.reasons.join(', ')));
+          }
+        }
+        const todo=el('ul','');
+        const tasks={
+          operator_confirmed_current_date_timetable:'Confirm actual train, station and times for the selected travel date',
+          supplier_agreement_or_actual_ticket_quote:'Collect Abela contractual rate or dated ticket quotation',
+          cabin_class_and_number_of_passengers:'Specify Standard/Elite and single/double cabin allocations',
+          adults_children_infants_cabin_rules:'Confirm adult, child and infant berth-sharing rules',
+          ticket_cost_currency_meals_and_cancellation_terms:'Confirm total cost, currency, dinner/breakfast and cancellation policy',
+          date_specific_cabin_availability_reference:'Record supplier inventory or booking reference and expiration',
+          signed_supplier_cost_approval:'Obtain original authorized supplier cost approval before enabling any Rate'
+        };
+        for(const code of proposed.missing_evidence||[]){
+          todo.append(el('li','',tasks[code]||String(code)));
+        }
+        contract.append(todo);
+        contract.append(el('p','mad4b-pcl-warning',
+          'Operations proposal only. No train, compartment or cost has been approved. Avoid using the hotel-night rate for this stage.'));
+        scout.append(contract);
+      }
       for(const train of trains){
         scout.append(row('p',[
           link(train.edit_url,train.title||('Train #'+train.id)),
@@ -505,6 +589,15 @@ function renderReport(data){
             ' · '+String(train.published_transport_rate_count||0)+
             ' published transport rates · sleeper cabin fare not verified')
         ]));
+        scout.append(el('p','',
+          'Tour Rate opt-in: '+(train.tour_rate_generation_enabled?'enabled for train record (not cost-authorized)':
+            'OFF — operator has not enabled this transport service for automatic Tour Rates')+
+          ' · approved supplier contract: NO · dated sleeper fare: NOT VERIFIED'));
+        scout.append(row('p',[
+          link(train.public_timetable_reference,'Public timetable reference'),
+          el('span','',' · '),
+          link(train.official_operator_booking_url,'Verify directly with Abela')
+        ],'mad4b-pcl-source-line'));
         if(train.native_terminal_needs_schedule_revalidation){
           scout.append(el('p','mad4b-pcl-warning',
             'Station source conflict: the saved train stop data uses Ramses. The late-2026 published reference lists Upper Egypt (Bashtil) as the Cairo terminal. Revalidate the service station, date, ticket class and fare with Abela before booking.'));
@@ -626,6 +719,9 @@ async function load(event){
   }
 }
 form.addEventListener('submit',load);
+date.addEventListener('change',()=>{
+  if(latestReport)renderReport(latestReport);
+});
 p.addEventListener('change',()=>{applyTourTierOptions();load();});
 t.addEventListener('change',load);
 load();
