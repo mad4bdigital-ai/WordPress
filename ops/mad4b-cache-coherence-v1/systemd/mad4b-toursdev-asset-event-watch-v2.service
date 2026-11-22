@@ -1,0 +1,26 @@
+[Unit]
+Description=MAD4B Tours.dev event-driven LiteSpeed CSS/JS FastCGI repair with native inotify
+Wants=docker.service
+After=docker.service
+StartLimitIntervalSec=180
+StartLimitBurst=15
+
+[Service]
+Type=simple
+User=root
+UMask=0077
+ExecStart=/usr/bin/python3 -u /opt/mad4b-company-provisioning/bin/toursdev-litespeed-asset-event-watch-v2.py
+Restart=always
+RestartSec=3s
+TimeoutStopSec=10s
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+MemoryMax=120M
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+
+[Install]
+WantedBy=multi-user.target
