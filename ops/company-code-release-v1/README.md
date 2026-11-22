@@ -273,12 +273,13 @@ These guards do not issue 305 Jobs, Broker Grants or 313 receipts.
 
 ### Tours.dev live source — exact staging preview (non-authorizing)
 
-Run the **existing** `company_code_release.py live-staging-plan` on the enrolled
-VPS only, after enrolling the two `live_source_staging_preview_targets`
+Run `python3 ops/company-code-release-v1/live_source_staging_preview.py` from the existing
+company-code-release source on the enrolled VPS only, after enrolling the two `live_source_staging_preview_targets`
 with `preview_only: true` in the Root-owned policy. This reads the pinned
 778-file Tours.dev LIVE source manifest/package, independently verified
 V146 five-site identities and V149 offline-restored Staging plugin preimages.
-It emits exactly scoped changed/missing file digests and leaves tenant-only
+This is a read-only adjacent command; the signed `company_code_release.py` is unchanged,
+so existing original provider SHA pins remain valid. It emits exactly scoped changed/missing file digests and leaves tenant-only
 files untouched. It does **not** copy files to a remote host, sign a grant,
 register a new executor, or modify Original305/312/313; its output **cannot**
 be passed as a v1 signed apply plan. The existing `targets` and signed
