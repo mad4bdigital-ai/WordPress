@@ -130,3 +130,28 @@ Authority order:
 **Evidence and rollback:** `/opt/mad4b-package-checkpoints/2026-11-22-company-package-level-fallback/`. Undo company defaults by pausing the rule in Company Policy Registry V2, rather than removing Tour taxonomy or destroying historical Stage Plans. Source code is reconciled on this Draft PR, **not merged**. Native authenticated browser interactions are not claimed as tested.
 
 **Scope boundary:** This is the **pricing, Rate Guard and admin Itinerary source of truth**. WordPress's native taxonomy-based public archive filters still inspect physically assigned terms; read-time Company inheritance does **not** manufacture permanent archive taxonomy terms. If a public package-level archive must include inherited Tours, extend its specific query against this effective-tier contract rather than mutating operational assignments.
+
+
+## Transport Starting Price — purpose selector, Rate precedence, and no supplier authority
+
+**Live deployed 22 Nov 2026 on both Tours.dev and Wayfatours; this is an additive, safely gated extension.**
+
+Every published native `transportations` CPT can now explicitly choose one of three mutually exclusive uses for its existing `trans_start_price` (no copied or invented monetary data):
+
+1. `indicative_only` — display/planning reference; the existing booking and public price approval remains independently enforced.
+2. `cost_reference_only` — only allow the direct amount to enter **staff planning cost source resolution**; no supplier-cost invoice or commercial Rate is authorized.
+3. `both` — permit a separate indicative price role **and** a candidate planning cost role from the same amount, with provenance. The roles are never confused with a supplier-approved cost.
+
+Controls live in **Edit Transportation → MAD4B · Direct Price Role and Rate Priority** (native WordPress metabox). The manager must save the direct price, currency and price unit using the existing JetEngine fields first; requesting `cost_reference_only` or `both` without positive money, valid ISO currency and native unit is **rejected**, not silently stored. Role save is nonce-protected, company-editor gated (`commerce_manage_pricing`, `manage_woocommerce`, `edit_post`), optimistic revision verified and per-post DB locked. Mode history preserves old/new value, editor and time. No background auto-approval.
+
+**Single source-of-truth for weights:** `shared_product_price_source_policy('transport')` and `shared_product_resolve_price_sources`, not a parallel priority table. On both live sites the effective transport priority is **Rate 100 / Direct 50**, `fallback=next_valid`, tie-break `rate`. The units must agree before comparing two cost sources; different currency/unit cannot be implicitly treated as equivalent. Weights choose the preferred **one** admissible source and NEVER multiply or blend prices.
+
+For the Rate-side planning *cost* candidate, the provider looks only at `transport-rates` (published, correct parent, native Rate approval verified) with `trans_cost_amount>0` and `trans_price_role` in `self_cost` / `actual_company_cost`. Retail `base_amount` is never misinterpreted as supplier cost. Multiple cost Rate candidates require explicit Rate/date selection; the system does not auto-pick the cheapest or one without service-date proof. Native Rate approval signs a selling-price snapshot, not supplier invoices; this selector **never declares signed cost authority, stock, or checkout readiness**.
+
+**Package 60623:** `MAD4B_Package_Stage_Sourcing_V1::train()` now adds `direct_or_rate_price_source_review` to both original stage route proposals (86 and 87) without modifying the itinerary day, train stop geometry, original binding or Tour Price. Existing Pricing Lab adds “Transportation Price Source and Fallback” in each sleeper service's original supplier-qualification card; it shows Role / Direct / eligible Cost Rate candidates / weights / selected planning cost or missing reason. When an operator changes role in the native Transportation edit, the subsequent read-only Pricing Lab inspection reads the new choice. It never writes or approves a Tour Rate.
+
+**Live current rail data:** Source train posts `54552` and `54553` on **each site** still have `trans_start_price=''`, no native Transport Rates, `trans_use_in_tour_rate_generation='0'`, and no role activated (default `indicative_only`). Both native `unified_transport_preview` calls reject missing Rates; the package guard checkout remains false. No prices or approval documents have been fabricated.
+
+**Verification:** Both production sites passed 6/6 WP-CLI read-only source mode and weight-fallback synthetic tests (virtual sample 120 EGP per person never written), both rail day-stage and Source Rate identity readbacks, native admin metabox/JS enrollment with HTTPS and nonce, 3 rejection safeguards (bad mode, cost mode with missing price, anonymous user) without price mutations. Rollback removes the new additive MU role module and JS after reconciling intervening changes; source stage and Pricing Lab code should be reverted **selectively** to their saved checkpoints, not to pre-rail revisions.
+
+**Known limit:** The selector establishes **qualified planning cost provenance**, not unconditional Saleable Tour Rates. Actual supplier-cost verification, cabin class/occupancy, date/schedule/inventory and the existing signed Package Cost Receipt Gate remain independent mandatory steps. No authenticated visual browser save has been certified. No CI green/merge is claimed from live PHP lint alone. Evidence: `/opt/mad4b-package-checkpoints/2026-11-22-transport-price-dual-role/`.
