@@ -269,3 +269,23 @@ private rollback receipts. An unknown/newer hash is never overwritten.
 The original scheduled source-release service is updated to select v4 and
 signed-preclaim guards by name and to retain the full original guard chain.
 These guards do not issue 305 Jobs, Broker Grants or 313 receipts.
+
+
+### Tours.dev live source — exact staging preview (non-authorizing)
+
+Run `python3 ops/company-code-release-v1/live_source_staging_preview.py` from the existing
+company-code-release source on the enrolled VPS only, after enrolling the two `live_source_staging_preview_targets`
+with `preview_only: true` in the Root-owned policy. This reads the pinned
+778-file Tours.dev LIVE source manifest/package, independently verified
+V146 five-site identities and V149 offline-restored Staging plugin preimages.
+This is a read-only adjacent command; the signed `company_code_release.py` is unchanged,
+so existing original provider SHA pins remain valid. It emits exactly scoped changed/missing file digests and leaves tenant-only
+files untouched. It does **not** copy files to a remote host, sign a grant,
+register a new executor, or modify Original305/312/313; its output **cannot**
+be passed as a v1 signed apply plan. The existing `targets` and signed
+Git-backed apply/rollback semantics remain unmodified.
+
+Any future remote apply requires a separately reviewed first-party operation,
+verified full backup/restore, current owner/Original313 evidence and exact
+per-site signed authority. No SSH transport or preview scope substitutes
+for that authority; do not upgrade rc.127 using the stale rc.104 pointer.
