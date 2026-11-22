@@ -201,6 +201,64 @@ function renderReport(data){
   gate.append(el('p','mad4b-pcl-note',
     'Pricing Lab does not select a date range here. Native Rate Planner rechecks the original sources for the requested travel window immediately before any proposed generation.'));
   h.append(gate);
+  const draft=data.indicative_offer_draft||null;
+  if(draft && draft.contract==='mad4b.package-indicative-offer-draft.v1'){
+    const pane=el('section','mad4b-pcl-draft-market-offer');
+    pane.append(el('h3','','Indicative Package Offer · Sales Draft (not confirmed)'));
+    pane.append(el('p','mad4b-pcl-warning',
+      'NO complete Package price or Starting From can be published yet. Web prices are retail offers, NOT supplier net cost, selling Rates, or availability.'));
+    pane.append(el('p','mad4b-pcl-note',
+      'Stage coverage: '+String(draft.stage_count||0)+
+      ' stay/overnight stages · '+String(draft.stage_total_missing||0)+
+      ' awaiting Reservations or Contracting. Tour guide, activities and non-overnight services also require complete pricing.'));
+    const disclosure=el('details','mad4b-pcl-draft-offer-details');
+    disclosure.open=Number(data.tour_id)===60629;
+    disclosure.append(el('summary','','Inspect original market offers and remaining supplier quote gaps'));
+    for(const item of draft.market_offer_stages||[]){
+      const content=el('div','mad4b-pcl-market-offer-stage');
+      content.append(el('strong','',String(item.stage_key||item.kind||'Stage')+
+        ' · '+String(item.nights||0)+' night(s) · '+String(item.status||'unpriced').replaceAll('_',' ')));
+      const offers=Array.isArray(item.web_offer_examples)?item.web_offer_examples:[];
+      if(item.kind==='sleeper_train'){
+        content.append(el('p','mad4b-pcl-note',
+          'Proposed train '+String(item.proposed_train_number||'?')+
+          ' · public Abela '+String(item.public_reference_year||'')+
+          ' fares only; choose travel date, nationality, cabin and passengers before using any supplier quote.'));
+      }
+      if(offers.length){
+        content.append(el('p','mad4b-pcl-note',
+          'WEB MARKET REFERENCE ONLY — all offers need 3-night date-specific room, nationality, All Inclusive, tax and guest validation.'));
+        const ul=el('ul','');
+        for(const offer of offers){
+          const line=el('li','');
+          line.append(el('span','',
+            String(offer.title||'Resort')+
+            ' · $'+String(offer.web_offer_usd_per_night)+
+            '/night · 3× illustration $'+String(offer.three_night_illustration_usd)+
+            ' (NOT an approved 3-night offer)'+
+            (offer.planning_eligible_by_operator_tier
+              ?' · tier assigned by Operations':' · tier needs Operations assignment')+
+            ' · '+String(offer.web_offer_date||'Date unknown')+
+            ' · '+String(offer.meal_evidence||'meal not verified')));
+          if(offer.source_url)line.append(document.createTextNode(' · '),
+              link(offer.source_url,'Original web offer'));
+          ul.append(line);
+        }
+        content.append(ul);
+      }else if(item.kind!=='sleeper_train'){
+        content.append(el('p','mad4b-pcl-note',
+          'No confirmed room/cabin cost or date-specific inventory. Not priced as zero.'));
+      }
+      disclosure.append(content);
+    }
+    pane.append(disclosure);
+    if(draft.reservations_review_sheet_url)
+      pane.append(row('p',[link(draft.reservations_review_sheet_url,
+        'Reservations review and supplier net cost worksheet')]));
+    pane.append(el('p','mad4b-pcl-warning',
+      'Draft-only · Cannot send as a binding quotation, generate a final Tour Rate, accept deposit or activate checkout.'));
+    h.append(pane);
+  }
   const actions=el('p','mad4b-pcl-links');
   if(data.tour_edit_url)actions.append(link(data.tour_edit_url,'Open original Tour editor'),document.createTextNode(' · '));
   actions.append(link(cfg.property_pricing_url,'Open native Property & Unit Pricing'));
