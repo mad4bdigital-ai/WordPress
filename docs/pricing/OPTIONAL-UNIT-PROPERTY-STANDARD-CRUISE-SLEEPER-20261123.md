@@ -26,7 +26,7 @@ Rollback snapshots and SHA manifests: `/opt/mad4b-company-provisioning/reports/p
 - Hermetic original Property Rate source selector: **23/23 PASS**.
 - Hermetic signed receipt identity with no Unit, cruise program mismatch, wrong sailing and train 87 Luxor segment: **11/11 PASS**.
 - Three real PHP files lint clean in both live PHP containers. WordPress class load smoke test passed on both sites.
-- Latest live published Property Rate count by native WordPress: **Tours.dev 56; Wayfatours 0**. Publication alone does not imply cost supplier approval, validated basis or Stop Sale release. This change does not publish any Rates.
+- Direct native WordPress SQL readback: **Tours.dev 56 published Property Standard Cost References + 29 Draft Unit Rates; Wayfatours 56 published Property Standard Cost References + 28 Draft Unit Rates**. All 56 published Cost References on EACH site have `stop_sale=1`. Publication alone does not imply cost supplier approval, validated basis or Stop Sale release. This change does not publish any Rates.
 - **Unresolved commercial connector:** original `MAD4B_Package_Stage_Rate_Guard_V1` and original Rate Planner still block cruise/sleeper Stage Rate authoring, and can still demand a Hotel Unit. No approved stage Cost Receipt aggregation into `approved_price` has been added. The final step must validate itinerary, direction/program, selected Property, date-specific cost basis, party, meal/occupancy, unique `stage_key`, approved supplier evidence, and idempotent inclusion exactly **once**, and continue separate pricing/tax/FX/publish approval.
 
 ## Follow-up source-implementation boundary
