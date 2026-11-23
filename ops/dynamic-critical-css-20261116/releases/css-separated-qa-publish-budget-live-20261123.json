@@ -1,0 +1,61 @@
+{
+  "admission": [
+    "original strict host CPU and reserved WPCLI slots",
+    "one shared browser lock",
+    "native WordPress job ticket required",
+    "original 422 CAS and 5-viewport QA"
+  ],
+  "at_utc": "2026-11-23T16:42:11Z",
+  "base_git_head": "dbe6d43e14c633907afb053c04c184cfb91da9d9",
+  "code_changes": [
+    "site-owned WordPress Cron scheduler budgets",
+    "original bulk publish resource defer preserving ticket and route cursor"
+  ],
+  "contract": "mad4b.css.v2.live-separate-publish-qa-budgets.v1",
+  "original_components_unchanged": [
+    "421",
+    "422",
+    "429",
+    "native CSS assets",
+    "existing certificates",
+    "global Chromium lock",
+    "original public-route CPU guard",
+    "WPML/WCML market proofs",
+    "route ledger",
+    "CSS epoch"
+  ],
+  "release_id": "mad4b-css-v2-separated-qa-publish-20261123",
+  "release_source": {
+    "source": "exact active live source WP and site-owned renderer",
+    "wayfa": "exact active live Wayfa WP and site-owned renderer"
+  },
+  "site_receipts": {
+    "source": {
+      "bulk_publish_sha256": "ad89773ee3ef22f27d80e04f29c0256246e324c66faaf5586a7979a769f3611a",
+      "previous_renderer_sha256": "37e80d8475fa34c6b1ae80a0e154907302bb7bf987467edc1fe2e3ff6263034a",
+      "previous_worker_sha256": "5a5ecfe3d8536d2e585507242d1399c50d5edd15d4000e8e46ae433f3b6eeb39",
+      "renderer_sha256": "5ee678eb23c2871472d7a5782218d12477bdde1c023a15f07a3726b63105f2ac",
+      "rollback_root": "/opt/mad4b-company-provisioning/reports/css-separated-budget-release-20261123/rollback-source",
+      "worker_sha256": "2d8fea114da8a0757e80708924769aaf6452bc481092c759ec92b435cf6dfed5"
+    },
+    "wayfa": {
+      "bulk_publish_sha256": "ad89773ee3ef22f27d80e04f29c0256246e324c66faaf5586a7979a769f3611a",
+      "previous_renderer_sha256": "9a8f76e7edef0a2451dddb64203cad293781705caf03ea134d49324bcd66f18d",
+      "previous_worker_sha256": "49a7392cdec235511565db89595f74f876590dd243ad9439ec6a5c5412e0ae0c",
+      "renderer_sha256": "7d519296cdf6813ca7c9c3048703a14e59663e8148965890a45a7c1d661af278",
+      "rollback_root": "/opt/mad4b-company-provisioning/reports/css-separated-budget-release-20261123/rollback-wayfa",
+      "worker_sha256": "7cc31d7fa48b3dc42f5fe4cb484262858fe5155b21d8183858d25e239dd424a6"
+    }
+  },
+  "status": "live_installed_verified",
+  "strategy": "selective live-delta relative to original site-owned 421 release, not an old git tree overlay",
+  "tests": {
+    "new_site_scoped_policy": "26/26",
+    "original_bulk_fairness": "13",
+    "original_bulk_source_qa_and_expiry": "62",
+    "original_public_priority": "18",
+    "original_qa_slot": "20",
+    "simulated_source_and_wayfa_live_tree": "22/22"
+  },
+  "unproven": "full-route coverage cannot be inferred from deployment; wait for future native WP-Cron CSS issuance and 5-viewport real QA"
+}
