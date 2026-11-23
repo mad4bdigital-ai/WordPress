@@ -1,0 +1,50 @@
+{
+  "at_utc": "2026-11-23T17:04:06Z",
+  "contract": "mad4b.css.v2.quiet-window-live-admission.v1",
+  "evidence": {
+    "existing_scheduler_budget_policy": "26/26",
+    "original_bulk": "44/44",
+    "pure_governor_and_worker_simulation": "12/12",
+    "throughput_release": "14/14"
+  },
+  "live_wordpress_artifacts_untouched": true,
+  "release_id": "mad4b-css-quiet-window-20261123",
+  "safety": [
+    "original per-company Cron retained",
+    "original company and global Chromium flock reused",
+    "strict unmodified original CPU/WPCLI governor prechecks extra wake",
+    "original worker rechecks runtime and source identities",
+    "no parallel Chromium",
+    "no new worker",
+    "no CSS certificates or market policy mutated",
+    "no untrusted shell arguments accepted"
+  ],
+  "sites": {
+    "source": {
+      "cron_path": "/etc/cron.d/mad4b-css-site-source",
+      "extra_window_minute": "1-59/5",
+      "new_cron_sha256": "d70b36b08e0c6a0f1fdb64177eee4bb7ea84102b0dbb69a36096fef83c2f5233",
+      "original_cpu_guard_preserved": true,
+      "original_cron_lines_preserved": true,
+      "original_global_browser_and_site_locks_preserved": true,
+      "previous_cron_sha256": "b0fba784500d27a669b318c3b102f1b281ee70f306f6b92e5b99fc882cd2c49e",
+      "rollback_root": "/opt/mad4b-company-provisioning/reports/css-throughput-reconcile-20261123/cron-rollback-source",
+      "sidecar_path": "/opt/hostinger-migrations/hosting-3/etg-commerce-staging/operations/css-cron-v1/quiet-window-wake.sh",
+      "sidecar_sha256": "eaede81cc0f1eee3340cb33c7f03de461f902ef9337a8e59b7ac204b919beef4"
+    },
+    "wayfa": {
+      "cron_path": "/etc/cron.d/mad4b-css-site-wayfa",
+      "extra_window_minute": "3-59/5",
+      "new_cron_sha256": "c840604ea7f4b6580be8e9b020b84290ffd78ea2b76b106a512678ca0ab1318e",
+      "original_cpu_guard_preserved": true,
+      "original_cron_lines_preserved": true,
+      "original_global_browser_and_site_locks_preserved": true,
+      "previous_cron_sha256": "e66245d38ae281204a948ebfc253e9a26596a2b2d2314f67708cf89fe67473d4",
+      "rollback_root": "/opt/mad4b-company-provisioning/reports/css-throughput-reconcile-20261123/cron-rollback-wayfa",
+      "sidecar_path": "/opt/wayfa-rebuild-20261102/operations/css-cron-v1/quiet-window-wake.sh",
+      "sidecar_sha256": "9c04bc1703ff97c3e56787ff2b23acaade65093b6cfe8d83125b91c4d39e07e2"
+    }
+  },
+  "status": "installed_accepted_native_schedule_pending_real_coverage_gain",
+  "summary": "one additional original, CPU-guarded native WP-Cron worker wake every 5 minutes, independent source and Wayfa offsets"
+}

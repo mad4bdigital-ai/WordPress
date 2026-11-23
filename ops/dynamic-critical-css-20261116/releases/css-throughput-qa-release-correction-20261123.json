@@ -1,0 +1,50 @@
+{
+  "at_utc": "2026-11-23T16:59:03Z",
+  "causes": [
+    "partial original provisional publication followed by resource deferral previously requeued whole original ticket",
+    "optional six-locale source browser observer could take unique Chromium lock while exact source postrelease QA was pending"
+  ],
+  "contract": "mad4b.css.v2.throughput-resource-defer-correction.v1",
+  "fixes": [
+    "source-only original native QA pending yields observer browser slot",
+    "only zero-publication resource defer retains original bulk WP ticket; after genuine release, ACK that original publish job without marking blocked next route as attempted"
+  ],
+  "preserved": [
+    "original CPU guard and 8 core admission",
+    "original global Chromium lock",
+    "native WP ticket issuer and ACK",
+    "Original 422 CAS and five viewport QA",
+    "CSS V2 certificates and route ledger",
+    "CSS Epoch and listing generation",
+    "WCML/WPML market/source validation"
+  ],
+  "production_effect": "correct source admission and native provisional QA scheduling; full CSS coverage increase not yet established",
+  "release_id": "mad4b-css-v2-throughput-fix-2026.11.23",
+  "scope": "current original live CSS Cron baseline and exact selective code delta",
+  "sites": {
+    "source": {
+      "previous_publisher_sha256": "ad89773ee3ef22f27d80e04f29c0256246e324c66faaf5586a7979a769f3611a",
+      "previous_renderer_sha256": "5ee678eb23c2871472d7a5782218d12477bdde1c023a15f07a3726b63105f2ac",
+      "previous_worker_sha256": "2d8fea114da8a0757e80708924769aaf6452bc481092c759ec92b435cf6dfed5",
+      "publisher_sha256": "9b7e20b56a6f4af456e190f4e1b424abf61f0fd9e19cd096256b7b0a9e282e0b",
+      "renderer_sha256": "75d00aaf930f288d0ae070e118184045dcc02ca802b030059ffd638310bf7baa",
+      "rollback_root": "/opt/mad4b-company-provisioning/reports/css-throughput-reconcile-20261123/rollback-source",
+      "worker_sha256": "855878c7452377088e622a78fd4a273e2d4c3c76dc258bf1f52e6a7b8bb47763"
+    },
+    "wayfa": {
+      "previous_publisher_sha256": "ad89773ee3ef22f27d80e04f29c0256246e324c66faaf5586a7979a769f3611a",
+      "previous_renderer_sha256": "7d519296cdf6813ca7c9c3048703a14e59663e8148965890a45a7c1d661af278",
+      "previous_worker_sha256": "7cc31d7fa48b3dc42f5fe4cb484262858fe5155b21d8183858d25e239dd424a6",
+      "publisher_sha256": "9b7e20b56a6f4af456e190f4e1b424abf61f0fd9e19cd096256b7b0a9e282e0b",
+      "renderer_sha256": "f3c49a8a6a2c9ca64452f119d35c29da88a30628db3a278ebecef4d6020be0ca",
+      "rollback_root": "/opt/mad4b-company-provisioning/reports/css-throughput-reconcile-20261123/rollback-wayfa",
+      "worker_sha256": "7cc31d7fa48b3dc42f5fe4cb484262858fe5155b21d8183858d25e239dd424a6"
+    }
+  },
+  "status": "installed_verified",
+  "tests": {
+    "prior_original_bulk_tests": "44/44",
+    "prior_queue_policy_regressions": "26/26",
+    "throughput_release_regressions": "14/14"
+  }
+}

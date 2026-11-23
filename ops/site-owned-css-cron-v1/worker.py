@@ -390,6 +390,99 @@ def prioritize_aged_original_bulk_qa(site,chosen,candidates,now,headroom,root=No
     if not aged_original_bulk_qa_exists(site,now,root):return chosen
     return ticket
 
+def original_qa_lease_deadline(site,now,root=None):
+    """Read only authenticated site-local pending leases for scheduling.
+
+    This cannot grant a certificate or a WordPress ticket. The original
+    five-viewport QA worker independently verifies exact 422 CAS/source.
+    """
+    if site not in ('source','wayfa') or type(now)is not int:return None
+    base=(Path(root) if root is not None
+          else ROOT/'reports/public-critical-css-v1'/site)
+    host={'source':'tours.dev.mad4b.com','wayfa':'wayfatours.com'}[site]
+    try:
+        if (base.is_symlink() or not base.is_dir()
+            or base.stat().st_uid!=0 or base.stat().st_mode&0o022):return None
+        earliest=None
+        with os.scandir(base) as entries:
+            for item in entries:
+                if (not item.is_dir(follow_symlinks=False)
+                    or not re.fullmatch(r'20[0-9]{6}T[0-9]{6}Z',item.name)):
+                    continue
+                folder=Path(item.path)
+                if (folder/'bulk-complete.json').exists():continue
+                path=folder/'bulk-pending.json'
+                try:
+                    fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+                    try:
+                        st=os.fstat(fd)
+                        if (not stat.S_ISREG(st.st_mode) or st.st_uid!=0
+                            or st.st_mode&0o022 or st.st_nlink!=1
+                            or not 150<=st.st_size<=8192):continue
+                        raw=os.read(fd,8193)
+                        if len(raw)!=st.st_size:continue
+                    finally:os.close(fd)
+                    row=json.loads(raw)
+                    if (row.get('contract')!='mad4b.css.v2.bulk.pending.v1'
+                        or row.get('site')!=site or row.get('host')!=host
+                        or row.get('jobdir')!=str(folder)
+                        or row.get('state')!='pending_qa'
+                        or not re.fullmatch('[a-f0-9]{64}',str(row.get('route_key','')))):
+                        continue
+                    released=row.get('released_at')
+                    if type(released) is not int or not now-86400<=released<=now:
+                        continue
+                    deadline=released+21600
+                    if earliest is None or deadline<earliest:earliest=deadline
+                except (OSError,ValueError,TypeError,KeyError,json.JSONDecodeError):
+                    continue
+        return earliest
+    except (OSError,ValueError,TypeError):return None
+
+
+def budgeted_postrelease_and_publish_turn(site,chosen,candidates,history,now,headroom,root=None):
+    """One physical browser lock; distinct scheduling budgets for two lanes.
+
+    QA ALWAYS wins when an admitted original pending lease has <=60 minutes
+    to expiry. Otherwise only one QA turn can precede the next publication
+    turn when both native WP tickets are eligible. No extra browser, CPU
+    window, tenant permission, or fabricated certificate is created.
+    """
+    if (site not in ('source','wayfa') or not headroom
+        or chosen is None or len(chosen)<6 or chosen[0]<0
+        or not isinstance(candidates,list) or not isinstance(history,dict)):
+        return chosen
+    qa=next((row for row in candidates if isinstance(row,tuple)
+             and len(row)>=6 and row[3]=='bulk_qa'
+             and row[5].startswith(site+':bulk_qa:')),None)
+    publish=next((row for row in candidates if isinstance(row,tuple)
+             and len(row)>=6 and row[3]=='bulk_publish'
+             and row[5].startswith(site+':bulk_publish:')),None)
+    if qa is None or publish is None:return chosen
+    # Never displace original overdue security audit or urgent source event.
+    if chosen[3] not in ('bulk_qa','bulk_publish'):return chosen
+    deadline=original_qa_lease_deadline(site,now,root)
+    if deadline is None:
+        # No native pending provisional QA source; don't spend a browser
+        # ticket on an empty QA lane before an eligible new publication.
+        return publish
+    if deadline-now<=3600:
+        return qa
+    # Conservatively honor the existing native 3-minute settle period.
+    if not aged_original_bulk_qa_exists(site,now,root):return publish
+    def most_recent(job):
+        out=0
+        prefix=site+':'+job+':'
+        for key,value in history.items():
+            if (not isinstance(key,str) or not key.startswith(prefix)
+                or not isinstance(value,dict)):continue
+            ts=value.get('last_attempt',0)
+            if type(ts)is int and 0<=ts<=now and ts>out:out=ts
+        return out
+    qa_at=most_recent('bulk_qa')
+    publish_at=most_recent('bulk_publish')
+    return publish if qa_at>publish_at else qa
+
 def invoke(site,job,jid,key,history,timeout=None):
     stamp=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime())
     prior=history.get(key,{})
@@ -477,6 +570,7 @@ def verified_task_outcome(site,job,returncode,stdout,stderr):
     lines=[line.strip() for line in stdout.splitlines() if line.strip()]
     if job in ('bulk_publish','bulk_qa'):
         resource_markers=('BULK_CCSS_PUBLISH_PENDING_CAP '+site,
+                          'BULK_CCSS_PUBLISH_RESOURCE_DEFER '+site+' ',
                           'BULK_CCSS_QA_HOST_BUSY '+site,
                           'BULK_CCSS_QA_DEFER_RESOURCE '+site)
         if any(line.startswith(resource_markers) for line in lines):
@@ -1017,7 +1111,14 @@ def main():
     if '--inspect' not in sys.argv and SITE=='source':
         observe_source_home_without_browser()
         observe_source_css_profiles()
-        if source_browser_evidence_refresh(history,now):
+        qa_deadline=original_qa_lease_deadline('source',now)
+        # An existing original 422 pending release needs its sole shared
+        # Chromium opportunity. The six-locale observer issues no CSS and
+        # can wait; it remains scheduled for the first QA-free source wake.
+        if qa_deadline is not None:
+            print('WPCSS_SOURCE_OBSERVER_YIELDS_TO_NATIVE_QA',
+                  'source',qa_deadline,flush=True)
+        elif source_browser_evidence_refresh(history,now):
             # Read back through the ORIGINAL epoch/SHA/Elementor identity
             # classifier. Fresh Chrome HTML is not a certificate.
             observe_source_css_profiles()
@@ -1045,6 +1146,12 @@ def main():
                 print('WPCSS_READY_BULK_QA_BEFORE_MORE_RELEASES',
                       site,urgent[4],flush=True)
                 chosen=urgent
+            budgeted=budgeted_postrelease_and_publish_turn(
+                site,chosen,pending,history,now,headroom)
+            if budgeted!=chosen:
+                print('WPCSS_SEPARATE_BROWSER_LANE_BUDGET',site,
+                    chosen[3],'->',budgeted[3],flush=True)
+                chosen=budgeted
             _,_,_,job,jid,key=chosen
             if '--inspect' in sys.argv:
                 print('WPCSS_INSPECT_NEXT',site,job,jid,flush=True)
