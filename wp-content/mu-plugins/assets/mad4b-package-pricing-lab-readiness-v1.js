@@ -401,6 +401,22 @@ function renderReport(data){
       ]));
     }
     tbl.append(body);details.append(tbl);pane.append(details);
+    const guide=costLedger.native_guide_cost_references;
+    if(guide){
+      pane.append(el('p','mad4b-pcl-note','Guide days: '+
+        JSON.stringify(guide.day_status_counts||{})+' · status '+String(guide.source_status||'')));
+      const options=Array.isArray(guide.priced_language_options)?guide.priced_language_options:[];
+      const valid=options.filter(x=>Number.isFinite(Number(x.internal_cost))&&
+        x.internal_cost!==null&&x.currency);
+      if(valid.length)
+        pane.append(el('p','mad4b-pcl-note','Native GUIDE cost alternatives (one guide, not the tour selling price): '+
+          valid.map(x=>String(x.language)+': '+String(x.internal_cost)+' '+String(x.currency)).join(' · ')+
+          '. These are NOT added to USD accommodation without approved FX and language selection.'));
+    }
+    const transport=costLedger.native_transport_cost_readiness;
+    if(transport)pane.append(el('p','mad4b-pcl-warning',
+      'Transport classification: '+JSON.stringify(transport.day_status_counts||{})+
+      ' · qualified cost receipts unavailable; review required travel legs.'));
     pane.append(el('p','mad4b-pcl-warning',
       'Remaining required groups: '+(costLedger.missing_groups||[]).join(' · ').replaceAll('_',' ')+
       '. New Tour Rate, Form 6 final price and Woo deposit remain gated.'));
