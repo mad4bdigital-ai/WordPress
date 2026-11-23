@@ -323,7 +323,8 @@ def aged_original_bulk_qa_exists(site,now,root=None):
 
     Only root-owned and company-bound pending records may influence ticket
     order. Never recover an intent, mutate files or invent a WP ticket.
-    A lease may be expired: the original qa_one handles CAS revert safely.
+    Require a three-minute original issue age (no eager recovery from
+    unfinished PHP writes). The original qa_one handles expiry/CAS safely.
     """
     if site not in ('source','wayfa') or type(now)is not int:return False
     base=(Path(root) if root is not None
@@ -360,8 +361,11 @@ def aged_original_bulk_qa_exists(site,now,root=None):
                         or not re.fullmatch('[a-f0-9]{64}',str(row.get('route_key','')))):
                         continue
                     released=row.get('released_at')
+                    # 3-minute minimum is a scheduling hint only;
+                    # independent original WP ticket, CPU and five-width
+                    # Chromium QA remain absolutely mandatory.
                     if (type(released) is int
-                        and now-86400<=released<=now-3600):
+                        and now-86400<=released<=now-180):
                         return True
                 except (OSError,ValueError,TypeError,KeyError,json.JSONDecodeError):
                     continue
@@ -369,7 +373,7 @@ def aged_original_bulk_qa_exists(site,now,root=None):
     return False
 
 def prioritize_aged_original_bulk_qa(site,chosen,candidates,now,headroom,root=None):
-    """Give an old signed-WordPress QA ticket priority over more publish.
+    """Give original near-fresh WP QA priority before source changes again.
 
     Safety audit overdue (priority -1), strict source CPU, original global
     Chromium serialization and per-route 422 CAS are NOT bypassed.
@@ -1038,7 +1042,7 @@ def main():
             urgent=prioritize_aged_original_bulk_qa(
                 site,chosen,pending,now,headroom)
             if urgent!=chosen:
-                print('WPCSS_AGED_BULK_QA_BEFORE_MORE_RELEASES',
+                print('WPCSS_READY_BULK_QA_BEFORE_MORE_RELEASES',
                       site,urgent[4],flush=True)
                 chosen=urgent
             _,_,_,job,jid,key=chosen

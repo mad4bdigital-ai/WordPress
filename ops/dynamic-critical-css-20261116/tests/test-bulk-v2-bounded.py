@@ -12,8 +12,8 @@ def check(label,value):
  global n
  assert value,label
  n+=1;print('PASS',label)
-check('bounded releases per original WP-Cron ticket',publisher.MAX_PER_TICKET==4)
-check('strict pending QoS allows no more than 8 public leases',publisher.MAX_ACTIVE_PENDING==12)
+check('bounded releases per original WP-Cron ticket',publisher.MAX_PER_TICKET==2)
+check('strict pending QoS caps at three live original 422 leases',publisher.MAX_ACTIVE_PENDING==3)
 runner=(D/'run-public-route.py').read_text()
 check('bulk issuer routes through original exact route+market publisher',
       "release_args+['release']" in runner and "run_core(sys.argv[1],bulk_route_key=sys.argv[3],publish_only=True)" in runner)
@@ -68,18 +68,21 @@ with tempfile.TemporaryDirectory() as root:
   publisher.subprocess.run=fakeproc
   publisher.qa.pending_rows=lambda site:[]
   publisher.run('wayfa')
-  check('batch launches 4 independently source-bound routes',len(outputs)==4 and len(set(outputs))==4)
+  check('batch launches 2 independently source-bound routes',len(outputs)==2 and len(set(outputs))==2)
   ledger=json.loads((publisher.qa.ROOT/'wayfa'/'bulk-publish-attempts.json').read_text())
-  check('private ledger safely persists exact per-route attempts',len(ledger['routes'])==4)
-  check('persistent cursor advances past four attempted routes',
-        ledger['next_index']==4)
-  # A later ticket after the original cooldown MUST continue with route 5,
+  check('private ledger safely persists exact per-route attempts',len(ledger['routes'])==2)
+  check('persistent cursor advances past two attempted routes',
+        ledger['next_index']==2)
+  # A later ticket after the original cooldown MUST continue with route 3,
   # not return to the first two. This is what makes 53 waves achievable.
   publisher.run('wayfa')
   check('next ticket starts from previously unvisited source route',
-        outputs[4]==f'{5:064x}')
+        outputs[2]==f'{3:064x}')
   ledger=json.loads((publisher.qa.ROOT/'wayfa'/'bulk-publish-attempts.json').read_text())
-  check('cursor wraps fairly after the final route',ledger['next_index']==0)
+  check('cursor continues fairly to route 5',ledger['next_index']==4)
+  publisher.run('wayfa')
+  ledger=json.loads((publisher.qa.ROOT/'wayfa'/'bulk-publish-attempts.json').read_text())
+  check('cursor wraps fairly after six routes',ledger['next_index']==0)
   publisher.run('wayfa')
   check('fresh cooldown blocks immediate reissue of same six routes',
         len(outputs)==6)

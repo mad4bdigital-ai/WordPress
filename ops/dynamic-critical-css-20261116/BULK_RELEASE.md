@@ -253,3 +253,47 @@ changes, no new ticket issuer, no CPU/Chromium bypass and no forced
 HTML cache purge. Fixtures cover the 21 priority safety/fairness cases
 and 12 paired-original-source/Tamper cases; old 19 bounded-Bulk and
 13 release-first tests remain required.
+
+
+### Postrelease 3-minute first QA and per-route proof reporting
+
+WordPress 429 remains the sole source of immutable CSS task tickets, with
+two independent company-bound OS Cron wakes every 5 minutes. On an actual
+root-owned, company/host/route bound **released_pending_qa** record
+which has reached three minutes of age, the original native scheduler
+prioritizes its **already-issued WP bulk_qa ticket** over further new
+public/CSS source issues. If an overdue integrity audit has priority -1,
+it remains first. The original strict host CPU/CLI guard, global Chromium
+lock, per-route 422 compare-and-swap, six-hour public lease, and full
+independent 320/390/414/767/768 real-browser QA are unchanged.
+No WP job is fabricated, ACKed early, or tried before the site admission.
+
+The original V2 bulk issuer reduces its maximum simultaneous untested
+leases from 12 to **three**, and its per-ticket newly published candidate
+cap from four to **two**. When two or more original pending lease markers
+exist and the oldest waited >=10 minutes, new bulk publishing defers
+without consuming the WordPress ticket. The hard three-pending cap is
+always enforced even for fresher leases. All historic strict runtime,
+market, CSS manifest, WPML and route source checks remain unchanged.
+This favors testing an issued certificate while its first-party 421
+source remains current rather than creating many 6h provisional issues
+that will later be source-invalidated.
+
+Original health-audit now exposes
+`route_target_delivery_coverage` independently of its legacy home-
+inclusive route catalog count: it excludes exactly the six Source/
+two Wayfa first-fold home routes, retains only first-party 421/422
+source-current certificate counts, then reports the actual per-market
+anonymous HTTP **sample size and independently verified V2 HTML delivery
+count** separately. Samples never extrapolate to all 1,267 historic
+or newly created eligible routes, and an HTTP HIT alone never proves
+a CSS optimization. The report does not issue/publish CSS or modify any
+cache/certificate. A full site coverage claim remains unverified unless
+source-current certificate and actual delivery proofs support it.
+
+The browser is still permitted to reject a candidate even when the
+source generation has not changed, and the original 422 consumer's
+broad listing/epoch invalidation is **not overridden** by this QoS
+change. A future scoped consumer contract requires separate verified
+Elementor/JetEngine source dependency proof and canary QA; no unsafe
+generation-number rewrites are made.

@@ -311,6 +311,65 @@ def current_chromium_route_evidence(site,root,catalog,route,state,market,currenc
             except (OSError,ValueError,KeyError,TypeError,json.JSONDecodeError):continue
     return None
 
+def original_target_delivery_coverage(catalog,state,sources,probes):
+    """Never extrapolate two anonymous HTTP samples to an entire WPML route catalog.
+
+    The first-party 421 WPML catalog is authoritative for discovered routes;
+    home routes are separately owned by the original first_fold certifier.
+    Source-current V2 identity and actual delivered HTML are *different*
+    evidence: their totals must never be silently promoted into readiness.
+    """
+    routes=catalog.get('routes')
+    languages=state.get('wpml_languages')
+    default=state.get('default_language')
+    if (not isinstance(routes,list) or not isinstance(languages,list)
+        or not languages or len(set(languages))!=len(languages)
+        or default not in languages or not isinstance(sources,dict)
+        or not isinstance(probes,list)):
+        raise ValueError('untrusted_original_wpml_coverage_context')
+    homes={'/' if lang==default else '/'+lang+'/' for lang in languages}
+    foundhome={r.get('path') for r in routes
+        if isinstance(r,dict) and r.get('type')=='page'
+        and r.get('path') in homes}
+    if foundhome!=homes:
+        raise ValueError('missing_original_first_fold_home_route_in_catalog')
+    nonhome=[r for r in routes if r['path'] not in homes]
+    hashes=[r['route_key'] for r in nonhome]
+    if len(set(hashes))!=len(hashes):
+        raise ValueError('duplicate_original_route_key_in_coverage')
+    total=len(nonhome)
+    exact=sources.get('routes_with_exact_current_certificate')
+    if type(exact)is not int or not 0<=exact<=total:
+        raise ValueError('invalid_original_source_exact_certificate_count')
+    valid=[]
+    for row in probes:
+        if not isinstance(row,dict):continue
+        delivery=row.get('html_delivery_contract',{})
+        if not isinstance(delivery,dict):continue
+        # Both cert identity and delivered HTML are required; a synthetic
+        # Ready header, a FastCGI HIT alone, or a provisional lease is not
+        # a current-source-qualified public delivery proof.
+        if (row.get('certificate_for_observed_market') is True
+            and row.get('ready_public')=='1'
+            and row.get('active_in_observed_market') is True
+            and delivery.get('html_css_verified') is True
+            and delivery.get('css_contract')=='v2'
+            and delivery.get('delivery') in (
+                 'CACHE_HIT_CCSS','ORIGIN_CCSS_READY','PRIVATE_SAFE')):
+            valid.append((row.get('language'),row.get('path'),
+                          row.get('market'),row.get('currency')))
+    return {'contract':'mad4b.css.v2.original-target-delivery-audit.v1',
+        'discovered_catalog_entries':len(routes),
+        'separate_home_first_fold_routes':len(foundhome),
+        'target_nonhome_routes':total,
+        'exact_current_source_certificate_routes':exact,
+        'unproven_or_native_target_routes':total-exact,
+        'current_source_route_percent':round(exact*100/total,2) if total else 0.0,
+        'anonymous_http_sample_count':len(probes),
+        'sampled_verified_v2_delivery_count':len(set(valid)),
+        'sampled_v2_delivery_scope':'observed_routes_and_market_only_no_extrapolation',
+        'full_coverage_verified':False}
+
 def run_site(site,run_http=True):
     cfg=SITES[site];root=cfg['root'];host=cfg['host']
     errors=[];warnings=[]
@@ -547,6 +606,8 @@ def run_site(site,run_http=True):
                        'PRIVATE_SAFE','ORIGIN_CCSS_READY',
                        'CACHE_MISS_NATIVE','DELIVERY_UNKNOWN',
                        'HTTP_NOT_200','PROBE_DEFERRED')}
+    result['route_target_delivery_coverage']=original_target_delivery_coverage(
+        catalog,state,sources,result.get('public_route_readback',[]))
     # When the site has no active CSS cert, report actual PUBLIC HTML
     # delivery instead of an empty sample that conceals Native/Private.
     # This is diagnostic only: never a synthetic CSS certificate.

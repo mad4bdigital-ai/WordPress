@@ -123,13 +123,13 @@ with tempfile.TemporaryDirectory() as temp:
     stderr='',returncode=0)
   m.subprocess.run=original_capture
   m.run('wayfa')
-  ok('one reissue starts the 4-route original production-limited ticket',
-      len(outputs)==4 and outputs[0]==rows[1]['route_key'])
-  ok('three original family-ordered new routes still run after stale repair',
-      outputs[1:]==[rows[i]['route_key'] for i in (0,2,3)])
+  ok('one reissue starts the 2-route original production-limited ticket',
+      len(outputs)==2 and outputs[0]==rows[1]['route_key'])
+  ok('one original family-ordered fresh route follows stale repair',
+      outputs[1:]==[rows[0]['route_key']])
   ledger=json.loads((m.qa.ROOT/'wayfa/bulk-publish-attempts.json').read_text())
   ok('stale retry does not consume old coverage cursor prior to ordinary routes',
-      ledger['next_index']==4)
+      ledger['next_index']==1)
   ok('all accepted routes remain original WordPress plan route hashes only',
       set(outputs).issubset({r['route_key'] for r in rows}))
  finally:

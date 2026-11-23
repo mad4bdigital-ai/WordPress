@@ -11,8 +11,8 @@ spec=importlib.util.spec_from_file_location('mad4b_bulk_plan',HERE/'bulk-release
 planner=importlib.util.module_from_spec(spec);spec.loader.exec_module(planner)
 spec=importlib.util.spec_from_file_location('mad4b_bulk_qa',HERE/'bulk-postrelease-qa.py')
 qa=importlib.util.module_from_spec(spec);spec.loader.exec_module(qa)
-MAX_PER_TICKET=4
-MAX_ACTIVE_PENDING=12
+MAX_PER_TICKET=2
+MAX_ACTIVE_PENDING=3
 # Source-advisory debt scheduling only. Existing 422 CSS proof is never
 # replayed or rewritten: the original route publisher must rebuild it.
 STALE_CERTIFIED_RETRY_SECONDS=7200
@@ -122,8 +122,8 @@ MAX_TICKET_SECONDS=1100
 RESERVE_FOR_ONE_ROUTE=460
 # Never issue new provisional public CSS faster than original postrelease QA
 # can certify/revoke the older, already-visible leases.
-MAX_PENDING_AGE_WITH_NEW_RELEASE=90*60
-MIN_PENDING_FOR_BACKPRESSURE=4
+MAX_PENDING_AGE_WITH_NEW_RELEASE=10*60
+MIN_PENDING_FOR_BACKPRESSURE=2
 def qa_backpressure(pending,now):
     if not isinstance(pending,list) or type(now)is not int:return True
     if len(pending)<MIN_PENDING_FOR_BACKPRESSURE:return False

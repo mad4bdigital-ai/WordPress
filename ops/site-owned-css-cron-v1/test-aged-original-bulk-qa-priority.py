@@ -27,10 +27,10 @@ with tempfile.TemporaryDirectory() as temp:
  f=d/'bulk-pending.json'
  record={'contract':'mad4b.css.v2.bulk.pending.v1',
     'site':'wayfa','host':'wayfatours.com','jobdir':str(d),
-    'route_key':'a'*64,'released_at':now-3650,'state':'pending_qa',
+    'route_key':'a'*64,'released_at':now-190,'state':'pending_qa',
     'market_country':'base','currency':'USD','path':'/tours/test/'}
  f.write_text(json.dumps(record));f.chmod(0o600)
- ok('first-party 1h pending source triggers urgency',exists('wayfa',now,root))
+ ok('first-party 3min pending source triggers QA before more issue',exists('wayfa',now,root))
  ok('native source publisher yields to aged original WordPress bulk QA',
     pick(site,pub,[pub,bulk,qa],now,True,root)==qa)
  ok('native family publisher also yields to urgent original WP QA',
@@ -43,10 +43,14 @@ with tempfile.TemporaryDirectory() as temp:
  ok('other company source not accepted',not exists('source',now,root))
  ok('cross-company WP ticket cannot enter scheduler',
     pick(site,pub,[pub,(1,now-6500,1,'bulk_qa',355,'source:bulk_qa:355')],now,True,root)==pub)
- record['released_at']=now-1300
+ record['released_at']=now-119
  f.write_text(json.dumps(record))
- ok('freshly issued pending V2 cert does not preempt source',
+ ok('under 2min unfinished original provisional certificate does not preempt source',
     not exists('wayfa',now,root) and pick(site,pub,[pub,qa],now,True,root)==pub)
+ record['released_at']=now-181
+ f.write_text(json.dumps(record))
+ ok('the first 3 minute original pending gets QA ahead of new CSS issue',
+    exists('wayfa',now,root) and pick(site,pub,[pub,qa],now,True,root)==qa)
  record['released_at']=now-6*3600-150
  f.write_text(json.dumps(record))
  ok('expired provisional still receives original CAS cleanup',
