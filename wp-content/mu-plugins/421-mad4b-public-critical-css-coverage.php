@@ -14,6 +14,7 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
     private const TAXONOMIES = ['category','destinations','tour-types','property-types','tour-categories'];
     private const HOSTS = ['tours.dev.mad4b.com','wayfatours.com'];
     private static bool $navigation_dirty_in_request=false;
+    private static bool $event_lock_held=false;
     private static array $public_post_dirty_in_request=[];
     /**
      * Native Property/tour/article saves can invoke post_updated plus many
@@ -167,6 +168,8 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
      * Database advisory locks are connection-scoped and never require a new table.
      */
     private static function begin_event_lock(): ?string {
+        // MySQL GET_LOCK is reentrant on the SAME DB connection.
+        if (self::$event_lock_held) return null;
         global $wpdb;
         if (!is_object($wpdb) || !method_exists($wpdb,'prepare')
             || !method_exists($wpdb,'get_var') || !is_string($wpdb->prefix??null))
@@ -174,7 +177,9 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
         $db=defined('DB_NAME')?(string)DB_NAME:'unknown';
         $name='mad4b_ccss_'.substr(hash('sha256',$db.'|'.$wpdb->prefix),0,26);
         $obtained=$wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s, 8)',$name));
-        return (string)$obtained==='1'?$name:null;
+        if ((string)$obtained!=='1')return null;
+        self::$event_lock_held=true;
+        return $name;
     }
     /** A missed lock must invalidate EVERY previous route proof, never be ignored. */
     private static function fail_closed_event_lock(): void {
@@ -240,7 +245,11 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
         }
         } finally {
             global $wpdb;
-            $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)',$lock));
+            try {
+                $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)',$lock));
+            } finally {
+                self::$event_lock_held=false;
+            }
         }
     }
     public static function post_updated(int $id,$after,$before): void {
