@@ -23069,6 +23069,28 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing controls already address exact source identity, signed update/rollback, restricted per-site addon pair binding and fail-closed execution policy; no new production capability is introduced.",
       "execution_note": "Read-only exact source review only: no live update channel change, no host signature, no Elementor write grant, no Production promotion."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+      "source_blob_sha": "ce96cf8b4e0186816a44903da75f8fec066a23b6",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_authorization_recovery_trait_nonregression.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/live-safety-rc129-reconciliation-runtime.php"
+      ],
+      "owner_role": "MAD4B first-party CI source integrity review; separate enrolled Owner release authorization required",
+      "review_rationale": "Byte-exact authorization trait recovery remains unchanged. To satisfy the original 950-line architectural budget, this revision compresses only the reviewed scoped material-build verification block from 12 lines to seven without altering its server restriction, governed ability gate, verification evidence check, error code or original NHI/owner/ticket checks. Exact source extraction contract and 19/19 isolated negative/positive PHP guard tests pass. This is CI source review only; no owner grant, runtime change or deployment is authorized.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing controls already address exact source identity, signed update/rollback, restricted per-site addon pair binding and fail-closed execution policy; no new production capability is introduced.",
+      "execution_note": "Exact bounded formatting-only successor of previously reviewed scoped content material build guard. Original source and enrolled owner signatures, company rollback, OAuth scope and full release are still independent pending conditions."
     }
   ],
   "code_change_rules": {

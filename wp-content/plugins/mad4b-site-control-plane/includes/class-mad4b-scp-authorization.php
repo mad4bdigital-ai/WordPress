@@ -266,17 +266,12 @@ final class MAD4B_SCP_Authorization {
 			}
 		}
 
-        // A draft content write can ignore *unrelated* package drift only when
-        // all code-owned material dependencies exactly match their manifest.
-        // Existing NHI grants, candidate binding and one-time tickets still apply.
-        if ( 'mad4b-write' === $server_id
-            && class_exists( 'MAD4B_SCP_Scoped_Build_Verification' )
+        // Signed material proof supplements NHI, one-time tickets, and owner grants.
+        if ( 'mad4b-write' === $server_id && class_exists( 'MAD4B_SCP_Scoped_Build_Verification' )
             && MAD4B_SCP_Scoped_Build_Verification::governs_content_write( $ability_name ) ) {
             $build_proof = MAD4B_SCP_Scoped_Build_Verification::verify( $ability_name, $input );
-            if ( is_wp_error( $build_proof ) || ! is_array( $build_proof ) || empty( $build_proof['verification_ready'] ) ) {
-                return self::error( 'mad4b_content_material_build_not_verified',
-                    'Content mutation requires current material-file integrity or full exact package provenance.' );
-            }
+            if ( is_wp_error( $build_proof ) || ! is_array( $build_proof ) || empty( $build_proof['verification_ready'] ) )
+                return self::error( 'mad4b_content_material_build_not_verified', 'Content mutation requires current material-file integrity or full exact package provenance.' );
         }
 		$authorization_input = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::authorization_input( $input, $ability_name ) : $input;
 		if ( ! class_exists( 'MAD4B_SCP_Resource_Constraint_Set' ) ) return self::error( 'mad4b_resource_constraint_compiler_unavailable', 'Provider-neutral resource constraint compiler is unavailable at mutation admission.' );

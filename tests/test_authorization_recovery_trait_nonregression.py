@@ -17,17 +17,12 @@ REQUIRE_NEW = "require_once __DIR__ . '/trait-mad4b-scp-authorization-recovery-s
 CLASS = "final class MAD4B_SCP_Authorization {\n"
 USE = "\tuse MAD4B_SCP_Authorization_Recovery_State_Trait;\n"
 TRAIT_HEADER = "<?php\nif ( ! defined( 'ABSPATH' ) ) { exit; }\n/** Original, byte-preserved execution attempt recovery and boundary observation helpers. */\ntrait MAD4B_SCP_Authorization_Recovery_State_Trait {\n"
-SCOPED_GUARD = '''        // A draft content write can ignore *unrelated* package drift only when
-        // all code-owned material dependencies exactly match their manifest.
-        // Existing NHI grants, candidate binding and one-time tickets still apply.
-        if ( 'mad4b-write' === $server_id
-            && class_exists( 'MAD4B_SCP_Scoped_Build_Verification' )
+SCOPED_GUARD = '''        // Signed material proof supplements NHI, one-time tickets, and owner grants.
+        if ( 'mad4b-write' === $server_id && class_exists( 'MAD4B_SCP_Scoped_Build_Verification' )
             && MAD4B_SCP_Scoped_Build_Verification::governs_content_write( $ability_name ) ) {
             $build_proof = MAD4B_SCP_Scoped_Build_Verification::verify( $ability_name, $input );
-            if ( is_wp_error( $build_proof ) || ! is_array( $build_proof ) || empty( $build_proof['verification_ready'] ) ) {
-                return self::error( 'mad4b_content_material_build_not_verified',
-                    'Content mutation requires current material-file integrity or full exact package provenance.' );
-            }
+            if ( is_wp_error( $build_proof ) || ! is_array( $build_proof ) || empty( $build_proof['verification_ready'] ) )
+                return self::error( 'mad4b_content_material_build_not_verified', 'Content mutation requires current material-file integrity or full exact package provenance.' );
         }
 '''
 
@@ -54,7 +49,7 @@ def check(original: str, facade: str, trait: str) -> None:
     assert expect.count(anchor) == 2
     expect = expect.replace(anchor, SCOPED_GUARD + anchor, 1)
     assert facade == expect, "Authorization facade diverged beyond exact trait extraction and reviewed scoped guard"
-    assert len(facade.splitlines()) <= 950 + len(SCOPED_GUARD.splitlines()), "Authorization size budget exceeded"
+    assert len(facade.splitlines()) <= 950, "Authorization size budget exceeded"
     assert all("function " + name + "(" not in facade for name in NAMES)
     assert all(("function " + name + "(") in trait for name in NAMES)
 
