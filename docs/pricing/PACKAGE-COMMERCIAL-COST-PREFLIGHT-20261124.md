@@ -26,3 +26,10 @@
 ## Safety
 
 Original live site source parity confirmed after SHA-locked file updates. No Tour/Property Rate, Form 6 or WooCommerce order data was written by this release. No refunds or Stripe charge attempted. Browser-authenticated visual QA still outstanding.
+
+## Pilot service source findings (added 2026-11-24)
+
+- Existing native `MAD4B_Guide_Service_Composition_V1` supports **three explicit full-day guide days and two none days** in Tour 60627, reviewed source revision 3. Approved-cost-role **internal-only** indicative guide cost alternatives (one guide): English **7,500 EGP**, French/German/Spanish **9,000 EGP**. These are original source computed components with `not_price_authority=true`; they do **not** establish supplier availability or customer selling price, and language must come from the actual traveler selection.
+- Existing native `MAD4B_Package_Transport_Needs_V2::inspect(60627, Gold)` returns **five `need_unreviewed` itinerary days**, **zero qualified candidates**. It is inappropriate to silently assume 'no transport' or add arbitrary transfer costs. A transport requirement classification and approved date/route/car/fare source is the next dependency.
+- Integrated the two original services into the Pricing Lab `commercial_cost_preflight` under `native_guide_cost_references` and `native_transport_cost_readiness`. Currency segregation is explicit: **no EGP guide amount is added to USD hotel subtotal** until approved FX/quote. Both source and Wayfa produced identical service-cost and readiness diagnostics; still **no Tour Rate, Form 6, or WooCommerce mutations**.
+- Service-preflight code remains review-only: `new_tour_rate_ready=false`, `approved_price=null`, `form6_final_price_ready=false`, `woo_advance_allowed_by_this_source=false`.
