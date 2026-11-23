@@ -1111,7 +1111,14 @@ def main():
     if '--inspect' not in sys.argv and SITE=='source':
         observe_source_home_without_browser()
         observe_source_css_profiles()
-        if source_browser_evidence_refresh(history,now):
+        qa_deadline=original_qa_lease_deadline('source',now)
+        # An existing original 422 pending release needs its sole shared
+        # Chromium opportunity. The six-locale observer issues no CSS and
+        # can wait; it remains scheduled for the first QA-free source wake.
+        if qa_deadline is not None:
+            print('WPCSS_SOURCE_OBSERVER_YIELDS_TO_NATIVE_QA',
+                  'source',qa_deadline,flush=True)
+        elif source_browser_evidence_refresh(history,now):
             # Read back through the ORIGINAL epoch/SHA/Elementor identity
             # classifier. Fresh Chrome HTML is not a certificate.
             observe_source_css_profiles()
