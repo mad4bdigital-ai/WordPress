@@ -16,6 +16,7 @@ final class MAD4B_Public_Critical_CSS_Consumer_V2 {
     private const MAX_SOURCE=25165824;
     private const MAX_CRITICAL=1048576;
     private const MAX_FILES=256;
+    private const LEGACY_CONSUMER_SHA='249083d5aa0124ea1280a88f5062945cdff2885eca63b36ba5c66682b0faf3d1';
     private static int $expected_links=0;
     private static int $expected_styles=0;
     private static bool $provisional=false;
@@ -64,12 +65,50 @@ final class MAD4B_Public_Critical_CSS_Consumer_V2 {
      * and neither a JetEngine relation nor the rendered page/post-meta
      * references any changed Property. Unknown => invalidate.
      */
+    private static function approved_consumer_revision($recorded): bool {
+        if (!self::sha($recorded))return false;
+        $installed=hash_file('sha256',__FILE__);
+        return (is_string($installed) && hash_equals($installed,$recorded))
+            || hash_equals(self::LEGACY_CONSUMER_SHA,$recorded);
+    }
+
+    private static function ordered_unrelated_property_events(int $old,int $now,int $dirtyGeneration): ?array {
+        // UNKNOWN is never treated as an empty set. All generations in the
+        // required interval must have original 421 provenance, in order.
+        if ($old<1 || $now<=$old || $now-$old>256
+            || $dirtyGeneration<$now)return null;
+        $doc=get_option('mad4b_ccss_public_event_journal_v1',[]);
+        if (!is_array($doc)
+            || ($doc['contract']??null)!=='mad4b.css.source-ordered-events.v1'
+            || ($doc['latest_generation']??null)!==$dirtyGeneration
+            || !is_array($doc['events']??null)
+            || !array_is_list($doc['events'])
+            || count($doc['events'])<1 || count($doc['events'])>512)
+            return null;
+        $next=$old+1;$changed=[];
+        foreach ($doc['events'] as $event) {
+            if (!is_array($event) || !is_int($event['generation']??null))
+                return null;
+            $generation=$event['generation'];
+            if ($generation<=$old)continue;
+            if ($generation>$now)break;
+            if ($generation!==$next
+                || ($event['scope']??null)!=='post:properties'
+                || !is_int($event['id']??null) || $event['id']<1)return null;
+            $changed[]=$event['id'];$next++;
+        }
+        if ($next!==$now+1 || !$changed)return null;
+        return array_values(array_unique($changed));
+    }
+
     private static function unrelated_property_events(array $ctx,int $old,int $now,string $html): bool {
-        if ($old<1 || $now<=$old || $now-$old>100
+        if ($old<1 || $now<=$old || $now-$old>256
             || ($ctx['type']??'')!=='tours-and-activities'
             || !is_int($ctx['object_id']??null)
             || $ctx['object_id']<=0
             || $html===''
+            || stripos($html,'jet-listing-grid')!==false
+            || stripos($html,'data-mad4b-property')!==false
             || !function_exists('get_post_meta')
             || !function_exists('get_post_status')
             || get_post_status($ctx['object_id'])!=='publish'
@@ -85,19 +124,29 @@ final class MAD4B_Public_Critical_CSS_Consumer_V2 {
         $ledger=get_option('mad4b_ccss_public_dirty_v1',[]);
         if (!is_array($ledger)||!is_array($ledger['ids']??null)
             || (int)($ledger['generation']??0)<$now)return false;
-        $seen=[];$changed=[];
+        $seen=[];$changed=[];$oldMapComplete=true;
         foreach ($ledger['ids'] as $key=>$entry) {
-            if (!is_array($entry))return false;
+            if (!is_array($entry)){$oldMapComplete=false;break;}
             $gen=$entry['generation']??null;
             if (!is_int($gen) || $gen<=$old || $gen>$now)continue;
-            if (!is_string($key)||!preg_match('/^post:properties:([1-9][0-9]*)$/D',$key,$match)
-                || isset($seen[$gen]))return false;
+            if (!is_string($key)
+                || !preg_match('/^post:properties:([1-9][0-9]*)$/D',$key,$match)
+                || isset($seen[$gen])){$oldMapComplete=false;break;}
             $seen[$gen]=true;$changed[]=(int)$match[1];
         }
-        // The bounded ledger can coalesce multiple updates for one post.
-        // A missing intermediate generation is NOT a proof.
-        if (count($seen)!==$now-$old)return false;
-        for($n=$old+1;$n<=$now;$n++)if(!isset($seen[$n]))return false;
+        if ($oldMapComplete && count($seen)===$now-$old) {
+            for($n=$old+1;$n<=$now;$n++)
+                if(!isset($seen[$n])){$oldMapComplete=false;break;}
+        } else $oldMapComplete=false;
+        if (!$oldMapComplete) {
+            // Append-only 421 journal can prove repeated same-object
+            // changes that the original per-key map overwrote. Unknown,
+            // missing, foreign, out-of-order or mixed post types => reject.
+            $changed=self::ordered_unrelated_property_events(
+                $old,$now,(int)$ledger['generation']);
+            if ($changed===null)return false;
+        }
+        $changed=array_values(array_unique($changed));
         global $wpdb;
         if (!is_object($wpdb)||!isset($wpdb->prefix)
             || !method_exists($wpdb,'prepare')||!method_exists($wpdb,'get_var'))
@@ -123,9 +172,12 @@ final class MAD4B_Public_Critical_CSS_Consumer_V2 {
                 if (!is_string($key)||!preg_match('/property|hotel|cruise|accommodation|relation|rate|program|ship/i',$key))
                     continue;
                 foreach((array)$entries as $value){
-                    if (is_scalar($value)
-                        && preg_match('/(?<![0-9])'.preg_quote((string)$property,'/').'(?![0-9])/',
-                                      (string)$value))return false;
+                    // Nested JetEngine/ACF repeaters can store Property IDs
+                    // inside arrays or serialized objects. Unless a precise
+                    // relation parser attests them, UNKNOWN is dependent.
+                    if (!is_scalar($value))return false;
+                    if (preg_match('/(?<![0-9])'.preg_quote((string)$property,'/').'(?![0-9])/',
+                                  (string)$value))return false;
                 }
             }
         }
@@ -169,7 +221,7 @@ final class MAD4B_Public_Critical_CSS_Consumer_V2 {
                  || $cert['released_at']>time()+300
                  || time()>$cert['post_release_deadline']))
             || ($cert['runtime_sha']??null)!==hash_file('sha256',__DIR__.'/422-mad4b-public-critical-css-runtime.php')
-            || ($cert['consumer_sha']??null)!==hash_file('sha256',__FILE__)
+            || !self::approved_consumer_revision($cert['consumer_sha']??null)
             || !self::verify_deps($cert,$ctx,$html))return null;
         foreach (['host','path','language','type','object_id','market_country','currency','css_epoch']
                  as $field)if (($cert[$field]??null)!==($ctx[$field]??null))return null;

@@ -316,7 +316,8 @@ def approved_native_runtime_sha(site,wp):
     approved_421_sha={
       'ae7936c7ad09b059375e1960d4c59144af0b4325933db34bcfa63c26e49233bb',
       '78be6cfeeff27fbf5c336372cf1bd59fc939955d0fc41777fb2d6e1c62209bf4',
-      '010b0af3c27d605f5cba2e64d7a0b84c33692b1e7c44881bf06a794c6d6f40f8'}
+      '010b0af3c27d605f5cba2e64d7a0b84c33692b1e7c44881bf06a794c6d6f40f8',
+      '8779fa2cf78c2edb2654216284f19241777be92087bbb247804e454ef461c1c7'}
 
     # Immutable original source Git objects, verified against GitHub.
     # Previously this trusted branch's 421/422 bytes via an ephemeral
@@ -329,6 +330,11 @@ def approved_native_runtime_sha(site,wp):
         '422-mad4b-public-critical-css-runtime.php':
             'b5ed9a9629e0a547bf42803b4810b492f73a748eaaad66b5dde6e1961c7713f4'}
 
+    # Both new 421 and new 422 must be installed as one Git-pinned pair.
+    # Old exact 421/422 versions are independently supported for rollback.
+    new_421='8779fa2cf78c2edb2654216284f19241777be92087bbb247804e454ef461c1c7'
+    new_422='f68813a57f02cd607864fcb9708c753ec2fd9c1694b2e6c8324588871d953c5f'
+    installed_421=None
     runtime=None
     for name in ['421-mad4b-public-critical-css-coverage.php',
                  '422-mad4b-public-critical-css-runtime.php']:
@@ -339,7 +345,8 @@ def approved_native_runtime_sha(site,wp):
         actual_sha=hashlib.sha256(blob).hexdigest()
         if name=='422-mad4b-public-critical-css-runtime.php' and actual_sha in (released_v2_422,current_git_release[0]):
             companion=wp/'mu-plugins/422-mad4b-public-critical-css-v2-consumer.php'
-            expected_companion=(current_git_release[1] if actual_sha==current_git_release[0]
+            expected_companion=(new_422 if installed_421==new_421 else
+                                current_git_release[1] if actual_sha==current_git_release[0]
                                 else released_v2_consumer)
             if (companion.is_symlink() or not companion.is_file() or
                 hashlib.sha256(companion.read_bytes()).hexdigest()!=expected_companion):
@@ -350,6 +357,7 @@ def approved_native_runtime_sha(site,wp):
         elif name=='421-mad4b-public-critical-css-coverage.php':
             if actual_sha not in approved_421_sha:
                 raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
+            installed_421=actual_sha
         else:
             if actual_sha!=approved_original_sha.get(name):
                 raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
@@ -373,6 +381,12 @@ def approved_v2_consumer_sha(site,wp,runtime_sha):
         approved=current_git_release[1]
     elif runtime_sha!=released_runtime:
         return None
+    source421=wp/'mu-plugins/421-mad4b-public-critical-css-coverage.php'
+    if source421.is_symlink() or not source421.is_file():
+        raise ValueError('MULTI_CSS_V2_MISSING_421_BOUNDED_SOURCE_PROOF')
+    if hashlib.sha256(source421.read_bytes()).hexdigest()==(
+         '8779fa2cf78c2edb2654216284f19241777be92087bbb247804e454ef461c1c7'):
+        approved='f68813a57f02cd607864fcb9708c753ec2fd9c1694b2e6c8324588871d953c5f'
     companion=wp/'mu-plugins/422-mad4b-public-critical-css-v2-consumer.php'
     if (companion.is_symlink() or not companion.is_file()
         or hashlib.sha256(companion.read_bytes()).hexdigest()!=approved):

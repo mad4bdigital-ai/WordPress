@@ -297,3 +297,59 @@ broad listing/epoch invalidation is **not overridden** by this QoS
 change. A future scoped consumer contract requires separate verified
 Elementor/JetEngine source dependency proof and canary QA; no unsafe
 generation-number rewrites are made.
+
+### First-party 421/422 ordered listing-event scope proof (Nov 23, 2026)
+
+The original 421 source generation is a global monotonically increasing
+dirty counter. Its 100-key `ids` map holds **only the last generation per
+post**, so multiple actual Property updates between CSS publication and
+delivery could erase intervening source-change records. A certificate
+could not prove that an unrelated Property save was harmless.
+
+Source 421 now additionally records a bounded **512-event, ordered, versioned,
+root-WordPress-owned event journal**, retaining every original `mark()`
+generation, scope and numeric ID in the exact original order. The existing
+global, listing and per-route generation bumps remain unchanged. On an
+unknown/jumped prior generation the journal resets to a one-entry
+starting point; it can never synthesize missed history. Writes are
+server-side WordPress options, non-autoloaded; no visitor entrypoint.
+
+The 422 V2 companion retains the original strict listing-generation check
+for all archives, packages, Nile cruises, Properties and page/templates.
+Only the **existing** independently bounded day-tour case may use the new
+journal when the older per-key history map has overwritten intermediate
+generations. It verifies all interval events are consecutively ordered
+and exclusively Property updates; that the edited tour is published with
+`tour_mode=tour`, contains no known cruise, program, related property,
+JetEngine relation, Property ID or title, unsafe nested accommodation
+metadata, or dynamic Jet listing grid; unknown data or missing interval
+generations aborts to native CSS. The original 422 global generation,
+singular route revision, CSS epoch, market/currency, Elementor DOM document
+fingerprint, exact stylesheet order and byte hashes, CSS critical assets
+and original independent 5-width Chromium evidence remain unchanged.
+
+The new Git-approved 421 + V2-422 companion must be installed as an
+**exact pinned pair**. Mixed old/new components are rejected by the
+first-party renderer and original Worker. To avoid an arbitrary churn of
+already valid five-viewport certificates on installation only, the
+new companion explicitly recognizes one immutable **legacy exact V2
+consumer SHA** in already published 422 certificate receipts, and its
+own exact new Git SHA. Rendering/CSS transformation code is not changed.
+Neither arbitrary SHA nor undocumented consumer release is allowed.
+The original certificate and all CSS source/current dependency checks
+still apply, and the 6h provisional lease cannot be extended.
+
+This is a **scoped rescue of falsely invalidated simple day tours**,
+NOT global epoch bypass, automatic family certification or coverage
+completion. A genuine CSS epoch or header/template generation change,
+new package/property relation, stale CSS file/market, or any otherwise
+unproven client still forces original CSS/QA. The original postrelease QA
+also remains strict on any source drift; this migration does not
+claim to have changed its independent browser admission contract.
+
+Original CPU-only PHP 8.5.12 tests: 21 ordered real event / strict tour
+source cases and 14 original 422 legacy cases. Source and Wayfa
+first-party pair-gate fixtures: 14 fail-closed cases with old/new SHA,
+unapproved/mixed releases, plus the original 24 health tests. Test
+fixture calls mocked WordPress functions; no production post, SSL/cache
+or payment content is modified.

@@ -8,6 +8,7 @@ defined('ABSPATH') || exit;
 
 final class MAD4B_Public_Critical_CSS_Coverage_V1 {
     private const DIRTY = 'mad4b_ccss_public_dirty_v1';
+    private const EVENT_JOURNAL = 'mad4b_ccss_public_event_journal_v1';
     private const HOME_DIRTY = 'mad4b_critical_css_home_dirty_v1';
     private const TYPES = ['page','post','tours-and-activities','properties'];
     private const TAXONOMIES = ['category','destinations','tour-types','property-types','tour-categories'];
@@ -131,6 +132,37 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
         if ($path==='') $path='/';
         return self::allowed_path($path) ? $path : null;
     }
+    /**
+     * Ordered, bounded native dirty-event proof. The original 100-key
+     * map keeps only the LAST generation per object, which loses the
+     * intermediate events when a property is saved twice. Preserve every
+     * generation in native 421 order without relaxing any invalidation.
+     *
+     * A concurrent/unknown/corrupt previous journal resets to a single
+     * event, and 422 MUST reject a noncontiguous required history.
+     * No visitor can write this option; it is only updated by mark().
+     */
+    private static function journal_event(int $generation,string $scope,int $id): void {
+        $old=get_option(self::EVENT_JOURNAL,[]);
+        $events=[];
+        if (is_array($old)
+            && ($old['contract']??null)==='mad4b.css.source-ordered-events.v1'
+            && ($old['latest_generation']??null)===$generation-1
+            && is_array($old['events']??null)
+            && count($old['events'])>=1 && count($old['events'])<=512) {
+            $prior=end($old['events']);
+            if (is_array($prior)
+                && ($prior['generation']??null)===$generation-1)
+                $events=$old['events'];
+        }
+        $events[]=['generation'=>$generation,'scope'=>$scope,'id'=>$id];
+        if (count($events)>512)$events=array_slice($events,-512);
+        update_option(self::EVENT_JOURNAL,[
+            'contract'=>'mad4b.css.source-ordered-events.v1',
+            'latest_generation'=>$generation,
+            'events'=>$events],false);
+    }
+
     private static function mark(string $scope,int $id=0,bool $global=false): void {
         if (!self::authorized()) return;
         $dirty=get_option(self::DIRTY,[]);
@@ -146,6 +178,7 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
             'types'=>array_values(array_unique(array_merge((array)($dirty['types']??[]),[$scope]))),
             'ids'=>$ids];
         update_option(self::DIRTY,$dirty,false);
+        self::journal_event($generation,$scope,$id);
         // Constant-time per-object invalidation (independent of the size
         // of the bounded event ledger); frontend certificates check it
         // without enumerating all tours or translated pages.
