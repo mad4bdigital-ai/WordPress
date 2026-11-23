@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: MAD4B Wayfa Verified Public JetEngine Term Response Cache
- * Version: 1.0.1
+ * Version: 1.0.2
  * Description: Native post-validation read-only cache for a signed, market-partitioned public home Attractions listing; sensitive requests fail closed.
  */
 defined('ABSPATH') || exit;
@@ -42,7 +42,18 @@ final class MAD4B_Wayfa_Verified_Term_Response_Cache_V1 {
         $lang=(string)apply_filters('wpml_current_language','');
         if(!in_array($lang,['en','es'],true) || $lang!==($path==='/es/'?'es':'en'))return '';
         foreach(array_keys((array)($_REQUEST??[])) as $key) {
-            if(!in_array((string)$key,['action','handler','query','widget_settings','page_settings','listing_type','isEditMode','nocache','woocommerce-login-nonce','_wpnonce','woocommerce-reset-password-nonce','post_id','queried_id','element_id','page'],true))return '';
+            if(!in_array((string)$key,['action','handler','query','widget_settings','page_settings','listing_type','isEditMode','nocache','woocommerce-login-nonce','_wpnonce','woocommerce-reset-password-nonce','post_id','queried_id','element_id','page','addedPostCSS'],true))return '';
+        }
+        // JetEngine's actual browser sends the already-loaded CSS handle set.
+        // Its response styles depend on this set, so include it in the exact
+        // request hash rather than discarding or broadly trusting it.
+        if(isset($_REQUEST['addedPostCSS'])) {
+            $added=$_REQUEST['addedPostCSS'];
+            if(!is_array($added) || !array_is_list($added) || count($added)>80)return '';
+            foreach($added as $handle) {
+                if(!is_string($handle) || strlen($handle)>120
+                    || !preg_match('/^[A-Za-z0-9._-]{1,120}$/D',$handle))return '';
+            }
         }
         $page=(array)($_REQUEST['page_settings']??[]);
         $widget=(array)($_REQUEST['widget_settings']??[]);
