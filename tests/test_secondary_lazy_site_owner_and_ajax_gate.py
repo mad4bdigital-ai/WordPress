@@ -82,4 +82,3 @@ class NativeLazyOwner(unittest.TestCase):
   self.assertEqual(verdict['combined_canary']['decision'],'hold')
 
 if __name__=='__main__':unittest.main()
-
