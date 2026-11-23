@@ -8638,6 +8638,26 @@
       "coverage_reuse_rationale": "Original exact OAuth grant, current Site Profile, audited execution and mutation ticket boundaries remain mandatory independently of shared provider source mapping.",
       "review_rationale": "The source inventory explicitly lists a pre-existing first-party governed content/job Ability for the reviewed Staging and Production provider keys. This is source eligibility, not a new API endpoint, executable workflow, issued Grant or Owner consent. The changed exact-ability regression rejects unknown and Breakglass authorities and verifies an unreviewed environment remains excluded.",
       "execution_note": "No Production release, site mutation or standing delegation inferred. Live execution requires exact environment and owner approval."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-public-document-kernel.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-live-parity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-source-contract.py"
+      ],
+      "owner_role": "MAD4B first-party repository source integrity review (CI-only); original site Release Owner independently required",
+      "review_rationale": "This module is already ACTIVE on both deployed signed rc128 sites and is byte-identical across those sites; its absence in the newer rc129 source is a regression, not the introduction of new authority. Restoring the exact live class, default-off configuration manifest and exact guarded entrypoint prevents a downgrade. The source and 31 positive/negative isolated runtime assertions protect admin, AJAX, CLI, cookies, cross-origin headers, speculative navigation, canary and unauthenticated public-route eligibility. No automatic production approval or newly introduced provider authority.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing security, governance and platform controls already govern the exact deployed read-only public singular bootstrap, whose reduced mode can only be enabled by current per-company site configuration and preexisting credential fences. No additional write Ability, external provider, payment or cache authorization introduced.",
+      "execution_note": "Source-level restoration only; actual per-site browsers, DOM, signed release provenance and Original owner acceptance remain required."
     }
   ],
   "lifecycle": [],
@@ -23091,6 +23111,69 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing controls already address exact source identity, signed update/rollback, restricted per-site addon pair binding and fail-closed execution policy; no new production capability is introduced.",
       "execution_note": "Exact bounded formatting-only successor of previously reviewed scoped content material build guard. Original source and enrolled owner signatures, company rollback, OAuth scope and full release are still independent pending conditions."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "e4ff0bd4f81e2540bb27cc9474ad6df476f22d4b",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-live-parity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-source-contract.py"
+      ],
+      "owner_role": "MAD4B first-party source integrity reviewer; independent signed release Owner still required",
+      "review_rationale": "Restores byte-identical existing live Public Document Kernel module/manifest and exact main plugin guarded bootstrap invocation, missing from rc129. Both rc128 sites have mode on with two site-verified paths; site-specific settings remain in WordPress DB, not source. 31 runtime tests and exact source-order contract prevent accidentally exposing private requests or auth scopes. No new permission or sign-off.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, security, and platform controls cover the already-deployed read-only canonical public singular route classification, not a new privileged capability.",
+      "execution_note": "Original Host proof, per-site source selection, browser acceptance and release rollback are required; this source-only review cannot authorize publication."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-public-document-kernel.php",
+      "source_blob_sha": "71577692bc031e65f0c822f3f29b1644d26dfb71",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-live-parity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-source-contract.py"
+      ],
+      "owner_role": "MAD4B first-party source integrity reviewer; independent signed release Owner still required",
+      "review_rationale": "Restores byte-identical existing live Public Document Kernel module/manifest and exact main plugin guarded bootstrap invocation, missing from rc129. Both rc128 sites have mode on with two site-verified paths; site-specific settings remain in WordPress DB, not source. 31 runtime tests and exact source-order contract prevent accidentally exposing private requests or auth scopes. No new permission or sign-off.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, security, and platform controls cover the already-deployed read-only canonical public singular route classification, not a new privileged capability.",
+      "execution_note": "Original Host proof, per-site source selection, browser acceptance and release rollback are required; this source-only review cannot authorize publication."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/public-document-kernel-manifest-v1.json",
+      "source_blob_sha": "aab5082e72ee6f1fb89f4cf4c16bbecece446203",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-live-parity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-source-contract.py"
+      ],
+      "owner_role": "MAD4B first-party source integrity reviewer; independent signed release Owner still required",
+      "review_rationale": "Restores byte-identical existing live Public Document Kernel module/manifest and exact main plugin guarded bootstrap invocation, missing from rc129. Both rc128 sites have mode on with two site-verified paths; site-specific settings remain in WordPress DB, not source. 31 runtime tests and exact source-order contract prevent accidentally exposing private requests or auth scopes. No new permission or sign-off.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, security, and platform controls cover the already-deployed read-only canonical public singular route classification, not a new privileged capability.",
+      "execution_note": "Original Host proof, per-site source selection, browser acceptance and release rollback are required; this source-only review cannot authorize publication."
     }
   ],
   "code_change_rules": {
