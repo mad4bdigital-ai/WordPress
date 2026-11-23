@@ -294,7 +294,8 @@ function renderReport(data){
       String(hotel.preliminary_stage_count||0)+' / '+String(hotel.hotel_resort_stage_count||0)+
       ' hotel/resort stages with source-based preliminary cost. Remaining: '+
       String(hotel.unpriced_stage_count||0)+' · Currency '+String(hotel.currency||'not selected')+
-      '. Each stage is priced independently; Units are optional.'));
+      '. Auto-lowest cost Property default: '+String(hotel.auto_lowest_stage_count||0)+
+      ' stage(s). No hotel is reserved or assigned. Units are optional.'));
     const profit=hotel.company_profit_policy||null;
     if(profit)scope.append(el('p','mad4b-pcl-note','Company-wide profit policy ACTIVE: '+
       String(profit.percent)+'% '+String(profit.kind||'')+
@@ -335,17 +336,23 @@ function renderReport(data){
       const src=item.source==='property'?'Property Standard Rate':
         item.source==='unit'?'Unit-Specific Rate':
         'No rate selected';
+      const mode=item.pricing_selection_mode||'';
+      const auto=mode==='automatic_lowest_cost_reference';
       const amount=item.preliminary_cost===null?'Not priced':
         String(item.preliminary_cost)+' '+String(item.currency||'');
-      const sourceCell=el('td','',src+(item.rate_id?' · #'+item.rate_id:''));
+      const sourceCell=el('td','',(auto?'AUTO-LOWEST COST DEFAULT · ':'')+
+        src+(item.rate_id?' · #'+item.rate_id:'')+
+        (item.pricing_property_id?' · Property #'+item.pricing_property_id:''));
       const alternatives=Array.isArray(item.candidate_costs)?item.candidate_costs:[];
       if(alternatives.length){
-        sourceCell.append(el('p','mad4b-pcl-note','Eligible dated Property cost alternatives (not selected):'));
+        sourceCell.append(el('p','mad4b-pcl-note','Date/tier/occupancy/meal-matched alternatives. Lowest cost is the automatic pricing default unless Operations explicitly overrides it; never a reservation:'));
         const choices=el('ul','mad4b-pcl-candidate-costs');
         for(const x of alternatives.slice(0,5)){
           choices.append(el('li','',String(x.property_name||'Property #'+x.property_id)+
             ' · '+String(x.preliminary_cost)+' '+String(x.currency||'')+
             ' · Rate #'+String(x.rate_id||'')+
+            (auto&&Number(x.property_id)===Number(item.pricing_default_property_id)?
+              ' · AUTO-LOWEST DEFAULT':'')+
             (x.stop_sale?' · STOP SALE / cost reference':'')+
             ' · unapproved'));
         }
