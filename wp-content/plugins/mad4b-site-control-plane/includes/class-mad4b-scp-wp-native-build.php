@@ -19,9 +19,9 @@ final class MAD4B_SCP_WP_Native_Build {
     const REPO = 'mad4bdigital-ai/WordPress';
     const PLUGIN = 'wp-content/plugins/mad4b-site-control-plane';
     const MAX_FILES = 3500;
-    const MAX_SOURCE_BYTES = 14680064;
+    const MAX_SOURCE_BYTES = 25165824;
     const MAX_BLOB_BYTES = 1048576;
-    const MAX_ZIP_BYTES = 16777216;
+    const MAX_ZIP_BYTES = 25165824;
     // Upper bound, not a requirement: wall-clock and PHP limits can stop early.
     const BATCH = 64;
     const FETCH_WALL_SECONDS = 24;
