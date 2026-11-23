@@ -1,0 +1,107 @@
+{
+  "contract": "mad4b.wayfatours.signed-jet-and-scoped-layout-continuity.v1",
+  "released_on": "2026-11-23",
+  "site": "wayfatours.com",
+  "current_live_state": "Wayfatours Production active; Tours.dev epoch-continuity engine dormant without a qualified local manifest",
+  "code": {
+    "wayfa_jet_response_cache": {
+      "repository_path": "ops/site-company-overlays/wayfatours/performance-runtime/wp-content/mu-plugins/435-mad4b-wayfa-public-jet-term-response-cache.php",
+      "sha256": "9ccde0bfacbe1cdc95bd969230fa4601ca56306511db2fe8dc725d3f9494dc2d"
+    },
+    "shared_layout_continuity": {
+      "wayfa_path": "ops/site-company-overlays/wayfatours/performance-runtime/wp-content/mu-plugins/436-mad4b-scoped-layout-epoch-renewal-v1.php",
+      "source_path": "wp-content/mu-plugins/436-mad4b-scoped-layout-epoch-renewal-v1.php",
+      "sha256": "54370e57862f2c6587e58c61538954eeb51cf551fedcc80e698f4bb5fa401c5b"
+    }
+  },
+  "ajax": {
+    "signed_and_server_widget_verified": true,
+    "approved_query_id": 291,
+    "approved_listing_id": 45938,
+    "en_document_id": 25927,
+    "es_document_id": 26001,
+    "cache_mode": "on",
+    "ttl_seconds": 60,
+    "trusted_dimensions": [
+      "WPML locale",
+      "validated home route",
+      "verified company country",
+      "native currency market",
+      "device class",
+      "query source digest",
+      "data generation",
+      "term generation",
+      "Elementor document source",
+      "listing source",
+      "canonical request fingerprint"
+    ],
+    "safety": [
+      "native JetEngine signature verified before cache lookup",
+      "guest public terms only",
+      "unknown cookies fail closed",
+      "commerce cookies fail closed",
+      "no personal, quote, booking, price, stock, checkout, rate or Woo session caching",
+      "original full-list delivery gate preserved",
+      "JetEngine addedPostCSS list is validated and hashed exactly to segregate front-end CSS response variants"
+    ],
+    "confirmed_result_items": {
+      "en": 43,
+      "es": 41
+    },
+    "before_uncached_ms_sample": [
+      2378,
+      2100,
+      1996,
+      1838
+    ],
+    "after_warm_ms_sample": [
+      883,
+      908,
+      1045,
+      887
+    ],
+    "real_chromium_cached_response_qa": "PASS: 390px mobile FastCGI HIT page and signed JetEngine AJAX response MISS then HIT for each WPML locale; complete output; no JS errors or horizontal overflow",
+    "real_chromium_two_pass_results": {
+      "en": {
+        "miss_ms": 2630,
+        "hit_ms": 1595,
+        "pct_faster": 39.4
+      },
+      "es": {
+        "miss_ms": 2616,
+        "hit_ms": 1723,
+        "pct_faster": 34.1
+      }
+    },
+    "real_chromium_verified_order": [
+      "en MISS 43 unique",
+      "en HIT 43 unique",
+      "es MISS 41 unique",
+      "es HIT 41 unique"
+    ]
+  },
+  "layout": {
+    "original_certificate_epoch": 261,
+    "continuity_manifest_sha256": "be47246c6d5cdc9cdbc3dcf4f95cd50103fa88596798221958c60ef402ebf7d0",
+    "tracked_css_and_runtime_assets": 20,
+    "tracked_elementor_documents": 12,
+    "verified_kit": 60050,
+    "positive_future_epoch_simulation": true,
+    "rejects_mutated_styles": true,
+    "rejects_mutated_document": true,
+    "rejects_cross_site_identity": true,
+    "trigger": "first uncached WordPress front-page render after CSS Epoch drift",
+    "action": "CAS update original proof css_epoch only after dependency parity; otherwise remain native SSR",
+    "browser_recapture_when_css_dependencies_changed": "required by original renderer; no automatic bypass"
+  },
+  "not_changed": [
+    "JetEngine core",
+    "JetSmartFilters",
+    "tour pricing",
+    "WooCommerce booking and payment",
+    "original Chromium lock",
+    "original CSS V2 certificate gates",
+    "FastCGI global cache"
+  ],
+  "rollback": "Set mad4b_wayfa_signed_jet_fragment_cache_v1=off to stop response sharing; remove only the 435 addon after readback. The 436 identity checker is no-op without an exact signed layout manifest. Original layout certificates and old CSS Epoch remain auditable."
+}
