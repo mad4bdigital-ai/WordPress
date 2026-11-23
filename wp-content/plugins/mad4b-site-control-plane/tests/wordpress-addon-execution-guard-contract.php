@@ -38,6 +38,13 @@ function get_plugins(){
 	);
 }
 
+final class MAD4B_SCP_Site_Profile {
+    public static function site_uuid(){ return $GLOBALS['site_uuid'] ?? ''; }
+    public static function profile_digest(){ return $GLOBALS['site_profile_digest'] ?? ''; }
+    public static function origin_enrolled(){ return !empty($GLOBALS['site_origin_enrolled']); }
+    public static function site_urls_match_enrollment(){ return !empty($GLOBALS['site_origin_match']); }
+}
+
 final class MAD4B_SCP_Policy { public static function can_read(){ return true; } }
 final class MAD4B_SCP_Audit { public static function record( $a, array $s, $status='ok', $join=false ){ return true; } }
 final class MAD4B_SCP_Provider_Contracts {
@@ -208,6 +215,51 @@ $GLOBALS['provider_version'] = '1.0.0';
 $GLOBALS['addon_active'] = false;
 $inactive = MAD4B_SCP_Addon_Registry::execution_binding( 'mad4b-test-addon' );
 $check( is_wp_error( $inactive ) && 'mad4b_addon_pair_not_certified' === $inactive->get_error_code(), 'inactive add-on remained execution eligible' );
+
+// Restore the signed live rc128 dynamic Addon Registry semantics. Dynamic
+// release rings are site-bound and cannot be promoted by a duplicate or
+// foreign certificate, even when an add-on's installed bytes are identical.
+$GLOBALS['provider_version'] = '1.0.0';
+$GLOBALS['addon_active'] = true;
+$GLOBALS['site_uuid'] = 'a3a7cc36-db7e-4a14-8456-b41857def05c';
+$GLOBALS['site_profile_digest'] = str_repeat('a', 64);
+$GLOBALS['site_origin_enrolled'] = true;
+$GLOBALS['site_origin_match'] = true;
+$dynamic = $manifest;
+$dynamic['release_ring'] = 'dynamic';
+$dynamic['release_policy'] = array(
+    'mode' => 'site_bound_certified_pair',
+    'requires_enrolled_site_profile' => true,
+    'unknown_pair_fallback' => 'shadow',
+    'production_authorized' => false,
+);
+$dynamic['certified_pairs'][0]['site_uuid'] = $GLOBALS['site_uuid'];
+$dynamic['certified_pairs'][0]['site_profile_digest'] = $GLOBALS['site_profile_digest'];
+$dynamic['certified_pairs'][0]['release_ring'] = 'active';
+$save_dynamic = static function( $entry ) {
+    file_put_contents( MAD4B_SCP_DIR . 'config/wordpress-addon-catalog.json',
+        json_encode( array( 'contract' => 'mad4b.wordpress-addon-catalog.v1', 'addons' => array( $entry ),
+            'defaults' => array( 'production_authorized' => false ) ) ) );
+};
+$save_dynamic( $dynamic );
+$valid_dynamic = MAD4B_SCP_Addon_Registry::execution_binding( 'mad4b-test-addon' );
+$check( ! is_wp_error($valid_dynamic) && $valid_dynamic['production_authorized'] === false,
+    'Exact site-bound active dynamic ring should be eligible but not production-authorizing' );
+$duplicate = $dynamic;
+$duplicate['certified_pairs'][] = $duplicate['certified_pairs'][0];
+$save_dynamic( $duplicate );
+$check_rejected( 'Duplicate site-bound certificates must fail closed' );
+$save_dynamic( $dynamic );
+$GLOBALS['site_origin_match'] = false;
+$check_rejected( 'Unenrolled or mismatched origin must fall back to shadow' );
+$GLOBALS['site_origin_match'] = true;
+$GLOBALS['site_profile_digest'] = str_repeat('f', 64);
+$check_rejected( 'Cross-company site profile cannot promote dynamic ring' );
+$GLOBALS['site_profile_digest'] = str_repeat('a', 64);
+$policy_downgrade = $dynamic;
+$policy_downgrade['release_policy']['unknown_pair_fallback'] = 'active';
+$save_dynamic( $policy_downgrade );
+$check_rejected( 'Fail-open dynamic fallback policy is forbidden' );
 
 // Unrestored original company add-on is a non-authorizing candidate,
 // never an active catalog member or a vacuously certified registry.

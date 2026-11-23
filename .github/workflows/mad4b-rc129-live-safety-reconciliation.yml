@@ -1,0 +1,51 @@
+name: MAD4B rc129 Live Safety Reconciliation
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-addon-registry.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/live-safety-rc129-reconciliation-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php'
+      - '.github/workflows/mad4b-rc129-live-safety-reconciliation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-guards:
+    name: Signed source and addon guards (no live authority)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify PHP CLI and ZipArchive
+        run: |
+          php -v
+          php -r 'if (!class_exists("ZipArchive")) { fwrite(STDERR,"ZipArchive required for signed archive guard tests\n"); exit(1); }'
+      - name: Lint only reconciled runtime and test files
+        shell: bash
+        run: |
+          set -euo pipefail
+          p=wp-content/plugins/mad4b-site-control-plane
+          php -l "$p/includes/class-mad4b-scp-self-update.php"
+          php -l "$p/includes/class-mad4b-scp-authorization.php"
+          php -l "$p/includes/class-mad4b-scp-addon-registry.php"
+          php -l "$p/tests/live-safety-rc129-reconciliation-runtime.php"
+          php -l "$p/tests/wordpress-addon-execution-guard-contract.php"
+      - name: Isolated signed source, release and execution-boundary regression checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/live-safety-rc129-reconciliation-runtime.php
+      - name: Existing Addon Registry and dynamic site-bound ring policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-registry-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php
