@@ -20,6 +20,9 @@ class ScopedQueryAndLayout(unittest.TestCase):
             if token=='doc':continue
             self.assertIn(token,src)
         self.assertIn("'get_listing'",src)
+        self.assertIn("addedPostCSS",src)
+        self.assertIn("array_is_list($added)",src)
+        self.assertIn("request_sha256",src)
         self.assertIn("'jet_engine_ajax'",src)
         self.assertIn('get_post_meta($document',src)
         self.assertIn("'data-post-id='",src)
