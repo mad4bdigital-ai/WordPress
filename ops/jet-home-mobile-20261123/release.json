@@ -1,0 +1,31 @@
+{
+  "contract": "mad4b.wayfa.jet-home-selective-live-release.v1",
+  "environment": "Wayfatours Production",
+  "at_utc": "2026-11-23",
+  "code": {
+    "path": "ops/site-company-overlays/wayfatours/performance-runtime/wp-content/mu-plugins/mad4b-secondary-listing-lazy.php",
+    "before_sha256": "ed5905b2489de38839a51a181d288c9a6cb01cf602b5d52d93a2d14ffb329671",
+    "live_after_sha256": "42605bf14abaaef6ade909607a41145ab2c8eadf2d7e5f5f814bfb7c25784f84",
+    "change": "Backport only the completed native pagination proof gate from the newer Tours.dev original engine. Without E2E page-delivery evidence, return full first JetEngine AJAX results instead of an unproved partial inner batch."
+  },
+  "data": {
+    "home_locations_elementor_dom_id": "home-wonderful-locations-listing",
+    "location_templates": {
+      "en": {"post_id": 25928, "elementor_data_sha256": "d722f0a36686ff47972bf6663cb9414fe59e7c327aecf8a40623943c5aba4e4f"},
+      "es": {"post_id": 26010, "elementor_data_sha256": "e65c94e03983853ecf3619423b015fc01a4dc724b293ac3120b421d81e962150"}
+    },
+    "feature_tours_motion_pending_live_browser_qa": {
+      "en": {"post_id": 25917, "elementor_data_sha256": "59191f2cd7afd24efbbca3e2439e7822351b06ff0e41cc5cf61f124d70167567"},
+      "es": {"post_id": 35110, "elementor_data_sha256": "0b60256cda68d6c33f73320c0e26ee688aca8a286138444b2aa52a26d1ef7de5"}
+    }
+  },
+  "verification": {
+    "signed_jetengine_query_291": {"en_items": 43, "es_items": 41, "ordered_result_identity_verified": true, "http_success": true},
+    "live_fastcgi_home_mobile": {"en_bytes_approx": 803000, "es_bytes_approx": 811000, "en_hit_ttfb_ms": 23, "es_hit_ttfb_ms": 18},
+    "duplicate_html_id_fixed_on_origin_and_fastcgi": true,
+    "mobile_attractions_lazy_ajax_browser_success": true,
+    "featured_tours_motion_after_change_browser_test": "pending_cpu_governor_admission"
+  },
+  "not_changed": ["JetEngine vendor code", "JetSmartFilters query", "WooCommerce orders", "pricing", "CSS V2 certificate gate", "global cache purge", "Tours.dev runtime"],
+  "rollback": "Restore old overlay from parent commit; targeted Elementor and FastCGI backups remain in private deployment reports, not Git."
+}
