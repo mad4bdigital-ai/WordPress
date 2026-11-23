@@ -413,3 +413,36 @@ Wayfatours 16/242 current-source V2 routes and eight source-verified
 families (previously false zero); Source Staging 0/1,028 remains genuinely
 unqualified and must not be inflated. Unchanged 47/47 first-party family,
 38 variant and 11 exact original SHA-pair fixture invariants pass.
+
+### Signed pre-upgrade 422 certificates: bounded original requalification (2026-11-23)
+
+After the exact new 421/422 Git migration, the source-family census
+correctly grandfathered one immutable old 422 certificate SHA, but the
+separate recoverable_listing_generation_keys route PRIORITY lane still
+required cert.consumer_sha == current_consumer_sha. That rejected all
+previously certified Source Staging routes whose ONLY recent invalidation
+was a newer 421 listing generation. These routes were not reactivated;
+they simply lost their original requalification fairness lane.
+
+The scheduling-only recovery lane now uses exactly the already-audited
+v2.original_approved_companion_receipt narrow pair recognition, not an
+arbitrary previous SHA. The original WordPress ledger must still prove
+a prior genuinely certified route, exact old listing-specific source
+key, unchanged global CSS epoch, runtime SHA, route revision,
+market/currency, and independent original five-browser-viewports
+performance evidence. Only listing_generation may have advanced
+1..100 steps. Unknown/unsigned/changed 421 and 422 fail closed.
+
+Each proposed key remains ONE enrolled WordPress catalog route.
+The existing original 1/4 fair recovery lane still requires actual
+WP 429 dispatch, CPU/Chromium locks, source/CSS readback and NEW strict
+422 V2 provisional issuance plus real independent browser QA. No stale
+certificate status is changed, and no CSS asset or safe fallback is
+modified by the nomination.
+
+Read-only current-source staging evidence: six previously certified
+routes are eligible to RETEST with original listing-generation drift;
+none is declared qualified now. Hermetic 15 new migration-recovery,
+28 prior bounded recovery, 47 original family and 11 exact 421/422
+consumer-pair tests passed. This does not make any claim of all
+1,028 staging pages ready.

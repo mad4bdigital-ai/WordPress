@@ -276,7 +276,15 @@ def recoverable_listing_generation_keys(site,catalog,state,ledger,published,rows
                 or not MARKET_RE.fullmatch(market+'|'+currency)
                 or not v2.exact_market_is_supported(route,cert,state)
                 or cert.get('runtime_sha')!=state.get('runtime_sha')
-                or cert.get('consumer_sha')!=state.get('consumer_v2_sha')
+                # An original Git-pinned 421/422 upgrade intentionally keeps
+                # one immutable preupgrade companion SHA valid in the PHP
+                # consumer, while original per-route CSS and full Chromium
+                # QA must still be redone for the NEW listing generation.
+                # Only NOMINATE its original WordPress route-key for a new
+                # source-bound issuance. Never restore the stale certificate.
+                or not v2.original_approved_companion_receipt(
+                    Path(ROOTS[site][0]),cert.get('consumer_sha'),
+                    state.get('consumer_v2_sha'))
                 or cert.get('css_epoch')!=state.get('css_epoch')
                 or cert.get('native_mobile_breakpoint')!=767
                 or cert.get('critical_cap_px')!=767):
