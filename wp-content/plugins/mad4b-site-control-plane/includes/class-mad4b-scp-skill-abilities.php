@@ -547,7 +547,9 @@ final class MAD4B_SCP_Skill_Abilities {
 		if ( ! self::valid_hash( $raw_inventory ) || ! hash_equals( $raw_inventory, (string) $pending['tool_inventory_fingerprint'] ) ) return;
 		if ( ! self::valid_hash( $observer_inventory ) || ! hash_equals( $observer_inventory, (string) $pending['tool_inventory_fingerprint'] ) ) return;
 		if ( ! isset( $raw_handshake['tool_count'], $observer['external_tool_count'] ) || (int) $raw_handshake['tool_count'] !== (int) $pending['tool_count'] || (int) $observer['external_tool_count'] !== (int) $pending['tool_count'] ) return;
-		if ( self::CHATGPT_CLIENT_ID !== ( isset( $handshake['client_id'] ) ? (string) $handshake['client_id'] : '' ) || self::SERVER_ID !== ( isset( $handshake['server_id'] ) ? (string) $handshake['server_id'] : '' ) ) return;
+		if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ||
+			! MAD4B_SCP_Local_OAuth_Server::trusted_chatgpt_client_ids_match( isset( $handshake['client_id'] ) ? $handshake['client_id'] : '', isset( $observer['client_id'] ) ? $observer['client_id'] : '' ) ||
+			self::SERVER_ID !== ( isset( $handshake['server_id'] ) ? (string) $handshake['server_id'] : '' ) ) return;
 
 		$observer_time = self::parse_time( isset( $observer['observed_at'] ) ? $observer['observed_at'] : '' );
 		$pending_time = self::parse_time( isset( $pending['observed_at'] ) ? $pending['observed_at'] : '' );
@@ -615,7 +617,9 @@ final class MAD4B_SCP_Skill_Abilities {
 		if ( ! is_array( $provenance ) || empty( $provenance['runtime_manifest_match'] ) || ! empty( $provenance['stale'] ) ) $blockers[] = 'candidate_provenance_unavailable';
 		if ( ! is_array( $handshake ) || empty( $handshake['verified'] ) || empty( $handshake['tool_inventory_match'] ) || empty( $handshake['build_fingerprint_match'] ) ) $blockers[] = 'fresh_external_tools_list_required';
 		if ( ! is_array( $external ) || empty( $external['verified'] ) || empty( $external['real_external_session'] ) || empty( $external['finalizer_subject_binding_verified'] ) || empty( $external['inventory_match'] ) || empty( $external['write_inventory_fingerprint_match'] ) || empty( $external['build_fingerprint_match'] ) ) $blockers[] = 'external_subject_session_binding_required';
-		if ( self::CHATGPT_CLIENT_ID !== ( isset( $external['client_id'] ) ? (string) $external['client_id'] : '' ) || self::SERVER_ID !== ( isset( $external['server_id'] ) ? (string) $external['server_id'] : '' ) ) $blockers[] = 'external_client_server_binding_mismatch';
+		if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ||
+			! MAD4B_SCP_Local_OAuth_Server::trusted_chatgpt_client_id( isset( $external['client_id'] ) ? $external['client_id'] : '' ) ||
+			self::SERVER_ID !== ( isset( $external['server_id'] ) ? (string) $external['server_id'] : '' ) ) $blockers[] = 'external_client_server_binding_mismatch';
 		if ( ! self::valid_hash( isset( $external['finalizer_context_digest'] ) ? strtolower( trim( (string) $external['finalizer_context_digest'] ) ) : '' ) ) $blockers[] = 'external_subject_session_binding_required';
 
 		$source_sha = isset( $provenance['source_commit_sha'] ) ? strtolower( trim( (string) $provenance['source_commit_sha'] ) ) : '';

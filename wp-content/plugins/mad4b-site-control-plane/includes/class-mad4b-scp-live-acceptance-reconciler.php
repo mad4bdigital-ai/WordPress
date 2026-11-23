@@ -484,7 +484,7 @@ final class MAD4B_SCP_Live_Acceptance_Reconciler {
 				'candidate_sha' => $candidate['source_commit_sha'],
 				'build_fingerprint' => $candidate['build_fingerprint'],
 				'snapshot_identity_token' => (string) $base['client_snapshot_token'],
-				'client_id' => isset( $external['client_id'] ) && $external['client_id'] ? (string) $external['client_id'] : self::CHATGPT_CLIENT_ID,
+				'client_id' => (string) $external['client_id'], // exact client already verified by trusted_external_context
 				'server_id' => isset( $external['server_id'] ) && $external['server_id'] ? (string) $external['server_id'] : self::SERVER_ID,
 				'external_tool_inventory_fingerprint' => isset( $external['external_tool_inventory_fingerprint'] ) ? (string) $external['external_tool_inventory_fingerprint'] : '',
 				'external_write_inventory_fingerprint' => isset( $external['external_write_inventory_fingerprint'] ) ? (string) $external['external_write_inventory_fingerprint'] : '',
@@ -549,7 +549,9 @@ final class MAD4B_SCP_Live_Acceptance_Reconciler {
 		$scopes = isset( $identity['token_scopes'] ) && is_array( $identity['token_scopes'] ) ? $identity['token_scopes'] : array();
 		if ( ! in_array( 'mad4b:read', $scopes, true ) ) return false;
 		if ( empty( $external['verified'] ) || empty( $external['real_external_session'] ) ) return false;
-		if ( ! empty( $external['client_id'] ) && self::CHATGPT_CLIENT_ID !== (string) $external['client_id'] ) return false;
+		if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ||
+			! MAD4B_SCP_Local_OAuth_Server::trusted_chatgpt_client_id( isset( $external['client_id'] ) ? $external['client_id'] : '' ) ||
+			! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( (string) $external['client_id'] ) ) return false;
 		if ( ! empty( $external['server_id'] ) && self::SERVER_ID !== (string) $external['server_id'] ) return false;
 		return true;
 	}
