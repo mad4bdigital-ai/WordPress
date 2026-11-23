@@ -38,7 +38,7 @@ final class MAD4B_SCP_Self_Update {
 	const RELEASE_TAG           = 'mad4b-site-control-plane-update-channel';
 	const POINTER_URL           = 'https://github.com/mad4bdigital-ai/WordPress/releases/download/mad4b-site-control-plane-update-channel/mad4b-site-control-plane-update-pointer.json';
 	const MANIFEST_URL          = 'https://github.com/mad4bdigital-ai/WordPress/releases/download/mad4b-site-control-plane-update-channel/mad4b-site-control-plane-update.json';
-	const MAX_UPLOAD_BYTES      = 16777216; // 16 MiB decoded.
+	const MAX_UPLOAD_BYTES      = 25165824; // 24 MiB decoded, exact reviewed archive still SHA-verified.
 	const POINTER_CACHE_TTL     = 300;
 	const MANIFEST_CACHE_TTL    = 86400;
 	const POINTER_TRANSIENT     = 'mad4b_scp_update_pointer_v1';
