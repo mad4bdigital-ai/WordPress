@@ -76,7 +76,7 @@ def evidence(root: Path, source: str, zip_path: Path, receipt_path: Path,
     try:
         receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
         build.verify_zip(zip_path, receipt, source)
-        build.require(zip_path.stat().st_size <= 16 * 1024 * 1024,
+        build.require(zip_path.stat().st_size <= build.MAX_STAGING_PACKAGE_BYTES,
                       "package_exceeds_staging_upload_limit")
         results["canonical_package_receipt"] = "PASS"
         notes["archive_sha256"] = build.sha(zip_path)
