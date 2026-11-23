@@ -317,7 +317,8 @@ def approved_native_runtime_sha(site,wp):
       'ae7936c7ad09b059375e1960d4c59144af0b4325933db34bcfa63c26e49233bb',
       '78be6cfeeff27fbf5c336372cf1bd59fc939955d0fc41777fb2d6e1c62209bf4',
       '010b0af3c27d605f5cba2e64d7a0b84c33692b1e7c44881bf06a794c6d6f40f8',
-      '8779fa2cf78c2edb2654216284f19241777be92087bbb247804e454ef461c1c7'}
+      '8779fa2cf78c2edb2654216284f19241777be92087bbb247804e454ef461c1c7',
+      '204c0c0e353c03912d86f68ef1ef02c5a9c0160f07df3946f9781589bed4c881'}
 
     # Immutable original source Git objects, verified against GitHub.
     # Previously this trusted branch's 421/422 bytes via an ephemeral
@@ -332,7 +333,7 @@ def approved_native_runtime_sha(site,wp):
 
     # Both new 421 and new 422 must be installed as one Git-pinned pair.
     # Old exact 421/422 versions are independently supported for rollback.
-    new_421='8779fa2cf78c2edb2654216284f19241777be92087bbb247804e454ef461c1c7'
+    new_421_pair={'8779fa2cf78c2edb2654216284f19241777be92087bbb247804e454ef461c1c7','204c0c0e353c03912d86f68ef1ef02c5a9c0160f07df3946f9781589bed4c881'}
     new_422='f68813a57f02cd607864fcb9708c753ec2fd9c1694b2e6c8324588871d953c5f'
     installed_421=None
     runtime=None
@@ -345,7 +346,7 @@ def approved_native_runtime_sha(site,wp):
         actual_sha=hashlib.sha256(blob).hexdigest()
         if name=='422-mad4b-public-critical-css-runtime.php' and actual_sha in (released_v2_422,current_git_release[0]):
             companion=wp/'mu-plugins/422-mad4b-public-critical-css-v2-consumer.php'
-            expected_companion=(new_422 if installed_421==new_421 else
+            expected_companion=(new_422 if installed_421 in new_421_pair else
                                 current_git_release[1] if actual_sha==current_git_release[0]
                                 else released_v2_consumer)
             if (companion.is_symlink() or not companion.is_file() or
@@ -384,8 +385,8 @@ def approved_v2_consumer_sha(site,wp,runtime_sha):
     source421=wp/'mu-plugins/421-mad4b-public-critical-css-coverage.php'
     if source421.is_symlink() or not source421.is_file():
         raise ValueError('MULTI_CSS_V2_MISSING_421_BOUNDED_SOURCE_PROOF')
-    if hashlib.sha256(source421.read_bytes()).hexdigest()==(
-         '8779fa2cf78c2edb2654216284f19241777be92087bbb247804e454ef461c1c7'):
+    if hashlib.sha256(source421.read_bytes()).hexdigest() in (
+         '8779fa2cf78c2edb2654216284f19241777be92087bbb247804e454ef461c1c7','204c0c0e353c03912d86f68ef1ef02c5a9c0160f07df3946f9781589bed4c881'):
         approved='f68813a57f02cd607864fcb9708c753ec2fd9c1694b2e6c8324588871d953c5f'
     companion=wp/'mu-plugins/422-mad4b-public-critical-css-v2-consumer.php'
     if (companion.is_symlink() or not companion.is_file()

@@ -10,6 +10,20 @@ $GLOBALS['options']=[
 ];
 $GLOBALS['hooked']=[];
 $GLOBALS['writes']=[];
+// The original unit fixture now exercises an advisory-lock-protected writer.
+// Simulate one WordPress DB session without touching a real website/database.
+class MAD4BCSSCoverageMockWpdb {
+    public string $prefix='wp_';
+    public string $options='wp_options';
+    public function prepare(string $sql,...$args): string {return $sql;}
+    public function get_var(string $sql): ?string {
+        if (str_contains($sql,'GET_LOCK') || str_contains($sql,'RELEASE_LOCK'))return '1';
+        return null;
+    }
+    public function query(string $sql): int {throw new RuntimeException('unplanned-test-SQL');}
+}
+$GLOBALS['wpdb']=new MAD4BCSSCoverageMockWpdb();
+function wp_cache_delete($key,$group='options'){return true;}
 function wp_parse_url($value,$part=null){return parse_url($value,$part);}
 function get_option($key,$fallback=null){return $GLOBALS['options'][$key]??$fallback;}
 function update_option($key,$value,$autoload=false){$GLOBALS['writes'][]=$key;$GLOBALS['options'][$key]=$value;return true;}

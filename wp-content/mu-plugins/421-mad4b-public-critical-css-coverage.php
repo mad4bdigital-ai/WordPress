@@ -14,6 +14,7 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
     private const TAXONOMIES = ['category','destinations','tour-types','property-types','tour-categories'];
     private const HOSTS = ['tours.dev.mad4b.com','wayfatours.com'];
     private static bool $navigation_dirty_in_request=false;
+    private static bool $event_lock_held=false;
     private static array $public_post_dirty_in_request=[];
     /**
      * Native Property/tour/article saves can invoke post_updated plus many
@@ -163,8 +164,51 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
             'events'=>$events],false);
     }
 
+    /** Serialize event generations across FPM, WP-CLI and WP-Cron writers.
+     * Database advisory locks are connection-scoped and never require a new table.
+     */
+    private static function begin_event_lock(): ?string {
+        // MySQL GET_LOCK is reentrant on the SAME DB connection.
+        if (self::$event_lock_held) return null;
+        global $wpdb;
+        if (!is_object($wpdb) || !method_exists($wpdb,'prepare')
+            || !method_exists($wpdb,'get_var') || !is_string($wpdb->prefix??null))
+            return null;
+        $db=defined('DB_NAME')?(string)DB_NAME:'unknown';
+        $name='mad4b_ccss_'.substr(hash('sha256',$db.'|'.$wpdb->prefix),0,26);
+        $obtained=$wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s, 8)',$name));
+        if ((string)$obtained!=='1')return null;
+        self::$event_lock_held=true;
+        return $name;
+    }
+    /** A missed lock must invalidate EVERY previous route proof, never be ignored. */
+    private static function fail_closed_event_lock(): void {
+        global $wpdb;
+        if (!is_object($wpdb) || !method_exists($wpdb,'query')
+            || !is_string($wpdb->options??null)
+            || !preg_match('/^[A-Za-z0-9_]+$/D',$wpdb->options))
+            throw new \RuntimeException('MAD4B_CCSS_EVENT_LOCK_NO_DATABASE');
+        $table=$wpdb->options;
+        $sql="INSERT INTO `{$table}` (option_name,option_value,autoload) "
+            ."VALUES ('mad4b_ccss_global_generation_v1','1','off') "
+            ."ON DUPLICATE KEY UPDATE option_value=CAST(option_value AS UNSIGNED)+1";
+        if ($wpdb->query($sql)===false)
+            throw new \RuntimeException('MAD4B_CCSS_EVENT_LOCK_INVALIDATION_FAILED');
+        if (function_exists('wp_cache_delete'))
+            wp_cache_delete('mad4b_ccss_global_generation_v1','options');
+        error_log('MAD4B_CCSS_EVENT_LOCK_BUSY_GLOBAL_INVALIDATION');
+    }
     private static function mark(string $scope,int $id=0,bool $global=false): void {
         if (!self::authorized()) return;
+        $lock=self::begin_event_lock();
+        if ($lock===null) {self::fail_closed_event_lock();return;}
+        try {
+            // Bypass stale per-worker option caches AFTER acquiring the lock.
+            if (function_exists('wp_cache_delete')) {
+                wp_cache_delete(self::DIRTY,'options');
+                wp_cache_delete(self::EVENT_JOURNAL,'options');
+                wp_cache_delete(self::HOME_DIRTY,'options');
+            }
         $dirty=get_option(self::DIRTY,[]);
         if (!is_array($dirty)) $dirty=[];
         $generation=max(0,(int)($dirty['generation']??0))+1;
@@ -198,6 +242,14 @@ final class MAD4B_Public_Critical_CSS_Coverage_V1 {
             // normal tour edits are delegated to the dependency-aware asset
             // job queue already used by the existing home CSS controller.
             update_option(self::HOME_DIRTY,max(0,(int)get_option(self::HOME_DIRTY,0))+1,false);
+        }
+        } finally {
+            global $wpdb;
+            try {
+                $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)',$lock));
+            } finally {
+                self::$event_lock_held=false;
+            }
         }
     }
     public static function post_updated(int $id,$after,$before): void {
