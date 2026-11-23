@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: MAD4B Component Selling Basis Inheritance V1
- * Version: 1.0.0
+ * Version: 1.1.0
  * Description: Shared, read-only currency and sales-unit inheritance across Tour, Stay, Transport, Guide and Woo components.
  */
 defined('ABSPATH') || exit;
@@ -138,7 +138,18 @@ final class MAD4B_Component_Selling_Basis_V1 {
     if($currencyRaw!=='')$currencySource='parent_override';
    }
    if($currencyRaw===''){
-    // WooCommerce store currency is the company base, not a WCML display FX quote.
+    // JetEngine Dynamic Pricing is the explicit company selling-currency policy.
+    // It is NOT a WCML display currency or an FX conversion instruction.
+    $candidate=get_option(self::PAGE.'_default_currency','');
+    if(!is_scalar($candidate))return new WP_Error('component_basis_dynamic_currency_policy_invalid');
+    $candidate=trim((string)$candidate);
+    if($candidate!==''){
+     $currencyRaw=$candidate;
+     $currencySource='dynamic_pricing_controls';
+    }
+   }
+   if($currencyRaw===''){
+    // No explicit pricing currency: inherit WooCommerce's native store base.
     $currencyRaw=(string)get_option('woocommerce_currency','');
     $currencySource='woocommerce_store_base';
    }
