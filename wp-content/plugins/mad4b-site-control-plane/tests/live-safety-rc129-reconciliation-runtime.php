@@ -86,6 +86,14 @@ foreach ( array( 'MAD4B_SCP_Approval_Impact_Binding','MAD4B_SCP_Authorization_De
     if (!class_exists($klass)) eval('class '.$klass.' {}');
 }
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-authorization.php';
+$auth_source = file_get_contents( MAD4B_SCP_DIR . 'includes/class-mad4b-scp-authorization.php' );
+// Match the exact content-verification branch without parsing unrelated
+// policy writes; it must run before resource and provider execution planning.
+$gate_position = strpos( $auth_source, 'MAD4B_SCP_Scoped_Build_Verification::governs_content_write' );
+$compile_position = strpos( $auth_source, 'MAD4B_SCP_Resource_Constraint_Set::compile' );
+$assert( false !== $gate_position && false !== $compile_position && $gate_position < $compile_position
+    && false !== strpos( $auth_source, 'mad4b_content_material_build_not_verified' ),
+    'scoped content material build verification restored before mutation resource compilation' );
 $sha = new ReflectionMethod( 'MAD4B_SCP_Authorization', 'execution_attempt_sha256' );
 $claim = array('ability'=>'mad4b/example','provider'=>'elementor','request_id'=>'req-1','target_fingerprint'=>str_repeat('f',64));
 $a = $sha->invoke(null,$claim);$b=$sha->invoke(null,array_reverse($claim,true));

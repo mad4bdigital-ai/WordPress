@@ -20,6 +20,8 @@ Four execution protections were also absent:
 - `execution_boundary_verified()` (exact trusted PHP Closure identity).
 - `local_approval_planner_execution()` (actually referenced by the candidate's write wrapper; local-only bypass must not be used by `mad4b-chatgpt` or `mad4b-write` transport).
 
+The live authorization path additionally requires `MAD4B_SCP_Scoped_Build_Verification::verify()` for bounded content writes on the `mad4b-write` transport when the site MU verification provider governs the Ability. The exact existing fail-closed check is restored **before** the resource constraint compiler, without replacing rc129's stricter boolean policy/peer checks.
+
 The installed `class-mad4b-scp-addon-registry.php` code is **byte identical on both live sites**. Its verified new behaviors (site-bound dynamic release pair, duplicate certificate quarantine, shadow fallback, type-safe provider evidence) are restored to the candidate without changing its public method signatures or deleting existing methods.
 
 ## Tests completed on the isolated VPS build
