@@ -1,0 +1,75 @@
+{
+  "contract": "mad4b.css.421.selective-live-release.v1",
+  "evidence": {
+    "concurrency_unit_tests": "3/3",
+    "extended_php_invariants": "68/68",
+    "github_ci_before_manifest": "5/5",
+    "original_422_compatibility_admitted_both": true,
+    "original_family_and_market_unit_tests": "passed",
+    "original_source_https_200_css_v2_ready": true,
+    "original_worker_source_admitted_both": true,
+    "php_syntax_production": true,
+    "php_syntax_staging": true,
+    "wayfa_es_https_200_css_v2_ready_fastcgi_hit": true,
+    "wordpress_loaded_production": true,
+    "wordpress_loaded_staging": true
+  },
+  "git_tested_head_before_manifest": "20a53f8f59c40599dfc0ba6a55d5dfe0a17993bd",
+  "github_pr": 1057,
+  "github_repo": "mad4bdigital-ai/WordPress",
+  "issued_utc": "2026-11-23T12:41:50Z",
+  "known_limitations": [
+    "No change to total route certification coverage",
+    "Not an Original Owner signed attestation",
+    "HTTP probes validate selected routes only",
+    "GitHub base PR #989 remains separate from exact live-tree snapshot"
+  ],
+  "release_id": "mad4b-css421-live-2026.11.23-sha204c0c0e",
+  "rollback_available": true,
+  "scope": {
+    "changed_code_files_per_site": [
+      "421-mad4b-public-critical-css-coverage.php",
+      "run-public-route.py",
+      "public-v2-family-canary.py"
+    ],
+    "derived_state": [
+      "site-profile.json:renderer_sha256"
+    ],
+    "previous_release_sha_preserved": true,
+    "unchanged": [
+      "422 runtime",
+      "422 V2 consumer",
+      "CSS Epoch",
+      "Listing Generation",
+      "CSS certificate files",
+      "route-ledger",
+      "template CSS assets",
+      "WooCommerce settings",
+      "pricing"
+    ]
+  },
+  "sites": {
+    "source": {
+      "421_sha256": "204c0c0e353c03912d86f68ef1ef02c5a9c0160f07df3946f9781589bed4c881",
+      "422_consumer_sha256": "f68813a57f02cd607864fcb9708c753ec2fd9c1694b2e6c8324588871d953c5f",
+      "422_runtime_sha256": "13e98efebaef87918d38c1d5be30bd6cf45c9f40c0e3264a31beca79b4663a36",
+      "original_421_sha256": "8779fa2cf78c2edb2654216284f19241777be92087bbb247804e454ef461c1c7",
+      "original_renderer_sha256": "6e1a32b2877cc8fca045fbec407777203eb1a18ce86d3cae990ff822a16435c6",
+      "readback_verified": true,
+      "renderer_sha256": "37e80d8475fa34c6b1ae80a0e154907302bb7bf987467edc1fe2e3ff6263034a",
+      "rollback_files_verified": true
+    },
+    "wayfa": {
+      "421_sha256": "204c0c0e353c03912d86f68ef1ef02c5a9c0160f07df3946f9781589bed4c881",
+      "422_consumer_sha256": "f68813a57f02cd607864fcb9708c753ec2fd9c1694b2e6c8324588871d953c5f",
+      "422_runtime_sha256": "13e98efebaef87918d38c1d5be30bd6cf45c9f40c0e3264a31beca79b4663a36",
+      "original_421_sha256": "8779fa2cf78c2edb2654216284f19241777be92087bbb247804e454ef461c1c7",
+      "original_renderer_sha256": "a22316629eebb3b650c80c90dbb054186e058211a3d68282174ec46ffeba4157",
+      "readback_verified": true,
+      "renderer_sha256": "9a8f76e7edef0a2451dddb64203cad293781705caf03ea134d49324bcd66f18d",
+      "rollback_files_verified": true
+    }
+  },
+  "source_of_truth": "existing_site_live_tree_plus_exact_git_pinned_delta",
+  "status": "accepted_live_selective"
+}
