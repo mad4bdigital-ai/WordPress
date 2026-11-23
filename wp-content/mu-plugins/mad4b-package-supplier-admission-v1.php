@@ -190,12 +190,10 @@ final class MAD4B_Package_Supplier_Admission_V1 {
             $bookable=(array)($stage['bookable_unit_ids']??[]);
             // Native identities remain distinct for hotels, sailings and sleeper services.
             $hasSelection=match($kind) {
-                'hotel','resort'=>(int)($stage['selected_property_id']??0)>0 && count($bookable)>0,
+                'hotel','resort'=>(int)($stage['selected_property_id']??0)>0,
                 'cruise'=>(int)($stage['selected_vessel_id']??0)>0 &&
-                    (int)($stage['selected_cabin_unit_id']??0)>0 &&
                     !empty($stage['cruise_program']) && !empty($stage['sailing_date']),
-                'sleeper_train'=>(int)($stage['selected_train_id']??0)>0 &&
-                    !empty($stage['selected_train_cabin_class']),
+                'sleeper_train'=>(int)($stage['selected_train_id']??0)>0,
                 default=>false,
             };
             $startDay=(int)($stage['source_day_start']??0);
@@ -204,6 +202,12 @@ final class MAD4B_Package_Supplier_Admission_V1 {
             $stageDate=$dateObj&&$startDay>0?$dateObj->modify('+'.($startDay-1).' days'):null;
             $lastDate=$stageDate&&$nights>0?$stageDate->modify('+'.($nights-1).' days'):null;
             $receipt=$stage['supplier_cost_receipt']??null;
+            // Preserve the live per-company Self supplier fallback and exact receipt identity.
+            $supplier=class_exists('MAD4B_Package_Company_Supplier_V1',false)
+                ?MAD4B_Package_Company_Supplier_V1::resolve($tour,$stage,$stage)
+                :['identity_resolved'=>false,'supplier_mode'=>'unresolved',
+                   'identity_issue'=>'supplier_identity_provider_unavailable'];
+            if(empty($supplier['identity_resolved']))$add('stage_supplier_identity_unresolved');
             $context=[
                 'tour_id'=>$tour,'stage_key'=>(string)($stage['stage_key']??''),
                 'kind'=>$kind,'currency'=>$currency,
@@ -218,13 +222,28 @@ final class MAD4B_Package_Supplier_Admission_V1 {
                 'train_id'=>(int)($stage['selected_train_id']??0),
                 'train_number'=>(string)($stage['selected_train_number']??''),
             ];
+            if($kind==='sleeper_train'){
+                $segment=class_exists('MAD4B_Package_Stage_Sourcing_V1',false)
+                    ?MAD4B_Package_Stage_Sourcing_V1::stageTrainSegment($tour,$stage)
+                    :null;
+                if(is_array($segment)){
+                    $context['boarding_station_id']=(int)$segment['boarding_station_id'];
+                    $context['arrival_station_id']=(int)$segment['arrival_station_id'];
+                }
+                $context['cabin_class']=(string)($stage['selected_train_cabin_class']??'')?:'Standard';
+            }
             $verification=class_exists('MAD4B_Package_Cost_Receipt_Gate_V1',false)
                 ?MAD4B_Package_Cost_Receipt_Gate_V1::validate($receipt,$context)
                 :['qualified'=>false,'blockers'=>['cost_receipt_validator_missing']];
-            $approved=$hasSelection && ($verification['qualified']??false)===true;
+            $supplierMatches=class_exists('MAD4B_Package_Company_Supplier_V1',false)
+                && MAD4B_Package_Company_Supplier_V1::receiptIdentityMatches($receipt,$supplier);
+            $approved=$hasSelection && ($verification['qualified']??false)===true
+                && $supplierMatches;
+            if(is_array($receipt)&&!$supplierMatches)
+                $add('stage_supplier_receipt_identity_mismatch');
             // A bookable selection and a value are never supplier proof by
             // themselves. Every stage also needs a live cost provider check.
-            if(!$hasSelection)$add('stay_unit_not_selected');
+            if(!$hasSelection)$add('stay_pricing_component_not_selected');
             if(!$approved)$add('stay_supplier_cost_receipt_missing');
             if(is_array($receipt))foreach((array)($verification['blockers']??[]) as $reason)
                 $add('cost_receipt:'.$reason);
@@ -233,9 +252,14 @@ final class MAD4B_Package_Supplier_Admission_V1 {
                 'kind'=>sanitize_key($kind),
                 'nights'=>max(0,(int)($stage['nights']??0)),
                 'price_status'=>$price,
-                'bookable_unit_selection_present'=>$hasSelection,
+                'bookable_unit_selection_present'=>count($bookable)>0 ||
+                    (int)($stage['selected_cabin_unit_id']??0)>0,
+                'pricing_component_identity_present'=>$hasSelection,
+                'unit_selection_required'=>false,
                 'supplier_cost_receipt_present'=>$approved,
                 'supplier_cost_receipt_recorded'=>is_array($receipt),
+                'supplier_resolution'=>$supplier,
+                'supplier_receipt_identity_matches'=>$supplierMatches,
                 'supplier_cost_receipt_qualified'=>$approved,
                 'receipt_blockers'=>$verification['blockers']??['validator_missing'],
                 'service_date'=>$context['service_date'],
@@ -245,6 +269,7 @@ final class MAD4B_Package_Supplier_Admission_V1 {
         }
         $report['accommodation']=[
             'source'=>self::LINK_META,'binding_count'=>count($roomStages),
+            'supplier_fallback_policy'=>'self_if_no_explicit_external_assignment',
             'stages'=>$roomStages,'source_is_editorial'=>true,
             'cost_qualified'=>false,
         ];
