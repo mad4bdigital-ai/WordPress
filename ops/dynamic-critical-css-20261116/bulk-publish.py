@@ -216,6 +216,19 @@ def run(site):
             text=True,env=env,timeout=640,check=False)
         lines=out.stdout.splitlines()
         verified=[x for x in lines if x.startswith('BULK_CCSS_RELEASED '+site+' '+key+' ')]
+        # A CPU/Chrome admission deferral is NOT a source failure. Do not
+        # consume its WordPress ticket or advance its per-route retry cursor.
+        resource_deferral=any(x.startswith((
+            'DEFER_PUBLIC_CCSS_RESOURCE_WINDOW',
+            'DEFER_PUBLIC_CCSS_RESOURCE_SENSOR_UNAVAILABLE',
+            'SKIP_PUBLIC_CCSS_BROWSER_BUSY',
+            'HOLD_PUBLIC_CCSS_HIGH_LOAD',
+            'SKIP_PUBLIC_CCSS_ALREADY_RUNNING',
+            'DEFER_PUBLIC_CCSS_HOME_RECOVERY')) for x in lines)
+        if resource_deferral:
+            print('BULK_CCSS_PUBLISH_RESOURCE_DEFER',site,key[:12],
+                  'preserve_wp_ticket_and_route_cursor',flush=True)
+            break
         attempts[key]=int(time.time())
         # Debt repair must not move the original coverage cursor forward
         # or starve pages that have never received a provisional release.
@@ -236,12 +249,6 @@ def run(site):
             last_reason=(out.stderr or out.stdout)[-180:].replace('\n',' ')
             print('BULK_CCSS_SOURCE_SKIPPED',site,key[:12],
                 'original_runtime_or_source_not_ready',last_reason[:120],flush=True)
-        # Never force Chrome after original host load/queue deferral.
-        if any(x.startswith(('DEFER_PUBLIC_CCSS_RESOURCE_WINDOW',
-                             'DEFER_PUBLIC_CCSS_RESOURCE_SENSOR_UNAVAILABLE',
-                             'SKIP_PUBLIC_CCSS_BROWSER_BUSY',
-                             'HOLD_PUBLIC_CCSS_HIGH_LOAD')) for x in lines):
-            break
     print('BULK_CCSS_PUBLISH_COMPLETED',site,'released',launched,
           'attempted',launched+deferrals,'pending',len(qa.pending_rows(site)),
           'planned',plan['eligible_for_source_preflight'],flush=True)
