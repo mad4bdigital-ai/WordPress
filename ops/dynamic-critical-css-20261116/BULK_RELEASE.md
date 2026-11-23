@@ -446,3 +446,37 @@ none is declared qualified now. Hermetic 15 new migration-recovery,
 28 prior bounded recovery, 47 original family and 11 exact 421/422
 consumer-pair tests passed. This does not make any claim of all
 1,028 staging pages ready.
+
+### Two independent original-HTML source readbacks before Wayfa V2 issue (2026-11-23)
+
+A Wayfa Egyptian Museum tour certificate was fully five-viewport QA tested
+and passed an origin readback with 39 Elementor document IDs. Later
+FastCGI expiration exposed a source-bound WordPress original rendering
+with 40 Elementor IDs (one added Jet Dropbar global template 25183,
+an existing published Elementor library document). CSS epoch, listing
+generation and original stylesheet manifest remained unchanged.
+PHP 422 correctly declined to transform the now-divergent HTML, serving
+safe Native CSS. A source-family certification count is not proof that
+all cached and origin HTML contexts still match the captured DOM.
+
+The existing mandatory Wayfa first-party pre-issue inspector now performs
+TWO independently fetched true WordPress origin bypass/no-store source
+readbacks, EACH exactly checking market/currency, source CSS manifest,
+and complete Elementor document fingerprint against the captured original
+HTML. A changed second observation rejects issue even if the first passed.
+A cached FastCGI response or partially optimized HTML never qualifies.
+The original Chromium five-viewport performance QA, six-hour provisional
+lease, route/market SHA/CAS, current PHP 422 checks, market/currency,
+and postrelease origin readback remain unchanged. No request is allowed
+to edit WordPress or CSS, or to grant coverage without its own browser QA.
+
+This hardens the release window against intermittent render variants.
+A variant that changes only after both observations and QA still causes
+the original PHP 422 to fail safely: this is NOT a guarantee of long-term
+DOM stability nor a blanket automatic certificate grant. The older
+museum certificate remains untouched and may use Native CSS until
+independently requalified under the actual current Elementor DOM.
+
+Hermetic test cases: 15 two-origin and 13 original release-first checks,
+including Jet Dropbar variant appearing only on the second origin fetch,
+bad market/currency, CSS cascade, cache bypass, and partial optimized HTML.

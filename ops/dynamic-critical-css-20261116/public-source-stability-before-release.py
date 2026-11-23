@@ -81,31 +81,38 @@ def verify(catalog,route,wp,job,*,fetch=observer.public_fetch):
  check(before==persisted
        and before.get('manifest_sha256')==report.get('manifest_sha256'),
        'source-stability-recorded-css-source-mismatch')
- current,head=fetch(HOST,route['path'])
- check(isinstance(current,str) and isinstance(head,dict),
-       'source-stability-fresh-origin-malformed')
- check(head.get('X-Wayfa-Origin-Cache')=='BYPASS'
-       and 'no-store' in head.get('Cache-Control','').lower(),
-       'source-stability-fresh-wordpress-bypass-missing')
- check(head.get('X-MAD4B-Public-CCSS-Ready')!='1',
-       'source-stability-original-already-optimized')
- check(head.get('X-MAD4B-Public-CCSS-Market')==report.get('market_country')
-       and head.get('X-MAD4B-Public-CCSS-Currency')==report.get('currency'),
-       'source-stability-wcml-market-context-changed')
- after=observer.ordered.inspect(current,HOST,wp)
- check(after['manifest_sha256']==before['manifest_sha256'],
-       'source-stability-ordered-css-manifest-changed')
+ # A conditional Elementor Jet Dropbar can render a previously omitted
+ # template without changing 421 listing generation, CSS epoch or CSS
+ # manifest. Two independent ORIGINAL WordPress/BYPASS observations must
+ # agree with the first-party captured source; one lucky view is not proof.
+ # This is only a read-only PRE-ISSUE gate; every original 5-width browser
+ # and postrelease qualified readback is still required.
  initial_doc=doc_fingerprint(original)
- latest_doc=doc_fingerprint(current)
- check(initial_doc==latest_doc,
-       'source-stability-elementor-document-graph-changed')
+ for observation in (1,2):
+  current,head=fetch(HOST,route['path'])
+  check(isinstance(current,str) and isinstance(head,dict),
+        'source-stability-fresh-origin-malformed')
+  check(head.get('X-Wayfa-Origin-Cache')=='BYPASS'
+        and 'no-store' in head.get('Cache-Control','').lower(),
+        'source-stability-fresh-wordpress-bypass-missing')
+  check(head.get('X-MAD4B-Public-CCSS-Ready')!='1',
+        'source-stability-original-already-optimized')
+  check(head.get('X-MAD4B-Public-CCSS-Market')==report.get('market_country')
+        and head.get('X-MAD4B-Public-CCSS-Currency')==report.get('currency'),
+        'source-stability-wcml-market-context-changed')
+  after=observer.ordered.inspect(current,HOST,wp)
+  check(after['manifest_sha256']==before['manifest_sha256'],
+        'source-stability-ordered-css-manifest-changed')
+  check(initial_doc==doc_fingerprint(current),
+        'source-stability-elementor-document-graph-changed')
  return {'contract':CONTRACT,'decision':'same-original-source-before-release',
    'site':'wayfa','route_key':route['route_key'],
    'path':route['path'],'language':route['language'],
    'market_country':report['market_country'],'currency':report['currency'],
    'ordered_css_sha':before['manifest_sha256'],
-   'elementor_doc_sha':latest_doc,
+   'elementor_doc_sha':initial_doc,
    'verified_fresh_origin':'BYPASS',
+   'independent_original_wordpress_observations':2,
    'public_certification_issued':False,
    'wordpress_ack':False}
 
