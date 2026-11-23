@@ -61,7 +61,7 @@ final class MAD4B_Package_Hotel_Stage_Cost_Preview_V1 {
         return self::date($start)&&self::date($end)&&$start<=$end?[$start,$end]:null;
     }
     private static function sourceRate(int $property,int $unit,string $start,string $last,
-        string $currency):array {
+        string $currency,string $occupancy='',string $meal=''):array {
         $rates=get_posts(['post_type'=>'property-rates',
             'post_status'=>['publish','draft','pending'],
             'fields'=>'ids','posts_per_page'=>201,'no_found_rows'=>true,
@@ -77,12 +77,23 @@ final class MAD4B_Package_Hotel_Stage_Cost_Preview_V1 {
                 preg_match('/\bQA\s+ONLY\b/i',(string)get_the_title($rate)))continue;
             if((string)get_post_meta($rate,'mad4b_rate_price_kind_v1',true)!=='cost')continue;
             if((int)get_post_meta($rate,'prop_related_property_id',true)!==$property)continue;
+            $proposal=get_post_meta($rate,'_mad4b_supplier_sheet_proposal_v1',true);
+            if($occupancy!==''&&is_array($proposal) &&
+                ($proposal['occupancy']??'')!==$occupancy)continue;
+            if($meal!==''&&is_array($proposal) &&
+                strtoupper((string)($proposal['meal_plan']??''))!==$meal)continue;
             $related=(int)get_post_meta($rate,'prop_related_unit_id',true);
             if($related>0&&($unit<=0||$related!==$unit))continue;
             $scope=$related>0?'unit':'property';
             if($related===0&&(string)get_post_meta($rate,'mad4b_rate_scope_v1',true)!=='property')continue;
             $actualCurrency=(string)get_post_meta($rate,'currency',true);
             if($actualCurrency!==$currency)continue; // no silent FX substitution
+            $basis=(string)get_post_meta($rate,'prop_price_unit',true);
+            // The owner-approved Hotels template validates the normalized unit,
+            // not the historical raw per_person cell. Fail closed if stale.
+            if($scope==='property'&&$basis==='per_person_night' &&
+                (!class_exists('MAD4B_Hotel_Nightly_Cost_Basis_V1',false) ||
+                 !MAD4B_Hotel_Nightly_Cost_Basis_V1::effective($rate)))continue;
             $amount=get_post_meta($rate,'base_amount',true);
             if(!is_numeric($amount)||!is_finite((float)$amount)||(float)$amount<=0)continue;
             $window=self::rateWindow($rate);
@@ -96,7 +107,8 @@ final class MAD4B_Package_Hotel_Stage_Cost_Preview_V1 {
             if(count($matches[$scope])===1){
                 $rate=$matches[$scope][0];
                 return ['status'=>'preliminary_cost_reference','rate_id'=>$rate,
-                    'scope'=>$scope,'basis'=>(string)get_post_meta($rate,'prop_price_unit',true),
+                    'scope'=>$scope,'basis'=>$basis,
+                    'occupancy'=>$occupancy,'meal_plan'=>$meal,
                     'amount'=>(float)get_post_meta($rate,'base_amount',true),
                     'currency'=>$currency,
                     'stop_sale'=>(string)get_post_meta($rate,'stop_sale',true)!=='0',
@@ -155,8 +167,60 @@ final class MAD4B_Package_Hotel_Stage_Cost_Preview_V1 {
             $last=$first->modify('+'.($nights-1).' days');
             $item['from']=$first->format('Y-m-d');
             $item['to']=$last->format('Y-m-d');
-            if($property<=0){$item['reason']='select_property_for_this_stage_and_tier';$items[]=$item;continue;}
-            $eligibleIds=array_map('intval',array_column((array)($row['candidates']??[]),'property_id'));
+            // Property Rates are occupancy-specific. Never mix Double and Triple
+            // source rows or multiply an unknown per-person basis by party size.
+            $perRoom=$ctx['rooms']>0&&$ctx['adults']%$ctx['rooms']===0
+                ?intdiv($ctx['adults'],$ctx['rooms']):0;
+            $occupancy=match($perRoom){1=>'single',2=>'double',3=>'triple',default=>''};
+            $meal=strtoupper((string)($row['board']??''));
+            $item['occupancy']=$occupancy?:null;
+            $item['meal_plan']=$meal?:null;
+            $item['candidate_costs']=[];
+            if($occupancy===''){
+                $item['reason']='occupancy_requires_explicit_room_allocation';
+                $items[]=$item;continue;
+            }
+            $candidateCosts=[];
+            foreach(array_slice((array)($row['candidates']??[]),0,30) as $candidate){
+                $pid=(int)($candidate['id']??$candidate['property_id']??0);
+                if($pid<=0||get_post_type($pid)!=='properties'||
+                    get_post_status($pid)!=='publish')continue;
+                if(class_exists('MAD4B_Package_Seasonal_Assignment_V1',false)){
+                    $season=MAD4B_Package_Seasonal_Assignment_V1::decision($tour,$key,$tier,
+                        $pid,$ctx['start']->format('Y-m-d'),$ctx['start']->format('Y-m-d'),
+                        $day-1,$nights);
+                    if(empty($season['eligible']))continue;
+                }
+                $source=self::sourceRate($pid,0,$item['from'],$item['to'],
+                    $ctx['currency'],$occupancy,$meal);
+                if(($source['status']??'')!=='preliminary_cost_reference')continue;
+                $cost=self::math((string)$source['basis'],(float)$source['amount'],
+                    $nights,$ctx['rooms'],$ctx['adults'],$ctx['children'],$ctx['infants']);
+                if(!is_numeric($cost['amount']??null))continue;
+                $candidateCosts[]=[
+                    'property_id'=>$pid,'property_name'=>wp_strip_all_tags(get_the_title($pid)),
+                    'rate_id'=>(int)$source['rate_id'],'scope'=>'property',
+                    'preliminary_cost'=>(float)$cost['amount'],'currency'=>$ctx['currency'],
+                    'basis'=>$source['basis'],'occupancy'=>$occupancy,
+                    'stop_sale'=>$source['stop_sale'],
+                    'availability_confirmed'=>false,
+                    'cost_receipt_approved'=>false,
+                    'price_status'=>'read_only_reference_not_sellable'];
+            }
+            usort($candidateCosts,static fn($a,$b)=>
+                ($a['preliminary_cost']<=>$b['preliminary_cost']) ?:
+                ($a['property_id']<=>$b['property_id']));
+            $item['candidate_costs']=$candidateCosts;
+            $item['lowest_indicative_cost_property_id']=$candidateCosts[0]['property_id']??null;
+            if($property<=0){
+                $item['reason']=$candidateCosts
+                    ?'review_and_assign_property_per_stage_tier'
+                    :'no_eligible_dated_cost_candidate';
+                $items[]=$item;continue;
+            }
+            $eligibleIds=array_values(array_map('intval',array_map(
+                static fn($c)=>(int)($c['id']??$c['property_id']??0),
+                (array)($row['candidates']??[]))));
             if(!in_array($property,$eligibleIds,true)||get_post_type($property)!=='properties'||
                 get_post_status($property)!=='publish'){
                 $item['reason']='selected_property_not_eligible_for_destination_tier';$items[]=$item;continue;
@@ -177,8 +241,13 @@ final class MAD4B_Package_Hotel_Stage_Cost_Preview_V1 {
                 // Original relation 223 and exact stage Property must agree.
                 $eligibleUnits=[];
                 foreach((array)($row['candidates']??[]) as $candidate){
-                    if((int)($candidate['property_id']??0)===$property)
+                    if((int)($candidate['id']??$candidate['property_id']??0)===$property){
                         $eligibleUnits=array_map('intval',(array)($candidate['unit_ids']??[]));
+                        foreach((array)($candidate['units']??[]) as $entry)
+                            if(is_array($entry)&&!empty($entry['id']))
+                                $eligibleUnits[]=(int)$entry['id'];
+                        $eligibleUnits=array_values(array_unique($eligibleUnits));
+                    }
                 }
                 global $wpdb;
                 $relTable=$wpdb->prefix.'jet_rel_default';
@@ -194,7 +263,8 @@ final class MAD4B_Package_Hotel_Stage_Cost_Preview_V1 {
                     $item['reason']='selected_unit_occupancy_exceeds_capacity';$items[]=$item;continue;
                 }
             }
-            $chosen=self::sourceRate($property,$unit,$item['from'],$item['to'],$ctx['currency']);
+            $chosen=self::sourceRate($property,$unit,$item['from'],$item['to'],
+                $ctx['currency'],$occupancy,$meal);
             $item['rate_id']=$chosen['rate_id']??null;
             $item['source']=$chosen['scope']??'none';
             if(($chosen['status']??'')!=='preliminary_cost_reference'){
@@ -217,7 +287,68 @@ final class MAD4B_Package_Hotel_Stage_Cost_Preview_V1 {
             $sum+=$item['preliminary_cost'];$covered++;
             $items[]=$item;
         }
+        // Existing company-wide policy is the ONE margin owner. Never apply
+        // per Property/Unit, and never add margin to already-sold Tour Rates.
+        // Unassigned candidate comparison is not a selection, a total
+        // Package cost, a supplier confirmation or a payment quote.
+        $hypotheticalHotelCost=0.0;$hypotheticalStageCount=0;
+        foreach($items as $part){
+            $candidate=$part['candidate_costs'][0]??null;
+            if(is_array($candidate)){
+                $hypotheticalHotelCost+=(float)$candidate['preliminary_cost'];
+                $hypotheticalStageCount++;
+            }
+        }
+        $policy=class_exists('MAD4B_Company_Global_Profit_V1',false)
+            ?MAD4B_Company_Global_Profit_V1::current()
+            :new WP_Error('company_global_profit_policy_missing');
+        $profitStatus=is_wp_error($policy)?$policy->get_error_code():'company_policy_active';
+        $profitPolicy=is_wp_error($policy)?null:array_intersect_key($policy,
+            array_flip(['kind','percent','scope','policy_id','policy_revision']));
+        $hotelComponentPreview=null;
+        if(!is_wp_error($policy)&&$sum>0&&$ctx['currency']!==''){
+            $q=MAD4B_Company_Global_Profit_V1::preview((int)round($sum*100),$ctx['currency']);
+            if(!is_wp_error($q)&&($q['status']??'')==='illustrative_preview_only'&&
+                ($q['checkout_authorized']??true)===false&&
+                ($q['rate_created']??true)===false){
+                $hotelComponentPreview=[
+                    'status'=>'hotel_component_partial_only_not_tour_price',
+                    'cost'=>round($sum,2),
+                    'indicative_sale_component'=>round((int)$q['indicative_selling_price_minor']/100,2),
+                    'estimated_margin'=>round((int)$q['profit_minor']/100,2),
+                    'currency'=>$ctx['currency'],
+                    'margin_applied_once'=>true,
+                    'all_package_components_included'=>false,
+                    'cost_receipts_verified'=>false,
+                    'approved_price'=>null,
+                    'checkout_ready'=>false];
+            }
+        }
+        $candidateHotelPreview=null;
+        if(!is_wp_error($policy)&&$hypotheticalStageCount===$totalStages&&
+           $totalStages>0&&$hypotheticalHotelCost>0&&$ctx['currency']!==''){
+            $candidateProfit=MAD4B_Company_Global_Profit_V1::preview(
+                (int)round($hypotheticalHotelCost*100),$ctx['currency']);
+            if(!is_wp_error($candidateProfit)){
+                $candidateHotelPreview=[
+                    'status'=>'unassigned_hotel_alternatives_illustration_only',
+                    'hotel_stage_count'=>$hypotheticalStageCount,
+                    'candidate_cost_total'=>round($hypotheticalHotelCost,2),
+                    'hypothetical_hotel_component_with_margin'=>round(
+                        (int)$candidateProfit['indicative_selling_price_minor']/100,2),
+                    'company_profit_applied_once'=>true,
+                    'currency'=>$ctx['currency'],
+                    'no_property_selection_written'=>true,
+                    'no_other_package_costs_included'=>true,
+                    'approved_price'=>null,'checkout_ready'=>false];
+            }
+        }
         $report['hotel_cost_preview']=[
+            'candidate_comparison_margin_preview'=>$candidateHotelPreview,
+            'company_profit_status'=>$profitStatus,
+            'company_profit_policy'=>$profitPolicy,
+            'hotel_cost_component_margin_preview'=>$hotelComponentPreview,
+            'profit_applied_to_existing_selling_rates'=>false,
             'contract'=>self::CONTRACT,
             'status'=>$duplicate?'duplicate_stage_keys_review_required':
                 ($ctx['start']?'read_only_reference_costs':'travel_date_required'),
