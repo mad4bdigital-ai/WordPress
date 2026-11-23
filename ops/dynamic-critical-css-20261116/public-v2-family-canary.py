@@ -64,7 +64,7 @@ def exact_market_is_supported(route,cert,state):
 # Mirror that SAME bounded source pair in the read-only family census. This
 # never grants a route, skips a CSS manifest or substitutes browser QA.
 LEGACY_COMPANION_SHA='249083d5aa0124ea1280a88f5062945cdff2885eca63b36ba5c66682b0faf3d1'
-ORDERED_421_SHAS={'8779fa2cf78c2edb2654216284f19241777be92087bbb247804e454ef461c1c7','15bbc38c642c1e15f74b01d6cc97f19e1592d8575c94082c2851b31556233669'}
+ORDERED_421_SHAS={'8779fa2cf78c2edb2654216284f19241777be92087bbb247804e454ef461c1c7','204c0c0e353c03912d86f68ef1ef02c5a9c0160f07df3946f9781589bed4c881'}
 ORDERED_422_SHA='f68813a57f02cd607864fcb9708c753ec2fd9c1694b2e6c8324588871d953c5f'
 
 def original_approved_companion_receipt(root,recorded_sha,installed_sha):
