@@ -9,6 +9,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/live-safety-rc129-reconciliation-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php'
       - 'ops/rc129-live-safety-reconciliation-20261123/**'
+      - 'ops/release-source-host-v1/**'
       - '.github/workflows/mad4b-rc129-live-safety-reconciliation.yml'
   workflow_dispatch:
 
@@ -39,6 +40,15 @@ jobs:
         run: |
           set -euo pipefail
           python3 ops/rc129-live-safety-reconciliation-20261123/test_local_candidate_manifest.py
+      - name: Verify original Host preflight provenance and non-authorizing candidate semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd ops/release-source-host-v1 && sha256sum -c SHA256SUMS)
+          python3 -m py_compile ops/release-source-host-v1/source_preflight.py ops/release-source-host-v1/host_worker.py
+          # Exact, no-network, root-owned filesystem fixtures. The test must
+          # never sign an actual package or load live WordPress state.
+          sudo -n python3 ops/release-source-host-v1/tests/test_postcommit_manifest.py
       - name: Lint only reconciled runtime and test files
         shell: bash
         run: |
