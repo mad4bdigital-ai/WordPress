@@ -12,7 +12,8 @@ class MAD4BCSSFakeWpdb {
     public function prepare(string $sql,...$values): string {return $sql;}
     public function get_var(string $sql): ?string {
         if (str_contains($sql,'GET_LOCK')) {
-            if ($GLOBALS['force_lock_fail'] || $GLOBALS['locked']) return '0';
+            // MySQL GET_LOCK permits same-connection reentry; the PHP guard must reject it.
+            if ($GLOBALS['force_lock_fail']) return '0';
             $GLOBALS['locked']=true; return '1';
         }
         if (str_contains($sql,'RELEASE_LOCK')) {
