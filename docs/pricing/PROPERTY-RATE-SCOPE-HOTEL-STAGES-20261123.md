@@ -30,7 +30,7 @@ Canonical 8 Packages per site: `57562, 60437, 60439, 60441, 60443, 60623, 60627,
 | Tours.dev | 40 | 17 | 0 | 0 | 0 |
 | Wayfatours | 53 | 4 | 0 | 0 | 0 |
 
-The unavailable tier instances are **not** activated by this source/UI change. Current original policy does not assign Diamond to seven source Packages; Wayfatours has two blocked tier selections (Silver 57562, Diamond 60623). Tenant policy differences are preserved, not equalized without Owner intent. Published `property-rates` count at verification: Tours.dev 56, Wayfatours 0; published is not a synonym for valid cost receipt or bookable stock.
+The unavailable tier instances are **not** activated by this source/UI change. Current original policy does not assign Diamond to seven source Packages; Wayfatours has two blocked tier selections (Silver 57562, Diamond 60623). Tenant policy differences are preserved, not equalized without Owner intent. Direct native SQL rate census: **56 published Property Standard Cost References on EACH site**, all 56 per site with `stop_sale=1`. Tours.dev additionally has **29 Draft Unit-linked Rates**, Wayfatours **28 Draft Unit-linked Rates**. No published Unit-linked Rate on either site. A prior post-list query wrongly returned zero Wayfatours published Rates; this direct CPT SQL count is authoritative. Published Stop-Sale references are not saleable or automatically supplier-approved.
 
 ## Verification & rollback
 
