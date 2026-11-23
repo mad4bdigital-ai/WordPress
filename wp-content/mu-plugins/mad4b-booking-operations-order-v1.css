@@ -1,0 +1,39 @@
+.mad4b-ops-root{font-size:13px;direction:rtl;color:#253445;line-height:1.5}
+.mad4b-ops-root *{box-sizing:border-box}
+.mad4b-ops-header{background:#f3f7f9;border:1px solid #dce5e9;padding:14px;border-radius:8px;margin:5px 0 10px}
+.mad4b-ops-header h3{font-size:17px;margin:0 0 5px}
+.mad4b-ops-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:9px}
+.mad4b-ops-body{padding-bottom:8px}
+.mad4b-ops-muted{font-size:12px;color:#64748b;margin:4px 0}
+.mad4b-ops-notice{color:#4b5563;margin:6px 0;padding:5px 8px}
+.mad4b-ops-notice.success{color:#166534;background:#f0fdf4}
+.mad4b-ops-warning{padding:10px;background:#fff7ed;border-inline-start:3px solid #d97706;color:#78350f}
+.mad4b-ops-info{padding:10px;background:#eff6ff;border-inline-start:3px solid #2563eb;color:#1e3a8a}
+.mad4b-ops-summary{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}
+.mad4b-ops-pill{display:inline-block;background:#e2e8f0;color:#334155;border-radius:40px;padding:4px 9px;font-size:11px}
+.mad4b-ops-pill.fleet_confirmed{background:#dcfce7;color:#166534}
+.mad4b-ops-pill.needs_review{background:#fef3c7;color:#92400e}
+.mad4b-ops-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:13px 0}
+.mad4b-ops-line{border:1px solid #dee5e9;margin:8px 0;background:#fff;border-radius:8px;overflow:hidden}
+.mad4b-ops-line-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px;cursor:pointer}
+.mad4b-ops-line-head strong{font-size:13px}
+.mad4b-ops-line-detail{padding:11px;border-top:1px solid #e2e8f0;background:#fbfcfe}
+.mad4b-ops-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px}
+.mad4b-ops-field{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#475569;margin:6px 0}
+.mad4b-ops-field input,.mad4b-ops-field select,.mad4b-ops-field textarea{width:100%;max-width:none;font-size:13px}
+.mad4b-ops-field textarea{min-height:65px}
+.mad4b-ops-table{margin-top:10px}
+.mad4b-ops-result{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e5e7eb;padding:9px;gap:12px}
+.mad4b-ops-search{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.mad4b-ops-search input{min-width:240px;max-width:100%;flex:1}
+.mad4b-ops-root .button{white-space:normal;min-height:30px}
+
+
+/* Original 279 order window hosts operations without a second meta box. */
+.mad4b-integrated-operations{margin:18px 0;padding:12px 14px;border:1px solid #d5e1e8;border-radius:10px;background:#fcfefe;min-width:0}
+.mad4b-integrated-operations>summary{cursor:pointer;padding:7px 4px;font-size:14px;color:#123c54;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.mad4b-integrated-operations>summary span{font-size:12px;font-weight:400;color:#557181}
+.mad4b-integrated-operations .mad4b-ops-root{width:100%;max-width:100%;min-width:0}
+.mad4b-ops-source-evidence pre{white-space:pre-wrap;overflow-wrap:anywhere;direction:ltr;max-height:260px;overflow:auto;font-size:11px}
+.mad4b-ops-source-evidence summary{cursor:pointer;color:#45566c;font-size:12px;margin:7px 0}
+@media(max-width:782px){.mad4b-integrated-operations{padding:8px}.mad4b-ops-fields{grid-template-columns:1fr}.mad4b-ops-line-head{align-items:flex-start}}
