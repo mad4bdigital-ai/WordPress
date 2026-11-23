@@ -8,6 +8,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-addon-registry.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/live-safety-rc129-reconciliation-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php'
+      - 'ops/rc129-live-safety-reconciliation-20261123/**'
       - '.github/workflows/mad4b-rc129-live-safety-reconciliation.yml'
   workflow_dispatch:
 
@@ -33,6 +34,11 @@ jobs:
         run: |
           php -v
           php -r 'if (!class_exists("ZipArchive")) { fwrite(STDERR,"ZipArchive required for signed archive guard tests\n"); exit(1); }'
+      - name: Validate Git-pinned candidate manifest generation without signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ops/rc129-live-safety-reconciliation-20261123/test_local_candidate_manifest.py
       - name: Lint only reconciled runtime and test files
         shell: bash
         run: |
