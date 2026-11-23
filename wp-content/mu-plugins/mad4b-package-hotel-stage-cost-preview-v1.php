@@ -49,6 +49,27 @@ final class MAD4B_Package_Hotel_Stage_Cost_Preview_V1 {
         return ['amount'=>round($amount*$factor,2),'factor'=>$factor,
             'reason'=>'preliminary_cost_not_supplier_approved'];
     }
+    /** Lowest *priceable* stage/tier/date candidate, not a reserved hotel.
+     * The caller must first verify destination/tier/season, occupancy, meal,
+     * cost provenance, currency and unit before comparing amounts.
+     */
+    public static function cheapestPricingDefault(array $candidates):?array {
+        $valid=[];
+        foreach($candidates as $candidate){
+            if(!is_array($candidate)||
+               (int)($candidate['property_id']??0)<1||
+               (int)($candidate['rate_id']??0)<1||
+               !is_numeric($candidate['preliminary_cost']??null)||
+               !is_finite((float)$candidate['preliminary_cost'])||
+               (float)$candidate['preliminary_cost']<=0)continue;
+            $valid[]=$candidate;
+        }
+        usort($valid,static fn($a,$b)=>
+            ((float)$a['preliminary_cost']<=>(float)$b['preliminary_cost']) ?:
+            ((int)$a['property_id']<=>(int)$b['property_id']) ?:
+            ((int)$a['rate_id']<=>(int)$b['rate_id']));
+        return $valid[0]??null;
+    }
     private static function rateWindow(int $rate):?array {
         if(class_exists('MAD4B_Stay_Layered_Pricing_V1',false)){
             $window=MAD4B_Stay_Layered_Pricing_V1::effectiveRateWindow($rate);
@@ -211,13 +232,32 @@ final class MAD4B_Package_Hotel_Stage_Cost_Preview_V1 {
                 ($a['preliminary_cost']<=>$b['preliminary_cost']) ?:
                 ($a['property_id']<=>$b['property_id']));
             $item['candidate_costs']=$candidateCosts;
-            $item['lowest_indicative_cost_property_id']=$candidateCosts[0]['property_id']??null;
+            $cheapest=self::cheapestPricingDefault($candidateCosts);
+            $item['lowest_indicative_cost_property_id']=$cheapest['property_id']??null;
+            $item['pricing_default_property_id']=$cheapest['property_id']??null;
+            $item['pricing_default_rate_id']=$cheapest['rate_id']??null;
+            $item['pricing_default_cost']=$cheapest['preliminary_cost']??null;
+            $item['pricing_default_policy']='lowest_eligible_dated_property_cost';
+            $item['pricing_default_is_reservation']=false;
+            $item['pricing_default_is_supplier_approval']=false;
+            $item['operational_property_id']=$property?:null;
+            $item['pricing_selection_mode']='no_eligible_cost_candidate';
+            // An unassigned stage prices against the least expensive qualified
+            // Cost REFERENCE for its exact date/tier/occupancy/meal. Never persist
+            // it to source bindings or assert supplier availability.
             if($property<=0){
-                $item['reason']=$candidateCosts
-                    ?'review_and_assign_property_per_stage_tier'
-                    :'no_eligible_dated_cost_candidate';
-                $items[]=$item;continue;
+                if(!$cheapest){
+                    $item['reason']='no_eligible_dated_cost_candidate';
+                    $items[]=$item;continue;
+                }
+                $property=(int)$cheapest['property_id'];
+                $item['pricing_selection_mode']='automatic_lowest_cost_reference';
+            }else{
+                // A deliberate Operations selection remains an override; its
+                // separate supplier/stock checks are never bypassed.
+                $item['pricing_selection_mode']='existing_operations_property_override';
             }
+            $item['pricing_property_id']=$property;
             $eligibleIds=array_values(array_map('intval',array_map(
                 static fn($c)=>(int)($c['id']??$c['property_id']??0),
                 (array)($row['candidates']??[]))));
@@ -283,6 +323,8 @@ final class MAD4B_Package_Hotel_Stage_Cost_Preview_V1 {
             $item['cost_factor']=$calculation['factor'];
             $item['status']='preliminary_needs_supplier_cost_receipt';
             $item['reason']=$chosen['stop_sale']?'source_stop_sale_or_availability_review':'source_cost_requires_signed_supplier_receipt';
+            $item['operational_property_confirmed']=false;
+            $item['pricing_default_is_checkout_authorized']=false;
             $item['meal_plan_status']='source_board_and_meal_inclusion_requires_verification';
             $sum+=$item['preliminary_cost'];$covered++;
             $items[]=$item;
@@ -357,13 +399,16 @@ final class MAD4B_Package_Hotel_Stage_Cost_Preview_V1 {
             'children'=>$ctx['children'],'infants'=>$ctx['infants'],
             'hotel_resort_stage_count'=>$totalStages,
             'preliminary_stage_count'=>$covered,
+            'auto_lowest_stage_count'=>count(array_filter($items,static fn($item)=>
+                ($item['pricing_selection_mode']??'')==='automatic_lowest_cost_reference'&&
+                is_numeric($item['preliminary_cost']??null))),
             'unpriced_stage_count'=>$totalStages-$covered,
             'preliminary_partial_total'=>$covered>0?round($sum,2):null,
             'complete_cost_total'=>null,'approved_price'=>null,
             'cost_receipt_qualified_count'=>0,'commercially_approved'=>false,
             'checkout_ready'=>false,'currency_conversion_automatic'=>false,
             'stages'=>$items,
-            'notice'=>'Reference-only: original scoped costs, no unverified FX or child policy, no commercial Rate writer, no supplier signature inferred.'];
+            'notice'=>'Auto-lowest applies only to eligible dated Property Cost REFERENCES. No hotel booked or saved, no unverified FX/child policy, no commercial Tour Rate writer, no supplier signature or inventory inferred.'];
         return $report;
     }
     public static function boot():void {
