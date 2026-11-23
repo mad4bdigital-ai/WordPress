@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Shared Secondary Listing Lazy Load
  * Description: Uses native JetEngine signed AJAX for secondary, public, non-filtered listing grids; site-specific opt-outs.
- * Version: 1.0.10
+ * Version: 1.0.10+complete-pagination-guard
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -570,6 +570,91 @@ function mad4b_secondary_grid_inner_batch( $settings ) {
     return max( $columns + 1, min( 36, $columns * $rows ) );
 }
 
+/**
+ * The outer JetEngine get_listing AJAX and the inner progressive paginator
+ * share a request handler. A valid full-SSR/first-AJAX certificate does NOT
+ * prove that later pagination will fetch the remaining terms. Never shrink
+ * a signed outer Ajax response into a partial batch until an independent
+ * end-to-end page-delivery certificate is installed for this exact cohort.
+ * Missing or stale evidence means a full first AJAX render, not hidden cards.
+ */
+function mad4b_secondary_grid_inner_completed_delivery_proven( $query_id, $listing_id, $document_id, $batch ) {
+    $query_id=absint($query_id);
+    $listing_id=absint($listing_id);
+    $document_id=absint($document_id);
+    $batch=absint($batch);
+    if(!$query_id || !$listing_id || !$document_id || $batch<2 || $batch>36
+        || !function_exists('mad4b_render_query_market_identity')
+        || !function_exists('mad4b_render_query_generation_for_id'))return false;
+
+    $market=mad4b_render_query_market_identity();
+    if(!is_array($market))return false;
+    $country=(string)($market['country']??'');
+    $currency=(string)($market['currency']??'');
+    if(!preg_match('/^(?:[A-Z]{2}|base)$/D',$country)
+        || !preg_match('/^[A-Z]{3}$/D',$currency))return false;
+    $market_key=strtolower($country.'-'.$currency);
+    $locale=(string)apply_filters('wpml_current_language','');
+    if(!preg_match('/^[a-z]{2}(?:-[a-z]{2})?$/D',$locale))return false;
+    $generation=(string)mad4b_render_query_generation_for_id($query_id);
+    if($generation==='' || strlen($generation)>160)return false;
+    $document_raw=get_post_meta($document_id,'_elementor_data',true);
+    $listing_raw=get_post_meta($listing_id,'_elementor_data',true);
+    if(!is_string($document_raw) || strlen($document_raw)<200
+        || !is_string($listing_raw) || strlen($listing_raw)<200)return false;
+    $css=WP_CONTENT_DIR.'/uploads/elementor/css/post-'.$listing_id.'.css';
+    if(is_link($css) || !is_file($css)
+        || @filesize($css)<100 || @filesize($css)>1048576)return false;
+    $css_sha=@hash_file('sha256',$css);
+    if(!is_string($css_sha))return false;
+
+    $registry=get_option('mad4b_secondary_grid_inner_pagination_proofs_v1',[]);
+    if(!is_array($registry)
+        || ($registry['contract']??'')!=='mad4b.native-inner.complete-pagination.v1'
+        || ($registry['site_host']??'')!==(string)wp_parse_url(home_url('/'),PHP_URL_HOST)
+        || (int)($registry['css_epoch']??-1)!==(int)get_option('mad4b_css_ai_epoch_v1',0))return false;
+    $key=implode('|',[$query_id,$listing_id,$document_id,$locale,$market_key,$batch]);
+    $proof=$registry['entries'][$key]??null;
+    if(!is_array($proof) || ($proof['status']??'')!=='pass'
+        || ($proof['mode']??'')!=='native-signed-get-listing-and-load-more'
+        || ($proof['query_generation']??'')!==$generation
+        || ($proof['document_sha256']??'')!==hash('sha256',$document_raw)
+        || ($proof['listing_sha256']??'')!==hash('sha256',$listing_raw)
+        || ($proof['listing_css_sha256']??'')!==$css_sha
+        || ($proof['first_ajax_signed']??false)!==true
+        || ($proof['every_load_more_signed']??false)!==true
+        || ($proof['terminal_page_verified']??false)!==true
+        || ($proof['same_order_and_content_as_ssr']??false)!==true
+        || !is_numeric($proof['max_cls']??null)
+        || (float)($proof['max_cls']??-1)<0 || (float)$proof['max_cls']>0.10)return false;
+    $at=(int)($proof['audited_at']??0);
+    if($at<time()-7*DAY_IN_SECONDS || $at>time()+120)return false;
+    $total=(int)($proof['ssr_items']??0);
+    $delivered=(int)($proof['all_pages_items']??-1);
+    $counts=$proof['page_item_counts']??null;
+    if($total<=$batch || $total>500 || $delivered!==$total
+        || !is_array($counts) || count($counts)<2 || count($counts)>50
+        || (int)($counts[0]??0)!==$batch)return false;
+    $sum=0;
+    foreach($counts as $count) {
+        if(!is_int($count) || $count<1 || $count>$batch)return false;
+        $sum+=$count;
+    }
+    if($sum!==$total)return false;
+    foreach(['links','content'] as $part) {
+        $a=(string)($proof['ssr_'.$part.'_sha256']??'');
+        $b=(string)($proof['loaded_'.$part.'_sha256']??'');
+        if(!preg_match('/^[a-f0-9]{64}$/D',$a)
+            || !preg_match('/^[a-f0-9]{64}$/D',$b)
+            || !hash_equals($a,$b))return false;
+    }
+    $widths=array_values(array_unique(array_map('absint',(array)($proof['tested_widths']??[]))));
+    sort($widths);
+    if(count($widths)<6 || $widths[0]>320 || end($widths)<1920
+        || !in_array(767,$widths,true) || !in_array(768,$widths,true))return false;
+    return true;
+}
+
 /** Check the actual saved widget, page context and Query Builder relation. */
 function mad4b_secondary_grid_inner_admit( $settings, $document_id, $element_id ) {
     if ( ! mad4b_secondary_grid_inner_enabled() ) { return 0; }
@@ -593,6 +678,12 @@ function mad4b_secondary_grid_inner_admit( $settings, $document_id, $element_id 
     if ( ! mad4b_secondary_grid_lazy_heavy_terms_eligible( $source, $query, $query_id, $listing_id, $document_id, true ) ) { return 0; }
     $batch = mad4b_secondary_grid_inner_batch( $source );
     if ( ! $batch || $batch >= (int) $query->get_items_total_count() ) { return 0; }
+    // Same original source-bound safeguard as Tours.dev: without a verified
+    // complete, ordered, native pagination receipt the first AJAX response
+    // must contain the full safe query, never an unproven two-item subset.
+    if ( ! mad4b_secondary_grid_inner_completed_delivery_proven(
+        $query_id, $listing_id, $document_id, $batch
+    ) ) { return 0; }
     return $batch;
 }
 
