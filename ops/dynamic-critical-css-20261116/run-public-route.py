@@ -498,8 +498,16 @@ def run_core(site,bulk_route_key=None,publish_only=False):
         report_ledger=drift_mod.select_verified_repair(current_ledger,drift)
         selected_ledger_path=jobdir/'verified-asset-drift-selection-ledger.json'
         family.queue.atom(selected_ledger_path,report_ledger)
-        print('PUBLIC_CCSS_LIVE_ASSET_DRIFT',site,drift['path'],
-              drift['expected_css_file'],drift['css_file'],flush=True)
+        if drift.get('drift_kind')=='elementor_doc_fingerprint':
+            # Original 422 document-graph drift proof is independent of a
+            # LiteSpeed asset filename. Logging must not require CSS keys
+            # that this original authenticated proof does not contain.
+            print('PUBLIC_CCSS_LIVE_DOCUMENT_GRAPH_DRIFT',site,drift['path'],
+                  drift['expected_doc_sha'],drift['observed_doc_sha'],flush=True)
+        else:
+            # Exact original CSS asset drift still reports both filenames.
+            print('PUBLIC_CCSS_LIVE_ASSET_DRIFT',site,drift['path'],
+                  drift['expected_css_file'],drift['css_file'],flush=True)
     # Template policies apply at native source discovery. Chromium QA is
     # separate evidence of display/interaction quality; it must not decide
     # whether the template policy or variant index is activated.
