@@ -3,7 +3,7 @@
 ## Goal and ownership
 Missing currency and sale unit on a Tour or a service component should inherit policy; missing prices, passenger quantities, original supplier cost currencies, and approvals must NEVER be invented.
 
-Sale currency: explicit item > valid linked parent > canonical WPML Tour source when original-language metadata exists > WooCommerce store-base option.
+Sale currency: explicit item > canonical WPML Tour source when applicable > valid linked parent > JetEngine Dynamic Pricing Controls (`etg-dynamic-pricing-controls_default_currency`, if populated) > WooCommerce store-base option. This is a currency-code fallback only, never a numeric FX conversion.
 WooCommerce raw store currency is USD on both live sites. WCML's presentation currency on Tours.dev was EGP during testing; the source currency remains USD, with currency conversion controlled by the existing presentation layer.
 
 Sale unit: explicit entity unit > parent/source WPML Tour unit > Dynamic Pricing Controls Tour Mode unit > component-kind unit > compatible company default > safe engine basis. Explicit Rate prices/units remain authoritative.
@@ -38,3 +38,11 @@ Branch feature/itinerary-overnight-native-stages-20261122 (PR 1046) receives the
 Neither authenticated browser GUI Save/Readback nor green GitHub CI nor PR merge is inferred from successful WP-CLI tests.
 Rollback: reconcile concurrent changes, then selectively restore the 13 saved file preimages and remove only the new provider file; leave unrelated Rates, Tours, CSS and Git branches untouched.
 
+
+## 24 Nov 2026 — Currency fallback extension
+
+The live read-only Component Selling Basis now reads the existing JetEngine Dynamic Pricing default currency before WooCommerce's base. The policy option is currently **unset** on both sites, so the effective sale currency for Tour #57562 is **USD** inherited from WooCommerce. Its price remains absent; inheriting USD does not create or approve a selling amount, an external supplier cost or a payment intent. Explicit Tour #60623 and #60629 currencies remain USD.
+
+Confirmed with six no-write cases on both WordPress sites: empty Dynamic setting → Woo USD; Dynamic override EUR → EUR for Tour #57562; explicit Tour USD wins; invalid Dynamic code fails closed; supplier currency remains unverified; existing baseline matches. Existing WCML market FX and native WooCommerce store currency were not modified.
+
+Runtime file SHA256: `09653e4ec7b761e2b7d1257afd11fd63d4c8d458310870c885a17f813661272c`. VPS report: `/opt/mad4b-company-provisioning/reports/form6-currency-and-payment-guard-20261124/manifest.json`. A prior backup of the exact live PHP exists under `/opt/mad4b-backups/currency-fallback-dynamic-20261124/`. Release approval and production Git deployment gates remain independent.
