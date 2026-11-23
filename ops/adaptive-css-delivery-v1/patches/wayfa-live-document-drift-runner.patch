@@ -1,0 +1,17 @@
+--- a/ops/dynamic-critical-css-20261116/run-public-route.py
++++ b/ops/dynamic-critical-css-20261116/run-public-route.py
+@@ -472,8 +472,12 @@
+         report_ledger=drift_mod.select_verified_repair(current_ledger,drift)
+         selected_ledger_path=jobdir/'verified-asset-drift-selection-ledger.json'
+         family.queue.atom(selected_ledger_path,report_ledger)
+-        print('PUBLIC_CCSS_LIVE_ASSET_DRIFT',site,drift['path'],
+-              drift['expected_css_file'],drift['css_file'],flush=True)
++        if drift.get('drift_kind')=='elementor_doc_fingerprint':
++            print('PUBLIC_CCSS_LIVE_ELEMENTOR_GRAPH_DRIFT',site,drift['path'],
++                  drift['expected_doc_sha'],drift['observed_doc_sha'],flush=True)
++        else:
++            print('PUBLIC_CCSS_LIVE_ASSET_DRIFT',site,drift['path'],
++                  drift['expected_css_file'],drift['css_file'],flush=True)
+     # Template policies apply at native source discovery. Chromium QA is
+     # separate evidence of display/interaction quality; it must not decide
+     # whether the template policy or variant index is activated.

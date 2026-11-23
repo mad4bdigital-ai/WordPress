@@ -16,8 +16,11 @@ final class MAD4B_Public_Critical_CSS_Consumer_V2 {
     private const MAX_SOURCE=25165824;
     private const MAX_CRITICAL=1048576;
     private const MAX_FILES=256;
+    private const LEGACY_CONSUMER_SHA='249083d5aa0124ea1280a88f5062945cdff2885eca63b36ba5c66682b0faf3d1';
     private static int $expected_links=0;
     private static int $expected_styles=0;
+    private static bool $provisional=false;
+    public static function provisional(): bool {return self::$provisional;}
 
     private static function digest($data): string {
         if (is_array($data)) {
@@ -53,7 +56,135 @@ final class MAD4B_Public_Critical_CSS_Consumer_V2 {
         if (!$file || !str_starts_with($file,$root.'/') || !is_file($file))return null;
         return $file;
     }
-    private static function verify_deps(array $cert,array $ctx): bool {
+    /**
+     * Strict event-by-event proof that a standard day tour has not changed
+     * despite unrelated edits to Properties elsewhere on the site.
+     *
+     * The original listing-generation gate remains authoritative unless ALL
+     * intervening generations are present, exclusively Properties events,
+     * and neither a JetEngine relation nor the rendered page/post-meta
+     * references any changed Property. Unknown => invalidate.
+     */
+    private static function approved_consumer_revision($recorded): bool {
+        if (!self::sha($recorded))return false;
+        $installed=hash_file('sha256',__FILE__);
+        return (is_string($installed) && hash_equals($installed,$recorded))
+            || hash_equals(self::LEGACY_CONSUMER_SHA,$recorded);
+    }
+
+    private static function ordered_unrelated_property_events(int $old,int $now,int $dirtyGeneration): ?array {
+        // UNKNOWN is never treated as an empty set. All generations in the
+        // required interval must have original 421 provenance, in order.
+        if ($old<1 || $now<=$old || $now-$old>256
+            || $dirtyGeneration<$now)return null;
+        $doc=get_option('mad4b_ccss_public_event_journal_v1',[]);
+        if (!is_array($doc)
+            || ($doc['contract']??null)!=='mad4b.css.source-ordered-events.v1'
+            || ($doc['latest_generation']??null)!==$dirtyGeneration
+            || !is_array($doc['events']??null)
+            || !array_is_list($doc['events'])
+            || count($doc['events'])<1 || count($doc['events'])>512)
+            return null;
+        $next=$old+1;$changed=[];
+        foreach ($doc['events'] as $event) {
+            if (!is_array($event) || !is_int($event['generation']??null))
+                return null;
+            $generation=$event['generation'];
+            if ($generation<=$old)continue;
+            if ($generation>$now)break;
+            if ($generation!==$next
+                || ($event['scope']??null)!=='post:properties'
+                || !is_int($event['id']??null) || $event['id']<1)return null;
+            $changed[]=$event['id'];$next++;
+        }
+        if ($next!==$now+1 || !$changed)return null;
+        return array_values(array_unique($changed));
+    }
+
+    private static function unrelated_property_events(array $ctx,int $old,int $now,string $html): bool {
+        if ($old<1 || $now<=$old || $now-$old>256
+            || ($ctx['type']??'')!=='tours-and-activities'
+            || !is_int($ctx['object_id']??null)
+            || $ctx['object_id']<=0
+            || $html===''
+            || stripos($html,'jet-listing-grid')!==false
+            || stripos($html,'data-mad4b-property')!==false
+            || !function_exists('get_post_meta')
+            || !function_exists('get_post_status')
+            || get_post_status($ctx['object_id'])!=='publish'
+            || (string)get_post_meta($ctx['object_id'],'tour_mode',true)!=='tour')
+            return false;
+        // Packages, cruises and related-rate programs may inherit Property
+        // data through unmodeled supplier relationships: fail closed.
+        foreach (['cruise_runs','tour_related_rate_plans','tour_queried_rates',
+                  'related_program_terms','tour_cruise_amenities'] as $field) {
+            $value=get_post_meta($ctx['object_id'],$field,true);
+            if ($value!=='' && $value!==null && $value!==false && $value!==[])return false;
+        }
+        $ledger=get_option('mad4b_ccss_public_dirty_v1',[]);
+        if (!is_array($ledger)||!is_array($ledger['ids']??null)
+            || (int)($ledger['generation']??0)<$now)return false;
+        $seen=[];$changed=[];$oldMapComplete=true;
+        foreach ($ledger['ids'] as $key=>$entry) {
+            if (!is_array($entry)){$oldMapComplete=false;break;}
+            $gen=$entry['generation']??null;
+            if (!is_int($gen) || $gen<=$old || $gen>$now)continue;
+            if (!is_string($key)
+                || !preg_match('/^post:properties:([1-9][0-9]*)$/D',$key,$match)
+                || isset($seen[$gen])){$oldMapComplete=false;break;}
+            $seen[$gen]=true;$changed[]=(int)$match[1];
+        }
+        if ($oldMapComplete && count($seen)===$now-$old) {
+            for($n=$old+1;$n<=$now;$n++)
+                if(!isset($seen[$n])){$oldMapComplete=false;break;}
+        } else $oldMapComplete=false;
+        if (!$oldMapComplete) {
+            // Append-only 421 journal can prove repeated same-object
+            // changes that the original per-key map overwrote. Unknown,
+            // missing, foreign, out-of-order or mixed post types => reject.
+            $changed=self::ordered_unrelated_property_events(
+                $old,$now,(int)$ledger['generation']);
+            if ($changed===null)return false;
+        }
+        $changed=array_values(array_unique($changed));
+        global $wpdb;
+        if (!is_object($wpdb)||!isset($wpdb->prefix)
+            || !method_exists($wpdb,'prepare')||!method_exists($wpdb,'get_var'))
+            return false;
+        $relation=$wpdb->prefix.'jet_rel_default';
+        if (!preg_match('/^[A-Za-z0-9_]+$/D',$relation))return false;
+        // Unknown JetEngine links (including indirect program links) fail
+        // closed for the target tour. Bounded query for this object only.
+        $sql=$wpdb->prepare("SELECT COUNT(*) FROM {$relation} WHERE parent_object_id=%d OR child_object_id=%d",
+                            $ctx['object_id'],$ctx['object_id']);
+        $links=$wpdb->get_var($sql);
+        // NULL means SQL failure or missing relation table, not zero links.
+        if ($links===null || !is_numeric($links) || (int)$links!==0)return false;
+        $values=get_post_meta($ctx['object_id']);
+        if (!is_array($values))return false;
+        foreach($changed as $property) {
+            $name=function_exists('get_the_title')?(string)get_the_title($property):'';
+            if (preg_match('/(?<![0-9])'.preg_quote((string)$property,'/').'(?![0-9])/',$html)
+                || ($name!=='' && stripos($html,$name)!==false))return false;
+            // Explicit Property or accommodation IDs in tour metadata
+            // are dependencies even if the page uses lazy panels.
+            foreach($values as $key=>$entries){
+                if (!is_string($key)||!preg_match('/property|hotel|cruise|accommodation|relation|rate|program|ship/i',$key))
+                    continue;
+                foreach((array)$entries as $value){
+                    // Nested JetEngine/ACF repeaters can store Property IDs
+                    // inside arrays or serialized objects. Unless a precise
+                    // relation parser attests them, UNKNOWN is dependent.
+                    if (!is_scalar($value))return false;
+                    if (preg_match('/(?<![0-9])'.preg_quote((string)$property,'/').'(?![0-9])/',
+                                  (string)$value))return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private static function verify_deps(array $cert,array $ctx,string $html): bool {
         $deps=$cert['dependencies']??null;
         if (!is_array($deps)
             || ($deps['global_generation']??null)!== (int)get_option('mad4b_ccss_global_generation_v1',0))
@@ -64,30 +195,50 @@ final class MAD4B_Public_Critical_CSS_Consumer_V2 {
         if (!empty($deps['contains_dynamic_listing']) ||
             in_array($ctx['type'],['destinations','tour-types','property-types','tour-categories',
                 'category','tours-and-activities','properties',
-                'archive:tours-and-activities','archive:properties'],true))
-            if (($deps['listing_generation']??null)!==
-                (int)get_option('mad4b_ccss_listing_generation_v1',0))return false;
+                'archive:tours-and-activities','archive:properties'],true)) {
+            $last=$deps['listing_generation']??null;
+            $now=(int)get_option('mad4b_ccss_listing_generation_v1',0);
+            if ($last!==$now && (!is_int($last)
+                || !self::unrelated_property_events($ctx,$last,$now,$html)))return false;
+        }
         return true;
     }
-    private static function certificate(array $ctx): ?array {
+    private static function certificate(array $ctx,string $html): ?array {
         if ((string)get_option('mad4b_perf_multi_css_v2','off')!=='on')return null;
         $routeKey=hash('sha256',$ctx['host'].'|'.$ctx['language'].'|'.$ctx['path']
             .'|'.$ctx['market_country'].'|'.$ctx['currency']);
         $path=WP_CONTENT_DIR.self::ROOT.'/certs-v2/'.$routeKey.'.json';
         if (is_link($path)||!is_file($path)||filesize($path)>180000)return null;
         $cert=json_decode((string)@file_get_contents($path),true);
+        $status=$cert['status']??null;
+        $provisional=$status==='released_pending_qa';
         if (!is_array($cert)
             || ($cert['contract']??null)!==self::CONTRACT
-            || ($cert['status']??null)!=='certified'
+            || !in_array($status,['certified','released_pending_qa'],true)
+            || ($provisional && (!is_int($cert['released_at']??null)
+                 || !is_int($cert['post_release_deadline']??null)
+                 || $cert['post_release_deadline']!=$cert['released_at']+21600
+                 || $cert['released_at']>time()+300
+                 || time()>$cert['post_release_deadline']))
             || ($cert['runtime_sha']??null)!==hash_file('sha256',__DIR__.'/422-mad4b-public-critical-css-runtime.php')
-            || ($cert['consumer_sha']??null)!==hash_file('sha256',__FILE__)
-            || !self::verify_deps($cert,$ctx))return null;
+            || !self::approved_consumer_revision($cert['consumer_sha']??null)
+            || !self::verify_deps($cert,$ctx,$html))return null;
         foreach (['host','path','language','type','object_id','market_country','currency','css_epoch']
                  as $field)if (($cert[$field]??null)!==($ctx[$field]??null))return null;
         if (($cert['critical_cap_px']??null)!==767
             || ($cert['native_mobile_breakpoint']??null)!==767)return null;
         $e=$cert['evidence']??null;
-        if (!is_array($e)||($e['decision']??null)!=='passed_evidence'
+        if (!is_array($e))return null;
+        if ($provisional) {
+            // Publisher validated all original CSS/asset/route/context SHAs.
+            // Browser performance happens AFTER release. No shared cache
+            // while provisional, and the 6h lease expires to Native CSS.
+            if (($e['decision']??null)!=='pending_post_release'
+                || ($e['tested']??null)!==0
+                || ($e['viewports']??null)!==[]
+                || ($e['performance_source']??null)!=='post-release-real-original-css-urls'
+                || ($e['verified_at']??null)!==0)return null;
+        } elseif (($e['decision']??null)!=='passed_evidence'
             || ($e['viewports']??null)!==[320,390,414,767,768]
             || ($e['tested']??null)!==5
             || ($e['performance_source']??null)!=='real-original-css-urls'
@@ -144,8 +295,8 @@ final class MAD4B_Public_Critical_CSS_Consumer_V2 {
         return $index===$n?$positions:null;
     }
     public static function transform(string $html,array $ctx): ?string {
-        self::$expected_links=0;self::$expected_styles=0;
-        $cert=self::certificate($ctx);
+        self::$expected_links=0;self::$expected_styles=0;self::$provisional=false;
+        $cert=self::certificate($ctx,$html);
         if (!$cert||str_contains($html,'data-mad4b-ccss-v2-rest='))return null;
         $body=stripos($html,'<body');
         if ($body===false)return null;
@@ -240,6 +391,7 @@ final class MAD4B_Public_Critical_CSS_Consumer_V2 {
         if ($end===false)return null;
         $result=substr_replace($result,$recovery,$end,0);
         self::$expected_links=$count;
+        self::$provisional=($cert['status']==='released_pending_qa');
         return $result;
     }
     public static function readback(string $html): bool {

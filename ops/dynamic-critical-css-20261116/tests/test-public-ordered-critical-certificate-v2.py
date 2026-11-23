@@ -64,7 +64,8 @@ with tempfile.TemporaryDirectory(prefix='mad4b-v2-issuer-') as tmp:
     'critical_file':sha+'.css'})
  candidate={'contract':'mad4b.public-css.ordered-critical-candidate.v1',
     'manifest_sha256':m['manifest_sha256'],'host':host,'path':'/contact-us/',
-    'viewports':[320,390,414,768],'source_cascade_slots':2,'observation_count':4,
+    'viewports':[320,390,414,767,768],
+    'critical_viewports':[320,390,414,767], 'desktop_validation_viewports':[768],'source_cascade_slots':2,'observation_count':5,
     'critical_total_bytes':sum(x['critical_bytes'] for x in critical),
     'public_route_certificate_issued':False,'critical_slots':critical}
  put('ordered-critical-candidate.json',candidate)
@@ -125,4 +126,112 @@ with tempfile.TemporaryDirectory(prefix='mad4b-v2-issuer-') as tmp:
  put('ordered-critical-candidate.json',candidate)
  hold('cannot publish into test root or bypass live approval',lambda:issuer.publish(built,job,wp))
  ok('dryrun and publish tests leave wp-content certs-v2 absent',not (wp/'mad4b-public-critical-css-v1/certs-v2').exists())
+ # Release-first does not read browser performance or 5-viewport parity.
+ (job/'ordered-native-critical-qa.json').unlink()
+ (job/'browser-parity.json').unlink()
+ pending=issuer.certificate(catalog,route,state,job,wp,runtime,consumer,release_first=True)
+ ok('source-proven certificate issues without any performance QA',pending['status']=='released_pending_qa'
+    and pending['evidence']['tested']==0 and pending['evidence']['decision']=='pending_post_release')
+ ok('unqualified public cert carries six-hour no-cache lease',pending['post_release_deadline']==pending['released_at']+21600)
+ issue_sha=pending['source_manifest_sha256']
+ bad=copy.deepcopy(candidate)
+ bad['critical_slots'][0]['critical_sha256']='0'*64
+ put('ordered-critical-candidate.json',bad)
+ hold('source SHA is never bypassed by release-first',lambda:issuer.certificate(
+     catalog,route,state,job,wp,runtime,consumer,release_first=True))
+ put('ordered-critical-candidate.json',candidate)
+ (folder/'a.css').write_text('broken source')
+ hold('release-first still refuses changed source CSS',lambda:issuer.certificate(
+     catalog,route,state,job,wp,runtime,consumer,release_first=True))
+ (folder/'a.css').write_text(files[0]*50)
+ # Simulate original 422 + consumer deployment ONLY in this temp root.
+ (wp/'mu-plugins').mkdir(parents=True)
+ (wp/'mu-plugins/422-mad4b-public-critical-css-runtime.php').write_bytes(runtime.read_bytes())
+ (wp/'mu-plugins/422-mad4b-public-critical-css-v2-consumer.php').write_bytes(consumer.read_bytes())
+ issuer.LIVE_ROOTS.add(str(wp))
+ previous=os.environ.get('MAD4B_MULTI_CSS_V2_RELEASE_APPROVED')
+ os.environ['MAD4B_MULTI_CSS_V2_RELEASE_APPROVED']='1'
+ try:
+  private=issuer.stage_candidate(pending,job,wp)
+  privpath=pathlib.Path(private)
+  ok('release first stores candidate outside WordPress public root',
+     privpath.is_file() and not str(privpath).startswith(str(wp))
+     and privpath.stat().st_mode&0o777==0o600
+     and privpath.parent.stat().st_mode&0o777==0o700
+     and not (wp/'mad4b-public-critical-css-v1/certs-v2').exists())
+  ok('private candidate is source-signed but not visitor-serving',
+     issuer.data(private)==pending and issuer.data(private)['status']=='released_pending_qa')
+  hold('candidate cannot promote with missing browser QA',
+       lambda:issuer.promote_staged(pending,job,wp,catalog,route,state,runtime,consumer))
+  ok('failed private QA discards without touching public WordPress',
+     issuer.discard_staged(pending,wp)=='discarded'
+     and not privpath.exists()
+     and not (wp/'mad4b-public-critical-css-v1/certs-v2').exists())
+  target=issuer.publish(pending,job,wp)
+  ok('source-only pending release is written before performance QA',pathlib.Path(target).is_file()
+     and issuer.data(target)['status']=='released_pending_qa')
+  outcome,_=issuer.finalize_post_release(pending,job,wp)
+  ok('missing post-release QA does not revoke pending before timeout',outcome=='pending_qa_not_yet_available')
+  outcome,_=issuer.finalize_post_release(pending,job,wp,failed=True)
+  ok('explicit post-release QA failure atomically reverts certificate',outcome=='reverted'
+     and issuer.data(target)['status']=='reverted_post_release_qa')
+  pending=issuer.certificate(catalog,route,state,job,wp,runtime,consumer,release_first=True)
+  issuer.publish(pending,job,wp)
+  put('browser-parity.json',{'contract':'mad4b.ordered-css.browser-parity.qa.v1',
+    'host':host,'pathname':'/contact-us/','manifest_sha256':m['manifest_sha256'],
+    'pass':True,'widths':v,'results':[{'width':w,'pass':True} for w in v]})
+  put('ordered-native-critical-qa.json',qa)
+  os.utime(job/'ordered-native-critical-qa.json',(pending['released_at']-60,
+                                                   pending['released_at']-60))
+  outcome,_=issuer.finalize_post_release(pending,job,wp)
+  ok('pre-publication QA cannot approve post-release certificate',
+     outcome=='pending_fresh_post_release_qa_required')
+  os.utime(job/'ordered-native-critical-qa.json',None)
+  outcome,_=issuer.finalize_post_release(pending,job,wp)
+  final=issuer.data(target)
+  ok('passing post-release QA upgrades the published cert',outcome=='certified'
+     and final['status']=='certified' and final['evidence']['tested']==5)
+  ok('post-release upgrade preserves exact source manifest SHA',final['source_manifest_sha256']==issue_sha)
+  hold('a stale pending writer cannot overwrite approved certificate',
+       lambda:issuer.finalize_post_release(pending,job,wp,failed=True))
+  outcome,_=issuer.revoke_delivered_release(final,wp)
+  ok('failed public delivery can revoke already QA-certified release',
+     outcome=='reverted' and issuer.data(target)['status']=='reverted_post_release_qa')
+  ok('revocation keeps original source SHA but disables frontend qualification',
+     issuer.data(target)['source_manifest_sha256']==issue_sha
+     and issuer.data(target)['evidence']['decision']=='failed_public_post_release_readback')
+  hold('repeated or stale revocation never overwrites another state',
+       lambda:issuer.revoke_delivered_release(final,wp))
+  # A previous public revoked certificate must remain untouched until a
+  # completely new root-private candidate passes post-stage Chromium QA.
+  pending=issuer.certificate(catalog,route,state,job,wp,runtime,consumer,
+                             release_first=True)
+  revoked_bytes=pathlib.Path(target).read_bytes()
+  staged=issuer.stage_candidate(pending,job,wp)
+  ok('private reissue leaves existing visitor-facing certificate untouched',
+     pathlib.Path(target).read_bytes()==revoked_bytes
+     and pathlib.Path(staged).stat().st_mode&0o777==0o600)
+  os.utime(job/'ordered-native-critical-qa.json',(pending['released_at']-100,
+                                                  pending['released_at']-100))
+  hold('old Chromium proof cannot promote the new private candidate',
+       lambda:issuer.promote_staged(pending,job,wp,catalog,route,state,runtime,consumer))
+  ok('old-source failed QA cannot replace previous public certificate',
+     pathlib.Path(target).read_bytes()==revoked_bytes)
+  os.utime(job/'ordered-native-critical-qa.json',None)
+  os.utime(job/'browser-parity.json',None)
+  outcome,promoted=issuer.promote_staged(pending,job,wp,
+                                          catalog,route,state,runtime,consumer)
+  ok('five-width post-staging QA publishes exactly one certified replacement',
+     outcome=='certified' and promoted==target and
+     issuer.data(target)['status']=='certified' and
+     issuer.data(target)['source_manifest_sha256']==pending['source_manifest_sha256'])
+  hold('stale private candidate cannot publish after its source changes',
+       lambda:issuer.promote_staged(dict(pending,source_manifest_sha256='f'*64),
+                   job,wp,catalog,route,state,runtime,consumer))
+  ok('root-only staging receipt can be discarded after confirmed delivery',
+     issuer.discard_staged(pending,wp)=='discarded')
+
+ finally:
+  if previous is None:os.environ.pop('MAD4B_MULTI_CSS_V2_RELEASE_APPROVED',None)
+  else:os.environ['MAD4B_MULTI_CSS_V2_RELEASE_APPROVED']=previous
 print(f'PASS {checks}/{checks} v2 source-owned certificate issuance tests')

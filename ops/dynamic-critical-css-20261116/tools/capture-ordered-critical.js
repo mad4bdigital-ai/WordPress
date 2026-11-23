@@ -7,12 +7,14 @@ const {chromium}=require('playwright');
 const original=require('./verify-ordered-css.js');
 const {assemble}=require('./assemble.js');
 const {manifest,summary,source,origin,pathname,OUT,styleUrls,sha,rewrite}=original;
-const widths=[320,390,414,768];
+// Observe 768px for tablet parity, but do NOT transfer its CSS to the <=767px mobile payload.
+const widths=[320,390,414,767,768];
+const criticalWidths=[320,390,414,767];
 const navTimeout=Number(process.env.MAD4B_NAV_TIMEOUT_MS||55000);
 if(!Number.isInteger(navTimeout)||navTimeout<55000||navTimeout>120000)
   throw Error('INVALID_BOUNDED_CAPTURE_NAV_TIMEOUT');
 
-const allowedWidths=(process.env.MAD4B_WIDTHS||'320,390,414,768').split(',').map(Number);
+const allowedWidths=(process.env.MAD4B_WIDTHS||'320,390,414,767,768').split(',').map(Number);
 if(JSON.stringify(allowedWidths)!==JSON.stringify(widths))
   throw Error('FOUR_SOURCE_CAPTURES_REQUIRED');
 if(summary.manifest_sha256!==manifest.manifest_sha256)
@@ -76,7 +78,8 @@ async function capture(browser,width){
  }finally{await browser.close()}
  const candidates=[];let total=0;
  for(const chunk of chunks){
-  const ranges=observations.flatMap(o=>o.ranges[String(chunk.slot)]||[]);
+  const ranges=observations.filter(o=>criticalWidths.includes(o.width))
+    .flatMap(o=>o.ranges[String(chunk.slot)]||[]);
   const selected=assemble(chunk.source,ranges);
   const css=selected.css;
   const bytes=Buffer.byteLength(css);
@@ -95,7 +98,8 @@ async function capture(browser,width){
  }
  const report={contract:'mad4b.public-css.ordered-critical-candidate.v1',
    manifest_sha256:manifest.manifest_sha256,host:manifest.host,path:pathname,
-   viewports:widths,source_cascade_slots:chunks.length,
+   viewports:widths,critical_viewports:criticalWidths,
+   desktop_validation_viewports:[768],source_cascade_slots:chunks.length,
    critical_total_bytes:total,critical_slots:candidates,
    observation_count:observations.length,
    full_browser_performance_qa_complete:false,

@@ -57,10 +57,12 @@ def proof(directory):
         or candidate.get('manifest_sha256')!=key
         or candidate.get('host')!=host
         or candidate.get('path')!=observer.get('path')
-        or candidate.get('viewports')!=[320,390,414,768]
+        or candidate.get('viewports')!=[320,390,414,767,768]
+        or candidate.get('critical_viewports')!=[320,390,414,767]
+        or candidate.get('desktop_validation_viewports')!=[768]
         or candidate.get('critical_total_bytes',-1)>1048576
         or candidate.get('source_cascade_slots')!=observer.get('cascade_slots')
-        or candidate.get('observation_count')!=4
+        or candidate.get('observation_count')!=5
         or candidate.get('public_route_certificate_issued') is not False):
         raise ValueError('untrusted-critical-source-observation')
     if (parity.get('contract')!='mad4b.ordered-css.browser-parity.qa.v1'

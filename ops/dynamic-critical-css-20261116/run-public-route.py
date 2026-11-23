@@ -39,6 +39,63 @@ def wp_eval(php,code,timeout=150):
             if attempt:raise
             time.sleep(2)
     raise ValueError('WORDPRESS_BOOT_UNAVAILABLE')
+def management_revision_snapshot(php,path):
+    """Read exact queued edit source token, without consuming or creating work."""
+    if (not isinstance(path,str)
+        or not re.fullmatch(r'/[A-Za-z0-9/_%.\\-]{0,349}',path)
+        or '..' in path or '//' in path):
+        return None
+    code=(
+        '$class="MAD4B_SCP_Adaptive_Asset_Intelligence";'
+        'if(!class_exists($class,false)||!method_exists($class,"worker_source_for_path"))'
+        '{echo wp_json_encode(["ok"=>false,"error"=>"manager_absent"]);return;}'
+        '$r=$class::worker_source_for_path('+json.dumps(path)+');'
+        'echo wp_json_encode($r,JSON_UNESCAPED_SLASHES);'
+    )
+    try:
+        result=wp_eval(php,code,timeout=34)
+        if (result.get('ok') is True and result.get('path')==path
+            and isinstance(result.get('source_token'),str)
+            and re.fullmatch('[a-f0-9]{32}',result['source_token'])
+            and isinstance(result.get('updated'),int)
+            and 0<result['updated']<=int(time.time())+120):
+            print('PUBLIC_CCSS_MANAGEMENT_TOKEN_SNAPSHOT',path,flush=True)
+            return result
+    except (OSError,ValueError,subprocess.CalledProcessError,subprocess.TimeoutExpired) as exc:
+        print('PUBLIC_CCSS_MANAGEMENT_SNAPSHOT_UNAVAILABLE',type(exc).__name__,flush=True)
+    return None
+
+def acknowledge_management_certified(php,path,ticket):
+    """Best-effort exact-token ACK ONLY after original verified CSS readback.
+
+    A failed WordPress call or a newer editorial source revision leaves the
+    management job pending. The native CSS certificate remains independent.
+    """
+    if not isinstance(ticket,dict) or ticket.get('path')!=path:return False
+    token=ticket.get('source_token')
+    if not isinstance(token,str) or not re.fullmatch('[a-f0-9]{32}',token):
+        return False
+    code=(
+        '$class="MAD4B_SCP_Adaptive_Asset_Intelligence";'
+        'if(!class_exists($class,false)||!method_exists($class,"acknowledge_worker"))'
+        '{echo wp_json_encode(["ok"=>false,"error"=>"manager_absent"]);return;}'
+        '$r=$class::acknowledge_worker('+json.dumps(path)+',"certified",'
+        '"source_bound_public_css_verified",'+json.dumps(token)+');'
+        'echo wp_json_encode($r,JSON_UNESCAPED_SLASHES);'
+    )
+    try:
+        reply=wp_eval(php,code,timeout=40)
+        accepted=(reply.get('ok') is True
+                  and int(reply.get('matched',0))==1
+                  and reply.get('status')=='certified')
+        print('PUBLIC_CCSS_MANAGEMENT_ACK',path,
+              'source_token_matched' if accepted else
+              str(reply.get('error','no_match'))[:90],flush=True)
+        return accepted
+    except (OSError,ValueError,subprocess.CalledProcessError,subprocess.TimeoutExpired) as exc:
+        print('PUBLIC_CCSS_MANAGEMENT_ACK_DEFERRED',type(exc).__name__,flush=True)
+        return False
+
 def obs(php,host,env):
     data=wp_eval(php,r'''
 $s=get_option("icl_sitepress_settings",[]);
@@ -213,7 +270,14 @@ def browser(job,wp,site,env,script,output,extra=None,limit=1320):
       'MAD4B_PUBLIC_CSS_TYPE':job['type'],
     }
     opts.update(extra or {})
-    args=['docker','run','--rm','--user','0:0','--memory=1024m','--cpus=1.3',
+    # Larger Chrome memory only for the Wayfatours ordered multi-CSS
+    # post-release checks; keep Source and original workers unchanged.
+    ordered={'capture-ordered-critical.js','verify-ordered-css.js',
+             'verify-native-ordered-critical.js'}
+    resource=(['--memory=1900m','--cpus=1','--shm-size=256m']
+              if site=='wayfatours.com' and script in ordered
+              else ['--memory=1024m','--cpus=1.3'])
+    args=['docker','run','--rm','--user','0:0',*resource,
           '--pids-limit=250','--security-opt=no-new-privileges',
           '-v',str(TOOLS/'tools')+':/tools:ro','-v',str(output.parent)+':/out']
     args+=approved_browser_network(site,env,script)
@@ -234,9 +298,43 @@ def approved_native_runtime_sha(site,wp):
     approved_stage_422='254c382bb96faadda2510d75501107ac73ae80673093dd3c0a47a5f63f7f2ff6'
     # Explicitly approved source-sha pair. A locally edited or partially
     # installed v2 file cannot impersonate this pair.
-    released_v2_422='e6a4bba04a1839be5ef400f76cf3b58762ebb7724508c5d168b397af21811993'
-    released_v2_consumer='1ffefcb36102f39feb0cf6263b9b79b75a776721cd92c7a682ff845f5322edfb'
-    original=ROOT/'worktrees/pr814-converged-local-20261115/wp-content/mu-plugins'
+    released_v2_pairs={
+        'source':('13e98efebaef87918d38c1d5be30bd6cf45c9f40c0e3264a31beca79b4663a36',
+                  '249083d5aa0124ea1280a88f5062945cdff2885eca63b36ba5c66682b0faf3d1'),
+        'wayfa':('597a31f0ea962d2700ead68f9856596727a4e07055650705f52ba57bbaf11119',
+                 '249083d5aa0124ea1280a88f5062945cdff2885eca63b36ba5c66682b0faf3d1')}
+    released_v2_422,released_v2_consumer=released_v2_pairs[site]
+    # Current original Git release at PR #989, first-party PHP V2
+    # runtime/consumer pair validated against an immutable repository tree.
+    # Preserve the legacy pairs for older host rollback receipts.
+    current_git_release=('13e98efebaef87918d38c1d5be30bd6cf45c9f40c0e3264a31beca79b4663a36',
+                         '249083d5aa0124ea1280a88f5062945cdff2885eca63b36ba5c66682b0faf3d1')
+
+    # Two *exact* first-party 421 releases: original rollback + source-backed
+    # batched menu-write event version. Both retain identical route and
+    # taxonomy invalidation; no 422 runtime or consumer SHA is changed.
+    approved_421_sha={
+      'ae7936c7ad09b059375e1960d4c59144af0b4325933db34bcfa63c26e49233bb',
+      '78be6cfeeff27fbf5c336372cf1bd59fc939955d0fc41777fb2d6e1c62209bf4',
+      '010b0af3c27d605f5cba2e64d7a0b84c33692b1e7c44881bf06a794c6d6f40f8',
+      '8779fa2cf78c2edb2654216284f19241777be92087bbb247804e454ef461c1c7'}
+
+    # Immutable original source Git objects, verified against GitHub.
+    # Previously this trusted branch's 421/422 bytes via an ephemeral
+    # /worktrees/pr814-* checkout. Worktree GC is NOT source drift.
+    # The SHA256 pins below match first-party Git blobs ec5f8cf... (421)
+    # and 760d254... (original 422). No dynamic observed-live SHA grant.
+    approved_original_sha={
+        '421-mad4b-public-critical-css-coverage.php':
+            'ae7936c7ad09b059375e1960d4c59144af0b4325933db34bcfa63c26e49233bb',
+        '422-mad4b-public-critical-css-runtime.php':
+            'b5ed9a9629e0a547bf42803b4810b492f73a748eaaad66b5dde6e1961c7713f4'}
+
+    # Both new 421 and new 422 must be installed as one Git-pinned pair.
+    # Old exact 421/422 versions are independently supported for rollback.
+    new_421='8779fa2cf78c2edb2654216284f19241777be92087bbb247804e454ef461c1c7'
+    new_422='f68813a57f02cd607864fcb9708c753ec2fd9c1694b2e6c8324588871d953c5f'
+    installed_421=None
     runtime=None
     for name in ['421-mad4b-public-critical-css-coverage.php',
                  '422-mad4b-public-critical-css-runtime.php']:
@@ -245,17 +343,23 @@ def approved_native_runtime_sha(site,wp):
             raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
         blob=live.read_bytes()
         actual_sha=hashlib.sha256(blob).hexdigest()
-        if name=='422-mad4b-public-critical-css-runtime.php' and actual_sha==released_v2_422:
+        if name=='422-mad4b-public-critical-css-runtime.php' and actual_sha in (released_v2_422,current_git_release[0]):
             companion=wp/'mu-plugins/422-mad4b-public-critical-css-v2-consumer.php'
+            expected_companion=(new_422 if installed_421==new_421 else
+                                current_git_release[1] if actual_sha==current_git_release[0]
+                                else released_v2_consumer)
             if (companion.is_symlink() or not companion.is_file() or
-                hashlib.sha256(companion.read_bytes()).hexdigest()!=released_v2_consumer):
+                hashlib.sha256(companion.read_bytes()).hexdigest()!=expected_companion):
                 raise ValueError('MULTI_CSS_V2_RUNTIME_COMPANION_PAIR_DRIFT')
         elif site=='source' and name=='422-mad4b-public-critical-css-runtime.php':
             if actual_sha!=approved_stage_422:
                 raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
+        elif name=='421-mad4b-public-critical-css-coverage.php':
+            if actual_sha not in approved_421_sha:
+                raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
+            installed_421=actual_sha
         else:
-            source=original/name
-            if source.is_symlink() or not source.is_file() or source.read_bytes()!=blob:
+            if actual_sha!=approved_original_sha.get(name):
                 raise ValueError('SOURCE_LIVE_NATIVE_COMPONENT_DRIFT:'+name)
         if name=='422-mad4b-public-critical-css-runtime.php':
             runtime=hashlib.sha256(blob).hexdigest()
@@ -265,10 +369,25 @@ def approved_native_runtime_sha(site,wp):
 def approved_v2_consumer_sha(site,wp,runtime_sha):
     if site not in CONFIG or wp!=CONFIG[site][2] or wp.is_symlink():
         raise ValueError('MULTI_CSS_V2_COMPANY_ROOT_UNTRUSTED')
-    if runtime_sha!='e6a4bba04a1839be5ef400f76cf3b58762ebb7724508c5d168b397af21811993':
+    approved_pairs={
+        'source':('13e98efebaef87918d38c1d5be30bd6cf45c9f40c0e3264a31beca79b4663a36',
+                  '249083d5aa0124ea1280a88f5062945cdff2885eca63b36ba5c66682b0faf3d1'),
+        'wayfa':('597a31f0ea962d2700ead68f9856596727a4e07055650705f52ba57bbaf11119',
+                 '249083d5aa0124ea1280a88f5062945cdff2885eca63b36ba5c66682b0faf3d1')}
+    released_runtime,approved=approved_pairs[site]
+    current_git_release=('13e98efebaef87918d38c1d5be30bd6cf45c9f40c0e3264a31beca79b4663a36',
+                         '249083d5aa0124ea1280a88f5062945cdff2885eca63b36ba5c66682b0faf3d1')
+    if runtime_sha==current_git_release[0]:
+        approved=current_git_release[1]
+    elif runtime_sha!=released_runtime:
         return None
+    source421=wp/'mu-plugins/421-mad4b-public-critical-css-coverage.php'
+    if source421.is_symlink() or not source421.is_file():
+        raise ValueError('MULTI_CSS_V2_MISSING_421_BOUNDED_SOURCE_PROOF')
+    if hashlib.sha256(source421.read_bytes()).hexdigest()==(
+         '8779fa2cf78c2edb2654216284f19241777be92087bbb247804e454ef461c1c7'):
+        approved='f68813a57f02cd607864fcb9708c753ec2fd9c1694b2e6c8324588871d953c5f'
     companion=wp/'mu-plugins/422-mad4b-public-critical-css-v2-consumer.php'
-    approved='1ffefcb36102f39feb0cf6263b9b79b75a776721cd92c7a682ff845f5322edfb'
     if (companion.is_symlink() or not companion.is_file()
         or hashlib.sha256(companion.read_bytes()).hexdigest()!=approved):
         raise ValueError('MULTI_CSS_V2_COMPANION_RELEASE_SHA_UNAPPROVED')
@@ -278,14 +397,15 @@ def qa_policy_sha():
     # Exact deployed original Chromium QA code, never a user-supplied key.
     # Invalidating negative attempts never publishes a public certificate.
     digest=hashlib.sha256(b'mad4b-public-css-qa-implementation-v1\x00')
-    for name in ('verify.js','lcp-observation-window.js'):
+    for name in ('verify.js','verify-native-ordered-critical.js',
+                 'lcp-observation-window.js'):
         p=TOOLS/'tools'/name
         if p.is_symlink() or not p.is_file():
             raise ValueError('QA_VERIFIER_TOOL_MISSING_OR_SYMLINK:'+name)
         digest.update(name.encode()+b'\x00'+p.read_bytes()+b'\x00')
     return digest.hexdigest()
 
-def run_core(site):
+def run_core(site,bulk_route_key=None,publish_only=False):
     if site not in CONFIG:raise ValueError('UNKNOWN_COMPANY')
     host,php,wp,env=CONFIG[site]
     base=ROOT/'reports/public-critical-css-v1'/site
@@ -397,8 +517,16 @@ def run_core(site):
     report=family.build(site,listing,state,report_ledger,wp,variant_index=index)
     report['refreshed_at_utc']=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime())
     family.queue.atom(base/'source-families-latest.json',report)
-    preferred=drift['route_key'] if drift else report.get('next_canary_route_key')
-    if not qa_available:
+    preferred=family.plan_next_css_issuance(
+        report,int(report_ledger.get('scheduler_sequence',0)),
+        drift['route_key'] if drift else None)
+    if bulk_route_key is not None:
+        # A bulk route is only a proposal from a first-party WPML catalog;
+        # the original queue 'select' independently verifies it.
+        if not isinstance(bulk_route_key,str) or not re.fullmatch('[a-f0-9]{64}',bulk_route_key):
+            raise ValueError('invalid-bulk-route-key')
+        preferred=bulk_route_key
+    if not qa_available and not publish_only:
         print('POLICY_ACTIVE_BROWSER_EVIDENCE_DEFERRED',site,
               report['source_groups_total'],flush=True)
         return
@@ -416,11 +544,71 @@ def run_core(site):
     if route is None:
         print('READY_PUBLIC_CCSS_QUEUE_EMPTY',site,len(listing['routes']));return
     print('PUBLIC_CCSS_SELECTED',site,route['language'],route['type'],route['path'])
+    # An original public ticket and a bulk ticket can propose the same route
+    # on different Cron wakes. Pending post-release QA owns that route until
+    # its exact source-bound CAS result is independently recorded; never
+    # overwrite a six-hour provisional cert while its QA is outstanding.
+    for old_dir in base.iterdir():
+        if (not old_dir.is_dir() or old_dir.is_symlink()
+            or not re.fullmatch(r'20[0-9]{6}T[0-9]{6}Z',old_dir.name)
+            or (old_dir/'bulk-complete.json').exists()):
+            continue
+        for token_name in ('bulk-pending.json','bulk-intent.json'):
+            marker=old_dir/token_name
+            if marker.is_symlink() or not marker.is_file() or marker.stat().st_size>8192:
+                continue
+            try:
+                token=json.loads(marker.read_text())
+            except (OSError,ValueError,json.JSONDecodeError):
+                continue
+            if (token.get('site')==site and token.get('host')==host
+                and token.get('route_key')==route['route_key']):
+                # An intent alone is NOT a publication. Require the actual
+                # exact-market 422 pending certificate to exist with the
+                # same original source SHA before deferring another issuer.
+                market=token.get('market_country');currency=token.get('currency')
+                if (not isinstance(market,str) or not isinstance(currency,str)
+                    or not re.fullmatch('[a-zA-Z]{2}|static|base',market)
+                    or not re.fullmatch('[A-Z]{3}|NONE',currency)):
+                    continue
+                certkey=hashlib.sha256((host+'|'+route['language']+'|'
+                    +route['path']+'|'+market+'|'+currency).encode()).hexdigest()
+                certpath=wp/'mad4b-public-critical-css-v1/certs-v2'/(certkey+'.json')
+                if (certpath.is_symlink() or not certpath.is_file()
+                    or certpath.stat().st_size>2000000):
+                    continue
+                try:active=json.loads(certpath.read_text())
+                except (ValueError,OSError,json.JSONDecodeError):continue
+                if (active.get('status')!='released_pending_qa'
+                    or active.get('source_manifest_sha256')!=token.get('manifest_sha256')
+                    or active.get('host')!=host or active.get('path')!=route['path']
+                    or active.get('language')!=route['language']
+                    or active.get('market_country')!=market
+                    or active.get('currency')!=currency):
+                    continue
+                print('BULK_CCSS_ROUTE_PENDING_POST_RELEASE_QA',site,
+                      route['route_key'],route['path'],flush=True)
+                return
     def record(result,listing_hint=None):
         args=['python3',str(TOOLS/'public-route-queue.py'),'record',site,
               str(catfile),str(statefile),str(ledger),str(jobfile),result]
         if listing_hint:args.append(listing_hint)
         print(run(args,timeout=25))
+        if result=='certified':
+            try:
+                updated=family.rollup_after_certified_event(
+                    site,listing,state,ledger,wp,route,index,
+                    base/'source-families-latest.json')
+                print('SOURCE_FAMILY_AFTER_CERTIFIED_REFRESH',site,
+                      'families',updated['families'],
+                      'qualified',updated['qualified'],
+                      'current',updated['current'],flush=True)
+            except (OSError,ValueError,TypeError,KeyError) as exc:
+                # The original certificate and WordPress ACK remain governed
+                # independently. A read-only dashboard refresh is never
+                # a reason to roll back an already verified CSS release.
+                print('OBSERVE_FAMILY_POST_CERT_REFRESH_DEFERRED',site,
+                      str(exc)[:130],flush=True)
     supported={'page','post','tours-and-activities','properties','destinations',
          'tour-types','property-types','tour-categories','category',
          'archive:tours-and-activities','archive:properties'}
@@ -430,6 +618,28 @@ def run_core(site):
         return
     lang=route['language'];jobpath=route['path'];rid=route['id']
     jsonsave(jobdir/'route.json',route)
+    # Optional source-token handshake with the EXISTING management queue.
+    # Snapshot before Chromium; never allow a newer edit to inherit QA
+    # performed on old content. This does not execute its own CSS task.
+    management_ticket=management_revision_snapshot(php,jobpath)
+    # Before any new Chromium work, ask the real WP 422 Consumer whether
+    # an existing V2 cert is still valid after a bounded unrelated update.
+    # Bypass the shared FastCGI representation. A cached HIT is NEVER proof.
+    if state.get('consumer_v2_sha'):
+        try:
+            print(run(['python3',str(TOOLS/'public-v2-existing-readback.py'),
+                site,str(wp),str(catfile),str(jobdir/'route.json'),
+                str(statefile),str(jobdir/'v2-existing-readback.json')],timeout=32))
+            prior_proof=json.loads((jobdir/'v2-existing-readback.json').read_text())
+            record('certified','listing' if prior_proof['depends_on_listing'] else 'no-listing')
+            print('CERTIFIED_PUBLIC_CCSS',site,lang,jobpath,
+                  'V2_VERIFIED_REUSED_NO_BROWSER',flush=True)
+            acknowledge_management_certified(php,jobpath,management_ticket)
+            return
+        except (subprocess.CalledProcessError,subprocess.TimeoutExpired,
+                ValueError,OSError) as exc:
+            print('V2_PUBLIC_CERT_NEEDS_FRESH_SOURCE',site,lang,jobpath,
+                  str(exc)[:180],flush=True)
     # The public path may still be an HTML generation from before the
     # latest 421/422 runtime or market-header update. Only this single
     # authenticated WPML page's cache generation is renewed, never cart,
@@ -504,7 +714,11 @@ def run_core(site):
     try:
         source_only=run(['python3',str(TOOLS/'public-css-manifest-observer.py'),
              str(catfile),str(jobdir/'route.json'),str(wp),str(jobdir)],
-             timeout=28,env={**os.environ,'MAD4B_EXPECTED_SITE_HOST':host})
+             timeout=28,env={**os.environ,'MAD4B_EXPECTED_SITE_HOST':host,
+                 'MAD4B_FAMILY_PREPARED_SOURCE':'1' if publish_only else '0',
+                 'MAD4B_FAMILY_PREPARED_EPOCH':str(state['css_epoch']),
+                 'MAD4B_FAMILY_PREPARED_RUNTIME_SHA':str(state['runtime_sha']),
+                 'MAD4B_FAMILY_PREPARED_CONSUMER_SHA':str(state.get('consumer_v2_sha',''))})
         print(source_only)
         receipts=[line.removeprefix('MULTICSS_SOURCE_ONLY ')
                   for line in source_only.splitlines()
@@ -528,10 +742,104 @@ def run_core(site):
             # Existing CPU/Chrome guard and one original route job own this
             # bounded, sequential QA. Explicit opt-in admits evidence
             # generation, NEVER public promotion or FastCGI invalidation.
-            if os.environ.get('MAD4B_MULTI_CSS_SOURCE_QA','0')=='1':
+            release_first=os.environ.get('MAD4B_MULTI_CSS_V2_RELEASE_FIRST')=='1'
+            if release_first or os.environ.get('MAD4B_MULTI_CSS_SOURCE_QA','0')=='1':
+                issued_before_qa=False
+                release_promoted=False
+                release_args=None
                 try:
                     browser(route,wp,host,env,'capture-ordered-critical.js',
                       jobdir/'ordered-critical-capture.log',{},limit=390)
+                    # A first-party cached HTML body may contain an outdated
+                    # Elementor popup/document graph while the live 422
+                    # WordPress source has a new graph. Never issue a pending
+                    # certificate based on stale cached source: prove the
+                    # exact current, no-store original before release-first.
+                    if site=='wayfa':
+                        try:
+                            print(run(['python3',str(TOOLS/'public-source-stability-before-release.py'),
+                                str(catfile),str(jobdir/'route.json'),str(wp),
+                                str(jobdir)],timeout=34))
+                        except subprocess.CalledProcessError as origin_exc:
+                            # Keep the *exact* fail-closed reason inside the
+                            # root-private native worker log. Never publish
+                            # the invalid candidate or issue a WordPress ACK.
+                            reason=(origin_exc.stderr or '').strip()[-180:]
+                            print('PUBLIC_SOURCE_PRE_RELEASE_HOLD',site,
+                                  route['path'],reason,flush=True)
+                            raise
+                    if release_first:
+                        # Release the exact source/market-bound candidate
+                        # to WordPress BEFORE performance QA, using the V2
+                        # consumer's existing 6-hour provisional lease.
+                        # The provisional HTML is strictly no-store; ordinary
+                        # native CSS remains the fallback on expiry or error.
+                        # The original full five-width browser QA runs AFTER
+                        # this public release and can revert this exact route.
+                        if (os.environ.get('MAD4B_MULTI_CSS_V2_PUBLISH')!='1'
+                            or os.environ.get('MAD4B_MULTI_CSS_V2_RELEASE_APPROVED')!='1'):
+                            raise ValueError('release-first-publisher-opt-in-missing')
+                        fresh=obs(php,host,env)
+                        fresh['runtime_sha']=approved_native_runtime_sha(site,wp)
+                        companion=approved_v2_consumer_sha(site,wp,fresh['runtime_sha'])
+                        if companion:fresh['consumer_v2_sha']=companion
+                        fresh['qa_policy_sha']=qa_policy_sha()
+                        current=next((x for x in catalog(php,host)['routes']
+                            if x['route_key']==route['route_key']),None)
+                        if fresh!=state or current!=route or not fresh.get('consumer_v2_sha'):
+                            raise ValueError('MULTICSS_SOURCE_CHANGED_BEFORE_RELEASE')
+                        market=observed['market_country'];currency=observed['currency']
+                        measured={**state,'market_country':market,'currency':currency}
+                        jsonsave(jobdir/'measured-site-v2.json',measured)
+                        release_args=['python3',str(TOOLS/'public-ordered-critical-certificate-v2.py'),
+                            str(catfile),str(jobdir/'route.json'),str(jobdir/'measured-site-v2.json'),
+                            str(jobdir),str(wp),
+                            str(wp/'mu-plugins/422-mad4b-public-critical-css-runtime.php'),
+                            str(wp/'mu-plugins/422-mad4b-public-critical-css-v2-consumer.php')]
+                        if publish_only:
+                            # A durable intent precedes the publisher's CAS
+                            # write. A crash between publish and pending is
+                            # recovered only by matching the actual 422 cert.
+                            jsonsave(jobdir/'bulk-intent.json',{
+                                'contract':'mad4b.css.v2.bulk.intent.v1',
+                                'site':site,'host':host,'route_key':route['route_key'],
+                                'path':route['path'],'language':lang,
+                                'jobdir':str(jobdir),'market_country':market,
+                                'currency':currency,
+                                'manifest_sha256':observed['manifest_sha256']})
+                        print(run(release_args+['release'],timeout=35))
+                        issued_before_qa=True
+                        # Existing cached Native HTML must not hide the
+                        # public provisional release. Invalidate only the
+                        # exact registered WPML route, NEVER all FastCGI
+                        # and NEVER a guessed market/currency cache key.
+                        print(run(['python3',str(TOOLS/'public-route-cache-release.py'),
+                            'before_capture',site,str(wp),str(catfile),
+                            str(jobdir/'route.json'),'-',
+                            str(jobdir/'v2-provisional-route-cache-refresh.json')],timeout=28))
+                        print('MULTICSS_V2_PUBLIC_PENDING_POST_QA',site,
+                              lang,route['path'],'LEASE_6H_NO_STORE',flush=True)
+                        if publish_only:
+                            # Durable root-private post-release QA ticket.
+                            # Public certificate is already atomically
+                            # published by the original 422 issuer.
+                            pending={
+                              'contract':'mad4b.css.v2.bulk.pending.v1',
+                              'site':site,'host':host,'route_key':route['route_key'],
+                              'path':route['path'],'language':lang,
+                              'jobdir':str(jobdir),
+                              'market_country':market,'currency':currency,
+                              'manifest_sha256':observed['manifest_sha256'],
+                              'released_at':int(time.time()),
+                              'state':'pending_qa'}
+                            jsonsave(jobdir/'bulk-pending.json',pending)
+                            print('BULK_CCSS_RELEASED',site,route['route_key'],
+                                  lang,route['path'],'POST_RELEASE_QA_QUEUED',flush=True)
+                            return
+                        # Browser layout/performance QA is now post-release.
+                        # A failure revokes this provisional route and
+                        # restores the original Native CSS presentation.
+                    # Post-release QA begins only after publish above.
                     browser(route,wp,host,env,'verify-ordered-css.js',
                       jobdir/'ordered-full-cascade-qa.log',
                       {'MAD4B_WIDTHS':'320,390,414,767,768'},limit=260)
@@ -545,7 +853,94 @@ def run_core(site):
                         if line.startswith('ORDERED_CRITICAL_ADMISSION ')]
                     if len(receipts)!=1:raise ValueError('MULTICSS_ADMISSION_RECEIPT_MISSING')
                     admitted=json.loads(receipts[0])
-                    if (admitted.get('decision')=='qualified_for_delivery_review'
+                    if issued_before_qa:
+                        if (admitted.get('decision')!='qualified_for_delivery_review'
+                            or admitted.get('source_manifest_sha256')!=observed['manifest_sha256']):
+                            print(run(release_args+['revert'],timeout=30))
+                            issued_before_qa=False
+                            print(run(['python3',str(TOOLS/'public-route-cache-release.py'),
+                                'before_capture',site,str(wp),str(catfile),
+                                str(jobdir/'route.json'),'-',
+                                str(jobdir/'v2-failed-postqa-route-cache-refresh.json')],timeout=28))
+                            # The original 421/422 market-bound consumer remains
+                            # Native CSS. Two independently measured *full*
+                            # V2 LCP-only failures are needed before the
+                            # original queue can prefer Native permanently
+                            # for this exact source/dependency/QA fingerprint.
+                            # No partial, interaction-failed or source-drift
+                            # evidence may take this fast path.
+                            import importlib.util
+                            negspec=importlib.util.spec_from_file_location(
+                                'bounded_v2_lcp_nonbenefit',
+                                TOOLS/'public-v2-negative-performance.py')
+                            negmod=importlib.util.module_from_spec(negspec)
+                            negspec.loader.exec_module(negmod)
+                            negative_qa=json.loads((jobdir/'ordered-native-critical-qa.json').read_text())
+                            if negmod.is_v2_lcp_negative_candidate(admitted,negative_qa):
+                                current_state=obs(php,host,env)
+                                current_state['runtime_sha']=approved_native_runtime_sha(site,wp)
+                                still_enrolled=approved_v2_consumer_sha(
+                                    site,wp,current_state['runtime_sha'])
+                                if still_enrolled:current_state['consumer_v2_sha']=still_enrolled
+                                current_state['qa_policy_sha']=qa_policy_sha()
+                                latest_route=next((r for r in catalog(php,host)['routes']
+                                                   if r['route_key']==route['route_key']),None)
+                                if current_state==state and latest_route==route:
+                                    depends=bool(route.get('source_listing_dependency'))
+                                    record('native_candidate',
+                                           'listing' if depends else 'no-listing')
+                                    print('V2_NATIVE_LCP_NONBENEFIT_MEASURED',site,lang,
+                                          jobpath,'PENDING_INDEPENDENT_CONFIRMATION',
+                                          flush=True)
+                                    return
+                            raise ValueError('MULTICSS_POST_RELEASE_QA_FAILED_AND_REVERTED')
+                        # Re-check current WPML/market/runtime generations AFTER
+                        # browser QA. This is post-release invalidation, never
+                        # a blocker to initial source-bound publication.
+                        fresh=obs(php,host,env)
+                        fresh['runtime_sha']=approved_native_runtime_sha(site,wp)
+                        latest_consumer=approved_v2_consumer_sha(site,wp,fresh['runtime_sha'])
+                        if latest_consumer:fresh['consumer_v2_sha']=latest_consumer
+                        fresh['qa_policy_sha']=qa_policy_sha()
+                        current=next((x for x in catalog(php,host)['routes']
+                            if x['route_key']==route['route_key']),None)
+                        if fresh!=state or current!=route:
+                            raise ValueError('POST_RELEASE_WP_SOURCE_REVISION_CHANGED')
+                        print(run(release_args+['verify'],timeout=40))
+                        release_promoted=True
+                        # Certification is distinct from cache delivery. Only
+                        # the exactly attested WordPress route is renewed.
+                        certkey=hashlib.sha256((host+'|'+lang+'|'+route['path']+'|'
+                            +admitted['market_country']+'|'+admitted['currency']).encode()).hexdigest()
+                        certpath=wp/'mad4b-public-critical-css-v1/certs-v2'/(certkey+'.json')
+                        final=json.loads(certpath.read_text())
+                        if (final.get('status')!='certified'
+                            or final.get('source_manifest_sha256')!=observed['manifest_sha256']
+                            or final.get('consumer_sha')!=state['consumer_v2_sha']
+                            or final.get('object_id')!=rid):
+                            raise ValueError('POST_RELEASE_PUBLIC_CERT_SOURCE_DRIFT')
+                        print(run(['python3',str(TOOLS/'public-route-cache-release.py'),
+                            'before_capture',site,str(wp),str(catfile),
+                            str(jobdir/'route.json'),'-',
+                            str(jobdir/'v2-qualified-cache-refresh.json')],timeout=28))
+                        # Verify delivered uncacheable origin HTML after QA
+                        # promotion, before granting the WordPress queue ACK.
+                        if site=='wayfa':
+                            print(run(['python3',str(TOOLS/'public-v2-existing-readback.py'),
+                                site,str(wp),str(catfile),str(jobdir/'route.json'),
+                                str(statefile),str(jobdir/'v2-postqa-origin-readback.json')],timeout=32))
+                            verified_http=json.loads((jobdir/'v2-postqa-origin-readback.json').read_text())
+                            depends=verified_http['depends_on_listing']
+                        else:
+                            depends=bool(final['dependencies']['contains_dynamic_listing'])
+                        record('certified','listing' if depends else 'no-listing')
+                        # The public provisional certificate has been
+                        # independently verified and atomically upgraded.
+                        # No private staged candidate or QA-first release.
+                        print('CERTIFIED_PUBLIC_CCSS',site,lang,route['path'],
+                              'V2_POST_RELEASE_VERIFIED',flush=True)
+                        return
+                    elif (admitted.get('decision')=='qualified_for_delivery_review'
                         and state.get('consumer_v2_sha')):
                         # QA may run several minutes: reverify native WPML,
                         # market-agnostic source revision and explicit release
@@ -579,9 +974,23 @@ def run_core(site):
                             print(run(args+['publish'],timeout=35))
                 except (subprocess.CalledProcessError,subprocess.TimeoutExpired,
                         ValueError,OSError) as exc:
+                    if issued_before_qa and release_args:
+                        # A failed post-release browser run must never leave an
+                        # unqualified certificate in shared public delivery.
+                        try:
+                            print(run(release_args+['revoke' if release_promoted else 'revert'],
+                                      timeout=30))
+                            print(run(['python3',str(TOOLS/'public-route-cache-release.py'),
+                                'before_capture',site,str(wp),str(catfile),
+                                str(jobdir/'route.json'),'-',
+                                str(jobdir/'v2-reverted-cache-refresh.json')],timeout=28))
+                        except (subprocess.CalledProcessError,subprocess.TimeoutExpired,
+                                ValueError,OSError) as rollback_exc:
+                            print('MULTICSS_POST_RELEASE_REVERT_DEFERRED',site,
+                                  str(rollback_exc)[:160],flush=True)
                     print('HOLD_MULTI_CSS_QUALITY_PROOF',site,lang,jobpath,
                           str(exc)[:220],flush=True)
-            record('hold','multi_css_route_qa_pending')
+            record('hold')  # Original queue has no multi-CSS-specific hold enum
             return
     except (subprocess.CalledProcessError,subprocess.TimeoutExpired,OSError,ValueError) as exc:
         print('HOLD_MULTI_CSS_SOURCE_PROOF',site,lang,
@@ -712,6 +1121,7 @@ def run_core(site):
         islisting='jet-listing-grid' in original[original.find('<body'):]
         record('certified','listing' if islisting else 'no-listing')
         print('CERTIFIED_PUBLIC_CCSS',site,lang,jobpath,'MARKET_CURRENCY_BOUND')
+        acknowledge_management_certified(php,jobpath,management_ticket)
     except (subprocess.CalledProcessError,subprocess.TimeoutExpired,
             OSError,ValueError,KeyError,json.JSONDecodeError) as exc:
         no_bundle=optimizer_bundle_missing(jobdir/'capture-index.json',route)
@@ -721,8 +1131,13 @@ def run_core(site):
         except Exception as ledger_error:print('HOLD_QUEUE_LEDGER',str(ledger_error)[:180])
         # Do not declare service success as proof of a particular page.
 def main():
-    if len(sys.argv)!=2:raise ValueError('USAGE: run-public-route.py source|wayfa')
-    run_core(sys.argv[1])
+    if len(sys.argv)==2:
+        run_core(sys.argv[1]);return
+    if (len(sys.argv)==4 and sys.argv[2]=='bulk_publish'
+        and re.fullmatch('[a-f0-9]{64}',sys.argv[3])):
+        run_core(sys.argv[1],bulk_route_key=sys.argv[3],publish_only=True)
+        return
+    raise ValueError('USAGE: run-public-route.py source|wayfa [bulk_publish routekey]')
 if __name__=='__main__':
     try:main()
     except BlockingIOError:print('SKIP_PUBLIC_CCSS_ALREADY_RUNNING')

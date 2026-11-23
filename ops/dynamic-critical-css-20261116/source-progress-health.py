@@ -12,6 +12,12 @@ STALE_WARN=2*3600
 STALE_FAIL=6*3600
 PROGRESS_FAIL=24*3600
 ALERT_COOLDOWN=4*3600
+# A content-derived coverage regression is not a certificate failure.
+# Allow a complete new Cron cycle before alerting, then escalate through
+# the existing OnFailure relay only if recovery is still absent.
+REGRESSION_WARN=20*60
+REGRESSION_ALERT_TWO=60*60
+REGRESSION_ALERT_ONE=6*3600
 
 def safe(path,maxbytes=2000000):
     if path.is_symlink() or not path.is_file():raise ValueError('missing-or-symlink-source-status:'+path.name)
@@ -61,14 +67,50 @@ def evaluate(inputs,previous,now):
           'pending_groups':pending,'registry_age_seconds':age,
           'registry_stale':age>STALE_WARN}
     new=fresh-known
+    # The original QA proof keys change when source generations change.
+    # Track only a bounded per-company numerical recovery target; never
+    # reaccept old proof keys or mark a CSS certificate valid from this.
+    prev_regress=previous.get('coverage_regression',{})
+    if not isinstance(prev_regress,dict):prev_regress={}
+    prev_sites=previous.get('sites',{})
+    if not isinstance(prev_sites,dict):prev_sites={}
+    recovery={};recovery_over_grace=False;recovery_escalation=False
+    for site in SITES:
+        current=sites[site]['current_proven_market_profiles']
+        prior=prev_sites.get(site,{})
+        if not isinstance(prior,dict):prior={}
+        baseline=prior.get('current_proven_market_profiles',0)
+        if type(baseline) is not int or not 0<=baseline<=25000:baseline=0
+        previous_loss=prev_regress.get(site,{})
+        if not isinstance(previous_loss,dict):previous_loss={}
+        target=previous_loss.get('recovery_target',0)
+        if type(target) is not int or not 0<=target<=25000:target=0
+        target=max(target,baseline)
+        if current>=target:
+            recovery[site]={'recovery_target':0,'missing_profiles':0,
+                            'since_epoch':0,'age_seconds':0}
+            continue
+        started=previous_loss.get('since_epoch',0)
+        if (type(started) is not int or
+            not 0<started<=now or now-started>30*86400):
+            started=now
+        missing=target-current
+        age=now-started
+        recovery[site]={'recovery_target':target,
+                        'missing_profiles':missing,'since_epoch':started,
+                        'age_seconds':age}
+        recovery_over_grace|=age>=REGRESSION_WARN
+        recovery_escalation|=(missing>=2 and age>=REGRESSION_ALERT_TWO
+                              or missing>=1 and age>=REGRESSION_ALERT_ONE)
+    new=fresh-known
     start=int(previous.get('started_epoch',now));last=int(previous.get('last_success_epoch',start))
     if new:last=now
     since=max(0,now-last)
     stalled=all_pending>0 and since>=PROGRESS_FAIL
     state=('stalled' if stalled or any_critical_stale else
-           'warning' if any_stale else 'active')
+           'warning' if any_stale or recovery_over_grace else 'active')
     alert_at=int(previous.get('last_escalation_epoch',0))
-    escalate=state=='stalled' and now-alert_at>=ALERT_COOLDOWN
+    escalate=(state=='stalled' or recovery_escalation) and now-alert_at>=ALERT_COOLDOWN
     return {'contract':CONTRACT,'generated_at_utc':datetime.datetime.fromtimestamp(now,datetime.timezone.utc).isoformat(),
        'status':state,'started_epoch':start,'last_success_epoch':last,
        'seconds_since_proven_source_progress':since,
@@ -76,6 +118,10 @@ def evaluate(inputs,previous,now):
        'current_proven_market_profiles':len(fresh),
        'qualified_proof_keys':sorted(fresh),
        'sites':sites,'pending_groups':all_pending,
+       'coverage_regression':recovery,
+       'coverage_regression_alert_reason':(
+           'previously_proven_source_market_profiles_missing'
+           if recovery_escalation else None),
        'escalate':escalate,
        'last_escalation_epoch':now if escalate else alert_at,
        'note':'No certificate minted; this is a freshness and new source-market proof monitor, independent of worker return code.'}
@@ -107,7 +153,10 @@ def main():
     # Only a persistent, debounced failure triggers the installed central
     # OnFailure relay. Ordinary low-CPU deferred ticks remain telemetry.
     if result['escalate']:
-        print('HOLD_CCSS_SOURCE_PROGRESS_STALLED_ESCALATE',file=sys.stderr)
+        print('HOLD_CCSS_COVERAGE_REGRESSION_ESCALATE'
+              if result['coverage_regression_alert_reason']
+              else 'HOLD_CCSS_SOURCE_PROGRESS_STALLED_ESCALATE',
+              file=sys.stderr)
         return 4
     return 0
 

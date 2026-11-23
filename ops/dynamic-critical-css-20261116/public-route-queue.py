@@ -47,11 +47,26 @@ def safe_catalog(cat,site):
         if k in keys:raise ValueError('duplicated-WPML-path')
         keys.add(k)
     return rows
+# Preserve long-term family rotation while retaining the original 1-in-4
+# repair/coverage lanes. Modulo four here prevented the source-family planner
+# from ever advancing beyond its first few templates.
+SCHEDULER_SEQUENCE_MODULUS=1<<24
+def next_scheduler_sequence(ledger):
+    seq=ledger.get('scheduler_sequence',0)
+    if (type(seq) is not int or seq<0
+        or seq>=SCHEDULER_SEQUENCE_MODULUS):
+        raise ValueError('invalid-family-rotation-sequence')
+    return (seq+1)%SCHEDULER_SEQUENCE_MODULUS
+
 def read_ledger(p,site):
     if not p.exists():return {'contract':QUEUE,'site':site,'routes':{}}
     if p.is_symlink() or p.stat().st_size>2000000:raise ValueError('invalid-private-ledger')
     x=json.loads(p.read_text())
     if x.get('contract')!=QUEUE or x.get('site')!=site or not isinstance(x.get('routes'),dict):raise ValueError('foreign-ledger')
+    seq=x.get('scheduler_sequence',0)
+    if (type(seq) is not int or seq<0
+        or seq>=SCHEDULER_SEQUENCE_MODULUS):
+        raise ValueError('invalid-family-rotation-sequence')
     return x
 def independently_certified_home(route):
     # Home EN and translated Home pages already have an independent first-
@@ -287,7 +302,7 @@ def main():
             **({'qa_policy_sha':qa} if qa else {}),
             **({'hold_reason':hold_reason} if hold_reason else {}),
             **({'optimizer_source_key':negative_key} if negative_key else {})}
-        ledger['scheduler_sequence']=(int(ledger.get('scheduler_sequence',0))+1)%4
+        ledger['scheduler_sequence']=next_scheduler_sequence(ledger)
         if len(ledger['routes'])>30000:raise ValueError('ledger-memory-cap')
         atom(Path(ledgerfile),ledger)
         print('PUBLIC_CCSS_QUEUE_RECORDED',route['language'],route['path'],status,failures)

@@ -21,7 +21,7 @@ REPO=Path('/opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261
 CHROMIUM_REPORT_ROOT=Path('/opt/mad4b-company-provisioning/reports/dynamic-critical-css-20261116')
 HOME_SHA={
  'source':'75e305345f46af0ec4dbed36f40def63626108de85f938238853b27674c11794',
- 'wayfa':'cdb55bd9ab6a86df26483450e33cf0bbc91296940db51102dde082fdb839db5b'
+ 'wayfa':'75e305345f46af0ec4dbed36f40def63626108de85f938238853b27674c11794'
 }
 REPORT=Path('/opt/mad4b-company-provisioning/reports/critical-css-health-v1')
 UA='Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 Chrome/157.0.0.0 Mobile Safari/537.36'
@@ -36,7 +36,9 @@ status=load(D/'public-route-status.py','ccss_health_status')
 assess=load(D/'assess.py','ccss_health_original_home_assess')
 runner=load(D/'run-public-route.py','ccss_health_runner')
 source_family=load(D/'public-source-families.py','ccss_health_source_families')
+source_variants=load(D/'public-template-variant-index.py','ccss_health_template_variants')
 route_resume=load(D/'public-route-resume.py','ccss_health_route_resume')
+delivery=load(D/'public-fastcgi-delivery-contract.py','ccss_html_delivery_contract')
 def command(args,timeout=25):
     return subprocess.run(args,capture_output=True,text=True,check=True,timeout=timeout).stdout.strip()
 def sha(path):
@@ -77,16 +79,56 @@ def unit_health(site):
     independent; an unavailable audit cannot deactivate frontend CSS.
     """
     if site not in SITES:raise ValueError('unknown-first-party-css-site')
-    cronfile=Path('/etc/cron.d/mad4b-css-wpcron')
-    expected_cron=D/'wpcron/mad4b-css-wpcron.cron'
-    expected_plugin=D/'wpcron/429-mad4b-css-wpcron-dispatch-v1.php'
+    # Source-owned scheduler v1.1.0 uses one tightly enrolled host wake
+    # entry per company. The retired global cron is NOT a required file:
+    # reinstalling it creates a second executor and a real concurrency bug.
+    workers={
+      'source':('/opt/hostinger-migrations/hosting-3/etg-commerce-staging/operations/css-cron-v1/worker.py',
+                '*/5','Tours.dev Staging. Exact WordPress CSS job tickets only.'),
+      'wayfa':('/opt/wayfa-rebuild-20261102/operations/css-cron-v1/worker.py',
+               '2-59/5','Wayfatours Production. Independent site queue, shared safety lock.')}
+    worker,interval,comment=workers[site]
+    cronfile=Path('/etc/cron.d/mad4b-css-site-'+site)
     plugin=SITES[site]['root']/'mu-plugins/429-mad4b-css-wpcron-dispatch-v1.php'
-    for current,expected in ((cronfile,expected_cron),(plugin,expected_plugin)):
-        if (current.is_symlink() or expected.is_symlink()
-            or not current.is_file() or not expected.is_file()
-            or current.stat().st_uid!=0 or current.stat().st_mode&0o022
-            or sha(current)!=sha(expected)):
-            raise ValueError('wpcron_scheduler_source_or_permission_drift:'+str(current))
+    # Exact known Git source SHA for the first-party profile-based WP 429.
+    # Never silently trust a locally modified PHP dispatcher.
+    # Exact source SHA256s for the legacy dispatcher and approved Bulk V2
+    # first-party 429 Git release; never trust self-reported live bytes.
+    approved_wp429={
+      'ee32f776be5c0c8db99cd0cb6a61bd8da446f5520ab34d46b4a667213c50437a',
+      '8d13c3fb0439ba621cd8ecc7a7001fca30de1eb108be9b67bd939317ff0f0a32'}
+
+    expected=(
+        '# MAD4B site-owned CSS Cron: '+comment+'\n'
+        'SHELL=/bin/sh\n'
+        'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\n'
+        +interval+' * * * * root '
+        '/usr/bin/flock -n /run/lock/mad4b-css-site-'+site+'.lock '
+        '/usr/bin/flock -n /run/lock/mad4b-css-wpcron-worker.lock '
+        '/usr/bin/timeout -k 10s 1500s '
+        '/usr/bin/nice -n 18 /usr/bin/ionice -c 3 '
+        '/usr/bin/python3 '+worker
+        +' >> /var/log/mad4b-css-site-'+site+'.log 2>&1\n')
+    retired_global=Path('/etc/cron.d/mad4b-css-wpcron')
+    if retired_global.exists() or retired_global.is_symlink():
+        raise ValueError('duplicate-retired-global-css-wpcron')
+    for current in (cronfile,Path(worker)):
+        if (current.is_symlink() or not current.is_file()
+            or current.stat().st_uid!=0 or current.stat().st_mode&0o022):
+            raise ValueError('site-owned-css-executor-source-or-permission-drift:'+str(current))
+    # The live MU plugin is legitimately owned by the company PHP UID
+    # on Wayfatours; the exact Git SHA, not root ownership, is its
+    # executable source admission. It must remain non-symlink, readable
+    # and NOT group/world writable.
+    if (plugin.is_symlink() or not plugin.is_file()
+        or plugin.stat().st_uid not in (0,33)
+        or plugin.stat().st_mode&0o022
+        or not plugin.stat().st_mode&0o004):
+        raise ValueError('site-owned-WP429-mode-or-identity-drift:'+site)
+    if cronfile.read_text()!=expected:
+        raise ValueError('site-owned-cron-entrypoint-not-source-matched:'+site)
+    if sha(plugin) not in approved_wp429:
+        raise ValueError('site-owned-WP429-is-not-source-admitted:'+site)
     if command(['systemctl','is-active','cron'],8)!='active':
         raise ValueError('wpcron_host_wakeup_daemon_not_active')
     # Duplicate ownership would run two independent workers. Verify the
@@ -269,6 +311,65 @@ def current_chromium_route_evidence(site,root,catalog,route,state,market,currenc
             except (OSError,ValueError,KeyError,TypeError,json.JSONDecodeError):continue
     return None
 
+def original_target_delivery_coverage(catalog,state,sources,probes):
+    """Never extrapolate two anonymous HTTP samples to an entire WPML route catalog.
+
+    The first-party 421 WPML catalog is authoritative for discovered routes;
+    home routes are separately owned by the original first_fold certifier.
+    Source-current V2 identity and actual delivered HTML are *different*
+    evidence: their totals must never be silently promoted into readiness.
+    """
+    routes=catalog.get('routes')
+    languages=state.get('wpml_languages')
+    default=state.get('default_language')
+    if (not isinstance(routes,list) or not isinstance(languages,list)
+        or not languages or len(set(languages))!=len(languages)
+        or default not in languages or not isinstance(sources,dict)
+        or not isinstance(probes,list)):
+        raise ValueError('untrusted_original_wpml_coverage_context')
+    homes={'/' if lang==default else '/'+lang+'/' for lang in languages}
+    foundhome={r.get('path') for r in routes
+        if isinstance(r,dict) and r.get('type')=='page'
+        and r.get('path') in homes}
+    if foundhome!=homes:
+        raise ValueError('missing_original_first_fold_home_route_in_catalog')
+    nonhome=[r for r in routes if r['path'] not in homes]
+    hashes=[r['route_key'] for r in nonhome]
+    if len(set(hashes))!=len(hashes):
+        raise ValueError('duplicate_original_route_key_in_coverage')
+    total=len(nonhome)
+    exact=sources.get('routes_with_exact_current_certificate')
+    if type(exact)is not int or not 0<=exact<=total:
+        raise ValueError('invalid_original_source_exact_certificate_count')
+    valid=[]
+    for row in probes:
+        if not isinstance(row,dict):continue
+        delivery=row.get('html_delivery_contract',{})
+        if not isinstance(delivery,dict):continue
+        # Both cert identity and delivered HTML are required; a synthetic
+        # Ready header, a FastCGI HIT alone, or a provisional lease is not
+        # a current-source-qualified public delivery proof.
+        if (row.get('certificate_for_observed_market') is True
+            and row.get('ready_public')=='1'
+            and row.get('active_in_observed_market') is True
+            and delivery.get('html_css_verified') is True
+            and delivery.get('css_contract')=='v2'
+            and delivery.get('delivery') in (
+                 'CACHE_HIT_CCSS','ORIGIN_CCSS_READY','PRIVATE_SAFE')):
+            valid.append((row.get('language'),row.get('path'),
+                          row.get('market'),row.get('currency')))
+    return {'contract':'mad4b.css.v2.original-target-delivery-audit.v1',
+        'discovered_catalog_entries':len(routes),
+        'separate_home_first_fold_routes':len(foundhome),
+        'target_nonhome_routes':total,
+        'exact_current_source_certificate_routes':exact,
+        'unproven_or_native_target_routes':total-exact,
+        'current_source_route_percent':round(exact*100/total,2) if total else 0.0,
+        'anonymous_http_sample_count':len(probes),
+        'sampled_verified_v2_delivery_count':len(set(valid)),
+        'sampled_v2_delivery_scope':'observed_routes_and_market_only_no_extrapolation',
+        'full_coverage_verified':False}
+
 def run_site(site,run_http=True):
     cfg=SITES[site];root=cfg['root'];host=cfg['host']
     errors=[];warnings=[]
@@ -315,7 +416,18 @@ def run_site(site,run_http=True):
     result['coverage_by_language']=coverage['by_language']
     # Source/template canary certification is the primary QA unit. Keep
     # per-route CSS-ready evidence separate; unsampled objects remain native.
-    sources=source_family.build(site,catalog,state,ledger,root)
+    # Observe only first-party source-bound template variant facts. The
+    # scheduled registry and this audit must not disagree because one
+    # omitted the same verified index. Missing/stale observations never
+    # qualify a variant and never grant cross-route Critical CSS.
+    variantpath=Path('/opt/mad4b-company-provisioning/reports/public-critical-css-v1')/site/'template-variant-index.json'
+    try:
+        variant_index=source_variants.read(variantpath,site)
+        result['source_variant_index']='source_bound_observations'
+    except (OSError,ValueError,TypeError,KeyError):
+        variant_index=source_variants.empty(site)
+        result['source_variant_index']='unavailable_or_invalid_no_grants'
+    sources=source_family.build(site,catalog,state,ledger,root,variant_index=variant_index)
     result['source_certification']={k:sources[k] for k in (
        'source_groups_total','source_groups_by_status',
        'source_canary_qualified_groups','routes_discovered',
@@ -409,13 +521,21 @@ def run_site(site,run_http=True):
                         warnings.append('home_native_css_fallback_not_verified_in_browser:'+lang)
             except (OSError,ValueError,subprocess.CalledProcessError,subprocess.TimeoutExpired) as exc:
                 warnings.append('home_http_probe_failed:'+lang+':'+str(exc)[:80])
-        # Check a small bounded number of ledger-certified public URLs.
+        # Only source-current certified ledger rows may be probed as live.
+        # Historical v1 certs remain in immutable storage for forensic
+        # evidence, but their 422 source keys are no longer current.
+        # Do NOT count a stale row as an active cert, or as a failed CSS
+        # optimization. The original native CSS fallback is intentional.
+        current_routes,stale_routes=source_current_route_readback_candidates(
+            catalog,state,ledger,limit=2)
+        result['stale_certified_source_records']={
+            'count':len(stale_routes),'sample_paths':stale_routes[:10],
+            'reason':'certified_ledger_source_key_no_longer_current',
+            'native_css_fallback_expected':True}
         result['public_route_readback']=[]
         result['safe_route_profile_fallbacks']=[]
-        for route in catalog['routes']:
-            rec=ledger['routes'].get(route['route_key'],{})
-            if rec.get('status')!='certified':continue
-            if len(result['public_route_readback'])>=2:break
+        for route in current_routes:
+            rec=ledger['routes'][route['route_key']]
             try:
                 probe=http_get(host,route['path'])
                 variant={'path':route['path'],'language':route['language'],**probe}
@@ -427,10 +547,39 @@ def run_site(site,run_http=True):
                     fingerprint=hashlib.sha256(
                         (host+'|'+route['language']+'|'+route['path']+'|'
                          +country+'|'+currency).encode()).hexdigest()
-                    current=root/'mad4b-public-critical-css-v1/certs'/(fingerprint+'.json')
-                    variant['certificate_for_observed_market']=current.is_file() and not current.is_symlink()
+                    legacy=root/'mad4b-public-critical-css-v1/certs'/(fingerprint+'.json')
+                    current_v2=root/'mad4b-public-critical-css-v1/certs-v2'/(fingerprint+'.json')
+                    variant['certificate_for_observed_market']=False
+                    for current in (current_v2,legacy):
+                        if current.is_symlink() or not current.is_file() or current.stat().st_size>180000:
+                            continue
+                        try:
+                            c=json.loads(current.read_text())
+                            valid=(c.get('status')=='certified'
+                              and c.get('host')==host
+                              and c.get('language')==route['language']
+                              and c.get('path')==route['path']
+                              and c.get('market_country')==country
+                              and c.get('currency')==currency
+                              and c.get('css_epoch')==state['css_epoch']
+                              and c.get('runtime_sha')==state['runtime_sha'])
+                            if valid:
+                                variant['certificate_for_observed_market']=True
+                                variant['certificate_contract']=c.get('contract')
+                                break
+                        except (OSError,ValueError,KeyError,TypeError,UnicodeError):
+                            continue
                 else:variant['certificate_for_observed_market']=False
                 variant['active_in_observed_market']=(probe['ready_public']=='1')
+                # Cache HIT is not CCSS proof: inspect the *delivered HTML*.
+                # Advisory-only, at most the original two source-current
+                # certified routes. Never grants a certificate or blocks QA.
+                try:
+                    variant['html_delivery_contract']=delivery.fetch(
+                        host,route['path'])
+                except (OSError,ValueError,TypeError,UnicodeError) as exc:
+                    variant['html_delivery_contract']={
+                        'delivery':'PROBE_DEFERRED','reason':type(exc).__name__}
                 result['public_route_readback'].append(variant)
                 if not probe['http'].endswith('200'):warnings.append('certified_route_http_not_200:'+route['path'])
                 if variant['certificate_for_observed_market'] and not variant['active_in_observed_market']:
@@ -446,13 +595,70 @@ def run_site(site,run_http=True):
                 warnings.append('public_route_probe_failed:'+route['path']+':'+str(exc)[:80])
     result['active_route_samples']=sum(int(p['active_in_observed_market'])
                                        for p in result.get('public_route_readback',[]))
+    # These are counts of bounded HTML samples, NEVER extrapolated to all
+    # discovered WordPress routes, WPML contexts or FastCGI cache keys.
+    delivery_samples=[p.get('html_delivery_contract',{})
+                      for p in result.get('public_route_readback',[])]
+    result['html_delivery_contract_sample_count']=len(delivery_samples)
+    result['html_delivery_contract_counts']={
+        status:sum(v.get('delivery')==status for v in delivery_samples)
+        for status in ('CACHE_HIT_NATIVE','CACHE_HIT_CCSS',
+                       'PRIVATE_SAFE','ORIGIN_CCSS_READY',
+                       'CACHE_MISS_NATIVE','DELIVERY_UNKNOWN',
+                       'HTTP_NOT_200','PROBE_DEFERRED')}
+    result['route_target_delivery_coverage']=original_target_delivery_coverage(
+        catalog,state,sources,result.get('public_route_readback',[]))
+    # When the site has no active CSS cert, report actual PUBLIC HTML
+    # delivery instead of an empty sample that conceals Native/Private.
+    # This is diagnostic only: never a synthetic CSS certificate.
+    if not delivery_samples:
+        baseline=delivery.baseline_public_route(catalog)
+        if baseline:
+            try:
+                result['html_delivery_native_baseline']={
+                    'path':baseline,
+                    **delivery.fetch(host,baseline)}
+            except (OSError,ValueError,TypeError,UnicodeError) as exc:
+                result['html_delivery_native_baseline']={
+                    'path':baseline,'delivery':'PROBE_DEFERRED',
+                    'reason':type(exc).__name__}
     result['status']=('degraded' if warnings else
                       'healthy_with_safe_fallback' if (
                           result.get('safe_profile_fallbacks')
                           or result.get('safe_route_profile_fallbacks')
-                          or result.get('native_fallback_after_source_dependency_change'))
+                          or result.get('native_fallback_after_source_dependency_change')
+                          or result.get('stale_certified_source_records',{}).get('count',0))
                       else 'healthy')
     return result
+def source_current_route_readback_candidates(catalog,state,ledger,limit=2):
+    # A site can keep immutable historical artifacts. The only current
+    # admission is a source key derived from the live WordPress context,
+    # NOT the row's historical 'certified' label.
+    active=[];stale=[]
+    for route in catalog['routes']:
+        rec=ledger['routes'].get(route['route_key'],{})
+        if not isinstance(rec,dict) or rec.get('status')!='certified':
+            continue
+        expected=queue.source_key(catalog,route,state,
+                                  bool(rec.get('depends_on_listings')))
+        if rec.get('source_key')!=expected:
+            stale.append(route['path'])
+        else:
+            active.append(route)
+    # Two samples, biased toward two distinct WPML languages if present.
+    # No sampling rule grants CSS to another route.
+    selected=[];sampled_languages=set()
+    for row in active:
+        if row['language'] not in sampled_languages:
+            selected.append(row)
+            sampled_languages.add(row['language'])
+            if len(selected)>=limit:return selected,stale
+    for row in active:
+        if row not in selected:
+            selected.append(row)
+            if len(selected)>=limit:break
+    return selected,stale
+
 def write(path,payload):
     if path.parent.is_symlink() or path.is_symlink():
         raise ValueError('untrusted-audit-report-symlink')
@@ -492,6 +698,46 @@ def emit_local_alerts(rows):
                            timeout=5,check=False)
         except (OSError,subprocess.TimeoutExpired):pass
 
+def recent_company_health_snapshot(site,root,now):
+    """Read exact company-owned, current audit only; never trust stale status."""
+    if site not in SITES:raise ValueError('invalid-health-company')
+    path=root/('latest-'+site+'.json')
+    deferred={'status':'deferred','issues':[],
+              'warnings':['site_owned_health_report_missing_or_stale']}
+    if path.is_symlink() or not path.is_file():return deferred
+    info=path.stat()
+    if (info.st_uid!=0 or info.st_mode&0o022
+        or not 32<=info.st_size<=2000000):return deferred
+    try:
+        payload=json.loads(path.read_text())
+        if (payload.get('contract')!='mad4b.critical-css.integrity-audit.v1'
+            or set(payload.get('sites',{}))!={site}):
+            return deferred
+        at=payload.get('at_utc')
+        if not isinstance(at,str):return deferred
+        stamp=calendar.timegm(time.strptime(at,'%Y-%m-%dT%H:%M:%SZ'))
+        if not -60<=now-stamp<=3600:return {**deferred,'last_report_at_utc':at}
+        row=payload['sites'][site]
+        if (not isinstance(row,dict) or row.get('status') not in
+            ('healthy','healthy_with_safe_fallback','degraded','error','deferred')):
+            return deferred
+        if row.get('site',site)!=site:return deferred
+        if row.get('host',SITES[site]['host'])!=SITES[site]['host']:return deferred
+        return {**row,'observed_at_utc':at}
+    except (OSError,ValueError,KeyError,TypeError,UnicodeError):
+        return deferred
+
+
+def aggregate_company_health(root=REPORT,now=None):
+    """Read-only merge of the two site records, no second WP-CLI or browser."""
+    now=int(time.time()) if now is None else int(now)
+    rows={site:recent_company_health_snapshot(site,root,now) for site in SITES}
+    return {'contract':'mad4b.critical-css.integrity-audit.v1',
+            'at_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime(now)),
+            'sites':rows,'source':'site_owned_company_reports',
+            'contains_new_css_certification':False}
+
+
 def main():
     if len(sys.argv)!=2 or sys.argv[1] not in ('source','wayfa','all'):
         raise ValueError('usage: health-audit.py source|wayfa|all')
@@ -503,8 +749,14 @@ def main():
     state={'contract':'mad4b.critical-css.integrity-audit.v1',
            'at_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),
            'sites':rows}
-    write(REPORT/'latest.json',state)
-    write(REPORT/(time.strftime('%Y%m%dT%H%M%SZ',time.gmtime())+'.json'),state)
+    suffix=('' if sys.argv[1]=='all' else '-'+sys.argv[1])
+    write(REPORT/('latest'+suffix+'.json'),state)
+    write(REPORT/(time.strftime('%Y%m%dT%H%M%SZ',time.gmtime())+suffix+'.json'),state)
+    if suffix:
+        # Each site independently reports its own health; the aggregate
+        # is a lightweight read-only snapshot. Never run another company's
+        # WordPress/Chromium job from this site-owned cron.
+        write(REPORT/'latest.json',aggregate_company_health())
     print('PUBLIC_CCSS_INTEGRITY',json.dumps(state,ensure_ascii=False,separators=(',',':')))
     # A safe CSS fallback is still operator-visible at warning priority.
     emit_local_alerts(rows)

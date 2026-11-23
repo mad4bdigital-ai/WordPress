@@ -1,0 +1,42 @@
+--- a/416-mad4b-tour-css-delivery.php
++++ b/416-mad4b-tour-css-delivery.php
+@@ -31,8 +31,39 @@
+             && ($_SERVER['QUERY_STRING']??'')==='mad4b_css_delivery_probe=1'
+             && ($_SERVER['HTTP_X_MAD4B_ASSET_QA']??'')==='1';
+     }
++    /**
++     * Browser-equivalent spelling for two existing first-party stylesheet URL
++     * forms. The CSS manifest binds resolved asset hashes, but WordPress may
++     * emit a protocol-relative URL or the harmless includes/../assets prefix.
++     * Normalize only HTTPS, same-origin, wp-content CSS; never external hosts,
++     * ports, userinfo, escaping paths, or arbitrary URL/query rewrites.
++     */
++    public static function canonical_first_party_css_url(string $url): string {
++        if (!str_starts_with($url,'https://') && !str_starts_with($url,'//'))
++            return $url;
++        $candidate=str_starts_with($url,'//')?'https:'.$url:$url;
++        $parts=wp_parse_url($candidate);
++        if (!is_array($parts) || ($parts['scheme']??null)!=='https'
++            || isset($parts['user']) || isset($parts['pass'])
++            || isset($parts['port']) || isset($parts['fragment']))return $url;
++        $site=strtolower((string)wp_parse_url(home_url('/'),PHP_URL_HOST));
++        if ($site==='' || strtolower((string)($parts['host']??''))!==$site)
++            return $url;
++        $path=(string)($parts['path']??'');
++        if (preg_match('/%(?:2e|2f|5c|00)/i',$path))return $url;
++        $canonical=$path;
++        if (preg_match('~^/wp-content/plugins/[A-Za-z0-9_-]+/includes/\.\./assets/[A-Za-z0-9_.-]+\.css$~D',$path))
++            $canonical=str_replace('/includes/../assets/','/assets/',$path);
++        elseif (!preg_match('~^/wp-content/(?:plugins|themes|mu-plugins|uploads)/[A-Za-z0-9_./%-]+\.css$~D',$path)
++                || str_contains($path,'/../') || str_contains($path,'/./'))
++            return $url;
++        if ($canonical===$path && !str_starts_with($url,'//'))return $url;
++        return 'https://'.$site.$canonical
++            .(isset($parts['query'])?'?'.$parts['query']:'');
++    }
+     public static function version($src) {
+         if (!is_string($src) || !self::eligible())return $src;
++        $src=self::canonical_first_party_css_url($src);
+         $site=(string)wp_parse_url(home_url('/'),PHP_URL_HOST);
+         $host=(string)wp_parse_url($src,PHP_URL_HOST);
+         if ($host!=='' && strcasecmp($host,$site)!==0)return $src;

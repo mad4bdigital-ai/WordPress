@@ -36,8 +36,9 @@ with tempfile.TemporaryDirectory() as td:
  put('multi-css-source-report.json',observer)
  candidate={'contract':'mad4b.public-css.ordered-critical-candidate.v1',
     'manifest_sha256':key,'host':'test.example','path':'/test/',
-    'viewports':[320,390,414,768],'source_cascade_slots':1,
-    'critical_total_bytes':len(critical),'observation_count':4,
+    'viewports':[320,390,414,767,768],
+    'critical_viewports':[320,390,414,767], 'desktop_validation_viewports':[768],'source_cascade_slots':1,
+    'critical_total_bytes':len(critical),'observation_count':5,
     'public_route_certificate_issued':False,
     'critical_slots':[{'slot':0,'source_sha256':'a'*64,
       'source_bytes':100,'critical_sha256':critsha,
