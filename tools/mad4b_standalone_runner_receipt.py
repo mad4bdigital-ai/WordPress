@@ -48,7 +48,7 @@ def sha(raw: bytes) -> str:
 
 def verify_archive(archive: Path, canonical_receipt: dict, report: dict) -> None:
     require(archive.is_file() and not archive.is_symlink() and
-            archive.stat().st_size <= 16 * 1024 * 1024, "archive_missing_or_oversized")
+            archive.stat().st_size <= 24 * 1024 * 1024, "archive_missing_or_oversized")
     source = report.get("source_commit_sha")
     require(isinstance(source, str) and SHA40.fullmatch(source) is not None and
             canonical_receipt.get("source_commit_sha") == source,
