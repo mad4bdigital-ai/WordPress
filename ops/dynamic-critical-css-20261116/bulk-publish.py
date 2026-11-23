@@ -226,8 +226,16 @@ def run(site):
             'SKIP_PUBLIC_CCSS_ALREADY_RUNNING',
             'DEFER_PUBLIC_CCSS_HOME_RECOVERY')) for x in lines)
         if resource_deferral:
-            print('BULK_CCSS_PUBLISH_RESOURCE_DEFER',site,key[:12],
-                  'preserve_wp_ticket_and_route_cursor',flush=True)
+            if launched:
+                # At least one exact, source-bound 422 provisional was issued.
+                # Its original QA ticket remains independent. Complete THIS
+                # publish ticket; the next route did not consume a retry slot.
+                print('BULK_CCSS_PUBLISH_NEXT_ROUTE_DEFER',site,key[:12],
+                      'released_before_deferral',launched,flush=True)
+            else:
+                # Nothing issued: no WordPress ACK or route-cursor advance.
+                print('BULK_CCSS_PUBLISH_RESOURCE_DEFER',site,key[:12],
+                      'preserve_wp_ticket_and_route_cursor',flush=True)
             break
         attempts[key]=int(time.time())
         # Debt repair must not move the original coverage cursor forward
