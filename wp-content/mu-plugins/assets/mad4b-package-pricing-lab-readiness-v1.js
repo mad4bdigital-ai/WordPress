@@ -369,6 +369,43 @@ function renderReport(data){
     scope.append(el('p','mad4b-pcl-note',String(hotel.notice||'No commercial approval.')));
     result.append(scope);
   }
+  const costLedger=data.commercial_cost_preflight||null;
+  if(costLedger && costLedger.contract==='mad4b.package-commercial-cost-preflight.v1'){
+    const pane=el('section','mad4b-pcl-commercial-cost-preflight');
+    pane.append(el('h3','','Commercial Cost Composition · Readiness by Stage'));
+    pane.append(el('p','mad4b-pcl-note',
+      String(costLedger.hotel_costed_stage_count||0)+' / '+String(costLedger.stage_count||0)+
+      ' overnight stages have dated indicative hotel COST references. '+
+      'Cost Receipt certified: 0 · historical Tour Rates excluded.'));
+    if(costLedger.preliminary_hotel_reference_subtotal!==null)
+      pane.append(el('p','mad4b-pcl-warning','PARTIAL hotel-only reference: '+
+        String(costLedger.preliminary_hotel_reference_subtotal)+' '+
+        String(costLedger.currency||'')+' · NOT a customer sale price or deposit.'));
+    const details=el('details','mad4b-pcl-diagnostics');
+    details.append(el('summary','','Review missing commercial cost by original stage'));
+    const tbl=el('table','mad4b-pcl-table widefat striped');
+    const ledgerHead=el('thead');
+    ledgerHead.append(row('tr',[
+      el('th','','Stage'),el('th','','Source cost reference'),
+      el('th','','Commercial blocker')]));
+    tbl.append(ledgerHead);
+    const body=el('tbody');
+    for(const entry of (Array.isArray(costLedger.stages)?costLedger.stages:[])){
+      const cost=entry.reference_cost===null?'None':
+        String(entry.reference_cost)+' '+String(entry.currency||'')+
+        (entry.cost_rate_id?' · Rate #'+entry.cost_rate_id:'');
+      body.append(row('tr',[
+        el('td','',String(entry.stage_key||'')+' · '+String(entry.kind||'')),
+        el('td','',cost),
+        el('td','',(entry.missing||[]).join(' · ').replaceAll('_',' '))
+      ]));
+    }
+    tbl.append(body);details.append(tbl);pane.append(details);
+    pane.append(el('p','mad4b-pcl-warning',
+      'Remaining required groups: '+(costLedger.missing_groups||[]).join(' · ').replaceAll('_',' ')+
+      '. New Tour Rate, Form 6 final price and Woo deposit remain gated.'));
+    result.append(pane);
+  }
   const stages=Array.isArray(data.stages)?data.stages:[];
   const tabs=[
     ['sources','1 · Sources & stages','Confirm Package itinerary, destination and tier before selecting costs. This step reads source data only.'],
