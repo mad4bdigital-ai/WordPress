@@ -41,4 +41,24 @@ $wpdb->relationCount=0;$r=$cls::inspect($input);checkit($r['status']==='unit_sou
 $statuses[101]='draft';$r=$cls::inspect($input);checkit($r['status']==='property_or_unit_unpublished','draft unit denied');$statuses[101]='publish';
 $meta[202]['_qa_disallow_public_checkout']=1;$r=$cls::inspect($input);checkit($r['status']==='no_published_matching_cost_rate','qa flags denied');
 checkit($r['rate_written']===false&&$r['supplier_cost_receipt_approved']===false,'no supplier or rate write');
+// Explicitly unassigned Units must not block the native Property standard cost rate.
+$meta[202]['_qa_disallow_public_checkout']='';
+$rates=[201,202];
+$statuses[101]='draft';
+$wpdb->relationCount=0;
+$standard=array_replace($input,['unit_id'=>0]);
+$r=$cls::inspect($standard);
+checkit($r['source']==='property_cost_rate_fallback'&&$r['rate_id']===202,
+    'standard Property Rate resolves with no selected Unit, even when other Units are draft');
+checkit($r['unit_id']===null && $r['unit_selection_required']===false &&
+    $r['standard_source_scope']==='property','no placeholder Unit or capacity required');
+checkit($r['supplier_cost_receipt_approved']===false && $r['checkout_ready']===false,
+    'source fallback cannot approve a supplier cost or checkout');
+$rates=[201];$r=$cls::inspect($standard);
+checkit($r['status']==='no_published_matching_cost_rate',
+    'Unit-only rate cannot masquerade as Standard Property Rate');
+$rates=[202];$meta[202]['valid_from']='2027-02-03';$r=$cls::inspect($standard);
+checkit($r['status']==='no_published_matching_cost_rate',
+    'Standard still requires full travel window coverage');
+$meta[202]['valid_from']='2027-01-01';
 echo "PASS $done/$done hermetic Property Rate fallback preview and fail-closed contracts\n";
