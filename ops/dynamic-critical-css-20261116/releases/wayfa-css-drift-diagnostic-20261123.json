@@ -1,0 +1,28 @@
+{
+  "at_utc": "2026-11-23T17:10:33Z",
+  "contract": "mad4b.css.v2.wayfa-document-drift-report-live-fix.v1",
+  "reason": "original 422 independently proven Elementor document fingerprint drift has expected_doc_sha/observed_doc_sha, not expected_css_file/css_file; original run-public-route diagnostic wrongly accessed CSS-only fields and aborted source family requalification with KeyError",
+  "release_id": "mad4b-wayfa-document-drift-diagnostic-20261123",
+  "rollback_root": "/opt/mad4b-company-provisioning/reports/css-throughput-reconcile-20261123/wayfa-document-drift-rollback",
+  "safeguards": [
+    "V2 422 original five-viewports QA retained",
+    "no publication without exact original certified source",
+    "market/WPML and independently sourced cache BYPASS still enforced",
+    "original site flock for live update",
+    "no shared Chromium job bypass"
+  ],
+  "scope": "one original Wayfatours run-public-route.py print switch for authenticated source drift types and derived renderer profile digest; no CSS policy, source certificate, source site or browser condition changed",
+  "site": "wayfa",
+  "source_runner_unchanged_sha256": "b59ebc0a2bcdbf1a264662a00f748cbddba2e8d868e7ccfeb4a21f0b35292dc8",
+  "status": "live_wayfa_installed_pending_end_to_end_qualification",
+  "tests": {
+    "new_git_source_schema": "2/2",
+    "original_graph_and_asset_diagnostic_branch": "2/2",
+    "original_wayfa_temporal_document_drift": "7/7",
+    "worker_native_profile_readback": "pass"
+  },
+  "wayfa_previous_renderer_sha256": "f3c49a8a6a2c9ca64452f119d35c29da88a30628db3a278ebecef4d6020be0ca",
+  "wayfa_previous_runner_sha256": "b59ebc0a2bcdbf1a264662a00f748cbddba2e8d868e7ccfeb4a21f0b35292dc8",
+  "wayfa_renderer_sha256": "8bb0cd25d3794665384e75ab24c48a96d4ec9375c9654451b91137618f24dff6",
+  "wayfa_runner_sha256": "a6cf9bc8697e859dc9da79e5a1404dcb37ec024cba8dcfa6bce1af5bdf73e97f"
+}
