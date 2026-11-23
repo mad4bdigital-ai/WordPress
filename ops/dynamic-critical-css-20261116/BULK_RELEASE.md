@@ -380,3 +380,36 @@ post+Elementor duplicate save, unrelated tour/property/article,
 direct home card, unknown graph, shared template/page, unknown CPT,
 front-page, malformed input and genuine CSS setting changes. Exact plugin
 bytes deploy atomically per company with independent rollback receipts.
+
+### Exact old/new V2 consumer pairing in first-party source-family census (2026-11-23)
+
+The November 23 original 421/422 migration retained **one and only one**
+legacy SHA of the previously published V2 PHP consumer in the new PHP
+consumer's strict certificate admission. Its HTML/CSS transform was
+unchanged. However the independent Python source-family census still
+checked `digest(installed_consumer)==cert.consumer_sha` without recognizing
+that signed migration. Thus the live Wayfatours audit reported **zero**
+current-source CSS routes, despite both cached and uncached anonymous
+readbacks proving active V2 HTML.
+
+The independent read-only `public-v2-family-canary.py` now mirrors the
+SAME specific signed PHP backward-compatibility pair: only consumer SHA
+`249083d5...` in a certified V2 receipt, plus current installed
+422 SHA `f68813a...`, plus installed original 421 SHA `8779fa2...`.
+A genuinely matching current certified 422 SHA remains accepted. Unknown
+consumer revisions, missing/mutated 421, symlinks and mismatched SHA fail
+closed. **No certificate reissuance**, source-key rewriting, route grants,
+market/currency transfer, CSS file modification or WordPress option writes.
+
+Every original route-level check remains: current global, listing and
+per-post generations; real original ledger source identity; market,
+language, Elementor DOM fingerprint; manifest/CSS SHA; 422 exact
+compiled CSS and 5-width Chromium QA. The independent family census is
+not allowed to claim full production page delivery from a source
+qualification. Run all anonymous HTTP sample checks separately.
+
+Read-only reproduction with current published exact route certificates:
+Wayfatours 16/242 current-source V2 routes and eight source-verified
+families (previously false zero); Source Staging 0/1,028 remains genuinely
+unqualified and must not be inflated. Unchanged 47/47 first-party family,
+38 variant and 11 exact original SHA-pair fixture invariants pass.

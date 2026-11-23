@@ -59,6 +59,28 @@ def exact_market_is_supported(route,cert,state):
     # Company with a single enrolled currency retains the old strict
     # base/static market identity. No foreign market may be counted.
     return enabled==[base] and currency==base and market==expected
+# The first-party PHP 422 consumer explicitly recognizes one exact preupgrade
+# immutable SHA for already independently qualified 5-viewport certificates.
+# Mirror that SAME bounded source pair in the read-only family census. This
+# never grants a route, skips a CSS manifest or substitutes browser QA.
+LEGACY_COMPANION_SHA='249083d5aa0124ea1280a88f5062945cdff2885eca63b36ba5c66682b0faf3d1'
+ORDERED_421_SHA='8779fa2cf78c2edb2654216284f19241777be92087bbb247804e454ef461c1c7'
+ORDERED_422_SHA='f68813a57f02cd607864fcb9708c753ec2fd9c1694b2e6c8324588871d953c5f'
+
+def original_approved_companion_receipt(root,recorded_sha,installed_sha):
+    """Recognize ONLY the exact first-party original 421/422 migration pair."""
+    if not isinstance(recorded_sha,str) or not SHA.fullmatch(recorded_sha):
+        return False
+    if not isinstance(installed_sha,str) or not SHA.fullmatch(installed_sha):
+        return False
+    if installed_sha==recorded_sha:return True
+    if installed_sha!=ORDERED_422_SHA or recorded_sha!=LEGACY_COMPANION_SHA:
+        return False
+    source=Path(root)/'mu-plugins/421-mad4b-public-critical-css-coverage.php'
+    if source.is_symlink() or not source.is_file() or source.stat().st_size>100000:
+        return False
+    return digest(source.read_bytes())==ORDERED_421_SHA
+
 BASE=Path(__file__).resolve().parent
 
 def digest(data):
@@ -142,7 +164,8 @@ def validate(root,host,route,state,catalog,ledger,cert,source_key):
     if (runtime.is_symlink() or companion.is_symlink()
         or not runtime.is_file() or not companion.is_file()
         or digest(runtime.read_bytes())!=cert['runtime_sha']
-        or digest(companion.read_bytes())!=cert.get('consumer_sha')):
+        or not original_approved_companion_receipt(
+            root,cert.get('consumer_sha'),digest(companion.read_bytes()))):
         return False
     key=digest((host+'|'+route['language']+'|'+route['path']+'|'
                 +cert['market_country']+'|'+cert['currency']).encode())
