@@ -14,6 +14,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: mad4b-rc129-live-safety-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
 jobs:
   isolated-guards:
     name: Signed source and addon guards (no live authority)
@@ -23,6 +27,7 @@ jobs:
       - name: Checkout exact revision
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - name: Verify PHP CLI and ZipArchive
         run: |
