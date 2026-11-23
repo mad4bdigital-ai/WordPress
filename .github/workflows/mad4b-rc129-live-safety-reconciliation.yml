@@ -6,6 +6,11 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-addon-registry.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-public-document-kernel.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/public-document-kernel-manifest-v1.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-*-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-*-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/live-safety-rc129-reconciliation-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php'
       - 'ops/rc129-live-safety-reconciliation-20261123/**'
@@ -49,6 +54,15 @@ jobs:
           # Exact, no-network, root-owned filesystem fixtures. The test must
           # never sign an actual package or load live WordPress state.
           sudo -n python3 ops/release-source-host-v1/tests/test_postcommit_manifest.py
+      - name: Guard live-shared public singular document kernel (OFF by default)
+        shell: bash
+        run: |
+          set -euo pipefail
+          p=wp-content/plugins/mad4b-site-control-plane
+          python3 "$p/tests/public-document-kernel-source-contract.py"
+          php -l "$p/includes/class-mad4b-scp-public-document-kernel.php"
+          php -l "$p/mad4b-site-control-plane.php"
+          php "$p/tests/public-document-kernel-live-parity-runtime.php"
       - name: Lint only reconciled runtime and test files
         shell: bash
         run: |
