@@ -73,9 +73,7 @@ class PackageSizeBudgetContract(unittest.TestCase):
             with self.subTest(file=path):
                 body = (ROOT / path).read_text(encoding="utf-8")
                 for name, value in expected.items():
-                    matches = re.findall(r"const\\s+" + re.escape(name) +
-                                         r"\\s*=\\s*(\\d+)\\s*;", body)
-                    self.assertEqual(matches, [str(value)], (path, name))
+                    matches = re.findall("const[ ]+" + re.escape(name) +\n                                         "[ ]*=[ ]*([0-9]+)[ ]*;", body)\n                    self.assertEqual(matches, [str(value)], (path, name))
 
     def test_integrity_and_approval_requirements_remain(self) -> None:
         checks = {
