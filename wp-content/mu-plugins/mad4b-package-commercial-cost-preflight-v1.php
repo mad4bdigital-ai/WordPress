@@ -124,6 +124,54 @@ final class MAD4B_Package_Commercial_Cost_Preflight_V1 {
         $out['start_date']=$hotel['start_date']??null;
         $out['company_profit_policy']=$hotel['company_profit_policy']??null;
         $out['existing_tour_rates_ignored']=true;
+        // Original self-supplier guide costs are source-backed internal cost
+        // references, not a selling price. Guide language is traveller-chosen,
+        // never inferred from the site UI; currencies are NEVER mixed here.
+        $guide=['source_status'=>'unavailable','priced_language_options'=>[],
+            'money_is_supplier_reference_not_selling'=>true,
+            'included_in_usd_hotel_reference_subtotal'=>false,
+            'guide_count_used_for_reference'=>1];
+        if(class_exists('MAD4B_Guide_Service_Composition_V1',false)){
+            $source=MAD4B_Guide_Service_Composition_V1::source($tour);
+            if(is_wp_error($source))$guide['source_status']=$source->get_error_code();
+            else{
+                $savedGuide=MAD4B_Guide_Service_Composition_V1::saved($source);
+                $guide['source_status']=is_wp_error($savedGuide)
+                    ?$savedGuide->get_error_code():'original_day_classification_available';
+                if(!is_wp_error($savedGuide)){
+                    $guide['day_status_counts']=array_count_values((array)($savedGuide['statuses']??[]));
+                    $langs=wp_get_post_terms($tour,'guide-languages',['fields'=>'all']);
+                    foreach(array_slice(is_wp_error($langs)?[]:(array)$langs,0,12) as $language){
+                        if(!($language instanceof WP_Term))continue;
+                        $priced=MAD4B_Guide_Service_Composition_V1::guide($tour,(int)$language->term_id);
+                        $guide['priced_language_options'][]=[
+                            'language_id'=>(int)$language->term_id,
+                            'language'=>(string)$language->name,
+                            'currency'=>is_wp_error($priced)?null:($priced['currency']??null),
+                            'internal_cost'=>is_wp_error($priced)?null:($priced['cost']??null),
+                            'status'=>is_wp_error($priced)?$priced->get_error_code():
+                                'internal_source_cost_reference_not_commercial_approval',
+                            'selling_price_approved'=>false,'fx_conversion_applied'=>false];
+                    }
+                }
+            }
+        }
+        $out['native_guide_cost_references']=$guide;
+        $transport=['status'=>'original_transport_provider_missing',
+            'requirements_total'=>0,'day_status_counts'=>[],
+            'commercial_cost_approved'=>false];
+        if(class_exists('MAD4B_Package_Transport_Needs_V2',false)){
+            $trans=MAD4B_Package_Transport_Needs_V2::inspect($tour,$tier);
+            $transport['status']=(string)($trans['status']??'unknown');
+            $transport['requirements_total']=(int)($trans['requirements_total']??0);
+            $transport['qualified_candidate_total']=(int)($trans['qualified_candidate_total']??0);
+            foreach((array)($trans['days']??[]) as $day){
+                $status=(string)($day['status']??'unknown');
+                $transport['day_status_counts'][$status]=($transport['day_status_counts'][$status]??0)+1;
+            }
+        }
+        $out['native_transport_cost_readiness']=$transport;
+        $out['mixed_currency_costs_not_summed']=true;
         $out['missing_groups']=['signed_stage_cost_receipts','supplier_inventory_or_allotment',
             'included_transfers_and_transport','guide_and_required_visit_services',
             'complete_same_occupancy_cost_composition','commercial_approval_for_new_tour_rate'];
