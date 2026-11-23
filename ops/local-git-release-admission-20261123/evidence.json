@@ -1,0 +1,120 @@
+{
+  "contract": "mad4b.local-git-rc129-live-parity-audit.v1",
+  "date": "2026-11-23",
+  "live": {
+    "wayfa": {
+      "version": "rc.128",
+      "source_commit": "3e6ce498b75390bc900c2c083f92891b8433b774",
+      "signed_manifest_entries": 955
+    },
+    "toursdev": {
+      "version": "rc.128",
+      "source_commit": "e18c8090ad217d467296bbfa327fc238799393e0",
+      "signed_manifest_entries": 956
+    }
+  },
+  "candidates": {
+    "old_rc129": {
+      "sha": "20aab770d21f45442fe09b5ae840a90b7ff8fe5a",
+      "same_wayfa": 754,
+      "different_wayfa": 226,
+      "same_source": 793,
+      "different_source": 208
+    },
+    "host_v150_rc129": {
+      "sha": "d23cf0a39d1",
+      "same_wayfa": 754,
+      "different_wayfa": 224,
+      "same_source": 791,
+      "different_source": 205
+    }
+  },
+  "origin_master": {
+    "sha": "8030f40a44b482190f64942115e2a9aa55b5fd5e",
+    "declared_version": "rc.104"
+  },
+  "tests": {
+    "guard_units": 3,
+    "guard_units_passed": 3
+  },
+  "admission": {
+    "old-rc129-wayfa": {
+      "preflight_pass": false,
+      "release_authorized": false,
+      "errors": [
+        "REGRESSION_FUNCTION_MISSING:includes/class-mad4b-scp-self-update.php:reviewed_archive_no_regression",
+        "REGRESSION_FUNCTION_MISSING:includes/class-mad4b-scp-self-update.php:trusted_master_release_candidate",
+        "REGRESSION_FUNCTION_MISSING:includes/class-mad4b-scp-authorization.php:execution_attempt_sha256",
+        "REGRESSION_FUNCTION_MISSING:includes/class-mad4b-scp-authorization.php:execution_attempt_state",
+        "REGRESSION_FUNCTION_MISSING:includes/class-mad4b-scp-authorization.php:execution_boundary_verified",
+        "REGRESSION_FUNCTION_MISSING:includes/class-mad4b-scp-authorization.php:local_approval_planner_execution"
+      ],
+      "changed_core": [
+        "includes/adapters/class-mad4b-scp-elementor-adapter.php",
+        "includes/class-mad4b-scp-staging-write-authority.php",
+        "includes/class-mad4b-scp-runtime-release-set.php",
+        "includes/class-mad4b-scp-self-update.php",
+        "includes/class-mad4b-scp-authorization.php"
+      ]
+    },
+    "old-rc129-source": {
+      "preflight_pass": false,
+      "release_authorized": false,
+      "errors": [
+        "REGRESSION_FUNCTION_MISSING:includes/class-mad4b-scp-self-update.php:reviewed_archive_no_regression",
+        "REGRESSION_FUNCTION_MISSING:includes/class-mad4b-scp-self-update.php:trusted_master_release_candidate",
+        "REGRESSION_FUNCTION_MISSING:includes/class-mad4b-scp-authorization.php:execution_attempt_sha256",
+        "REGRESSION_FUNCTION_MISSING:includes/class-mad4b-scp-authorization.php:execution_attempt_state",
+        "REGRESSION_FUNCTION_MISSING:includes/class-mad4b-scp-authorization.php:execution_boundary_verified",
+        "REGRESSION_FUNCTION_MISSING:includes/class-mad4b-scp-authorization.php:local_approval_planner_execution"
+      ],
+      "changed_core": [
+        "includes/adapters/class-mad4b-scp-elementor-adapter.php",
+        "includes/class-mad4b-scp-staging-write-authority.php",
+        "includes/class-mad4b-scp-runtime-release-set.php",
+        "includes/class-mad4b-scp-self-update.php",
+        "includes/class-mad4b-scp-authorization.php"
+      ]
+    },
+    "v150-wayfa-critical": {
+      "preflight_pass": false,
+      "release_authorized": false,
+      "errors": [
+        "REGRESSION_FUNCTION_MISSING:includes/class-mad4b-scp-self-update.php:reviewed_archive_no_regression",
+        "REGRESSION_FUNCTION_MISSING:includes/class-mad4b-scp-self-update.php:trusted_master_release_candidate",
+        "REGRESSION_FUNCTION_MISSING:includes/class-mad4b-scp-authorization.php:execution_attempt_sha256",
+        "REGRESSION_FUNCTION_MISSING:includes/class-mad4b-scp-authorization.php:execution_attempt_state",
+        "REGRESSION_FUNCTION_MISSING:includes/class-mad4b-scp-authorization.php:execution_boundary_verified",
+        "REGRESSION_FUNCTION_MISSING:includes/class-mad4b-scp-authorization.php:local_approval_planner_execution"
+      ],
+      "changed_core": [
+        "includes/adapters/class-mad4b-scp-elementor-adapter.php",
+        "includes/class-mad4b-scp-staging-write-authority.php",
+        "includes/class-mad4b-scp-runtime-release-set.php",
+        "includes/class-mad4b-scp-self-update.php",
+        "includes/class-mad4b-scp-authorization.php"
+      ]
+    },
+    "v150-source-critical": {
+      "preflight_pass": false,
+      "release_authorized": false,
+      "errors": [
+        "REGRESSION_FUNCTION_MISSING:includes/class-mad4b-scp-self-update.php:reviewed_archive_no_regression",
+        "REGRESSION_FUNCTION_MISSING:includes/class-mad4b-scp-self-update.php:trusted_master_release_candidate",
+        "REGRESSION_FUNCTION_MISSING:includes/class-mad4b-scp-authorization.php:execution_attempt_sha256",
+        "REGRESSION_FUNCTION_MISSING:includes/class-mad4b-scp-authorization.php:execution_attempt_state",
+        "REGRESSION_FUNCTION_MISSING:includes/class-mad4b-scp-authorization.php:execution_boundary_verified",
+        "REGRESSION_FUNCTION_MISSING:includes/class-mad4b-scp-authorization.php:local_approval_planner_execution"
+      ],
+      "changed_core": [
+        "includes/adapters/class-mad4b-scp-elementor-adapter.php",
+        "includes/class-mad4b-scp-staging-write-authority.php",
+        "includes/class-mad4b-scp-runtime-release-set.php",
+        "includes/class-mad4b-scp-self-update.php",
+        "includes/class-mad4b-scp-authorization.php"
+      ]
+    }
+  },
+  "verified_invariant": "read_only_no_live_mutation",
+  "recommended_source_policy": "host_pinned_local_git after full signed nonregressive package and original approval"
+}
