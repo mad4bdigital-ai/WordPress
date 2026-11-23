@@ -353,3 +353,30 @@ first-party pair-gate fixtures: 14 fail-closed cases with old/new SHA,
 unapproved/mixed releases, plus the original 24 health tests. Test
 fixture calls mocked WordPress functions; no production post, SSL/cache
 or payment content is modified.
+
+### Scoped Elementor event and global CSS epoch (2026-11-23)
+
+The original Adaptive Asset Intelligence post_saved() already consulted
+Cache Lifecycle home_impact_preview() to distinguish audited unrelated
+content edits from genuinely shared first-fold CSS changes. However
+Elementor's after_save separately called mark_dirty() with the default
+home_css_dependency=true for every Elementor document, rotating GLOBAL
+CSS epoch even for an unrelated tour/article/Property whose original
+home dependency was already proven independent.
+
+The Elementor callback now uses the exact same original trusted graph for
+only three 421-enrolled singular post types: post, tours-and-activities,
+properties. Proven unrelated changes keep exact per-route/listing 421
+invalidation and native CSS source jobs but do not rotate CSS epoch.
+Proven direct home tour cards invalidate only the independent first-fold
+home certificate; same-request duplicates are coalesced as before.
+Unverified graph, shared Elementor library, pages, front page, unknown
+CPT, navigation, actual asset settings, theme/plugin upgrade and shared
+CSS changes retain original GLOBAL epoch invalidation. No 422 source,
+market/currency, Chrome QA, CAS, expiry or cache safety policy bypass.
+
+Extended first-party scoped-home PHP8.5.12 fixture: 25 cases covering
+post+Elementor duplicate save, unrelated tour/property/article,
+direct home card, unknown graph, shared template/page, unknown CPT,
+front-page, malformed input and genuine CSS setting changes. Exact plugin
+bytes deploy atomically per company with independent rollback receipts.

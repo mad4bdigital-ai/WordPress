@@ -367,10 +367,32 @@ final class MAD4B_SCP_Adaptive_Asset_Intelligence {
   self::mark_dirty('wp_content_saved',$path,$homeDependency,$homeScopedOnly);
  }
  public static function elementor_saved($document,$data): void {
-  $id=method_exists($document,'get_main_id')?(int)$document->get_main_id():0;
-  if (!$id) return;
-  $post=get_post($id);$path=$post && $post->post_type!=='elementor_library'?(string)wp_parse_url(get_permalink($id),PHP_URL_PATH):'/';
-  self::mark_dirty('elementor_document_saved',$path);
+  $id=is_object($document) && method_exists($document,'get_main_id')
+    ?(int)$document->get_main_id():0;
+  if (!$id)return;
+  $post=get_post($id);
+  $type=is_object($post)?(string)($post->post_type??''):'';
+  $path=$post && $type!=='elementor_library'
+    ?(string)wp_parse_url(get_permalink($id),PHP_URL_PATH):'/';
+  // Elementor's after_save fires independently of wp_after_insert_post.
+  // Never turn a proved unrelated singular tour/Property/article edit
+  // into a GLOBAL CSS epoch invalidation merely because both hooks run.
+  // Only original 421-covered listing types can use a scoped exemption:
+  // they independently invalidate their exact route and listing source.
+  // Theme Builder, pages, unknown CPTs and missing/stale dependency
+  // graphs MUST retain the old global CSS epoch invalidation.
+  $homeDependency=true;$homeScopedOnly=false;
+  if (in_array($type,['post','tours-and-activities','properties'],true)
+      && $id!==(int)get_option('page_on_front',0)
+      && class_exists('MAD4B_Cache_Lifecycle_V1',false)
+      && method_exists('MAD4B_Cache_Lifecycle_V1','home_impact_preview')) {
+   $impact=MAD4B_Cache_Lifecycle_V1::home_impact_preview([$id]);
+   $homeDependency=!is_array($impact) || ($impact['purge']??true)!==false;
+   $homeScopedOnly=$type==='tours-and-activities'
+     && is_array($impact) && ($impact['purge']??null)===true
+     && ($impact['reason']??'')==='direct_home_card';
+  }
+  self::mark_dirty('elementor_document_saved',$path,$homeDependency,$homeScopedOnly);
  }
  public static function upgraded($upgrader,$hook_extra): void {
   if (!is_array($hook_extra) || !in_array($hook_extra['type']??'',['plugin','theme','core'],true)) return;
