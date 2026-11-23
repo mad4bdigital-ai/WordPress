@@ -6,7 +6,7 @@
   "code": {
     "wayfa_jet_response_cache": {
       "repository_path": "ops/site-company-overlays/wayfatours/performance-runtime/wp-content/mu-plugins/435-mad4b-wayfa-public-jet-term-response-cache.php",
-      "sha256": "16bba3ab7615b74cb4b3be9da978cf1b27422e56214d694716383b99ee326647"
+      "sha256": "9ccde0bfacbe1cdc95bd969230fa4601ca56306511db2fe8dc725d3f9494dc2d"
     },
     "shared_layout_continuity": {
       "wayfa_path": "ops/site-company-overlays/wayfatours/performance-runtime/wp-content/mu-plugins/436-mad4b-scoped-layout-epoch-renewal-v1.php",
@@ -23,11 +23,11 @@
     "cache_mode": "on",
     "ttl_seconds": 60,
     "trusted_dimensions": ["WPML locale", "validated home route", "verified company country", "native currency market", "device class", "query source digest", "data generation", "term generation", "Elementor document source", "listing source", "canonical request fingerprint"],
-    "safety": ["native JetEngine signature verified before cache lookup", "guest public terms only", "unknown cookies fail closed", "commerce cookies fail closed", "no personal, quote, booking, price, stock, checkout, rate or Woo session caching", "original full-list delivery gate preserved"],
+    "safety": ["native JetEngine signature verified before cache lookup", "guest public terms only", "unknown cookies fail closed", "commerce cookies fail closed", "no personal, quote, booking, price, stock, checkout, rate or Woo session caching", "original full-list delivery gate preserved", "JetEngine addedPostCSS list is validated and hashed exactly to segregate front-end CSS response variants"],
     "confirmed_result_items": {"en": 43, "es": 41},
     "before_uncached_ms_sample": [2378,2100,1996,1838],
     "after_warm_ms_sample": [883,908,1045,887],
-    "real_chromium_cached_response_qa": "deferred by original CPU guard; previous native uncached mobile AJAX browser parity passed"
+    "real_chromium_cached_response_qa": "native mobile browser passed with all 43 EN and 41 ES items; subsequent response-cache HIT browser verification pending original CPU lock window"
   },
   "layout": {
     "original_certificate_epoch": 261,
