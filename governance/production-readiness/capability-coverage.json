@@ -23006,6 +23006,69 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing exact source provenance, original Addon Registry registered-plugin certification, missing-source fail-closed checks and mutation-denial contract cover the change.",
       "execution_note": "This source-only review does not restore the absent Company Portfolio Manager 0.4.0 tree, issue a certified add-on pair, authorize Production, or mutate live sites."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-addon-registry.php",
+      "source_blob_sha": "b901793c67eba29764311e0fae5af016531c96a0",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php"
+      ],
+      "owner_role": "MAD4B first-party CI source integrity review; separate enrolled Owner release authorization required",
+      "review_rationale": "Exact successor preserves the verified live rc128 dynamic site-bound provider/addon pair policy, unknown-pair shadow fallback and duplicate-certificate quarantine. The existing Python and extended isolated PHP execution-guard tests reject foreign origin/profile, duplicate certificates and fail-open fallback. No vendor certification, per-site execution grant, production promotion or release signing occurs.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing controls already address exact source identity, signed update/rollback, restricted per-site addon pair binding and fail-closed execution policy; no new production capability is introduced.",
+      "execution_note": "Read-only exact source review only: no live update channel change, no host signature, no Elementor write grant, no Production promotion."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+      "source_blob_sha": "410687c47905b43252065fed65f3de58d5a9e380",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "tests/test_authorization_recovery_trait_nonregression.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/live-safety-rc129-reconciliation-runtime.php"
+      ],
+      "owner_role": "MAD4B first-party CI source integrity review; separate enrolled Owner release authorization required",
+      "review_rationale": "Exact successor restores scoped content material build verification before resource compilation while retaining strict rc129 managed-agent, policy and peer decisions. Four recovery functions remain only in the exact extracted Authorization trait; 19 isolated PHP safety cases and exact byte-parity extraction with negative mutation tests pass. This does not grant OAuth, NHI, owner, Elementor write or Production rights.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing controls already address exact source identity, signed update/rollback, restricted per-site addon pair binding and fail-closed execution policy; no new production capability is introduced.",
+      "execution_note": "Read-only exact source review only: no live update channel change, no host signature, no Elementor write grant, no Production promotion."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+      "source_blob_sha": "b3261a3cd5718619a87b5395a9544213a3d3c00b",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/live-safety-rc129-reconciliation-runtime.php"
+      ],
+      "owner_role": "MAD4B first-party CI source integrity review; separate enrolled Owner release authorization required",
+      "review_rationale": "Exact successor restores root-trusted master release identity binding and a last-admission structural archive no-regression guard before managed replacement. Isolated PHP proves archive hash/root-trust mismatches, missing protected archive files and missing signed host source admission fail before backup or mutation. This code-only review cannot replace a current source-signing receipt, immutable release verdict, company overlay reconciliation or Owner approval.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing controls already address exact source identity, signed update/rollback, restricted per-site addon pair binding and fail-closed execution policy; no new production capability is introduced.",
+      "execution_note": "Read-only exact source review only: no live update channel change, no host signature, no Elementor write grant, no Production promotion."
     }
   ],
   "code_change_rules": {
