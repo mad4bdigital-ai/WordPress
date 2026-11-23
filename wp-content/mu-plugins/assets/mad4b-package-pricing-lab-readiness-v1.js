@@ -295,10 +295,30 @@ function renderReport(data){
       ' hotel/resort stages with source-based preliminary cost. Remaining: '+
       String(hotel.unpriced_stage_count||0)+' · Currency '+String(hotel.currency||'not selected')+
       '. Each stage is priced independently; Units are optional.'));
+    const profit=hotel.company_profit_policy||null;
+    if(profit)scope.append(el('p','mad4b-pcl-note','Company-wide profit policy ACTIVE: '+
+      String(profit.percent)+'% '+String(profit.kind||'')+
+      ' · applied ONCE to total certified Package cost, never again to selling Rates.'));
+    else scope.append(el('p','mad4b-pcl-warning','Company-wide profit policy needs review: '+
+      String(hotel.company_profit_status||'missing')));
     if(hotel.preliminary_partial_total!==null)
-      scope.append(el('p','mad4b-pcl-warning','Preliminary PARTIAL subtotal: '+
+      scope.append(el('p','mad4b-pcl-warning','Preliminary PARTIAL hotel cost subtotal: '+
         String(hotel.preliminary_partial_total)+' '+String(hotel.currency||'')+
         ' · Not an approved Package cost, price, or payable amount.'));
+    const margin=hotel.hotel_cost_component_margin_preview;
+    if(margin && margin.margin_applied_once)
+      scope.append(el('p','mad4b-pcl-note','Hotel component ONLY — hypothetical selling share after '+
+        String(profit?.percent||'?')+'% company policy: '+String(margin.indicative_sale_component)+
+        ' '+String(margin.currency||'')+' (unapproved partial component; not a Tour Rate or payment amount).'));
+    const comparison=hotel.candidate_comparison_margin_preview;
+    if(comparison && comparison.company_profit_applied_once)
+      scope.append(el('p','mad4b-pcl-warning',
+        'UNASSIGNED candidate comparison (hotel stages ONLY): referenced cost '+
+        String(comparison.candidate_cost_total)+' '+String(comparison.currency||'')+
+        ' · indicative hotel-only selling component with company margin ONCE '+
+        String(comparison.hypothetical_hotel_component_with_margin)+' '+
+        String(comparison.currency||'')+
+        '. Not a Package Tour Rate; other services, inventory and approval not included.'));
     const disclosure=el('details','mad4b-pcl-diagnostics');
     disclosure.open=Boolean(hotel.start_date);
     disclosure.append(el('summary','','Stage cost source and review status'));
@@ -317,9 +337,22 @@ function renderReport(data){
         'No rate selected';
       const amount=item.preliminary_cost===null?'Not priced':
         String(item.preliminary_cost)+' '+String(item.currency||'');
+      const sourceCell=el('td','',src+(item.rate_id?' · #'+item.rate_id:''));
+      const alternatives=Array.isArray(item.candidate_costs)?item.candidate_costs:[];
+      if(alternatives.length){
+        sourceCell.append(el('p','mad4b-pcl-note','Eligible dated Property cost alternatives (not selected):'));
+        const choices=el('ul','mad4b-pcl-candidate-costs');
+        for(const x of alternatives.slice(0,5)){
+          choices.append(el('li','',String(x.property_name||'Property #'+x.property_id)+
+            ' · '+String(x.preliminary_cost)+' '+String(x.currency||'')+
+            ' · Rate #'+String(x.rate_id||'')+
+            (x.stop_sale?' · STOP SALE / cost reference':'')+
+            ' · unapproved'));
+        }
+        sourceCell.append(choices);
+      }
       body.append(row('tr',[
-        el('td','',identity),
-        el('td','',src+(item.rate_id?' · #'+item.rate_id:'')),
+        el('td','',identity),sourceCell,
         el('td','',amount),
         el('td','',String(item.reason||'review_required').replaceAll('_',' '))
       ]));
