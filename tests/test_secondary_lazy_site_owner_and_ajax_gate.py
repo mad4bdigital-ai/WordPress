@@ -45,7 +45,15 @@ class NativeLazyOwner(unittest.TestCase):
   self.assertNotEqual(successor['current_candidate_sha256'],newer['candidate_sha256'])
   self.assertNotEqual(newer['candidate_sha256'],m['sites']['tours_dev']['sha256'])
   company=m['sites']['wayfatours']
-  self.assertEqual(hashlib.sha256((ROOT/company['relative_path']).read_bytes()).hexdigest(),company['sha256'])
+  # Preserve the immutable November 16 receipt in a non-executable fixture;
+  # a new production release has its OWN checksum and approval workflow.
+  historical=ROOT/'ops/jet-home-mobile-20261123/fixtures/wayfa-secondary-listing-lazy-20261116.original.php.txt'
+  self.assertEqual(hashlib.sha256(historical.read_bytes()).hexdigest(),company['sha256'])
+  receipt=json.loads((ROOT/'ops/jet-home-mobile-20261123/release.json').read_text())
+  self.assertEqual(receipt['code']['before_sha256'],company['sha256'])
+  self.assertEqual(receipt['code']['path'],company['relative_path'])
+  self.assertEqual(hashlib.sha256((ROOT/company['relative_path']).read_bytes()).hexdigest(),
+                   receipt['code']['live_after_sha256'])
   self.assertNotEqual(newer['candidate_sha256'],company['sha256'])
 
  def test_current_source_fail_closed_on_content_css_and_market_drift(self):
@@ -74,3 +82,4 @@ class NativeLazyOwner(unittest.TestCase):
   self.assertEqual(verdict['combined_canary']['decision'],'hold')
 
 if __name__=='__main__':unittest.main()
+
