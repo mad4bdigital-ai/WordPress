@@ -10,7 +10,9 @@ foreach([57562,60623,60629] as $tour){
  if(is_wp_error($r))throw new RuntimeException('tour_policy_'.$r->get_error_code());
  $explicit=(string)get_post_meta($tour,'tour_base_currency',true);
  $price=get_post_meta($tour,'start_price',true);
- if($r['currency']!==($explicit!==''?$explicit:$base)||$r['unit']!=='per_person'||
+ $dynamic=trim((string)get_option('etg-dynamic-pricing-controls_default_currency',''));
+ $expectedCurrency=$explicit!==''?strtoupper(trim($explicit)):($dynamic!==''?strtoupper($dynamic):$base);
+ if($r['currency']!==$expectedCurrency||$r['unit']!=='per_person'||
    $r['checkout_authorized']!==false||$r['mutation_performed']!==false)
   throw new RuntimeException('tour_currency_unit_regressed_'.$tour);
  $reported[$tour]=[
@@ -22,6 +24,27 @@ foreach([57562,60623,60629] as $tour){
        ?\Commerce\Composition\SingleFluentPaymentRouter::directSourceCandidate($tour):null
  ];
 }
+// In-memory option overrides verify the real Dynamic Pricing -> Woo fallback.
+// No site option, currency switcher, rate or store-currency value is mutated.
+$dynamicEuro=static fn($ignored)=>'EUR';
+add_filter('pre_option_etg-dynamic-pricing-controls_default_currency',$dynamicEuro,100);
+$inheritedEuro=$c::resolve(57562,'sale');
+$explicitEuro=$c::resolve(60623,'sale');
+$supplierNoGuess=$c::resolve(57562,'supplier_cost');
+remove_filter('pre_option_etg-dynamic-pricing-controls_default_currency',$dynamicEuro,100);
+if(is_wp_error($inheritedEuro)||$inheritedEuro['currency']!=='EUR'||
+  $inheritedEuro['currency_source']!=='dynamic_pricing_controls'||
+  is_wp_error($explicitEuro)||$explicitEuro['currency']!=='USD'||
+  $explicitEuro['currency_source']!=='object_override'||
+  !is_array($supplierNoGuess)||$supplierNoGuess['currency']!==null)
+ throw new RuntimeException('currency_dynamic_precedence_or_cost_scope_failed');
+$invalidDynamic=static fn($ignored)=>'UNKNOWN';
+add_filter('pre_option_etg-dynamic-pricing-controls_default_currency',$invalidDynamic,100);
+$invalidCurrency=$c::resolve(57562,'sale');
+remove_filter('pre_option_etg-dynamic-pricing-controls_default_currency',$invalidDynamic,100);
+if(!is_wp_error($invalidCurrency)||
+ $invalidCurrency->get_error_code()!=='component_basis_explicit_currency_invalid')
+ throw new RuntimeException('invalid_dynamic_currency_fell_back_unsafely');
 if($reported[57562]['amount_present']!==false||
    $reported[57562]['direct_source_candidate']!==false)
  throw new RuntimeException('missing_price_became_payable');
@@ -86,6 +109,8 @@ echo wp_json_encode([
  'vehicle_unit'=>$vehicle['unit'],'unknown_transport_unit'=>$unknown['unit'],
  'guide_cost_per_day'=>$guide['unit']??null,
  'guide_supplier_original_currency_not_inferred'=>true,
+ 'dynamic_currency_in_memory_test'=>'EUR override, explicit USD preserved, invalid config rejected',
+ 'dynamic_currency_does_not_create_sale_price'=>true,
  'policy_fields'=>count($admin),'policy_hook_active'=>$registered,
  'editor_box_hook_active'=>$editor,
  'invalid_explicit_unit_blocked'=>true,
