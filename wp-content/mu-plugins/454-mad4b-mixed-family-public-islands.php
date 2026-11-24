@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Mixed Elementor Family — Public Island Compiler
  * Description: Splits approved public Tour containers from live Rate/Form/booking siblings without modifying Elementor templates.
- * Version: 0.1.0
+ * Version: 0.2.2
  */
 defined('ABSPATH') || exit;
 
@@ -15,6 +15,7 @@ final class MAD4B_Mixed_Family_Public_Islands_V1 {
     private static ?array $manifest = null;
     private static array $roots = [];
     private static array $receipts = [];
+    private static ?string $activeReceiptRoot = null;
 
     public static function mode(): string {
         $mode=(string)get_option(self::MODE,'off');
@@ -51,8 +52,14 @@ final class MAD4B_Mixed_Family_Public_Islands_V1 {
         self::$tour=0;
         if(self::mode()==='off'
             || !class_exists('MAD4B_Compiled_Tour_Family_V1',false)
-            || !MAD4B_Compiled_Tour_Family_V1::eligible()
             || !self::config())return;
+        // Route admission is not equivalent to certification of the one
+        // original child template 48366. Separate family certificates must
+        // remain independent when another Elementor template is edited.
+        $admitted=method_exists('MAD4B_Compiled_Tour_Family_V1','public_route_eligible')
+            ? MAD4B_Compiled_Tour_Family_V1::public_route_eligible()
+            : MAD4B_Compiled_Tour_Family_V1::eligible();
+        if(!$admitted)return;
         $id=absint(get_queried_object_id());
         if ($id>0 && is_singular('tours-and-activities'))self::$tour=$id;
     }
@@ -93,6 +100,9 @@ final class MAD4B_Mixed_Family_Public_Islands_V1 {
         $family=(int)$document->get_id();
         $id=(string)$node->get_id();
         $root=self::$roots[$family.'|'.$id]??null;
+        if(!is_array($root)
+            && class_exists('MAD4B_Auto_Public_Family_V1',false))
+            $root=MAD4B_Auto_Public_Family_V1::root_for($family,$id);
         if(!is_array($root))return null;
         $raw=get_post_meta($family,'_elementor_data',true);
         if (!is_string($raw) || !hash_equals($root['family_sha256'],hash('sha256',$raw)))
@@ -102,8 +112,12 @@ final class MAD4B_Mixed_Family_Public_Islands_V1 {
         $sub=self::tree_find($nodes,$id);
         if (!is_array($sub)||($sub['elType']??'')!=='container')return null;
         $hash=hash('sha256',(string)wp_json_encode($sub,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
-        if (!hash_equals($root['root_sha256'],$hash)
-            || !self::public_structure($sub,$root))return null;
+        if (!hash_equals($root['root_sha256'],$hash))return null;
+        $auto=($root['type']??'')==='auto_public_v1'
+            && class_exists('MAD4B_Auto_Public_Family_V1',false);
+        if ($auto) {
+            if(!MAD4B_Auto_Public_Family_V1::validate($sub,$root))return null;
+        } elseif(!self::public_structure($sub,$root))return null;
         return $root;
     }
 
@@ -136,6 +150,15 @@ final class MAD4B_Mixed_Family_Public_Islands_V1 {
         $actual=array_keys($ids);
         sort($expected);sort($actual);
         return $actual===$expected && count($actual)>=1;
+    }
+
+    /** Keep original audited manual policy unchanged; use the auto
+     * classifier only for source-verified automatically discovered roots. */
+    public static function public_html($html,array $root):bool {
+        if(($root['type']??'')==='auto_public_v1')
+            return class_exists('MAD4B_Auto_Public_Family_V1',false)
+                && MAD4B_Auto_Public_Family_V1::safe_html($html);
+        return self::safe_html($html);
     }
 
     private static function fingerprint(array $root): string {
@@ -200,12 +223,13 @@ final class MAD4B_Mixed_Family_Public_Islands_V1 {
     }
     private static function receipt($event,$key,$ms,$length):void {
         if (($_SERVER['HTTP_X_MAD4B_MIXED_FAMILY_RECEIPT']??'')!=='mixed-receipt-20261124')return;
-        self::$receipts[]=['event'=>$event,'root'=>'409e1bc','tour'=>self::$tour,
+        self::$receipts[]=['event'=>$event,'root'=>(string)(self::$activeReceiptRoot??'409e1bc'),'tour'=>self::$tour,
             'key'=>substr($key,0,16),'ms'=>round($ms,2),'bytes'=>$length];
     }
     public static function render($node, callable $native):string {
         $root=self::qualify($node);
         if(!$root)return $native();
+        self::$activeReceiptRoot=(string)$root['id'];
         $key=self::fingerprint($root);
         if($key==='')return $native();
         $t=hrtime(true);
@@ -215,7 +239,7 @@ final class MAD4B_Mixed_Family_Public_Islands_V1 {
         if(is_array($entry) && is_string($entry['html']??null)
             && is_string($entry['sha']??null)
             && hash_equals($entry['sha'],hash('sha256',$entry['html']))
-            && self::safe_html($entry['html'])
+            && self::public_html($entry['html'],$root)
             && is_array($entry['scripts']??null)
             && is_array($entry['styles']??null)){
             // A missing handle triggers native render; never replay a partial
@@ -231,7 +255,7 @@ final class MAD4B_Mixed_Family_Public_Islands_V1 {
         $jsBefore=wp_scripts()->queue;
         $cssBefore=wp_styles()->queue;
         $html=$native();
-        if(!self::safe_html($html)){
+        if(!self::public_html($html,$root)){
             self::receipt('NATIVE_DYNAMIC',$key,(hrtime(true)-$t)/1e6,strlen($html));
             return $html;
         }
@@ -241,6 +265,13 @@ final class MAD4B_Mixed_Family_Public_Islands_V1 {
         $data=['html'=>$html,'sha'=>hash('sha256',$html),'scripts'=>$scripts,'styles'=>$styles];
         $stored=wp_cache_set('island_'.$key,$data,self::GROUP,120);
         self::receipt($stored?'MISS_STORED':'MISS_WRITE_FAILED',$key,(hrtime(true)-$t)/1e6,strlen($html));
+        if($stored && class_exists('MAD4B_Page_Dependency_Cache',false)
+            && method_exists('MAD4B_Page_Dependency_Cache','depend')) {
+            MAD4B_Page_Dependency_Cache::depend('template:'.(int)$root['family']);
+            MAD4B_Page_Dependency_Cache::depend('post:'.self::$tour);
+            foreach((array)($root['listings']??[]) as $listing)
+                MAD4B_Page_Dependency_Cache::depend('template:'.absint($listing));
+        }
         return $html;
     }
     public static function shutdown():void {
