@@ -1,0 +1,65 @@
+/* Scoped to the dynamic Tour Form #6, not global Fluent Forms/Checkout. */
+body.single-tours-and-activities form.fluent_form_6 .mad4b-form6-mode-explanation {
+ margin:8px 0 12px;
+ padding:10px 12px;
+ font-size:12px;
+ font-weight:450;
+ line-height:1.55;
+ color:#536770;
+ border:1px solid #d8e4e7;
+ border-radius:7px;
+ background:#f6f9fa;
+}
+body.single-tours-and-activities form.fluent_form_6[data-mad4b-submission-mode="advance_checkout"] .mad4b-form6-mode-explanation {
+ border-color:#c2d8cf;
+ background:#f4f9f6;
+ color:#225146;
+}
+@media(max-width:600px) {
+ body.single-tours-and-activities form.fluent_form_6 .mad4b-form6-mode-explanation {
+  padding:10px 11px;
+  font-size:12px;
+ }
+}
+
+/* Fluent Forms confirmation: request is stored before optional payment. */
+body.single-tours-and-activities .mad4b-request-confirmation {
+ margin:12px 0 18px;padding:20px;border:1px solid #cbdde3;
+ border-radius:12px;background:#f6fafb;color:#193e4b;
+ box-sizing:border-box;line-height:1.65;
+}
+body.single-tours-and-activities .mad4b-request-confirmation h3,
+body.single-tours-and-activities .mad4b-request-confirmation h4 {margin:0 0 9px;}
+body.single-tours-and-activities .mad4b-request-payment-panel {
+ margin:18px 0 0;padding:16px;border:1px solid #d0dfdf;
+ border-radius:9px;background:#fff;
+}
+body.single-tours-and-activities .mad4b-request-advance-amount {
+ font-size:23px;font-weight:700;margin:6px 0 14px;
+}
+body.single-tours-and-activities .mad4b-request-pay-link {
+ display:block;padding:12px 16px;border-radius:7px;
+ background:#12536a;color:#fff;text-align:center;text-decoration:none;
+ font-weight:650;max-width:100%;box-sizing:border-box;
+}
+body.single-tours-and-activities .mad4b-request-pay-link:focus-visible {
+ outline:2px solid #a58240;outline-offset:3px;
+}
+
+/* Opt-in post-submit redirect: the customer can stay and pay later. */
+body.single-tours-and-activities .mad4b-form6-payment-countdown {
+ margin:12px 0 0;padding:12px;border:1px solid #cbdde3;
+ border-radius:8px;background:#f6fafb;max-width:100%;box-sizing:border-box;
+}
+body.single-tours-and-activities .mad4b-form6-countdown-message {margin:0 0 10px;}
+body.single-tours-and-activities .mad4b-form6-countdown-cancel {
+ border:1px solid #8da4af;border-radius:6px;padding:8px 12px;
+ color:#244a5d;background:#fff;font:inherit;cursor:pointer;
+}
+body.single-tours-and-activities .mad4b-form6-countdown-cancel:focus-visible {
+ outline:2px solid #12536a;outline-offset:2px;
+}
+body.single-tours-and-activities .mad4b-form6-countdown-cancelled {margin:8px 0 0;}
+@media (prefers-reduced-motion: reduce) {
+ body.single-tours-and-activities .mad4b-form6-payment-countdown {scroll-behavior:auto;}
+}
