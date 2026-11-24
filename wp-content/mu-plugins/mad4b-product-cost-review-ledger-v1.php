@@ -21,6 +21,7 @@ final class MAD4B_Product_Cost_Review_Ledger_V1 {
         'operational-services'=>'Operational Service',
         'transport-com'=>'Transport Component',
         'product'=>'WooCommerce Product',
+        'attractions'=>'Attraction',
     ];
     public static function types():array {
         return class_exists('MAD4B_Cost_Source_Registry_V1',false)
@@ -318,6 +319,8 @@ final class MAD4B_Product_Cost_Review_Ledger_V1 {
             $daily=MAD4B_Daily_Cost_Components_V1::inspect($id,$options);
             $details['daily_cost_components']=is_wp_error($daily)?['error'=>$daily->get_error_code()]:$daily;
         }
+        if(class_exists('MAD4B_Entrance_Source_Rates_V1',false)&&MAD4B_Entrance_Source_Rates_V1::allowed($id))
+            $details['entrance_or_activity_internal_rates']=MAD4B_Entrance_Source_Rates_V1::current($id);
         $profit=class_exists('MAD4B_Company_Global_Profit_V1',false)
             ?MAD4B_Company_Global_Profit_V1::current():null;
         $policy=is_wp_error($profit)?['error'=>$profit->get_error_code()]:[
@@ -433,6 +436,7 @@ final class MAD4B_Product_Cost_Review_Ledger_V1 {
             'guides'=>min(30,absint($_GET['guides']??0)),
             'cabins'=>min(60,absint($_GET['cabins']??0)),
             'guide_language_id'=>absint($_GET['guide_language_id']??0),
+            'nationality'=>is_string($_GET['nationality']??null)?strtoupper(sanitize_text_field(wp_unslash($_GET['nationality']))):'',
         ];
     }
     private static function dateForm(int $id,array $options):void {
@@ -442,6 +446,7 @@ final class MAD4B_Product_Cost_Review_Ledger_V1 {
         echo '<form method="get"><input type="hidden" name="page" value="'.esc_attr(self::PAGE).'">';
         echo '<input type="hidden" name="product_id" value="'.esc_attr((string)$id).'">';
         echo '<label>Travel date <input type="date" name="date" value="'.esc_attr($options['date']).'"></label> ';
+        echo '<label>Passport nationality (same for party) <input name="nationality" maxlength="2" pattern="[A-Za-z]{2}" placeholder="US" value="'.esc_attr($options['nationality']??'').'"></label> ';
         echo '<label>Package Tier <select name="tier_id"><option value="0">Choose</option>';
         if(class_exists('MAD4B_Package_Pricing_Lab_Readiness_V1',false)){
             foreach(MAD4B_Package_Pricing_Lab_Readiness_V1::tierIds() as $tier){
@@ -591,7 +596,7 @@ final class MAD4B_Product_Cost_Review_Ledger_V1 {
         echo '<input type="hidden" name="action" value="mad4b_product_cost_review_record_v1">';
         echo '<input type="hidden" name="product_id" value="'.esc_attr((string)$id).'">';
         echo '<input type="hidden" name="expected_fingerprint" value="'.esc_attr($data['source_fingerprint']).'">';
-        foreach(['date','tier_id','currency','rooms','adults','children','infants','nights','days','vehicles','guides','cabins','guide_language_id'] as $key)
+        foreach(['date','tier_id','currency','rooms','adults','children','infants','nights','days','vehicles','guides','cabins','guide_language_id','nationality'] as $key)
             echo '<input type="hidden" name="context_'.$key.'" value="'.esc_attr((string)$options[$key]).'">';
         wp_nonce_field('mad4b_product_cost_review_'.$id,'review_nonce');
         echo '<label for="mad4b-cost-review-note">Reviewer note (max 500 characters)</label><p>';
@@ -632,7 +637,7 @@ final class MAD4B_Product_Cost_Review_Ledger_V1 {
         if(!$id||!self::allowed($id))wp_die('Cost review write is not authorized.','Access denied',['response'=>403]);
         check_admin_referer('mad4b_product_cost_review_'.$id,'review_nonce');
         $o=[];
-        foreach(['date','tier_id','currency','rooms','adults','children','infants','nights','days','vehicles','guides','cabins','guide_language_id'] as $key)
+        foreach(['date','tier_id','currency','rooms','adults','children','infants','nights','days','vehicles','guides','cabins','guide_language_id','nationality'] as $key)
             $o[$key]=sanitize_text_field((string)wp_unslash($_POST['context_'.$key]??''));
         $expected=sanitize_text_field((string)wp_unslash($_POST['expected_fingerprint']??''));
         if(!preg_match('/^[a-f0-9]{64}$/D',$expected))wp_die('Invalid review source digest.','Invalid request',['response'=>400]);
