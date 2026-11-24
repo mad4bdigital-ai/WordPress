@@ -158,6 +158,21 @@ final class MAD4B_Dynamic_Cost_Alerts_V1 {
    }
    // CP4 stage receipts and native planner issues remain owned by original providers.
   }
+  if(!$context&&$type==='tours-and-activities'&&class_exists('MAD4B_Daily_Cost_Components_V1',false)){
+   $d=MAD4B_Daily_Cost_Components_V1::inspect($id);
+   if(!is_wp_error($d)&&$d['revision']>0){
+    if(!$d['fresh'])$add('daily:itinerary','daily_itinerary_changed','Daily cost components need full itinerary revision review');
+    else{
+     $covered['daily:itinerary']=true;
+     foreach($d['rows'] as $line){
+      $g='daily:'.$line['component_key'];$members[$g]=[hash('sha256',wp_json_encode([$line['day_key'],$line['component_key']]))];
+      if(($line['requirement']??'')==='required'&&($line['inclusion']??'')==='included'&&in_array($line['state'],['source_missing','invalid_source_or_day','source_row_selection_required','entrance_fee_source_review_required','activity_cost_or_transfer_price_required','entrance_cost_candidate_review_required'],true))
+       $add($g,'daily_component_source_missing','Daily cost source required: '.$line['label'],['day'=>$line['day_key'],'component'=>$line['component_key'],'editor'=>$d['edit_url']]);
+      elseif(in_array($line['state'],['reference_calculated','quantity_or_fx_required'],true))$covered[$g]=true;
+     }
+    }
+   }
+  }
   foreach($issues as &$row){$group=$row['source_evidence']['group'];if(isset($members[$group]))$row['source_evidence']['coverage_members']=$members[$group];}
   unset($row);
   return ['contract'=>self::CONTRACT,'product_id'=>$id,'scope'=>$scope,'issues'=>array_values($issues),
