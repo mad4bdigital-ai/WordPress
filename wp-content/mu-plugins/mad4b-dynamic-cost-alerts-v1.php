@@ -21,6 +21,7 @@ final class MAD4B_Dynamic_Cost_Alerts_V1 {
   if(!$context)return 'structural';
   $c=MAD4B_Generic_Cost_Composition_V1::context($context);
   if(!empty($context['nationality']))$c['nationality']=strtoupper((string)$context['nationality']);
+  if(!empty($context['entrance_cohorts']))$c['entrance_cohorts']=(string)$context['entrance_cohorts'];
   return substr(hash('sha256',wp_json_encode($c)),0,24);
  }
  static function finding(int $id,string $scope,string $group,string $reason,string $label,array $details=[],array $context=[]):array {
@@ -42,6 +43,7 @@ final class MAD4B_Dynamic_Cost_Alerts_V1 {
   foreach(MAD4B_Generic_Cost_Composition_V1::context($context) as $key=>$v)
    if($context&&$v!==null&&$v!=='')$url=add_query_arg($key,(string)$v,$url);
   if(!empty($context['nationality']))$url=add_query_arg('nationality',(string)$context['nationality'],$url);
+  if(!empty($context['entrance_cohorts']))$url=add_query_arg('entrance_cohorts',(string)$context['entrance_cohorts'],$url);
   return $url;
  }
  /** Each check explicitly reports its coverage; an omitted check never closes an alert. */
@@ -169,7 +171,7 @@ final class MAD4B_Dynamic_Cost_Alerts_V1 {
      foreach($d['rows'] as $line){
       $g='daily:'.$line['component_key'];$members[$g]=[hash('sha256',wp_json_encode([$line['day_key'],$line['component_key']]))];
       $missing=['source_missing','invalid_source_or_day','source_row_selection_required','entrance_fee_source_review_required','activity_cost_or_transfer_price_required','entrance_cost_candidate_review_required','entrance_quantity_policy_review_required'];
-      if($context)$missing=array_merge($missing,['entrance_context_required','entrance_no_eligible_rate','entrance_ambiguous_rate','entrance_ambiguous_basis','entrance_invalid_rate','entrance_fx_or_amount_missing','entrance_amount_limit','activity_bundle_coverage_review_required','entrance_quantity_policy_review_required']);
+      if($context)$missing=array_merge($missing,['entrance_context_required','entrance_cohort_invalid','entrance_cohort_limit','entrance_cohort_party_mismatch','entrance_mixed_group_basis_review_required','entrance_no_eligible_rate','entrance_ambiguous_rate','entrance_ambiguous_basis','entrance_invalid_rate','entrance_fx_or_amount_missing','entrance_amount_limit','activity_bundle_coverage_review_required','entrance_quantity_policy_review_required']);
       if(($line['requirement']??'')==='required'&&($line['inclusion']??'')==='included'&&in_array($line['state'],$missing,true))
        $add($g,'daily_component_source_missing','Daily cost source required: '.$line['label'],['day'=>$line['day_key'],'component'=>$line['component_key'],'editor'=>$d['edit_url']]);
       elseif(in_array($line['state'],['reference_calculated','quantity_or_fx_required','entrance_reference_calculated','entrance_source_recorded'],true))$covered[$g]=true;
