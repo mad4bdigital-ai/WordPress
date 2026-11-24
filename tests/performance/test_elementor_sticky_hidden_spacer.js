@@ -4,12 +4,12 @@
  * lifecycle asset; not a copy of the conditional implementation.
  */
 const fs=require('fs'),path=require('path'),assert=require('assert/strict'),crypto=require('crypto');
-const expectedName='mad4b-elementor-sticky-lifecycle-9ebb20e0bb022722.js';
+const expectedName='mad4b-elementor-sticky-lifecycle-f4c5da1f8939002f.js';
 const asset=process.env.MAD4B_STICKY_ASSET_TEST_FILE ||
   path.join(__dirname,'../../wp-content/mu-plugins/assets',expectedName);
 const source=fs.readFileSync(asset,'utf8');
 const digest=crypto.createHash('sha256').update(source).digest('hex');
-assert.equal(digest.slice(0,16),'9ebb20e0bb022722','content address matches filename');
+assert.equal(digest.slice(0,16),'f4c5da1f8939002f','content address matches filename');
 const start=source.indexOf('var addSpacer = function() {');
 const end=source.indexOf('var removeSpacer = function()',start);
 assert(start>=0 && end>start);
