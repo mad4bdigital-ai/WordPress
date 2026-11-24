@@ -4,6 +4,7 @@ import hashlib
 import json
 import unittest
 import subprocess
+import test_tour_highlights_source_delta as kernel_review
 
 ROOT = Path(__file__).resolve().parents[1]
 REVIEW = ROOT / "docs/release-coverage/pr814-pr813-destination-preview-additive-20261114.json"
@@ -95,9 +96,14 @@ class DestinationAdditiveReview(unittest.TestCase):
         self.assertIn("data-tour-destinations", source)
         self.assertIn("if (!function_exists('add_filter') || !function_exists('add_action')) return;", source)
 
+    def reviewed_destination_successor(self, current):
+        # Reuse the existing exact, non-authorizing rc129 kernel proof before
+        # testing the immutable PR813 source. No historical pin is changed.
+        return kernel_review.TourHighlightsReviewedSource.remove_exact_reviewed_public_kernel_successor(self, current)
+
     def test_latest_pr813_private_cpt_and_readonly_reconciliation_are_additive(self):
         item = self.review["original_plugin_entry"]
-        actual = (ROOT / item["path"]).read_bytes()
+        actual = self.reviewed_destination_successor((ROOT / item["path"]).read_bytes())
         self.assertEqual((len(actual), hashlib.sha256(actual).hexdigest()),
                          (item["current_bytes"], item["current_sha256"]))
         lines = actual.splitlines(True)
@@ -123,8 +129,16 @@ class DestinationAdditiveReview(unittest.TestCase):
         import tempfile
         from unittest.mock import patch
         import tour_highlights_bootstrap_overlay as historical
-        current=(ROOT / historical.MAIN).read_bytes()
+        live_candidate=(ROOT / historical.MAIN).read_bytes()
+        current=self.reviewed_destination_successor(live_candidate)
         old=historical.original_bootstrap_bytes(current)
+        for mutated in (live_candidate+b'\n',
+                        live_candidate.replace(b'Public_Document_Kernel::try_boot()',
+                                               b'Public_Document_Kernel::allow_all()',1),
+                        live_candidate.replace(b'Company_Code_Reconciliation::boot()',
+                                               b'Company_Code_Reconciliation::apply()',1)):
+            with self.assertRaises(AssertionError):
+                self.reviewed_destination_successor(mutated)
         self.assertEqual(hashlib.sha256(old).hexdigest(),historical.BASE_SHA256)
         self.assertEqual(hashlib.sha256(current).hexdigest(),
                          historical.DESTINATION_SUCCESSOR_SHA256)
