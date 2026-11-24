@@ -975,6 +975,21 @@ final class MAD4B_SCP_Self_Update {
 		return $plan;
 	}
 
+	private static function trusted_master_release_candidate( array $identity, array $manifest ) {
+		if ( true !== ( $manifest['release_verdict_success'] ?? false )
+			|| true !== ( $manifest['release_root_trust_verified'] ?? false )
+			|| true !== ( $manifest['published_from_master'] ?? false )
+			|| (int) ( $manifest['release_verdict_run_id'] ?? 0 ) < 1 ) return array();
+		foreach ( array( 'version', 'source_commit_sha', 'archive_sha256',
+			'build_fingerprint', 'package_manifest_digest' ) as $field ) {
+			if ( empty( $manifest[ $field ] ) || empty( $identity[ $field ] )
+				|| ! hash_equals( (string) $manifest[ $field ], (string) $identity[ $field ] ) ) return array();
+		}
+		if ( (int) ( $manifest['size_bytes'] ?? 0 ) < 1
+			|| (int) $manifest['size_bytes'] !== (int) ( $identity['size_bytes'] ?? 0 ) ) return array();
+		return self::public_manifest( $manifest );
+	}
+
 	public static function upload_apply( $input ) {
 		$input = is_array( $input ) ? $input : array();
 		$expected = isset( $input['expected_plan_sha256'] ) ? strtolower( trim( (string) $input['expected_plan_sha256'] ) ) : '';
@@ -1047,6 +1062,15 @@ final class MAD4B_SCP_Self_Update {
 			$plan['target'],
 			isset( $plan['release_channel'] ) && is_array( $plan['release_channel'] ) ? $plan['release_channel'] : array()
 		);
+		// Only an exact root-trusted release manifest may promote a Staging
+		// candidate into a verified master release continuation permit.
+		if ( $staging_candidate && 'wordpress_native_candidate_upload' === $plan['channel'] ) {
+			$trusted_manifest = self::fetch_manifest( true );
+			if ( ! is_wp_error( $trusted_manifest ) && is_array( $trusted_manifest ) ) {
+				$trusted_fields = self::trusted_master_release_candidate( $plan['target'], $trusted_manifest );
+				if ( $trusted_fields ) $apply_target = array_merge( $apply_target, $trusted_fields );
+			}
+		}
 		$result = self::apply_verified_archive( $tmp, $apply_target, $staging_candidate ? 'governed_staging_candidate_upload' : 'governed_file_upload', $expected, $verified );
 		@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		return $result;
@@ -2148,7 +2172,76 @@ final class MAD4B_SCP_Self_Update {
 		return $out;
 	}
 
+    private static function reviewed_archive_no_regression( $path ) {
+        if ( ! class_exists( 'ZipArchive' ) )
+            return new WP_Error( 'mad4b_forward_archive_zip_unavailable',
+                'ZipArchive is required for reviewed runtime regression checks.' );
+        $zip = new ZipArchive();
+        if ( true !== $zip->open( $path ) )
+            return new WP_Error( 'mad4b_forward_archive_invalid',
+                'Reviewed Control Plane archive cannot be opened.' );
+        $requires = array(
+            'mad4b-site-control-plane/includes/class-mad4b-scp-addon-registry.php' => array(
+                "'site_bound_certified_pair'",
+                "'unknown_pair_fallback' => 'shadow'",
+                '$certified_pair = 1 === $matching_certificates',
+                "'production_authorized' => false",
+                'site_profile_digest',
+            ),
+            'mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php' => array(
+                "environment_allowed( array( 'staging' ), 'write' )",
+                'MAD4B_SCP_Post_Update_Continuation::prepare',
+                'MAD4B_Release_Source_Admission::require_for_release',
+            ),
+        );
+        $seen = array();
+        try {
+            if ( $zip->numFiles > 10000 )
+                return new WP_Error( 'mad4b_forward_archive_excess_entries',
+                    'Reviewed archive entry count exceeds the existing maximum.' );
+            for ( $i = 0; $i < $zip->numFiles; ++$i ) {
+                $name = (string) $zip->getNameIndex( $i );
+                if ( ! isset( $requires[ $name ] ) ) continue;
+                if ( isset( $seen[ $name ] ) )
+                    return new WP_Error( 'mad4b_forward_archive_duplicate_guarded_file',
+                        'Reviewed archive contains conflicting guarded runtime entries.' );
+                $seen[ $name ] = true;
+                $stat = $zip->statIndex( $i );
+                if ( ! is_array( $stat ) || ! isset( $stat['size'] )
+                    || ! is_numeric( $stat['size'] ) || (float) $stat['size'] > 524288 )
+                    return new WP_Error( 'mad4b_forward_archive_guarded_file_size_invalid',
+                        'Reviewed runtime file exceeds the bounded guard limit.' );
+                $body = $zip->getFromIndex( $i );
+                if ( ! is_string( $body ) || strlen( $body ) > 524288 )
+                    return new WP_Error( 'mad4b_forward_archive_guarded_file_unreadable',
+                        'Reviewed runtime file could not be verified.' );
+                foreach ( $requires[ $name ] as $witness )
+                    if ( false === strpos( $body, $witness ) )
+                        return new WP_Error( 'mad4b_forward_archive_regression_denied',
+                            'Candidate would remove a reviewed live runtime safeguard.',
+                            array( 'path' => $name, 'mutation_performed' => false ) );
+            }
+            if ( count( $seen ) !== count( $requires ) )
+                return new WP_Error( 'mad4b_forward_archive_guarded_file_missing',
+                    'Candidate archive does not contain the reviewed protected runtime files.',
+                    array( 'mutation_performed' => false ) );
+            return true;
+        } finally {
+            $zip->close();
+        }
+    }
+
 	private static function apply_verified_archive( $path, array $target, $channel, $plan_sha256, array $verified_archive, $bootstrap_candidate_drift = false ) {
+		// All update channels require the independent signed host source proof.
+		// Unknown local Git ancestry is never promoted by version-label comparison.
+		$source_sha = (string) ( $target['source_commit_sha'] ?? '' );
+		$host_admission = class_exists( 'MAD4B_Release_Source_Admission' )
+			? MAD4B_Release_Source_Admission::require_for_release( $source_sha )
+			: new WP_Error( 'mad4b_release_preflight_verifier_missing', 'Signed Host source preflight is required.' );
+		if ( is_wp_error( $host_admission ) ) return $host_admission;
+		$monotonic_archive = self::reviewed_archive_no_regression( $path );
+		if ( is_wp_error( $monotonic_archive ) ) return $monotonic_archive;
+
 		$runtime_php_files = isset( $verified_archive['runtime_php_files'] ) && is_array( $verified_archive['runtime_php_files'] )
 			? array_values( array_filter( array_map( 'strval', $verified_archive['runtime_php_files'] ) ) )
 			: array();

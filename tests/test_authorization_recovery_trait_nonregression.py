@@ -17,6 +17,15 @@ REQUIRE_NEW = "require_once __DIR__ . '/trait-mad4b-scp-authorization-recovery-s
 CLASS = "final class MAD4B_SCP_Authorization {\n"
 USE = "\tuse MAD4B_SCP_Authorization_Recovery_State_Trait;\n"
 TRAIT_HEADER = "<?php\nif ( ! defined( 'ABSPATH' ) ) { exit; }\n/** Original, byte-preserved execution attempt recovery and boundary observation helpers. */\ntrait MAD4B_SCP_Authorization_Recovery_State_Trait {\n"
+SCOPED_GUARD = '''        // Signed material proof supplements NHI, one-time tickets, and owner grants.
+        if ( 'mad4b-write' === $server_id && class_exists( 'MAD4B_SCP_Scoped_Build_Verification' )
+            && MAD4B_SCP_Scoped_Build_Verification::governs_content_write( $ability_name ) ) {
+            $build_proof = MAD4B_SCP_Scoped_Build_Verification::verify( $ability_name, $input );
+            if ( is_wp_error( $build_proof ) || ! is_array( $build_proof ) || empty( $build_proof['verification_ready'] ) )
+                return self::error( 'mad4b_content_material_build_not_verified', 'Content mutation requires current material-file integrity or full exact package provenance.' );
+        }
+'''
+
 NAMES = (
     "execution_attempt_sha256", "execution_attempt_state",
     "execution_boundary_verified", "local_approval_planner_execution",
@@ -33,7 +42,13 @@ def check(original: str, facade: str, trait: str) -> None:
     assert trait == TRAIT_HEADER + extracted + "}\n", "Trait body does not match previously reviewed original"
     remainder = original[:start] + original[end:]
     expect = remainder.replace(REQUIRE_OLD, REQUIRE_OLD + REQUIRE_NEW).replace(CLASS, CLASS + USE)
-    assert facade == expect, "Authorization facade diverged beyond the exact extraction"
+    # Preserve the one separately reviewed live rc128 content-build gate.
+    # It must be byte-exact, before resource compilation and cannot alter
+    # the extracted recovery trait or any other original Authorization bytes.
+    anchor = "\t\t$authorization_input = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::authorization_input( $input, $ability_name ) : $input;"
+    assert expect.count(anchor) == 2
+    expect = expect.replace(anchor, SCOPED_GUARD + anchor, 1)
+    assert facade == expect, "Authorization facade diverged beyond exact trait extraction and reviewed scoped guard"
     assert len(facade.splitlines()) <= 950, "Authorization size budget exceeded"
     assert all("function " + name + "(" not in facade for name in NAMES)
     assert all(("function " + name + "(") in trait for name in NAMES)
@@ -51,13 +66,15 @@ def main() -> None:
         (facade.replace(REQUIRE_NEW, ""), trait),
         (facade.replace(USE, ""), trait),
         (facade, trait.replace("blind_retry_allowed", "blind_retry_may_skip", 1)),
+        (facade.replace(SCOPED_GUARD, ''), trait),
+        (facade.replace('mad4b_content_material_build_not_verified', 'unguarded_material', 1), trait),
     ):
         try:
             check(original, damaged_facade, damaged_trait)
         except AssertionError:
             continue
         raise AssertionError("Unauthorized Authorization source change accepted")
-    print("AUTHORIZATION_RECOVERY_TRAIT_BYTE_PARITY: PASS (4 moved methods, loader/use, denials)")
+    print("AUTHORIZATION_RECOVERY_TRAIT_BYTE_PARITY: PASS (4 methods in trait only, bounded exact content guard, denials)")
 
 if __name__ == "__main__":
     main()

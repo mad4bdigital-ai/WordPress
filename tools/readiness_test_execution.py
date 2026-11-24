@@ -439,6 +439,11 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php",
 
 
+    # Reviewed isolated rc129 safety fixture: exact archive/signature denials,
+    # fake WordPress types, no network/database/Production side effect.
+    # Executed with real PASS assertions; not generic PHP admission.
+    "wp-content/plugins/mad4b-site-control-plane/tests/live-safety-rc129-reconciliation-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-live-parity-runtime.php",
 ))
 
 
@@ -831,6 +836,13 @@ def self_test():
     assert command_for("tests/server-descriptor-canonical-multilane-hermetic.php") == [
         "php", str((ROOT / "tests/server-descriptor-canonical-multilane-hermetic.php").resolve())]
     assert has_assertion_pass("PASS: brand quality exact context revision and same-site issue closure\n")
+    reviewed_rc129 = "wp-content/plugins/mad4b-site-control-plane/tests/live-safety-rc129-reconciliation-runtime.php"
+    assert command_for(reviewed_rc129) == ["php", str((ROOT / reviewed_rc129).resolve())]
+    assert has_assertion_pass("PASS exact signed master candidate denied without trust\nRECONCILED_LIVE_SAFETY_PASS 19\n")
+    assert not has_assertion_pass("No syntax errors detected in fixture.php")
+    exact_kernel = "wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-live-parity-runtime.php"
+    assert command_for(exact_kernel) == ["php", str((ROOT / exact_kernel).resolve())]
+    assert has_assertion_pass("PASS private execution flag index 8 denied\nPUBLIC_DOCUMENT_KERNEL_LIVE_PARITY_PASS 31\n")
     # No wildcard admission: unknown PHP still requires a trusted PHPUnit runner.
     try:
         command_for("wp-content/plugins/mad4b-site-control-plane/tests/private-operations-foreign-smoke.php")

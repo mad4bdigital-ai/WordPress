@@ -68,7 +68,9 @@ jobs:
 
 
   browser-smart-suggestions:
-    runs-on: ubuntu-latest
+    # Playwright 1.56 Chromium install is unsupported on the Ubuntu 26.04 latest runner.
+    # Keep the real browser mandatory on the supported pinned OS instead.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
