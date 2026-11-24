@@ -179,6 +179,10 @@ jobs:
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mu-refresh-first-request.php
 
+      - name: Verify optional entity resolver never blocks packaged MCP registration
+        run: |
+          php wp-content/plugins/mad4b-site-control-plane/tests/runtime-optional-entity-catalog.php
+
       - name: Prove next web request closes canonical MCP lifecycle
         shell: bash
         env:

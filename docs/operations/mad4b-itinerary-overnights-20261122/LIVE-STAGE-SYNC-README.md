@@ -1,0 +1,180 @@
+# MAD4B — Native itinerary overnight stage synchronization (live-first)
+
+Status: deployed and verified on **Tours.dev** and **Wayfatours** on 2026-11-22, **not a commercial checkout release**.
+
+## What changes
+
+The native JetEngine CPT `tours-and-activities`, `itinerary_item` repeater gains two select subfields per day:
+
+| Field | Options | Meaning |
+| --- | --- | --- |
+| `mad4b_overnight_kind` | `hotel`, `resort`, `cruise`, `sleeper_train`, `none` | Type of stay **after** this day's itinerary |
+| `mad4b_overnight_destination` | `cairo`, `luxor`, `aswan`, `sharm`, `hurghada`, `nile_cruise`, `train`, `none` | Overnight destination; not a daytime visit |
+
+The last/departure itinerary day must be `none/none`; the other days must each specify a valid type/destination pair. Consecutive nights with identical type and destination form one accommodation stage. Therefore nights = number of itinerary day entries minus one, not an independently maintained Hotel nights field.
+
+Cairo/Giza is the same metropolitan group only under existing explicitly approved destination-scoping rules. Aswan hotel stages require native Aswan City eligibility rather than Aswan governorate alone; Abu Simbel remains excluded.
+
+## Additive runtime files (identical on both production/staging hosts)
+
+- `wp-content/mu-plugins/mad4b-itinerary-overnight-source-v1.php`: parses structured itinerary, builds deterministic source hash and projected stages; updates sync status on itinerary edits; mirrors only overnight metadata into Spanish translated Repeater without overwriting Spanish titles, descriptions or images; returns *editorial* hotel candidates from stage destination plus package tier and owner-approved cost-source references.
+- `wp-content/mu-plugins/shared-product-core/pricing/package-stage-rate-guard-v1.php`: preserves existing candidate references and selections; adds only stage-eligible dynamic candidates and blocks commercial readiness when structured source projection is missing/stale or stage geometry diverges.
+- `wp-content/mu-plugins/mad4b-package-pricing-lab-readiness-v1.php`: displays the same new stage-city/tier candidate pool as the native Rate Guard. These are **not** Unit Rate bindings, confirmed inventory, or booked Rooms.
+
+No rate, paid booking, lodging inventory, margin override, or supplier receipt is authorized by this package. Pricing companies keep their distinct preexisting 20% (source) / 25% (Wayfa) **target gross margin** rules.
+
+## Mandatory JetEngine schema migration (database, not file alone)
+
+The field definition lives in the JetEngine-native `wp_jet_post_types` row `id=15`, slug `tours-and-activities`, `meta_fields` serialized array. Existing `itinerary_item` has four native subfields (`number`, `title`, `image`, `description`). The guarded migration `tools/wp-cli/enroll-itinerary-jetengine-fields-20261122.php` appends just two select fields, IDs `2026112201/2026112202`, with an atomic old-content SQL comparison.
+
+The schema was already migrated and read back on **both live sites**; the six-subfield hashes match. When enrolling *another* company, run on the authorized WordPress installation:
+
+```bash
+MAD4B_ITINERARY_SCHEMA_PHASE=preflight wp eval-file tools/wp-cli/enroll-itinerary-jetengine-fields-20261122.php --allow-root --user=1
+MAD4B_ITINERARY_SCHEMA_PHASE=apply wp eval-file tools/wp-cli/enroll-itinerary-jetengine-fields-20261122.php --allow-root --user=1
+MAD4B_ITINERARY_SCHEMA_PHASE=verify wp eval-file tools/wp-cli/enroll-itinerary-jetengine-fields-20261122.php --allow-root --user=1
+```
+
+Requires an authorized admin. The migration is idempotent and rejects unexpected CPT schema drift. Never simply replace the whole database CPT meta-field array with a copied older array.
+
+## Initial content backfill and locale treatment
+
+Eight existing English package tours each have verified `_mad4b_package_accommodation_source_plan_v1` geometry. A one-time, guarded backfill populated 16 itinerary posts per site (eight EN + eight ES), **132 day records / 264 new subfields per site**, using the old verified geometry as initial evidence and setting final departure day to `none/none`. It did not reword old itinerary titles or descriptions, and did not mutate existing source plans or `_mad4b_package_stay_verified_room_program_links_v1` bindings. One-time approvals and backups are stored in the host checkpoint below; do not repeat migration on unrelated tours without checking their old plans and translations.
+
+## Runtime synchronization and failure behavior
+
+On itinerary metadata changes or tour save, reconciliation runs on WP shutdown and writes only a read-only projection plus a sync state when current nightly stages match the existing source plan. A changed itinerary source hash invalidates the Rate Guard's previous readiness immediately.
+
+When stage geometry changes, automatic reconstruction of the stage plan and its binding record is restricted to the case where no explicit Property, Unit, supplier cost receipt, sailing, vessel/cabin, or native commercial assignment exists. All new stage binding entries remain pending quote, with no inventory authorization. Otherwise the sync status requires editorial/manual reconciliation, and existing bindings remain unchanged.
+
+For new stays the default board is BB, except Sharm/Hurghada resorts/hotels where the default is AI; it must still respect any later explicitly assigned board or signed supplier terms.
+
+**Do not treat this as completed commercial package costing.** Date-qualified hotel selection, occupancy-aware Room Unit/Property Rate fallback, cruise cabin/sailing, transport, guide and extras costs and taxes must be reconciled before a complete customer package price can be committed.
+
+## Live verification (2026-11-22)
+
+- **Both sites:** 8/8 canonical package plans; 16/16 original EN+ES repeater contents preserved after removing only the two added fields; 132 day records per site; all 8 original stage plans and bindings byte-for-byte unchanged.
+- **Both sites:** 253 owner-approved Hotels-sheet positive price cells with per-person-per-night basis (some inferred from the owner's approved consistent template); global 20% source / 25% Wayfa margin unchanged, detailed stay margin policies inactive.
+- **Wayfatours:** 57 hotel/resort stage × tier instances across eight package tours; 379 eligible candidate mentions (84 stage-specific, owner-approved newly discovered candidates) without selecting any property; *Tolip Hotel Aswan* (Property 71980) becomes a valid Gold/Diamond candidate for its one-night Aswan stage.
+- **Source Tours.dev:** its 21/21 source-cell-matched Hotels were subsequently enrolled as native dynamic candidates (9 missing package-tier assignments filled, 12 original explicit tiers preserved) via a separate guarded company-only activation receipt. Its 57 hotel/resort stage×tier instances now have 251 eligible candidate mentions, including 164 stage-specific dynamically discovered mentions. **Wayfatours** remains at 379 total mentions, including 84 dynamic additions, because its older editorial stage candidate pools are wider. Matching 21/21 Hotel eligibility does not justify inventing identical legacy stage candidate counts.
+- **Both sites:** exactly **21/21** owner-approved sheet-mapped Hotels opted into native stage candidate discovery (company profits remain 20% source / 25% Wayfa). The 56 approved Property cost-reference Rates/site remain Stop Sale with no checkout authority. Source/public Property catalog status remains separate from Wayfa's intentionally hidden public Property catalog.
+- **Rate Guard:** no checkout-ready package stage, no Unit inventory, no commercial rate publication or supplier cost activation.
+- **Pure test cases:** 8/8 valid/invalid structured day scenarios pass, including invalid accommodation pairs and final-day overnight, city regrouping and new overnight day, with no DB writes during tests.
+- **Pricing Lab** shows Aswan Gold/Diamond candidates on Wayfa, while no unsupported source-site Aswan selection is invented.
+- **No authenticated graphical browser regression was claimed.** Prior tests were PHP syntax, WP-CLI native state/logic, postmeta immutable comparison, and independent readback.
+
+## Evidence, rollback and release controls
+
+Full live checkpoint:
+`/opt/mad4b-package-checkpoints/2026-11-22-itinerary-overnights-live/`.
+Includes original CPT serialized schema, all eight English/Spanish itineraries and source plans/bindings per site, pre-deploy PHP files, backfill scripts and post-apply QA JSON.
+
+For rollback, restore the exact previous code files and prior CPT field definition and original posts using the checkpoint after validating that subsequent editors did not introduce newer legitimate changes. **Never bulk restore a stale DB backup over new user edits.** The added fields and stores are additive and do not authorize changing Rate/booking settings.
+
+This is a **review-only, live-first reconciliation branch**, independent of PR #1003 (transport). Check parity with already deployed live versions and integrate selectively; **do not wholesale deploy master** or merge a stale PR to production.
+
+
+## Smart JetEngine itinerary dropdowns — live extension 2026-11-22
+
+The `itinerary_item` native select fields are **not left as unconditional manual choices** in the WordPress editor. Two additive files, deployed identically on both live sites, overlay contextual editor-only eligibility on the native JetEngine `<select>` elements:
+
+- `wp-content/mu-plugins/mad4b-smart-itinerary-choices-v1.php`: private nonce-protected WordPress AJAX; `edit_post` + editor authorization. Uses the current tour's **own** attached Silver/Gold/Diamond tiers, actual overnight stage cities and exact tour destinations, the native `stageDestinationScope()` and `propertyEligibility()`, `prop_use_in_tour_rate_generation`, published owner-approved Hotels cost-source receipts and official property-type taxonomy. It must not import tier IDs from the other company or infer supplier availability from published state.
+- `wp-content/mu-plugins/assets/mad4b-smart-itinerary-overnight-v1.js`: scoped exclusively to the `post.php` editor of `tours-and-activities`. Per repeater day, hides/disables new selections without a qualified source; reacts to Hotel type vs city and the reverse; allows **None** only on the last departure day; allows a Nile Cruise only during the native, duration-and-direction-verified program days **and** when a published owner-approved Cruise Property exists in the company catalog. A cruise program is editorially admissible but not confirmed vessel or sailing inventory. Sleeper Train is hidden until its overnight supplier is certified. Actual legacy values remain visible/selectable with an explicit warning, never silently removed or replaced.
+- Day/locale rule: if an existing seeded itinerary has changed and its projection no longer matches source stage geometry, backend rejects new eligibility until repaired. WPML post day keys must match the canonical EN itinerary. No new commercial Rates, dates, supplier receipts, or checkout authority.
+- **New draft editor (`post-new.php`)**: when the Tour has no saved identity, the native select options are fail-closed with an in-repeater instruction to save the draft and define destination/tier first. After saving, a scoped `post.php` editor session can query authorized eligibility. Never guess tiers for an unsaved Tour. If native Package Level taxonomy changes but has not yet been saved, new selections are temporarily disabled rather than evaluated against stale levels. Script and AJAX URLs are forced to HTTPS and JS cache versioned using its content hash.
+- Site-wide setting is untouched: there is no new public itinerary panel, public REST endpoint, or behavior for editing unrelated posts. Admin-only choices are translated from **WordPress dashboard locale** (Arabic, English and Spanish); the script uses HTTPS with content-hash version for correct cache invalidation.
+
+**Important:** This is editor **structural eligibility**, not date-specific Hotel inventory. A published Hotel cost receipt or a verified Cruise Program can offer an itinerary choice without being commercially bookable.
+
+Validated native protected AJAX matrix for Tour 60437:
+- **Tours.dev:** Cairo 9 qualifying Hotels, Aswan 1, Resort 0; EN tier IDs Silver/Gold.
+- **Wayfatours:** Cairo 15 qualifying Hotels, Aswan 1, Resort 0; EN tier IDs Silver/Gold/Diamond.
+- Both sites: native Cruise Program days 4–6 eligible for itinerary planning; overnight Train at that stage not supplier-qualified; no Checkout.
+- 8 package Tours / 66 itinerary day records audited per site. **Historical pre-company-policy audit**: selections requiring review were **9 source, 5 Wayfa**. The 57562 source Tour previously had no explicit Package Levels, affecting four Hotel nights; 2 Sleeper Train nights in Tour 60623 without qualified overnight supplier (both sites); 3 Sharm Resort nights in Tour 60629 without owner-approved and correctly categorized Resort cost Property (both sites). **All remain intact; they are flagged, not auto-rewritten.**
+
+Tests: `node --test tests/mad4b-smart-itinerary-overnight-v1.test.js` (**10/10** with a synthetic matrix on both runs). With real private AJAX evidence on an authorized VPS environment, the same test reads `MAD4B_MATRIX_JSON=<signed-backend-result.json>` and validates the real nonbookable contract. Live PHP lint, source and Wayfa native editor-only script registration, signed AJAX, permission-denial, and HTTPS URL (HTTP 200) were verified. A GUI login-based browser walkthrough of actual JetEngine Vue controls **has not been independently certified**; do not claim browser QA. In particular, any future switch to a non-native custom select renderer needs UI adapter testing.
+
+Evidence: `/opt/mad4b-package-checkpoints/2026-11-22-smart-itinerary-options/`. Existing native JetEngine option data is deliberately kept as an emergency editorial fallback if the overlay is removed; normal editor mode uses a fail-closed authenticated filter, and missing eligibility data does not authorize newly selected services.
+
+
+## 2026-11-22 operational Company Package Levels — global fallback, explicit override
+
+**Implemented and verified on both live companies**, with a versioned, tenant-local rule in the **existing Company Policy Registry V2**. No extra settings screen, copied Tour taxonomy, or second pricing engine is introduced.
+
+Authority order:
+1. **Explicit operational Tour `package_levels` taxonomy**: if any Level is assigned, its supported values control this Tour; **Company Default does not add to or replace them**. Unsupported future operator term IDs fail closed, instead of silently falling back.
+2. **Company-local active `pricing.package.levels` rule**: consulted **only** when the Tour has no explicit tier assignment at all. Its `tier_mask` is one of 15 valid combinations of Silver / Gold / Diamond / Platinum, managed in the original Dynamic Pricing Controls → Company Policy Registry V2 section with per-rule revision/history and admin permissions.
+3. **No explicit Tour tier and no active Company rule**: no levels available, with a clear blocking reason. A paused global rule never guesses a level.
+
+**Company baseline activation**, grounded in published Package Tour operational assignment frequency:
+- **Tours.dev**: 7 of 8 published packages explicitly assigned; Silver 7/7, Gold 7/7, Diamond 1/7, Platinum 1/7. Active company default `mask_03` = **Silver + Gold**; Tour `57562` inherits Silver and Gold **without adding taxonomy terms**.
+- **Wayfatours**: all 8 published packages explicitly assigned; Silver 7/8, Gold 8/8, Diamond 7/8, Platinum 1/8. Active default `mask_07` = **Silver + Gold + Diamond** for **future unassigned Tours**; Tour `57562` explicitly remains **Gold + Diamond**.
+- Platinum is recognized by Pricing Lab as an **explicit operational level** (e.g. `60439` on both companies), never globally enabled merely because its term exists. **Commercial readiness is separate**.
+- Both sites' Registry revision moved **1 → 2** with active company rule ID `company_package_levels_from_operations`. The rule is a deliberate baseline snapshot of the team’s existing assignment pattern, not an unapproved change to every Tour's Taxonomy. Managers may revise it through Registry V2; read-time inheritance responds immediately, while explicit Tour overrides remain untouched.
+
+**Integrated consumers**:
+- `wp-content/mu-plugins/mad4b-company-package-levels-v1.php`: supported taxonomy-term catalog, company default masking, WPML canonical English resolution, provider registration and operational source audit.
+- `shared-product-core/pricing/package-stage-rate-guard-v1.php`: blocks any tier not in this Tour's effective assignment, even if an old Stage Plan lists that tier as a hypothetical alternative. It does not waive date, supplier, cabin, occupancy, inventory or checkout gates.
+- `mad4b-package-pricing-lab-readiness-v1.php`: server-side Package/tier authorization and operator/company source receipt; Platinum recognized only where assigned.
+- `assets/mad4b-package-pricing-lab-readiness-v1.js`: **per Tour** dropdown restriction, live switch between Tour assignment and Company fallback, avoids selecting disabled deep links; displays source of the level.
+- `mad4b-smart-itinerary-choices-v1.php`: Hotel/Resort planning eligibility uses the effective tier source; no new service invented.
+- Versioned migration: `tools/wp-cli/seed-company-package-defaults-from-operations-20261122.php`. **Audit-specific** safety receipts include exact operational assignment digests; do not run it on a new company or changed live data without review.
+
+**Post-deployment readback:**
+- 32 native Rate Guard cases per site (8 tours × 4 levels): **source 18 accepted tier selections / 14 rejected**, **Wayfa 23 accepted / 9 rejected**. Every rejected selection is blocked before any Rate authorization.
+- Source `57562`: **Silver + Gold inherited**; Wayfa `57562`: **Gold + Diamond explicitly assigned**; `60439`: Platinum remains an explicit supported inspection choice on both.
+- **66 itinerary day records/site**: source's previous **9** editorial eligibility warnings dropped to **5**; Wayfa remains at **5**. Only 2 unqualified Sleeper Train nights (Tour `60623`) and 3 unqualified Sharm Resort nights (Tour `60629`) remain per site. These require real supplier/property qualification, not a tier-policy workaround.
+- Pure non-writing company-policy change/pause tests: **9/9 source, 8/8 Wayfa** passed. Pricing Lab per-Tour selector source-function tests: **6/6** cases. Original Tour taxonomy and stages not edited.
+- Global profit target unchanged **20% source / 25% Wayfa**; owner-approved Property cost reference Rates remain Stop Sale; no commercial Booking/Checkout activation.
+
+**Evidence and rollback:** `/opt/mad4b-package-checkpoints/2026-11-22-company-package-level-fallback/`. Undo company defaults by pausing the rule in Company Policy Registry V2, rather than removing Tour taxonomy or destroying historical Stage Plans. Source code is reconciled on this Draft PR, **not merged**. Native authenticated browser interactions are not claimed as tested.
+
+**Scope boundary:** This is the **pricing, Rate Guard and admin Itinerary source of truth**. WordPress's native taxonomy-based public archive filters still inspect physically assigned terms; read-time Company inheritance does **not** manufacture permanent archive taxonomy terms. If a public package-level archive must include inherited Tours, extend its specific query against this effective-tier contract rather than mutating operational assignments.
+
+
+## Transport Starting Price — purpose selector, Rate precedence, and no supplier authority
+
+**Live deployed 22 Nov 2026 on both Tours.dev and Wayfatours; this is an additive, safely gated extension.**
+
+Every published native `transportations` CPT can now explicitly choose one of three mutually exclusive uses for its existing `trans_start_price` (no copied or invented monetary data):
+
+1. `indicative_only` — display/planning reference; the existing booking and public price approval remains independently enforced.
+2. `cost_reference_only` — only allow the direct amount to enter **staff planning cost source resolution**; no supplier-cost invoice or commercial Rate is authorized.
+3. `both` — permit a separate indicative price role **and** a candidate planning cost role from the same amount, with provenance. The roles are never confused with a supplier-approved cost.
+
+Controls live in **Edit Transportation → MAD4B · Direct Price Role and Rate Priority** (native WordPress metabox). The manager must save the direct price, currency and price unit using the existing JetEngine fields first; requesting `cost_reference_only` or `both` without positive money, valid ISO currency and native unit is **rejected**, not silently stored. Role save is nonce-protected, company-editor gated (`commerce_manage_pricing`, `manage_woocommerce`, `edit_post`), optimistic revision verified and per-post DB locked. Mode history preserves old/new value, editor and time. No background auto-approval.
+
+**Single source-of-truth for weights:** `shared_product_price_source_policy('transport')` and `shared_product_resolve_price_sources`, not a parallel priority table. On both live sites the effective transport priority is **Rate 100 / Direct 50**, `fallback=next_valid`, tie-break `rate`. The units must agree before comparing two cost sources; different currency/unit cannot be implicitly treated as equivalent. Weights choose the preferred **one** admissible source and NEVER multiply or blend prices.
+
+For the Rate-side planning *cost* candidate, the provider looks only at `transport-rates` (published, correct parent, native Rate approval verified) with `trans_cost_amount>0` and `trans_price_role` in `self_cost` / `actual_company_cost`. Retail `base_amount` is never misinterpreted as supplier cost. Multiple cost Rate candidates require explicit Rate/date selection; the system does not auto-pick the cheapest or one without service-date proof. Native Rate approval signs a selling-price snapshot, not supplier invoices; this selector **never declares signed cost authority, stock, or checkout readiness**.
+
+**Package 60623:** `MAD4B_Package_Stage_Sourcing_V1::train()` now adds `direct_or_rate_price_source_review` to both original stage route proposals (86 and 87) without modifying the itinerary day, train stop geometry, original binding or Tour Price. Existing Pricing Lab adds “Transportation Price Source and Fallback” in each sleeper service's original supplier-qualification card; it shows Role / Direct / eligible Cost Rate candidates / weights / selected planning cost or missing reason. When an operator changes role in the native Transportation edit, the subsequent read-only Pricing Lab inspection reads the new choice. It never writes or approves a Tour Rate.
+
+**Live current rail data:** Source train posts `54552` and `54553` on **each site** still have `trans_start_price=''`, no native Transport Rates, `trans_use_in_tour_rate_generation='0'`, and no role activated (default `indicative_only`). Both native `unified_transport_preview` calls reject missing Rates; the package guard checkout remains false. No prices or approval documents have been fabricated.
+
+**Verification:** Both production sites passed 6/6 WP-CLI read-only source mode and weight-fallback synthetic tests (virtual sample 120 EGP per person never written), both rail day-stage and Source Rate identity readbacks, native admin metabox/JS enrollment with HTTPS and nonce, 3 rejection safeguards (bad mode, cost mode with missing price, anonymous user) without price mutations. Rollback removes the new additive MU role module and JS after reconciling intervening changes; source stage and Pricing Lab code should be reverted **selectively** to their saved checkpoints, not to pre-rail revisions.
+
+**Known limit:** The selector establishes **qualified planning cost provenance**, not unconditional Saleable Tour Rates. Actual supplier-cost verification, cabin class/occupancy, date/schedule/inventory and the existing signed Package Cost Receipt Gate remain independent mandatory steps. No authenticated visual browser save has been certified. No CI green/merge is claimed from live PHP lint alone. Evidence: `/opt/mad4b-package-checkpoints/2026-11-22-transport-price-dual-role/`.
+
+
+## 2026-11-22 — Abela 86/87 multi-source public fare evidence (explicitly non-commercial)
+
+The operator's **2026 tariff as visually displayed** and three separate public guides/booking observations were compared. The older official PDF `https://sleep.abelatrains.com/files/train_price_list_and_statins.pdf` has a cached four-page screenshot in research but currently returns **404**. The official Abela homepage has since linked `https://sleep.abelatrains.com/files/train_price_list_and_statins_new.pdf`, whose link currently returns HTTP 200 and Last-Modified 12 October 2026; its **updated content has not been independently compared**, so we do not claim every stored historical value is a current checkout fare.
+
+**Evidence approved as a structured internal *public adult reference*, not a supplier cost contract**:
+- Foreign adults, one-way, USD per person, regular season: **Standard DBL 110 / SGL 150, Elite DBL 125 / SGL 170**.
+- Foreign adults, peak displayed in operator's 2026 calendar: **Standard DBL 125 / SGL 165, Elite DBL 135 / SGL 185**.
+- Sources: operator's displayed 2026 table; Seat61's field-checked 2026 fare guide; This Is Egypt's 17 October 2026 Abela booking-system sample (115.50 Standard DBL, 157.50 Standard SGL, 131.25 Elite DBL, 178.50 Elite SGL, including 5% card fee). Peak Elite observed for 28 December 2026: 141.75 DBL / 194.25 SGL including that fee. Price normalization explains those differences; does **not** authorize new bank-fee rules.
+- **Children:** operator's displayed tariff lists foreign regular CHL 105 Standard / 120 Elite; Seat61 says about USD 70 for age 4–9. This is a factual mismatch, so child prices have **null approved price**, no auto-rate, and no claim that either tariff universally applies. Infant conditions remain only explanatory until verified.
+- **Egyptian and Arab prices:** May 2026 newspaper figures are mathematically consistent with the official peak table plus 5% (Egyptian 1450→1522.50 DBL, 2175→2283.75 SGL; Arab 2000→2100 DBL, 3000→3150 SGL), but whether a bank fee applies to a given payment method is **unverified**. They are reference observations, not globally approved market prices.
+- 2026 season windows preserved by nationality from displayed source. No inferred 2027 dates, no dated cabin inventory or supplier trade contract.
+
+**Implemented live in the original Transportation CPTs** `54552` train 86 and `54553` train 87 on **both** Tours.dev and Wayfatours:
+- Added guarded, idempotent, structured postmeta `_mad4b_abela_public_tariff_evidence_v1` with the complete price matrix, sources, dates, unresolved contradictions, and explicitly false cost/checkout authorization. Exact per-train record SHA256 matches across both companies.
+- Existing **Edit Transportation → MAD4B Direct Price Role and Rate Priority** now displays a four-row, read-only 2026 foreign-adult tariff matrix with source links and child-dispute warning; the **existing Pricing Lab sleeper qualification card** also shows the same distinctions. No new catalog/page or parallel pricing provider.
+- **Unchanged, intentionally:** native global `trans_start_price=''`, `trans_base_currency=egp`, `trans_unit_type=per_person`, both transport flags `trans_use_in_tour_rate_generation=0`, `indicative_only` default, zero published Transport Rates, and disabled Booking/Checkout. A USD *foreign* price is **not** silently turned into a universal EGP starting price for Egyptian clients.
+- Two-site tests: native evidence readback, PHP/JS lint, 2/2 editor source/role overlays, child pricing null, 2027 calendar unsupported, two native rail stage guards still blocked, zero selling rates or supplier cost approvals. Historical source and Company price policies unchanged. **No authenticated graphical admin-browser QA** is claimed.
+
+**One-time guarded migration** (already applied): `tools/wp-cli/enroll-abela-sleeper-tariff-evidence-20261122.php`. Existing evidence must be reconciled/versioned before a second migration; never overwrite postmeta blindly. VPS root checkpoint `/opt/mad4b-package-checkpoints/2026-11-22-abela-official-rail-tariff/`.
+
+**Decision boundary:** The user's “accept from the published display” authorizes **source-backed public fare reference data**. It cannot by itself prove the quote on a future specific train/date, confirm a cabin or child rule, or replace a privately approved supplier receipt. Do not mark these Transport Rates commercially ready without independent service-date verification.

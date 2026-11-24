@@ -9,6 +9,11 @@
     <taxonomy translate="0">transport-vehicle-types</taxonomy>
   </taxonomies>
   <custom-fields>
+    <!-- Taxonomy Programs is translatable; saved ID references are NOT text.
+         Keep the canonical itinerary program relationship stable across WPML
+         translations, and edit localized names in Programs Taxonomy Translation. -->
+    <custom-field action="copy">related_program_terms</custom-field>
+    <custom-field action="copy">program_term_id</custom-field>
     <custom-field action="copy">trans_vehicle_category_key</custom-field>
     <custom-field action="copy">trans_service_kind</custom-field>
     <custom-field action="copy">trans_route_pattern</custom-field>

@@ -25,6 +25,8 @@ STANDALONE_PHP_REGRESSIONS = frozenset((
     "tests/remote-execution/chatgpt-optional-catalog-smoke.php",
     "tests/remote-execution/developer-preparation-bridge-smoke.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-adaptive-budget.php",
+    # Exact hermetic, no-network, read-only MCP catalog ability/descriptor fixture.
+    "wp-content/plugins/mad4b-site-control-plane/tests/runtime-optional-entity-catalog.php",
     # QA31 exact hermetic PHP fixtures; arbitrary PHP execution remains blocked.
     "wp-content/plugins/mad4b-site-control-plane/tests/live-write-provider-snapshot-runtime.php",
     "wp-content/plugins/mad4b-site-control-plane/tests/native-plugin-management-menu-runtime.php",

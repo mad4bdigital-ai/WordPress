@@ -1,0 +1,40 @@
+name: MAD4B Form 6 Thank-you Redirect Contract
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mad4b-form6-thankyou-redirect.yml'
+      - 'wp-content/mu-plugins/mad4b-tour-form6-submission-mode-v1.php'
+      - 'wp-content/mu-plugins/assets/mad4b-tour-form6-submission-mode-v1.js'
+      - 'wp-content/mu-plugins/assets/mad4b-tour-form6-submission-mode-v1.css'
+      - 'tests/form6-thankyou-payment-redirect-v130.php'
+      - 'tests/form6-thankyou-payment-redirect-v130.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  thankyou-redirect-contract:
+    name: Hermetic PHP / JavaScript payment redirect contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert isolated PHP confirmation and no forced redirect
+        run: |
+          php --version
+          php -l wp-content/mu-plugins/mad4b-tour-form6-submission-mode-v1.php
+          php -l tests/form6-thankyou-payment-redirect-v130.php
+          php tests/form6-thankyou-payment-redirect-v130.php
+      - name: Assert countdown, cancellation, safe destination and DOM isolation
+        run: |
+          node --version
+          node --check wp-content/mu-plugins/assets/mad4b-tour-form6-submission-mode-v1.js
+          node --check tests/form6-thankyou-payment-redirect-v130.js
+          node tests/form6-thankyou-payment-redirect-v130.js
+      - name: Check CSS syntax markers and ensure tests did not change source
+        run: |
+          test -s wp-content/mu-plugins/assets/mad4b-tour-form6-submission-mode-v1.css
+          grep -q 'mad4b-form6-payment-countdown' wp-content/mu-plugins/assets/mad4b-tour-form6-submission-mode-v1.css
+          git diff --exit-code

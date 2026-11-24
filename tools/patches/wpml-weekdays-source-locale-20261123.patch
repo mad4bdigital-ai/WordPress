@@ -1,0 +1,23 @@
+--- a/wp-content/mu-plugins/shared-product-core/scheduling/policy-settings.php
++++ b/wp-content/mu-plugins/shared-product-core/scheduling/policy-settings.php
+@@ -49,7 +49,19 @@
+    $mapped=$term;
+    if(has_filter('wpml_object_id')){
+     $ref=apply_filters('wpml_object_id',(int)$term->term_id,$tax,false,'en');
+-    if($ref){$other=get_term((int)$ref,$tax);if($other instanceof WP_Term)$mapped=$other;}
++    if($ref){
++     // WPML can transparently remap get_term(source_id) back to a localized
++     // weekday (e.g. es/lunes, it/lunedi), whose slug will not match the
++     // canonical Sunday..Saturday map. Read the resolved source ID in the
++     // source language, then restore the active editor/visitor language.
++     $active=(string)apply_filters('wpml_current_language','');
++     $default=(string)apply_filters('wpml_default_language','en');
++     $switch=$active!==''&&$default!==''&&$active!==$default;
++     if($switch)do_action('wpml_switch_language',$default);
++     try {$other=get_term((int)$ref,$tax);}
++     finally {if($switch)do_action('wpml_switch_language',$active);}
++     if($other instanceof WP_Term)$mapped=$other;
++    }
+    }
+    $slug=strtolower((string)$mapped->slug);
+    if(isset($map[$slug]))$days[]=$map[$slug];

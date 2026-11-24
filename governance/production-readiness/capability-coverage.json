@@ -11538,6 +11538,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The existing original Agent Registry exact grant, Staging-only provider review, site profile, mutation gate, owner approval, checkpoint, readback and audit safeguards govern this single diagnostic, without wildcard rights.",
       "review_rationale": "Exact source review allows a core grant to be considered only for mad4b/hub-queue-site-health-enqueue when the Ability is registered on the correct central Staging site. No grant is issued merely because this provider pair appears; broad hub-bulk-enqueue remains outside the reviewed policy and Production is not enabled."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-core-catalog.php",
+      "source_blob_sha": "e434a1ce72955913c1057002f6762a6f9398fc4b",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-optional-entity-catalog.php"
+      ],
+      "owner_role": "CI-only source-change technical review; independent Repository Owner production attestation remains mandatory",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "GOVERNANCE-01",
+        "MCP-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing read MCP registration, descriptor verification, optional host Ability admission and no-write security controls apply. This code does not introduce an authorizing Ability or expand a public ChatGPT surface.",
+      "review_rationale": "Reviewed exact source change in core server catalog: entity-reference-resolve is supplied only by an optional company MU plugin and must not be advertised in packaged plugin-only installs. Moved it from mandatory read list to existing wp_has_ability plus verified descriptor gate on mad4b-read only. Regression test executes four capability/descriptor cases and checks no ChatGPT exposure or stale recursion state; neither provider permissions nor Production releases are approved."
     }
   ],
   "code_change_rules": {

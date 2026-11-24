@@ -1,0 +1,267 @@
+--- a/wp-content/mu-plugins/277-mad4b-pricing-booking-date-policy.php
++++ b/wp-content/mu-plugins/277-mad4b-pricing-booking-date-policy.php
+@@ -106,9 +106,13 @@
+             // Distinguish source data coverage from payment-route enablement.
+             // Tours.dev may be inquiry-only by company policy even with fully
+             // populated direct prices; never label every tour as unpriced.
+-            $unit=(string)get_post_meta($canonical,'tour_price_unit',true);
++            $unit=class_exists('MAD4B_Component_Selling_Basis_V1',false)
++                ?MAD4B_Component_Selling_Basis_V1::unit((int)$canonical)
++                :(string)get_post_meta($canonical,'tour_price_unit',true);
+             $amount=get_post_meta($canonical,'start_price',true);
+-            $currency=(string)get_post_meta($canonical,'tour_base_currency',true);
++            $currency=class_exists('MAD4B_Component_Selling_Basis_V1',false)
++                ?MAD4B_Component_Selling_Basis_V1::currency((int)$canonical)
++                :(string)get_post_meta($canonical,'tour_base_currency',true);
+             $directInputReady=in_array($unit,[
+                 'per_person','per_room','per_cabin','per_vehicle',
+                 'per_day','per_trip','table'],true)
+--- a/wp-content/mu-plugins/mad4b-tour-price-distribution-v1.php
++++ b/wp-content/mu-plugins/mad4b-tour-price-distribution-v1.php
+@@ -120,7 +120,10 @@
+         $projection = shared_lab_tour_price_resolve($id, $day);
+         $candidates = [];
+         $direct = self::positive_money(get_post_meta($id, 'start_price', true));
+-        $direct_currency = self::currency(get_post_meta($id, 'tour_base_currency', true));
++        $direct_currency = self::currency(
++           class_exists('MAD4B_Component_Selling_Basis_V1',false)
++            ?MAD4B_Component_Selling_Basis_V1::currency($id)
++            :get_post_meta($id, 'tour_base_currency', true));
+         if ($direct !== null && $direct_currency !== '') {
+             $candidates['direct'] = ['amount'=>$direct, 'currency'=>$direct_currency];
+         }
+@@ -160,7 +163,9 @@
+             : pricing_currency_convert($raw_amount, $source_currency, $currency);
+         $amount = self::positive_money($amount);
+         if ($amount === null) return self::status($id, 'conversion_unavailable');
+-        $basis = (string)get_post_meta($id, 'tour_price_unit', true);
++        $basis = class_exists('MAD4B_Component_Selling_Basis_V1',false)
++          ?MAD4B_Component_Selling_Basis_V1::unit($id)
++          :(string)get_post_meta($id, 'tour_price_unit', true);
+         $known_bases = ['per_person','per_trip','per_room','per_cabin','per_day','per_vehicle','table'];
+         if (!in_array($basis,$known_bases,true)) $basis = 'unknown';
+         $details = $winner === 'rate' ? $rate : null;
+--- a/wp-content/mu-plugins/shared-product-core/adapters/cpt-product-price-compat.php
++++ b/wp-content/mu-plugins/shared-product-core/adapters/cpt-product-price-compat.php
+@@ -6,7 +6,9 @@
+  if($type==='tours-and-activities'){
+   $candidates=[];
+   $direct=get_post_meta($id,'start_price',true);
+-  $dc=strtoupper((string)get_post_meta($id,'tour_base_currency',true));
++  $dc=class_exists('MAD4B_Component_Selling_Basis_V1',false)
++   ?MAD4B_Component_Selling_Basis_V1::currency($id)
++   :strtoupper((string)get_post_meta($id,'tour_base_currency',true));
+   if(is_numeric($direct)&&is_finite((float)$direct)&&(float)$direct>=0&&preg_match('/^[A-Z]{3}$/D',$dc))
+    $candidates['direct']=['amount'=>(float)$direct,'currency'=>$dc];
+   $projection=function_exists('pricing_tour_price_projection')?pricing_tour_price_projection($id):['status'=>'unavailable'];
+--- a/wp-content/mu-plugins/shared-product-core/adapters/extra-selection-actions.php
++++ b/wp-content/mu-plugins/shared-product-core/adapters/extra-selection-actions.php
+@@ -38,10 +38,12 @@
+ function shared_product_direct_extra_quote($parent_rate_id,$extra_tour_id,$audience,$quantities){
+  $allowed=shared_product_allowed_optional_tour_ids($parent_rate_id);if(is_wp_error($allowed))return $allowed;
+  if(!in_array((int)$extra_tour_id,$allowed,true))return new WP_Error('optional_tour_not_linked');
+- $unit=(string)get_post_meta($extra_tour_id,'tour_price_unit',true);
++ $unit=class_exists('MAD4B_Component_Selling_Basis_V1',false)
++  ?MAD4B_Component_Selling_Basis_V1::unit((int)$extra_tour_id)
++  :(string)get_post_meta($extra_tour_id,'tour_price_unit',true);
+  if(!in_array($unit,['per_person','per_trip','per_day','per_room','per_vehicle','per_cabin'],true))return new WP_Error('tour_price_unit_missing');
+  if($audience==='egyptians'){$price=get_post_meta($extra_tour_id,'egyptians_start_price',true);$currency=get_post_meta($extra_tour_id,'tour_egyptians_currency',true);}
+- elseif($audience==='general'){$price=get_post_meta($extra_tour_id,'start_price',true);$currency=get_post_meta($extra_tour_id,'tour_base_currency',true);}
++ elseif($audience==='general'){$price=get_post_meta($extra_tour_id,'start_price',true);$currency=class_exists('MAD4B_Component_Selling_Basis_V1',false)?MAD4B_Component_Selling_Basis_V1::currency((int)$extra_tour_id):get_post_meta($extra_tour_id,'tour_base_currency',true);}
+  else return new WP_Error('invalid_audience');
+  if(!is_scalar($price)||!is_numeric($price)||(float)$price<0||!is_string($currency)||!preg_match('/^[A-Z]{3}$/D',$currency))return new WP_Error('extra_direct_price_unavailable');
+  $result=shared_product_unit_extended_amount($price,$unit,$quantities);if(is_wp_error($result))return $result;
+--- a/wp-content/mu-plugins/shared-product-core/adapters/presentation-form6-price-quote-v1.php
++++ b/wp-content/mu-plugins/shared-product-core/adapters/presentation-form6-price-quote-v1.php
+@@ -245,9 +245,14 @@
+      in_array(strtolower((string)get_post_meta($extraId,'stop_sale',true)),['1','yes','true'],true))
+    return new WP_Error('indicative_extra_unavailable');
+   $rawAmount=get_post_meta($extraId,'start_price',true);
+-  $extraCurrency=(string)get_post_meta($extraId,'tour_base_currency',true);
++  $extraCurrency=class_exists('MAD4B_Component_Selling_Basis_V1',false)
++   ?MAD4B_Component_Selling_Basis_V1::currency($extraId)
++   :(string)get_post_meta($extraId,'tour_base_currency',true);
++  $extraUnit=class_exists('MAD4B_Component_Selling_Basis_V1',false)
++   ?MAD4B_Component_Selling_Basis_V1::unit($extraId)
++   :(string)get_post_meta($extraId,'tour_price_unit',true);
+   if(!str_starts_with((string)get_post_meta($extraId,'_booking_experience_qa_pricing_fixture',true),'cart-lab-')||
+-     get_post_meta($extraId,'tour_price_unit',true)!=='per_person'||
++     $extraUnit!=='per_person'||
+      $extraCurrency!==$source||!is_scalar($rawAmount)||!is_numeric($rawAmount)||
+      !is_finite((float)$rawAmount)||(float)$rawAmount<=0){
+     $extraPending++;continue;
+--- a/wp-content/mu-plugins/shared-product-core/adapters/presentation-form6-source-context-v1.php
++++ b/wp-content/mu-plugins/shared-product-core/adapters/presentation-form6-source-context-v1.php
+@@ -53,8 +53,12 @@
+  // Direct quotes must use this language Tour, even if a Rate uses a
+  // default-language sibling after a verified WPML fallback.
+  $directAmount=get_post_meta($tour,'start_price',true);
+- $directCurrency=strtoupper((string)get_post_meta($tour,'tour_base_currency',true));
+- $directUnit=(string)get_post_meta($tour,'tour_price_unit',true);
++ $directCurrency=class_exists('MAD4B_Component_Selling_Basis_V1',false)
++  ?MAD4B_Component_Selling_Basis_V1::currency($tour)
++  :strtoupper((string)get_post_meta($tour,'tour_base_currency',true));
++ $directUnit=class_exists('MAD4B_Component_Selling_Basis_V1',false)
++  ?MAD4B_Component_Selling_Basis_V1::unit($tour)
++  :(string)get_post_meta($tour,'tour_price_unit',true);
+  $directAvailable=is_numeric($directAmount)&&is_finite((float)$directAmount)&&
+    (float)$directAmount>0&&preg_match('/^[A-Z]{3}$/D',$directCurrency)&&
+    in_array($directUnit,['per_person','per_trip','per_day','per_room',
+--- a/wp-content/mu-plugins/shared-product-core/adapters/presentation-tour-pricing-entry-v1.php
++++ b/wp-content/mu-plugins/shared-product-core/adapters/presentation-tour-pricing-entry-v1.php
+@@ -56,8 +56,12 @@
+    return ['ok'=>false,'code'=>'invalid_tour'];
+   $mode=self::chosen($id);$factors=self::factors($id);
+   $amount=get_post_meta($id,'start_price',true);
+-  $currency=(string)get_post_meta($id,'tour_base_currency',true);
+-  $basis=(string)get_post_meta($id,'tour_price_unit',true);
++  $currency=class_exists('MAD4B_Component_Selling_Basis_V1',false)
++   ?MAD4B_Component_Selling_Basis_V1::currency($id)
++   :(string)get_post_meta($id,'tour_base_currency',true);
++  $basis=class_exists('MAD4B_Component_Selling_Basis_V1',false)
++   ?MAD4B_Component_Selling_Basis_V1::unit($id)
++   :(string)get_post_meta($id,'tour_price_unit',true);
+   $direct=is_numeric($amount)&&is_finite((float)$amount)&&(float)$amount>0&&
+     preg_match('/^[A-Z]{3}$/D',$currency)&&array_key_exists($currency,get_woocommerce_currencies())&&$basis==='per_person';
+   $rates=get_posts(['post_type'=>'tour-rates','post_status'=>['publish','draft','private','pending'],
+@@ -132,7 +136,7 @@
+    echo '<option value="'.esc_attr($value).'" '.selected($mode['override'],$value,false).'>'.
+        esc_html($label).'</option>';
+   echo '</select></p>';
+-  echo '<p>For <strong>Direct</strong>, enter your selling price in the existing JetEngine <code>start_price</code>, <code>tour_base_currency</code> and <code>tour_price_unit=per_person</code> fields. No Supplier Cost or Contract needed.</p>';
++  echo '<p>For <strong>Direct</strong>, enter a verified selling price in <code>start_price</code>. Empty currency inherits the WooCommerce store currency; empty unit inherits the Dynamic Pricing Controls policy. Tour or Rate overrides win. A verified amount is still mandatory.</p>';
+   echo '<fieldset><legend><strong>Seed Rate simulation — occupancy multipliers</strong></legend>';
+   foreach($factors as $key=>$factor) {
+     echo '<label>'.esc_html(ucfirst($key)).' <input type="number" name="shared_tour_seed_factors['.
+--- a/wp-content/mu-plugins/shared-product-core/pricing/booking-configuration-v2.php
++++ b/wp-content/mu-plugins/shared-product-core/pricing/booking-configuration-v2.php
+@@ -317,7 +317,9 @@
+   }
+   if($c['selections'])return new WP_Error('booking_v2_direct_selections_not_certified');
+ 
+-  $unit=(string)get_post_meta($c['tour_id'],'tour_price_unit',true);
++  $unit=class_exists('MAD4B_Component_Selling_Basis_V1',false)
++   ?MAD4B_Component_Selling_Basis_V1::unit((int)$c['tour_id'])
++   :(string)get_post_meta($c['tour_id'],'tour_price_unit',true);
+   $allowed=['per_person','per_cabin','per_room','per_vehicle','per_day','per_trip','table'];
+   if(!in_array($unit,$allowed,true))return new WP_Error('booking_v2_direct_unit_invalid');
+   if($c['audience']==='egyptians'){
+@@ -325,7 +327,9 @@
+     $source_currency=get_post_meta($c['tour_id'],'tour_egyptians_currency',true);
+   }elseif($c['audience']==='general'){
+     $raw=get_post_meta($c['tour_id'],'start_price',true);
+-    $source_currency=get_post_meta($c['tour_id'],'tour_base_currency',true);
++    $source_currency=class_exists('MAD4B_Component_Selling_Basis_V1',false)
++     ?MAD4B_Component_Selling_Basis_V1::currency((int)$c['tour_id'])
++     :get_post_meta($c['tour_id'],'tour_base_currency',true);
+   }else return new WP_Error('booking_v2_direct_audience_invalid');
+   if(!is_scalar($raw)||!is_numeric($raw)||!is_finite((float)$raw)||(float)$raw<=0||
+      !is_string($source_currency)||!preg_match('/^[A-Z]{3}$/D',$source_currency))return new WP_Error('booking_v2_direct_price_or_currency_missing');
+--- a/wp-content/mu-plugins/shared-product-core/pricing/extra-source-quote.php
++++ b/wp-content/mu-plugins/shared-product-core/pricing/extra-source-quote.php
+@@ -28,7 +28,11 @@
+  $candidates=[];$details=[];
+  $price=get_post_meta($tour,$audience==='egyptians'?'egyptians_start_price':'start_price',true);
+  $source=get_post_meta($tour,$audience==='egyptians'?'tour_egyptians_currency':'tour_base_currency',true);
+- $unit=(string)get_post_meta($tour,'tour_price_unit',true);
++ if($audience==='general' && class_exists('MAD4B_Component_Selling_Basis_V1',false))
++   $source=MAD4B_Component_Selling_Basis_V1::currency($tour);
++ $unit=class_exists('MAD4B_Component_Selling_Basis_V1',false)
++   ?MAD4B_Component_Selling_Basis_V1::unit($tour)
++   :(string)get_post_meta($tour,'tour_price_unit',true);
+  if(is_scalar($price)&&!is_bool($price)&&is_numeric($price)&&is_finite((float)$price)&&(float)$price>=0&&is_string($source)&&preg_match('/^[A-Z]{3}$/D',$source)){
+   $extended=shared_product_unit_extended_amount($price,$unit,$quantities);
+   if(!is_wp_error($extended)){$candidates['direct']=['amount'=>$extended['amount'],'currency'=>$source];$details['direct']=['rate_id'=>null,'unit'=>$unit,'quantity'=>$extended['quantity']];}
+--- a/wp-content/mu-plugins/shared-product-core/pricing/rate-generation.php
++++ b/wp-content/mu-plugins/shared-product-core/pricing/rate-generation.php
+@@ -47,6 +47,11 @@
+   $money=$hasPrice?self::money($input['amount']):null;
+   if(is_wp_error($money))return $money;
+   $currency=$input['currency']??null;
++  // Retail-only authoring: inherit company base when omitted; never infer an
++  // original SUPPLIER cost currency from a WooCommerce sales currency.
++  if(($currency===null||$currency==='')&&!$hasCost &&
++    class_exists('MAD4B_Component_Selling_Basis_V1',false))
++      $currency=MAD4B_Component_Selling_Basis_V1::currency((int)$id);
+   if(!is_string($currency)||!preg_match('/^[A-Z]{3}$/D',$currency)||
+       !in_array($currency,array_keys(get_woocommerce_currencies()),true))
+    return new WP_Error('rate_generator_currency_invalid');
+@@ -92,6 +97,9 @@
+    return new WP_Error('rate_generator_supplier_fields_incomplete');
+   if($money===null)return new WP_Error('rate_generator_amount_or_supplier_cost_required');
+   $unit=$input['price_unit']??null;
++  if(($unit===null||$unit==='') &&
++    class_exists('MAD4B_Component_Selling_Basis_V1',false))
++     $unit=MAD4B_Component_Selling_Basis_V1::unit((int)$id);
+   $supported=self::units($kind);
+   if(!is_string($unit)||!isset($supported[$unit]))return new WP_Error('rate_generator_unit_invalid');
+   $rateType=$types[$kind];
+@@ -161,8 +169,12 @@
+     }else{
+       if($source)return new WP_Error('rate_generator_seed_origin_source_conflict');
+       if((string)get_post_meta($id,'start_price',true)!==(string)$input['amount']||
+-        (string)get_post_meta($id,'tour_base_currency',true)!==$currency||
+-        (string)get_post_meta($id,'tour_price_unit',true)!=='per_person')
++        (class_exists('MAD4B_Component_Selling_Basis_V1',false)
++         ? MAD4B_Component_Selling_Basis_V1::currency((int)$id)
++         : (string)get_post_meta($id,'tour_base_currency',true))!==$currency||
++        (class_exists('MAD4B_Component_Selling_Basis_V1',false)
++         ? MAD4B_Component_Selling_Basis_V1::unit((int)$id)
++         : (string)get_post_meta($id,'tour_price_unit',true))!=='per_person')
+         return new WP_Error('rate_generator_seed_direct_snapshot_mismatch');
+       $snapshot=['start_price'=>get_post_meta($id,'start_price',true),
+         'tour_base_currency'=>$currency,'tour_price_unit'=>'per_person'];
+--- a/wp-content/mu-plugins/shared-product-core/pricing/rate-planner.php
++++ b/wp-content/mu-plugins/shared-product-core/pricing/rate-planner.php
+@@ -39,7 +39,13 @@
+   return ['status'=>'resolved','digest'=>$r['policy_digest'],'revision'=>$r['policy_revision'],'effective'=>$r['effective'],'provenance'=>$r['provenance']];
+  }
+  private static function source(int $tour,array $rates,array $window,int $package):array {
+-  $direct=null;$rateChoices=[];$amount=get_post_meta($tour,'start_price',true);$currency=(string)get_post_meta($tour,'tour_base_currency',true);$basis=get_post_meta($tour,'tour_price_unit',true);
++  $direct=null;$rateChoices=[];$amount=get_post_meta($tour,'start_price',true);
++  $currency=class_exists('MAD4B_Component_Selling_Basis_V1',false)
++    ?MAD4B_Component_Selling_Basis_V1::currency($tour)
++    :(string)get_post_meta($tour,'tour_base_currency',true);
++  $basis=class_exists('MAD4B_Component_Selling_Basis_V1',false)
++    ?MAD4B_Component_Selling_Basis_V1::unit($tour)
++    :get_post_meta($tour,'tour_price_unit',true);
+   if(is_numeric($amount)&&(float)$amount>0&&$basis==='per_person'&&isset(get_woocommerce_currencies()[$currency]))$direct=['kind'=>'tour_initial_retail','id'=>$tour,'amount'=>(string)$amount,'currency'=>$currency,'factors'=>shared_product_tour_seed_factors($tour),'occupancy_cost_verified'=>false];
+   foreach($rates as $rid){if((int)get_post_meta($rid,'related_tour_id',true)!==$tour)continue;
+    if(in_array(strtolower((string)get_post_meta($rid,'stop_sale',true)),['1','true','yes','on'],true)||(string)get_post_meta($rid,'avilabile_status',true)==='0')continue;
+--- a/wp-content/mu-plugins/shared-product-core/scheduling/eligibility.php
++++ b/wp-content/mu-plugins/shared-product-core/scheduling/eligibility.php
+@@ -80,9 +80,13 @@
+      $covered?'rate_covers_travel_date':'rate_outside_travel_date','tour_rates');
+    }
+   }else{
+-   $unit=(string)get_post_meta($tour,'tour_price_unit',true);
++   $unit=class_exists('MAD4B_Component_Selling_Basis_V1',false)
++    ?MAD4B_Component_Selling_Basis_V1::unit($tour)
++    :(string)get_post_meta($tour,'tour_price_unit',true);
+    $raw=get_post_meta($tour,$audience==='egyptians'?'egyptians_start_price':'start_price',true);
+    $currency=get_post_meta($tour,$audience==='egyptians'?'tour_egyptians_currency':'tour_base_currency',true);
++   if($audience==='general' && class_exists('MAD4B_Component_Selling_Basis_V1',false))
++    $currency=MAD4B_Component_Selling_Basis_V1::currency($tour);
+    $ok=in_array($unit,['per_person','per_room','per_cabin','per_vehicle','per_day','per_trip','table'],true)
+     &&is_numeric($raw)&&is_finite((float)$raw)&&(float)$raw>0
+     &&is_string($currency)&&preg_match('/^[A-Z]{3}$/D',$currency);
+--- a/wp-content/plugins/commerce-composition/includes/SingleFluentPaymentRouter.php
++++ b/wp-content/plugins/commerce-composition/includes/SingleFluentPaymentRouter.php
+@@ -89,11 +89,15 @@
+       ||get_post_meta($source,'_booking_experience_qa_pricing_fixture',true)!==''
+       ||get_post_meta($source,'_shared_tour_price_entry_mode_v1',true)==='inquiry'
+       ||in_array(strtolower((string)get_post_meta($source,'stop_sale',true)),['1','yes','true'],true)
+-      ||(string)get_post_meta($source,'tour_price_unit',true)!=='per_person'
++      ||(class_exists('MAD4B_Component_Selling_Basis_V1',false)
++        ? \MAD4B_Component_Selling_Basis_V1::unit($source)
++        : (string)get_post_meta($source,'tour_price_unit',true))!=='per_person'
+       ||!function_exists('shared_product_resolve_price_sources'))
+     return false;
+   $amount=get_post_meta($source,'start_price',true);
+-  $currency=(string)get_post_meta($source,'tour_base_currency',true);
++  $currency=class_exists('MAD4B_Component_Selling_Basis_V1',false)
++   ?\MAD4B_Component_Selling_Basis_V1::currency($source)
++   :(string)get_post_meta($source,'tour_base_currency',true);
+   if(!is_numeric($amount)||!is_finite((float)$amount)||(float)$amount<=0
+       ||!preg_match('/^[A-Z]{3}$/D',$currency)
+       ||!array_key_exists($currency,get_woocommerce_currencies()))

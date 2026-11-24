@@ -2,7 +2,18 @@
 /** Core server catalog declarations, extracted without changing the dispatch contract. */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 trait MAD4B_SCP_Server_Core_Catalog {
+	/** Request-local recursive catalog composition gate. Never grants authority. */
+	private static $mad4b_declared_core_catalog_in_progress_v113 = array();
+
 	private static function declared_core_tools( $server_id ) {
+		$server_id = (string) $server_id;
+		// A structural read provider may query this inventory while the catalog
+		// is still being built. Returning an empty nested inventory fails closed.
+		// Without this guard the recursion exhausts the 1GiB FPM memory limit.
+		if ( isset( self::$mad4b_declared_core_catalog_in_progress_v113[ $server_id ] ) ) return array();
+		self::$mad4b_declared_core_catalog_in_progress_v113[ $server_id ] = true;
+		try {
+
         $cso_read = in_array( $server_id, array( 'mad4b-read', 'mad4b-chatgpt' ), true )
             && class_exists( 'MAD4B_SCP_CSO01_Read_Foundation', false )
             ? MAD4B_SCP_CSO01_Read_Foundation::read_ability_names() : array();
@@ -105,8 +116,55 @@ trait MAD4B_SCP_Server_Core_Catalog {
 			'mad4b-developer-breakglass' => class_exists( 'MAD4B_SCP_Developer_Runtime' ) ? MAD4B_SCP_Developer_Runtime::tool_names( true ) : array(),
 			'mad4b-breakglass' => array( 'mad4b/database-raw-query' ),
 		);
+        // These features belong to optional live-host or site-specific
+        // modules, not the portable Control Plane plugin. Mount each only
+        // where its WordPress Ability AND canonical MCP descriptor exist;
+        // preserve the exact original read/ChatGPT surfaces per ability.
+        // Never downgrade descriptor verification for the required catalog.
+        $optional_host_reads = array(
+            'mad4b/control-plane-test-route' => array( 'mad4b-read', 'mad4b-chatgpt' ),
+            'mad4b/execution-unified-plan' => array( 'mad4b-read' ),
+            'mad4b/scoped-build-verification' => array( 'mad4b-read' ),
+            'mad4b/entity-reference-resolve' => array( 'mad4b-read' ),
+        );
+        if ( function_exists( 'wp_has_ability' )
+            && class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry', false ) ) {
+            foreach ( $optional_host_reads as $ability_name => $surfaces ) {
+                if ( ! in_array( $server_id, $surfaces, true )
+                    || ! wp_has_ability( $ability_name ) ) continue;
+                $descriptor = MAD4B_SCP_Capability_Descriptor_Registry::binding( $ability_name, 'servers' );
+                if ( ! is_wp_error( $descriptor ) ) $map[ $server_id ][] = $ability_name;
+            }
+        }
+        // Source Preflight is an optional first-party MU component. In a
+        // plugin-only installation (e.g. CI), no MU registration exists, and
+        // the MCP read server must never advertise an absent Ability.
+        if ( 'mad4b-read' === $server_id && class_exists( 'MAD4B_Release_Source_Admission', false )
+            && function_exists( 'wp_has_ability' ) && wp_has_ability( MAD4B_Release_Source_Admission::ABILITY )
+            && class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry', false ) ) {
+            // A WordPress Ability can exist before its first-party MCP schema
+            // descriptor has been bound (especially in minimal CI installs).
+            // An optional read status must never break the required read MCP.
+            $binding = MAD4B_SCP_Capability_Descriptor_Registry::binding(
+                MAD4B_Release_Source_Admission::ABILITY, 'servers' );
+            if ( ! is_wp_error( $binding ) )
+                $map['mad4b-read'][] = MAD4B_Release_Source_Admission::ABILITY;
+        }
 		if ( 'mad4b-write' === $server_id ) return self::write_tools();
 		$tools = isset( $map[ $server_id ] ) ? $map[ $server_id ] : array();
+		// Company-only Abilities ride the existing authenticated MCP catalog.
+		// A direct ChatGPT transport is still subject to the OAuth identity
+		// and can never cross into a central Company Management site.
+		if(in_array($server_id,['mad4b-read','mad4b-chatgpt'],true)
+		   &&class_exists('MAD4B_Company_Media_MCP_V1',false)
+		   &&MAD4B_Company_Media_MCP_V1::company_site()){
+			foreach([MAD4B_Company_Media_MCP_V1::STATUS_ABILITY,
+			          MAD4B_Company_Media_MCP_V1::PLAN_ABILITY] as $ability){
+				if(function_exists('wp_has_ability')&&wp_has_ability($ability))
+					$tools[]=$ability;
+			}
+		}
+
 		// Mount only the resolver registration created by this plugin. Never
 		// widen meta.mcp.public for the default server or trust a name collision.
 		if ( 'mad4b-read' === $server_id && class_exists( 'MAD4B_SCP_Deployment_Mode_Resolver' ) ) {
@@ -133,5 +191,8 @@ trait MAD4B_SCP_Server_Core_Catalog {
 			$tools[] = MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY;
 		}
 		return array_values( array_unique( $tools ) );
+		} finally {
+			unset( self::$mad4b_declared_core_catalog_in_progress_v113[ $server_id ] );
+		}
 	}
 }
