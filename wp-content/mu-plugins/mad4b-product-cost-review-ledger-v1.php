@@ -437,6 +437,7 @@ final class MAD4B_Product_Cost_Review_Ledger_V1 {
             'cabins'=>min(60,absint($_GET['cabins']??0)),
             'guide_language_id'=>absint($_GET['guide_language_id']??0),
             'nationality'=>is_string($_GET['nationality']??null)?strtoupper(sanitize_text_field(wp_unslash($_GET['nationality']))):'',
+            'entrance_cohorts'=>is_string($_GET['entrance_cohorts']??null)?sanitize_textarea_field(wp_unslash($_GET['entrance_cohorts'])):'',
         ];
     }
     private static function dateForm(int $id,array $options):void {
@@ -447,6 +448,7 @@ final class MAD4B_Product_Cost_Review_Ledger_V1 {
         echo '<input type="hidden" name="product_id" value="'.esc_attr((string)$id).'">';
         echo '<label>Travel date <input type="date" name="date" value="'.esc_attr($options['date']).'"></label> ';
         echo '<label>Passport nationality (same for party) <input name="nationality" maxlength="2" pattern="[A-Za-z]{2}" placeholder="US" value="'.esc_attr($options['nationality']??'').'"></label> ';
+        echo '<p><label>Optional entrance cohorts (one line each: country,category,age,quantity,student-ID checked yes/no)<br><textarea name="entrance_cohorts" rows="3" maxlength="3000" placeholder="EG,adult,35,1,no&#10;US,student,20,1,yes">'.esc_textarea($options['entrance_cohorts']??'').'</textarea></label></p>';
         echo '<label>Package Tier <select name="tier_id"><option value="0">Choose</option>';
         if(class_exists('MAD4B_Package_Pricing_Lab_Readiness_V1',false)){
             foreach(MAD4B_Package_Pricing_Lab_Readiness_V1::tierIds() as $tier){
@@ -596,7 +598,7 @@ final class MAD4B_Product_Cost_Review_Ledger_V1 {
         echo '<input type="hidden" name="action" value="mad4b_product_cost_review_record_v1">';
         echo '<input type="hidden" name="product_id" value="'.esc_attr((string)$id).'">';
         echo '<input type="hidden" name="expected_fingerprint" value="'.esc_attr($data['source_fingerprint']).'">';
-        foreach(['date','tier_id','currency','rooms','adults','children','infants','nights','days','vehicles','guides','cabins','guide_language_id','nationality'] as $key)
+        foreach(['date','tier_id','currency','rooms','adults','children','infants','nights','days','vehicles','guides','cabins','guide_language_id','nationality','entrance_cohorts'] as $key)
             echo '<input type="hidden" name="context_'.$key.'" value="'.esc_attr((string)$options[$key]).'">';
         wp_nonce_field('mad4b_product_cost_review_'.$id,'review_nonce');
         echo '<label for="mad4b-cost-review-note">Reviewer note (max 500 characters)</label><p>';
@@ -637,8 +639,8 @@ final class MAD4B_Product_Cost_Review_Ledger_V1 {
         if(!$id||!self::allowed($id))wp_die('Cost review write is not authorized.','Access denied',['response'=>403]);
         check_admin_referer('mad4b_product_cost_review_'.$id,'review_nonce');
         $o=[];
-        foreach(['date','tier_id','currency','rooms','adults','children','infants','nights','days','vehicles','guides','cabins','guide_language_id','nationality'] as $key)
-            $o[$key]=sanitize_text_field((string)wp_unslash($_POST['context_'.$key]??''));
+        foreach(['date','tier_id','currency','rooms','adults','children','infants','nights','days','vehicles','guides','cabins','guide_language_id','nationality','entrance_cohorts'] as $key)
+            $o[$key]=$key==='entrance_cohorts'?sanitize_textarea_field((string)wp_unslash($_POST['context_'.$key]??'')):sanitize_text_field((string)wp_unslash($_POST['context_'.$key]??''));
         $expected=sanitize_text_field((string)wp_unslash($_POST['expected_fingerprint']??''));
         if(!preg_match('/^[a-f0-9]{64}$/D',$expected))wp_die('Invalid review source digest.','Invalid request',['response'=>400]);
         $latest=self::inspect($id,$o);
