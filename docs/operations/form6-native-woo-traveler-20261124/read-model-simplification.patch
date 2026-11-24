@@ -1,0 +1,79 @@
+diff --git a/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-decision-admin.php b/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-decision-admin.php
+index f930646..bb4a58b 100644
+--- a/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-decision-admin.php
++++ b/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-decision-admin.php
+@@ -207,7 +207,15 @@ final class MAD4B_SCP_Approval_Decision_Admin {
+ 		$view = isset( $_GET['view'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'view' ) ) : 'actionable';
+ 		if ( ! in_array( $view, array( 'actionable', 'history' ), true ) ) $view = 'actionable';
+ 		$base_url = add_query_arg( 'page', self::PAGE_SLUG, admin_url( 'admin.php' ) );
+-		echo '<nav class="nav-tab-wrapper"><a class="nav-tab ' . ( 'actionable' === $view ? 'nav-tab-active' : '' ) . '" href="' . esc_url( add_query_arg( 'view', 'actionable', $base_url ) ) . '">' . esc_html__( 'Needs action', 'mad4b-site-control-plane' ) . '</a><a class="nav-tab ' . ( 'history' === $view ? 'nav-tab-active' : '' ) . '" href="' . esc_url( add_query_arg( 'view', 'history', $base_url ) ) . '">' . esc_html__( 'History', 'mad4b-site-control-plane' ) . '</a></nav>';
++		echo '<nav class="nav-tab-wrapper">';
++		$tabs = array(
++			'actionable' => esc_html__( 'Needs action', 'mad4b-site-control-plane' ),
++			'history' => esc_html__( 'History', 'mad4b-site-control-plane' ),
++		);
++		foreach ( $tabs as $tab => $label ) {
++			echo '<a class="nav-tab ' . ( $tab === $view ? 'nav-tab-active' : '' ) . '" href="' . esc_url( add_query_arg( 'view', $tab, $base_url ) ) . '">' . $label . '</a>';
++		}
++		echo '</nav>';
+ 		if ( 'history' === $view ) {
+ 			$page = isset( $_GET['paged'] ) ? max( 1, min( 10000, absint( MAD4B_SCP_Admin_Experience::query_string( 'paged', '1', 5 ) ) ) ) : 1;
+ 			$result = MAD4B_SCP_Approval_Repository::history( $candidate, $page );
+diff --git a/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php b/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php
+index b95976e..898a227 100644
+--- a/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php
++++ b/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php
+@@ -105,8 +105,8 @@ final class MAD4B_SCP_Authorization {
+ 	public static function remote_permission_denial_code( $ability_name ) {
+ 		$ability_name = (string) $ability_name;
+ 		// Request-local, ability-scoped diagnostic only. No ticket or OAuth evidence is exposed.
+-		return array_key_exists( $ability_name, self::$execution_callback_started )
+-			? ( isset( self::$remote_permission_denial_codes[ $ability_name ] ) ? (string) self::$remote_permission_denial_codes[ $ability_name ] : '' ) : '';
++		if ( ! array_key_exists( $ability_name, self::$execution_callback_started ) ) return '';
++		return (string) ( self::$remote_permission_denial_codes[ $ability_name ] ?? '' );
+ 	}
+ 
+ 	public static function clear_execution_callback_observation( $ability_name ) {
+diff --git a/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-truth.php b/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-truth.php
+index 0b9725c..f4e8e57 100644
+--- a/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-truth.php
++++ b/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-truth.php
+@@ -502,7 +502,7 @@ final class MAD4B_SCP_Live_Truth {
+ 		if ( ! $checks['no_wildcard_grants'] ) $blockers[] = 'wildcard_grants_detected';
+ 
+ 		$rest = self::local_rest_isolation();
+-		$external_wpml = class_exists( 'MAD4B_SCP_Truth_Projection' ) ? MAD4B_SCP_Truth_Projection::external_wpml( true ) : array( 'required' => true, 'verified' => false, 'state' => 'pending', 'source_contract' => '', 'receipt' => array() );
++		$external_wpml = self::external_wpml_snapshot();
+ 		$checks['rest_enabled'] = ! empty( $rest['rest_enabled'] );
+ 		$checks['control_plane_not_on_rest_enabled_hook'] = empty( $rest['control_plane_filters_rest_enabled'] );
+ 		$checks['control_plane_not_on_rest_authentication_hook'] = empty( $rest['control_plane_filters_rest_authentication_errors'] );
+@@ -593,6 +593,11 @@ final class MAD4B_SCP_Live_Truth {
+ 		);
+ 	}
+ 
++	/** Request-local diagnostic snapshot; never cache or change acceptance policy. */
++	private static function external_wpml_snapshot() {
++		return class_exists( 'MAD4B_SCP_Truth_Projection' ) ? MAD4B_SCP_Truth_Projection::external_wpml( true ) : array( 'required' => true, 'verified' => false, 'state' => 'pending', 'source_contract' => '', 'receipt' => array() );
++	}
++
+ 	public static function current_rest_compatibility() {
+ 		$diagnostic = class_exists( 'MAD4B_SCP_REST_Compatibility' ) ? MAD4B_SCP_REST_Compatibility::status() : array();
+ 		$local = self::local_rest_isolation();
+@@ -602,7 +607,7 @@ final class MAD4B_SCP_Live_Truth {
+ 		$diagnostic['local_rest_isolation_ready'] = ! empty( $local['ready'] );
+ 		$diagnostic['wpml_internal_probe_role'] = 'diagnostic_only';
+ 		$diagnostic['wpml_internal_probe_blocks_local_certification'] = false;
+-		$external_wpml = class_exists( 'MAD4B_SCP_Truth_Projection' ) ? MAD4B_SCP_Truth_Projection::external_wpml( true ) : array( 'required' => true, 'verified' => false, 'state' => 'pending', 'source_contract' => '', 'receipt' => array() );
++		$external_wpml = self::external_wpml_snapshot();
+ 		$diagnostic['external_wpml_acceptance_required'] = ! empty( $external_wpml['required'] );
+ 		$diagnostic['external_wpml_acceptance_verified'] = ! empty( $external_wpml['verified'] );
+ 		$diagnostic['external_wpml_acceptance_state'] = isset( $external_wpml['state'] ) ? (string) $external_wpml['state'] : 'pending';
+@@ -620,7 +625,7 @@ final class MAD4B_SCP_Live_Truth {
+ 		$freshness = get_option( self::FRESHNESS_OPTION, array() );
+ 		$reasons = self::stale_reasons( $value, $freshness, $identity );
+ 		if ( empty( $reasons ) ) return $value;
+-		$external_wpml = class_exists( 'MAD4B_SCP_Truth_Projection' ) ? MAD4B_SCP_Truth_Projection::external_wpml( true ) : array( 'required' => true, 'verified' => false, 'state' => 'pending', 'source_contract' => '', 'receipt' => array() );
++		$external_wpml = self::external_wpml_snapshot();
+ 
+ 		return array(
+ 			'contract' => class_exists( 'MAD4B_SCP_Write_Runtime_Certification' ) ? MAD4B_SCP_Write_Runtime_Certification::CONTRACT : 'mad4b.write-runtime-certification.v3',
