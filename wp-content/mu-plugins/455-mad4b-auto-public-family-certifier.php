@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Automatic Public Elementor Family Certifier
  * Description: Discover only verifiable public container subtrees in signed Elementor family documents.
- * Version: 0.1.3
+ * Version: 0.1.4
  */
 defined('ABSPATH') || exit;
 
@@ -180,10 +180,14 @@ final class MAD4B_Auto_Public_Family_V1 {
         // before this root can enter the public snapshot path.
         $pending=get_option('mad4b_auto_family_pending_v1',[]);
         $entry=is_array($pending)?($pending['roots'][$family.'|'.$id]??null):null;
-        if(is_array($entry)
-            && ($entry['family_sha']??'')===$root['family_sha256']
-            && ($entry['root_sha']??'')===$root['root_sha256'])
-            return null;
+        if(is_array($entry))return null; // any outstanding witness denies replay
+        if(class_exists('MAD4B_Auto_Family_Revision_V1',false)
+            && MAD4B_Auto_Family_Revision_V1::mode()!=='off'){
+            $state=get_option('mad4b_auto_family_revision_state_v1',[]);
+            if(!is_array($state)||($state['site_host']??'')!==wp_parse_url(home_url('/'),PHP_URL_HOST)
+                ||($state['families'][$family]['sha']??'')!==$root['family_sha256']
+                ||($state['families'][$family]['roots'][$id]??'')!==$root['root_sha256'])return null;
+        }
         return $root;
     }
     public static function validate(array $sub,array $root):bool {
