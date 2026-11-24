@@ -58,6 +58,10 @@ assert '$element.clone()' in old_spacer and 'hiddenByBreakpoint' not in old_spac
 assert 'hiddenByBreakpoint' in new_spacer
 assert '$element.clone( false, false ).empty()' in new_spacer
 assert '$element.clone()' in new_spacer, 'visible sticky branch must remain full clone'
+assert "containsFluentBooking" in new_spacer
+assert "getBoundingClientRect().height" in new_spacer
+assert "occupiedHeight" in new_spacer
+assert "minHeight" in new_spacer and "boxSizing" in new_spacer
 assert original_js.replace(old_spacer, new_spacer, 1) == successor_js, (
     'only the hidden-sticky spacer creation may differ from upstream PR895'
 )
