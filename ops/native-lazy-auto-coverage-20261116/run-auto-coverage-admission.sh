@@ -4,7 +4,7 @@
 set -euo pipefail
 umask 077
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-SRC=/opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261115
+SRC=/opt/mad4b-company-provisioning/runtime-source/native-lazy-discovery-20261124
 APP="$SRC/ops/native-lazy-auto-coverage-20261116"
 LIVE=/opt/hostinger-migrations/hosting-3/etg-commerce-staging/site-copy
 REPORT=/opt/mad4b-company-provisioning/reports/native-lazy-coverage-discovery-20261116
@@ -16,6 +16,11 @@ exec 9>/run/lock/mad4b-native-lazy-auto-admission.lock
 if ! flock -n 9;then echo 'SKIP: coverage admission running';exit 0;fi
 exec 8>/run/lock/mad4b-native-lazy-browser-global.lock
 if ! flock -n 8;then echo 'SKIP: another governed browser audit owns the shared lock';exit 0;fi
+# Respect existing browser resource ceiling; never weaken admission.
+load="$(cut -d' ' -f1 /proc/loadavg)"
+if awk -v l="$load" 'BEGIN{exit !(l>=5.6)}'; then
+ echo 'SKIP: browser QA resource ceiling reached';exit 0
+fi
 test -e "$REPORT/latest"
 for file in mad4b-secondary-listing-lazy.php mad4b-render-query-governor.php;do
  a=$(sha256sum "$SRC/wp-content/mu-plugins/$file"|cut -d' ' -f1)
@@ -145,6 +150,34 @@ NATIVE_PASS
       "$work/fresh-ssr.jsonl" "$locale" "$widget" "$url" "$work" > "$work/prepare.log" 2>&1;then
    echo "HOLD $label missing stable SSR baseline"; rejected=$((rejected+1));continue
  fi
+ # Capture the exact scoped source before the original browser QA.
+ # This is evidence collection only, not a qualification gate.
+ docker cp "$work/qa-config.json" "$PHP:/tmp/mad4b-family-capture-config.json"
+ docker exec -u0 "$PHP" chmod 644 /tmp/mad4b-family-capture-config.json
+ if timeout 30 docker exec "$PHP" wp --allow-root eval '
+   $c=json_decode((string)file_get_contents("/tmp/mad4b-family-capture-config.json"),true);
+   if(is_array($c)&&class_exists("MAD4B_Native_Layout_Epoch_Continuity_V1")&&method_exists("MAD4B_Native_Layout_Epoch_Continuity_V1","family_source")&&preg_match("/^[a-z]{2}(?:-[a-z]{2})?$/D",(string)($c["locale"]??""))){
+     $original=(string)apply_filters("wpml_current_language","");
+     try{
+       do_action("wpml_switch_language",$c["locale"]);
+       if((string)apply_filters("wpml_current_language","")===$c["locale"])
+         echo wp_json_encode(MAD4B_Native_Layout_Epoch_Continuity_V1::family_source($c));
+     }finally{if($original!=="")do_action("wpml_switch_language",$original);}
+   }
+ ' > "$work/family-source-before.json" 2>"$work/family-source-before.stderr"; then
+   python3 - "$work/qa-config.json" "$work/family-source-before.json" <<'FAMILY_SOURCE'
+import json,sys
+from pathlib import Path
+c=Path(sys.argv[1]); raw=Path(sys.argv[2])
+try:
+ d=json.loads(raw.read_text()); cfg=json.loads(c.read_text())
+ if isinstance(d,dict) and d.get('site_host')==cfg.get('host'):
+  cfg['family_source_before']=d
+  c.write_text(json.dumps(cfg,sort_keys=True))
+except (ValueError,OSError):
+ pass
+FAMILY_SOURCE
+ fi
  if ! timeout 390 "$APP/run-cohort-qa.sh" "$work" "$work/browser.jsonl" > "$work/qa.log" 2>&1;then
    echo "HOLD $label signed native seven-width QA failed"; rejected=$((rejected+1));continue
  fi
@@ -157,8 +190,22 @@ NATIVE_PASS
  # Force the matching public page into the read-only paginated discovery
  # window, without rewriting visitor context or inventing market cookies.
  cursor=$((page_id>0?page_id-1:0))
- if docker exec -e MAD4B_COVERAGE_CURSOR="$cursor" "$PHP" wp --allow-root eval-file \
-      /tmp/mad4b-auto-coverage-issuer.php > "$work/issuer.log" 2>&1;then
+ # Retry only the original issuer on its explicit busy result, using the
+ # same complete report. Never retry a rejected semantic/market proof.
+ issue_ok=0
+ for attempt in 1 2 3;do
+   if docker exec -e MAD4B_COVERAGE_CURSOR="$cursor" "$PHP" wp --allow-root eval-file \
+       /tmp/mad4b-auto-coverage-issuer.php > "$work/issuer-attempt-$attempt.log" 2>&1;then
+     cp "$work/issuer-attempt-$attempt.log" "$work/issuer.log"
+     issue_ok=1;break
+   fi
+   cp "$work/issuer-attempt-$attempt.log" "$work/issuer.log"
+   if ! grep -q '^STAGING_WPCLI_BUSY:' "$work/issuer.log" || [[ "$attempt" == 3 ]];then break;fi
+   if (( $(date +%s)-$(stat -c %Y "$work/browser.jsonl") >= 660 ));then break;fi
+   echo "RETRY $label original issuer busy, preserving fresh browser evidence"
+   sleep 15
+ done
+ if [[ "$issue_ok" == 1 ]];then
    if grep -q '^PASS newly enrolled ' "$work/issuer.log";then
      echo "PASS $label source-bound native Lazy certificate admitted"
      succeeded=$((succeeded+1))

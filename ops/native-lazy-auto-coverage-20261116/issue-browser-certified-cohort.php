@@ -162,8 +162,12 @@ try{
   if($nextEpoch<0 ||$nextEpoch!==(int)get_option('mad4b_css_ai_epoch_v1',-1))
    throw new RuntimeException('New CSS epoch no longer current');
   if($previousEpoch!==$nextEpoch){
+   $priorRegistry=$registry;
    foreach((array)($registry['entries']??[]) as $entryKey=>$entry){
     if(!is_array($entry))continue;
+    if(class_exists('MAD4B_Native_Layout_Epoch_Continuity_V1') &&
+      method_exists('MAD4B_Native_Layout_Epoch_Continuity_V1','can_retain_family') &&
+      MAD4B_Native_Layout_Epoch_Continuity_V1::can_retain_family($priorRegistry,(string)$entryKey,$nextEpoch))continue;
     $registry['entries'][$entryKey]['status']='hold_css_epoch_rollover';
     foreach((array)($entry['ajax_parity_by_market']??[]) as $marketKey=>$proof){
      if(!is_array($proof))continue;
@@ -262,6 +266,21 @@ try{
    throw new RuntimeException($undo===1
     ?'Updated proof failed runtime readback and was rolled back'
     :'Updated proof failed runtime readback; concurrent change requires investigation');
+  }
+  // Independent receipt: do not alter the original native certificate.
+  if(class_exists('MAD4B_Native_Layout_Epoch_Continuity_V1') &&
+      method_exists('MAD4B_Native_Layout_Epoch_Continuity_V1','record_native_admission')){
+   try{
+    $before=$cfg['family_source_before']??[];
+    $recorded=is_array($before)&&MAD4B_Native_Layout_Epoch_Continuity_V1::record_native_admission($cohort,$before,$registry);
+    echo $recorded?"FAMILY_SOURCE_RECEIPT_RECORDED\n":"FAMILY_SOURCE_RECEIPT_PENDING\n";
+    if($recorded){
+     $manifest=get_option(MAD4B_Native_Layout_Epoch_Continuity_V1::BASELINE_V2,[]);
+     if(empty($manifest))$manifest=get_option(MAD4B_Native_Layout_Epoch_Continuity_V1::BASELINE,[]);
+     if(is_array($manifest)&&$manifest)
+      MAD4B_Native_Layout_Epoch_Continuity_V1::enroll_verified_family($cohort,$registry,$manifest);
+    }
+   }catch(Throwable $e){echo "FAMILY_SOURCE_RECEIPT_ERROR\n";}
   }
   echo "PASS newly enrolled locale=$locale market=$market query=$query listing=$listing document=$doc\n";
  }finally{

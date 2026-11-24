@@ -5,7 +5,7 @@
 set -euo pipefail
 umask 077
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-SRC=/opt/mad4b-company-provisioning/worktrees/pr814-converged-local-20261115
+SRC=/opt/mad4b-company-provisioning/runtime-source/native-lazy-discovery-20261124
 LIVE=/opt/hostinger-migrations/hosting-3/etg-commerce-staging/site-copy
 SCRIPT="$SRC/ops/native-lazy-auto-coverage-20261116"
 OUT=/opt/mad4b-company-provisioning/reports/native-lazy-coverage-discovery-20261116
@@ -16,6 +16,25 @@ exec 9>/run/lock/mad4b-native-lazy-coverage-discovery.lock
 if ! flock -n 9;then echo 'SKIP: discovery already active';exit 0;fi
 exec 8>/run/lock/mad4b-native-lazy-browser-global.lock
 if ! flock -n 8;then echo 'SKIP: another governed browser audit owns the shared lock';exit 0;fi
+# Respect the existing manual browser QA resource ceiling before full discovery.
+if [[ "${MAD4B_COVERAGE_MODE:-full}" != inventory ]]; then
+ load="$(cut -d' ' -f1 /proc/loadavg)"
+ if awk -v l="$load" 'BEGIN{exit !(l>=5.6)}'; then
+   echo 'SKIP: browser QA resource ceiling reached'; exit 0
+ fi
+fi
+# Scheduled retries are cheap: a complete, recent inventory ends the cycle.
+# Manual inventory/full runs retain the existing explicit mode.
+if [[ "${MAD4B_COVERAGE_SCHEDULED:-0}" == 1 && "${MAD4B_COVERAGE_MODE:-full}" == full ]]; then
+ if [[ -f "$OUT/latest" ]]; then
+  read -r prior < "$OUT/latest" || prior=""
+  if [[ "$prior" =~ ^20[0-9]{6}T[0-9]{6}Z$ ]] &&
+     [[ -s "$OUT/$prior/discovery.json" && -s "$OUT/$prior/ssr.jsonl" && -s "$OUT/$prior/coverage.json" ]]; then
+   age=$(( $(date +%s) - $(stat -c %Y "$OUT/$prior/discovery.json") ))
+   if (( age>=0 && age<86400 ));then echo 'SKIP: complete discovery inventory still fresh';exit 0;fi
+  fi
+ fi
+fi
 test -r "$SCRIPT/discover-public-listings.php"
 test -r "$SCRIPT/browser-ssr-inventory.cjs"
 test -r "$SCRIPT/classify-coverage.py"
