@@ -30,14 +30,24 @@ final class MAD4B_Cost_Source_Registry_V1 {
    !in_array($currency,['USD','EGP','EUR','GBP'],true)||!in_array($basis,self::BASIS,true))
    return new WP_Error('cost_source_mapping_invalid');
   // Only numeric cost references; never return arbitrary meta, secrets, callbacks or SQL.
-  return ['kind'=>$kind,'slug'=>$slug,'amount_field'=>$amount,'relation_field'=>$relation,
+  $base=['kind'=>$kind,'slug'=>$slug,'amount_field'=>$amount,'relation_field'=>$relation,
    'currency'=>$currency,'basis'=>$basis,'currency_field'=>$currencyField,'basis_field'=>$basisField,'role'=>'unverified_cost_reference'];
+  if(!class_exists('MAD4B_Cost_Component_Rules_V1'))return $base;
+  $extra=MAD4B_Cost_Component_Rules_V1::normalize($in,$base);
+  return is_wp_error($extra)?$extra:array_merge($base,$extra);
+ }
+ static function mappingKey(array $v):string {
+  $key=$v['kind'].':'.$v['slug'].':'.$v['amount_field'];
+  if(!empty($v['relation_id'])||!empty($v['repeater_field'])||!empty($v['component_key'])||!empty($v['relation_field']))
+   $key.=':'.substr(hash('sha256',implode('|',[$v['relation_id']??0,$v['relation_direction']??'children',
+     $v['repeater_field']??'',$v['component_key']??'',$v['relation_field']??''])),0,20);
+  return $key;
  }
  static function mappings():array {
   $stored=get_option(self::OPTION,[]);$out=[];
   foreach(is_array($stored)?$stored:[] as $raw){
    if(!is_array($raw))continue;$v=self::validate($raw);
-   if(!is_wp_error($v))$out[$v['kind'].':'.$v['slug'].':'.$v['amount_field']]=$v;
+   if(!is_wp_error($v))$out[self::mappingKey($v)]=$v;
   }
   ksort($out);return $out;
  }
@@ -62,11 +72,23 @@ final class MAD4B_Cost_Source_Registry_V1 {
     $terms=wp_get_object_terms($id,$slug,['fields'=>'ids']);
     if(is_wp_error($terms))continue;
     $ids=$terms;
+   }elseif(!empty($m['relation_id'])){
+    $r=MAD4B_Cost_Component_Rules_V1::relation((int)$m['relation_id']);
+    $ends=MAD4B_Cost_Component_Rules_V1::relationEndpoints($r);
+    if(!$ends||$ends[$m['relation_direction']==='children'?'parent':'child']!==$type)continue;
+    $ids=MAD4B_Cost_Component_Rules_V1::linked($id,$type,$m);
+    if(is_wp_error($ids)){
+     $out[]=['component'=>$key,'source'=>'registry:'.$key,'status'=>'missing','value'=>['entity_kind'=>$kind,'entity_type'=>$slug,'entity_id'=>0,'amount'=>null,'currency'=>null,'basis'=>null,'mapping'=>$m,'issue'=>$ids->get_error_code(),'included_in_commercial_total'=>false,'commercially_authorized'=>false,'cost_receipt_qualified'=>false]];
+     continue;
+    }
    }elseif($type===$slug)$ids=[$id];
    elseif($m['relation_field']!==''){
     $raw=get_post_meta($id,$m['relation_field'],true);
     $ids=is_array($raw)?$raw:[$raw];
-   }
+    if($raw===''||$raw===null)continue;
+   }else continue;
+   $begin=count($out);
+   $overflow=count($ids)>50;
    $seen=[];
    foreach(array_slice($ids,0,50) as $raw){
     if(!is_scalar($raw)||!preg_match('/^[1-9][0-9]*$/D',(string)$raw))continue;
@@ -74,35 +96,42 @@ final class MAD4B_Cost_Source_Registry_V1 {
     if($kind==='taxonomy'){
      $term=get_term($sid,$slug);
      if(!$term||is_wp_error($term)||!current_user_can('edit_term',$sid))continue;
-     $amount=self::amount(get_term_meta($sid,$m['amount_field'],true));$label=$term->name;
-     $currency=$m['currency_field']!==''?get_term_meta($sid,$m['currency_field'],true):$m['currency'];
-     $basis=$m['basis_field']!==''?get_term_meta($sid,$m['basis_field'],true):$m['basis'];
+     $read=static fn($field)=>get_term_meta($sid,$field,true);$label=$term->name;
      $url=get_edit_term_link($sid,$slug);
     }else{
      if(get_post_type($sid)!==$slug||!current_user_can('edit_post',$sid))continue;
-     $amount=self::amount(get_post_meta($sid,$m['amount_field'],true));$label=get_the_title($sid);
-     $currency=$m['currency_field']!==''?get_post_meta($sid,$m['currency_field'],true):$m['currency'];
-     $basis=$m['basis_field']!==''?get_post_meta($sid,$m['basis_field'],true):$m['basis'];
+     $read=static fn($field)=>get_post_meta($sid,$field,true);$label=get_the_title($sid);
      $url=get_edit_post_link($sid,'raw');
     }
-    $currency=in_array($currency,['USD','EGP','EUR','GBP'],true)?$currency:null;
-    $basis=in_array($basis,self::BASIS,true)?$basis:null;
-    $out[]=['component'=>wp_strip_all_tags($label).' · '.$m['amount_field'],'source'=>'registry:'.$key,
-     'status'=>$amount===null||$currency===null||$basis===null?'missing':'reverify',
-     'value'=>['entity_kind'=>$kind,'entity_type'=>$slug,'entity_id'=>$sid,
-      'amount'=>$amount,'currency'=>$currency,'basis'=>$basis,
-      'mapping'=>$m,'native_edit_url'=>$url?:null,'commercially_authorized'=>false,
-      'cost_receipt_qualified'=>false,'included_in_commercial_total'=>false]];
-    if(count($out)>=100)return $out;
+    $m=array_merge(['repeater_field'=>'','row_key_field'=>''],$m);
+    $values=class_exists('MAD4B_Cost_Component_Rules_V1')?MAD4B_Cost_Component_Rules_V1::values(
+      $m['repeater_field']!==''?$read($m['repeater_field']):null,$m,$read):
+      [['row_key'=>null,'amount'=>$read($m['amount_field']),'currency'=>$m['currency_field']!==''?$read($m['currency_field']):$m['currency'],'basis'=>$m['basis_field']!==''?$read($m['basis_field']):$m['basis']]];
+    foreach($values as $v){
+     $amount=self::amount($v['amount']);
+     $currency=in_array($v['currency'],['USD','EGP','EUR','GBP'],true)?$v['currency']:null;
+     $basis=in_array($v['basis'],self::BASIS,true)?$v['basis']:null;
+     $out[]=['component'=>wp_strip_all_tags($label).' · '.$m['amount_field'].($v['row_key']!==null?' · '.$v['row_key']:''),
+      'source'=>'registry:'.$key,'status'=>$amount===null||$currency===null||$basis===null?'missing':'reverify',
+      'value'=>['entity_kind'=>$kind,'entity_type'=>$slug,'entity_id'=>$sid,'row_key'=>$v['row_key'],
+       'amount'=>$amount,'currency'=>$currency,'basis'=>$basis,'mapping'=>$m,'issue'=>$v['issue']??null,
+       'native_edit_url'=>$url?:null,'commercially_authorized'=>false,'cost_receipt_qualified'=>false,'included_in_commercial_total'=>false]];
+     if(count($out)>=100){
+      $out[]=['component'=>'Registry candidate limit','source'=>'registry:'.$key,'status'=>'missing','value'=>['issue'=>'partial_candidate_set','amount'=>null,'currency'=>null,'basis'=>null,'mapping'=>$m,'entity_id'=>0,'entity_type'=>$slug,'entity_kind'=>$kind]];
+      return $out;
+     }
+    }
    }
+   if($overflow||($begin===count($out)&&!empty($m['component_key'])))
+    $out[]=['component'=>$key,'source'=>'registry:'.$key,'status'=>'missing','value'=>['issue'=>$overflow?'partial_candidate_set':'no_accessible_related_source','amount'=>null,'currency'=>null,'basis'=>null,'mapping'=>$m,'entity_id'=>0,'entity_type'=>$slug,'entity_kind'=>$kind]];
   }
   return $out;
  }
  static function save():void {
   if(!self::manageable())wp_die('Registry configuration denied','Denied',['response'=>403]);
   check_admin_referer('mad4b_cost_source_registry');
-  $raw=[];foreach(['kind','slug','amount_field','relation_field','currency','basis','currency_field','basis_field'] as $k){
-   $v=$_POST[$k]??'';if(!is_string($v))wp_die('Invalid mapping');
+  $raw=[];foreach(['kind','slug','amount_field','relation_field','currency','basis','currency_field','basis_field','relation_id','relation_direction','repeater_field','row_key_field','component_key','component_role','selection_mode','inclusion','quantity_source','fixed_quantity','priority','weight'] as $k){
+   $v=$_POST[$k]??null;if($v===null)continue;if(!is_string($v))wp_die('Invalid mapping');
    $raw[$k]=wp_unslash($v);
   }
   $v=self::validate($raw);if(is_wp_error($v))wp_die(esc_html($v->get_error_code()));
@@ -110,20 +139,35 @@ final class MAD4B_Cost_Source_Registry_V1 {
   if((int)$wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s,0)',$lock))!==1)wp_die('Registry busy');
   try{
    $all=get_option(self::OPTION,[]);if(!is_array($all))wp_die('Registry needs repair');
-   $key=$v['kind'].':'.$v['slug'].':'.$v['amount_field'];if(count($all)>=100&&!isset($all[$key]))wp_die('Registry limit reached');
+   $key=self::mappingKey($v);
+   foreach($all as $storedKey=>$stored){if(!is_array($stored))continue;$old=self::validate($stored);
+    if(!is_wp_error($old)&&self::mappingKey($old)===$key&&$storedKey!==$key)unset($all[$storedKey]);}
+   if(count($all)>=100&&!isset($all[$key]))wp_die('Registry limit reached');
    if(($_POST['operation']??'')==='remove')unset($all[$key]);else $all[$key]=$v;
    update_option(self::OPTION,$all,false);
    if(get_option(self::OPTION,[])!==$all)wp_die('Registry readback mismatch');
   }finally{$wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)',$lock));}
-  wp_safe_redirect(admin_url('admin.php?page='.self::PAGE));exit;
+  $return=$_POST['return_page']??self::PAGE;
+  if(!in_array($return,[self::PAGE,'dynamic-pricing-controls','etg-dynamic-pricing-controls'],true))$return=self::PAGE;
+  wp_safe_redirect(admin_url('admin.php?page='.$return));exit;
  }
  static function page():void {
   if(!self::manageable())wp_die('Registry configuration denied');
   echo '<div class="wrap"><h1>Cost Source Registry</h1><p>Map existing numeric source fields; references only. Registered sources never authorize supplier cost, publishing or payment. Existing native providers remain authoritative.</p>';
   echo '<p>Post types: own cost or explicit related post IDs in a product meta field. Taxonomies: terms actually assigned to the product; no arbitrary cross-product discovery.</p>';
-  echo '<table class="widefat striped"><thead><tr><th>Kind / source</th><th>Amount field</th><th>Relation</th><th>Currency / basis</th></tr></thead><tbody>';
-  foreach(self::mappings() as $m)echo '<tr><td>'.esc_html($m['kind'].':'.$m['slug']).'</td><td>'.esc_html($m['amount_field']).'</td><td>'.esc_html($m['relation_field']?:'Native assignment / own record').'</td><td>'.esc_html($m['currency'].' / '.$m['basis']).'</td></tr>';
-  echo '</tbody></table><h2>Add / update / remove mapping</h2><form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
+  self::renderMappings();self::renderForm();echo '</div>';
+ }
+ static function renderMappings():void {
+  if(!self::manageable())return;
+  echo '<table class="widefat striped"><thead><tr><th>Kind / source</th><th>Amount field</th><th>Relation / repeater</th><th>Currency / basis</th><th>Component policy</th></tr></thead><tbody>';
+  foreach(self::mappings() as $m)echo '<tr><td>'.esc_html($m['kind'].':'.$m['slug']).'</td><td>'.esc_html($m['amount_field']).'</td><td>'.esc_html(($m['relation_id']??0)?('Relation #'.$m['relation_id'].' '.$m['relation_direction'].($m['repeater_field']?' / '.$m['repeater_field']:'')):($m['relation_field']?:($m['repeater_field']??'')?:'Native assignment / own record')).'</td><td>'.esc_html($m['currency'].' / '.$m['basis']).'</td><td>'.esc_html(($m['component_key']??'').' / '.($m['selection_mode']??'manual').' / Priority '.($m['priority']??100).' / Weight '.($m['weight']??100)).'</td></tr>';
+  echo '</tbody></table>';
+ }
+ static function renderForm():void {
+  if(!self::manageable())return;
+  echo '<h3>Add / update / remove mapping</h3><form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
+  $return=$_GET['page']??self::PAGE;
+  echo '<input type="hidden" name="return_page" value="'.esc_attr(is_string($return)?$return:self::PAGE).'">';
   wp_nonce_field('mad4b_cost_source_registry');
   echo '<input type="hidden" name="action" value="mad4b_cost_source_registry_save"><p><label>Source kind <select name="kind"><option value="post_type">Post type</option><option value="taxonomy">Taxonomy</option></select></label></p>';
   echo '<p><label>Registered slug <input name="slug" required list="mad4b-cost-source-slugs"></label><datalist id="mad4b-cost-source-slugs">';
@@ -133,7 +177,26 @@ final class MAD4B_Cost_Source_Registry_V1 {
   foreach(['USD','EGP','EUR','GBP'] as $cur)echo '<option>'.esc_html($cur).'</option>';
   echo '</select></label> <label>Cost basis <select name="basis">';
   foreach(self::BASIS as $basis)echo '<option>'.esc_html($basis).'</option>';
-  echo '</select></label></p><p><label>Currency meta field (optional, overrides fixed currency) <input name="currency_field"></label></p><p><label>Cost basis meta field (optional, overrides fixed basis) <input name="basis_field"></label></p><button class="button button-primary" name="operation" value="save">Save mapping</button> <button class="button" name="operation" value="remove">Remove mapping</button></form></div>';
+  echo '</select></label></p><p><label>Currency meta field (optional) <input name="currency_field"></label></p><p><label>Cost basis meta field (optional) <input name="basis_field"></label></p>';
+  echo '<h4>Relation &amp; repeater</h4><p><label>JetEngine Relation ID <input type="number" name="relation_id" min="0" value="0" list="mad4b-cost-relations"></label> <label>Direction <select name="relation_direction"><option value="children">Parent → children</option><option value="parents">Child → parents</option></select></label></p>';
+  echo '<datalist id="mad4b-cost-relations">';
+  if(function_exists('jet_engine')){
+   $manager=jet_engine()->relations??null;
+   if(is_object($manager)&&method_exists($manager,'get_active_relations'))foreach($manager->get_active_relations() as $id=>$r){
+    $e=MAD4B_Cost_Component_Rules_V1::relationEndpoints($r);
+    if($e)echo '<option value="'.esc_attr((string)$id).'">'.esc_html($e['parent'].' → '.$e['child']).'</option>';
+   }
+  }
+  echo '</datalist><p><label>Repeater meta field <input name="repeater_field"></label> <label>Stable row key field <input name="row_key_field"></label></p>';
+  echo '<h4>Component rules (reference preview)</h4><p><label>Component key (group alternatives) <input name="component_key"></label></p>';
+  foreach(['component_role'=>['conditional','required','optional'],'selection_mode'=>['manual','all_required','cheapest_eligible','priority'],'inclusion'=>['included','extra','upgrade'],'quantity_source'=>MAD4B_Cost_Component_Rules_V1::QUANTITIES] as $field=>$choices){
+   echo '<p><label>'.esc_html($field).' <select name="'.esc_attr($field).'">';
+   foreach($choices as $v)echo '<option value="'.esc_attr($v).'">'.esc_html($v).'</option>';
+   echo '</select></label></p>';
+  }
+  echo '<p><label>Fixed quantity <input type="number" name="fixed_quantity" min="1" max="10000" value="1"></label> <label>Priority (lower first) <input type="number" name="priority" min="0" max="10000" value="100"></label> <label>Weight (higher tie preference) <input type="number" name="weight" min="1" max="10000" value="100"></label></p>';
+  echo '<p>Priority/weight rank comparable reference alternatives only. Quantity, eligibility, dates and commercial fallback require native composition validation. No cost total is generated here.</p>';
+  echo '<button class="button button-primary" name="operation" value="save">Save mapping</button> <button class="button" name="operation" value="remove">Remove mapping</button></form>';
  }
  static function boot():void {
   add_action('admin_post_mad4b_cost_source_registry_save',[self::class,'save']);
