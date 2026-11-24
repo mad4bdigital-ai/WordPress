@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Compiled Public Tour Family
  * Description: Exact-identity, page-specific public Elementor template snapshots with immutable family admission and native commerce.
- * Version: 0.1.1
+ * Version: 0.2.1
  */
 defined('ABSPATH') || exit;
 
@@ -95,7 +95,7 @@ final class MAD4B_Compiled_Tour_Family_V1 {
         $contents=get_post_meta($child,'_elementor_data',true);
         if (!is_string($contents) || !hash_equals((string)self::config()['content_sha256'],hash('sha256',$contents))
             || get_post_status($child)!=='publish'
-            || preg_match('/(?:tour_rates|woocommerce|booking|checkout|payment|nonce|data-price|[\\"]rate[\\"])/i',$contents))
+            || !self::public_template_structure($contents))
             return false;
         $needle='"id":"'.self::config()['widget_id'].'"';
         return str_contains($raw,$needle)
@@ -152,7 +152,9 @@ final class MAD4B_Compiled_Tour_Family_V1 {
             'css'=>hash('sha256',maybe_serialize(get_post_meta($template,'_elementor_css',true))),
             'elementor_kit'=>(int)get_option('elementor_active_kit'),
             'terms_epoch'=>(string)wp_cache_get_last_changed('terms'),
-            'posts_epoch'=>(string)wp_cache_get_last_changed('posts'),
+            // Public child lists are term-backed. A global posts last-changed
+            // epoch would invalidate every Tour on unrelated admin/content
+            // writes. We already key the actual Tour by post modified+meta.
             'term_meta_epoch'=>(string)get_option('mad4b_compiled_termmeta_epoch_v1','0'),
             'generation'=>(string)get_option('mad4b_render_query_data_generation','initial')
         ];
@@ -215,8 +217,11 @@ final class MAD4B_Compiled_Tour_Family_V1 {
         $beforeJS=wp_scripts()->queue;
         $beforeCSS=wp_styles()->queue;
         $html=$render();
-        if(!self::safe_html($html)) {
-            self::receipt('MISS_NATIVE_UNSAFE',$key,$started,strlen($html));
+        $classification=self::classify_html($html);
+        if ($classification['kind']!=='public_snapshot') {
+            // Native output is still displayed. Only the public snapshot
+            // optimization is skipped for this one component.
+            self::receipt('NATIVE_'.$classification['reason'],$key,$started,strlen($html));
             return $html;
         }
         $newJS=array_values(array_diff(wp_scripts()->queue,$beforeJS));
@@ -238,11 +243,85 @@ final class MAD4B_Compiled_Tour_Family_V1 {
         return $html;
     }
 
+    /**
+     * Template metadata is approved by an exact content SHA, but eligibility
+     * must also be based on actual Elementor widget taxonomy, not matching
+     * words in public copy such as "price", "booking" or "payment".
+     * This first family intentionally supports only public terms listings.
+     */
+    public static function public_template_structure($source): bool {
+        if (!is_string($source) || strlen($source)>300000)return false;
+        $elements=json_decode($source,true);
+        if (!is_array($elements) || !$elements)return false;
+        $allowedWidgets=[
+            'heading'=>true,'text-editor'=>true,
+            'jet-listing-dynamic-field'=>true,'jet-listing-grid'=>true
+        ];
+        $count=0;$publicListing=false;
+        $walk=static function(array $nodes) use (&$walk,&$count,&$publicListing,$allowedWidgets): bool {
+            foreach($nodes as $element) {
+                if (!is_array($element) || ++$count>220)return false;
+                $type=(string)($element['elType']??'');
+                if (!in_array($type,['container','widget'],true))return false;
+                if ($type==='widget') {
+                    $name=(string)($element['widgetType']??'');
+                    if (!isset($allowedWidgets[$name]))return false;
+                    if ($name==='jet-listing-grid') {
+                        $settings=$element['settings']??[];
+                        if (!is_array($settings))return false;
+                        $listing=absint($settings['lisitng_id']??0);
+                        if (!$listing || get_post_status($listing)!=='publish'
+                            || get_post_type($listing)!=='jet-engine')return false;
+                        $model=get_post_meta($listing,'_listing_data',true);
+                        if (!is_array($model) || ($model['source']??'')!=='terms'
+                            || ($model['tax']??'')!=='destinations')return false;
+                        $publicListing=true;
+                    }
+                }
+                $children=$element['elements']??[];
+                if (!is_array($children) || ($children && !$walk($children)))return false;
+            }
+            return true;
+        };
+        return $walk($elements) && $publicListing;
+    }
+
+    /**
+     * A shared snapshot is accepted by STRUCTURE, not English keywords.
+     * Commercial and stateful HTML remains in its original live Elementor
+     * component. A single unsafe island does not block the rest of the
+     * page or other separately approved public components.
+     *
+     * This does not automatically extract live fields from one mixed widget.
+     * Such widgets remain native until certified into separate components.
+     */
+    public static function classify_html($html): array {
+        if (!is_string($html) || strlen($html)<=5000 || strlen($html)>=300000)
+            return ['kind'=>'native_unknown','reason'=>'invalid_size'];
+        if (!str_contains($html,'elementor-template')
+            || !str_contains($html,'jet-listing-dynamic-post-'))
+            return ['kind'=>'native_unknown','reason'=>'missing_public_listing'];
+        if (preg_match('~<\s*(?:script|form|input|iframe|textarea|select|object|embed)\b~i',$html))
+            return ['kind'=>'native_dynamic','reason'=>'interactive_dom'];
+        // Attribute names/structure are authoritative. Ordinary article
+        // phrases (e.g. "payment terms" or "price guide") are not signals.
+        if (preg_match('~\bdata-(?:nonce|price|rate|checkout|payment|booking|cart|session|user|customer|token|order|quote)(?:[-_a-z0-9]*)\s*=~i',$html)
+            || preg_match('~\bon[a-z]{3,25}\s*=~i',$html)
+            || preg_match('~\b(?:_wpnonce|wp_nonce|auth_token|access_token|session_id|client_secret|order_key)\s*=~i',$html))
+            return ['kind'=>'native_dynamic','reason'=>'stateful_attribute'];
+        if (preg_match('~\bclass\s*=\s*["\'][^"\']{0,400}\b(?:fluentform|woocommerce-Price-amount|woocommerce-cart|checkout-form|booking-form|rate-calculator|payment-form|order-total)(?:\b|[-_])~i',$html))
+            return ['kind'=>'native_dynamic','reason'=>'commerce_component'];
+        // Actual monetary amounts are live unless that price-bearing widget
+        // is specifically certified for every date/occupancy/market context.
+        // A standalone currency word or discussion about price is public.
+        $text=html_entity_decode(strip_tags($html),ENT_QUOTES|ENT_HTML5,'UTF-8');
+        if (preg_match('~(?:[$€£]\s*\d{1,3}(?:[.,]\d{3})*|\b(?:USD|EUR|GBP|EGP)\s*\d{1,}(?:[.,]\d+)?|\d{1,}(?:[.,]\d+)?\s*(?:USD|EUR|GBP|EGP)\b)~iu',$text))
+            return ['kind'=>'native_dynamic','reason'=>'monetary_value'];
+        return ['kind'=>'public_snapshot','reason'=>'approved_public_structure'];
+    }
+
     public static function safe_html($html): bool {
-        return is_string($html) && strlen($html)>5000 && strlen($html)<300000
-            && str_contains($html,'elementor-template')
-            && str_contains($html,'jet-listing-dynamic-post-')
-            && !preg_match('~<\s*(?:script|form|input|iframe|textarea|select)\b|nonce|data-price|data-rate|(?:\b(?:USD|EUR|GBP|EGP)\b)|(?:\$\s*\d)|checkout|woocommerce-cart|payment|add-to-cart|customer|billing|shipping~i',$html);
+        return self::classify_html($html)['kind']==='public_snapshot';
     }
 
     private static function receipt(string $event,string $key,int $started,int $bytes): void {
