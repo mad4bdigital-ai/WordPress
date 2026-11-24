@@ -20,6 +20,7 @@ final class MAD4B_Dynamic_Cost_Alerts_V1 {
  static function scope(array $context):string {
   if(!$context)return 'structural';
   $c=MAD4B_Generic_Cost_Composition_V1::context($context);
+  if(!empty($context['nationality']))$c['nationality']=strtoupper((string)$context['nationality']);
   return substr(hash('sha256',wp_json_encode($c)),0,24);
  }
  static function finding(int $id,string $scope,string $group,string $reason,string $label,array $details=[],array $context=[]):array {
@@ -40,6 +41,7 @@ final class MAD4B_Dynamic_Cost_Alerts_V1 {
   $url=admin_url('admin.php?page=mad4b-product-cost-review&product_id='.$id);
   foreach(MAD4B_Generic_Cost_Composition_V1::context($context) as $key=>$v)
    if($context&&$v!==null&&$v!=='')$url=add_query_arg($key,(string)$v,$url);
+  if(!empty($context['nationality']))$url=add_query_arg('nationality',(string)$context['nationality'],$url);
   return $url;
  }
  /** Each check explicitly reports its coverage; an omitted check never closes an alert. */
@@ -158,17 +160,19 @@ final class MAD4B_Dynamic_Cost_Alerts_V1 {
    }
    // CP4 stage receipts and native planner issues remain owned by original providers.
   }
-  if(!$context&&$type==='tours-and-activities'&&class_exists('MAD4B_Daily_Cost_Components_V1',false)){
-   $d=MAD4B_Daily_Cost_Components_V1::inspect($id);
+  if($type==='tours-and-activities'&&class_exists('MAD4B_Daily_Cost_Components_V1',false)){
+   $d=MAD4B_Daily_Cost_Components_V1::inspect($id,$context);
    if(!is_wp_error($d)&&$d['revision']>0){
     if(!$d['fresh'])$add('daily:itinerary','daily_itinerary_changed','Daily cost components need full itinerary revision review');
     else{
      $covered['daily:itinerary']=true;
      foreach($d['rows'] as $line){
       $g='daily:'.$line['component_key'];$members[$g]=[hash('sha256',wp_json_encode([$line['day_key'],$line['component_key']]))];
-      if(($line['requirement']??'')==='required'&&($line['inclusion']??'')==='included'&&in_array($line['state'],['source_missing','invalid_source_or_day','source_row_selection_required','entrance_fee_source_review_required','activity_cost_or_transfer_price_required','entrance_cost_candidate_review_required'],true))
+      $missing=['source_missing','invalid_source_or_day','source_row_selection_required','entrance_fee_source_review_required','activity_cost_or_transfer_price_required','entrance_cost_candidate_review_required','entrance_quantity_policy_review_required'];
+      if($context)$missing=array_merge($missing,['entrance_context_required','entrance_no_eligible_rate','entrance_ambiguous_rate','entrance_ambiguous_basis','entrance_invalid_rate','entrance_fx_or_amount_missing','entrance_amount_limit','activity_bundle_coverage_review_required','entrance_quantity_policy_review_required']);
+      if(($line['requirement']??'')==='required'&&($line['inclusion']??'')==='included'&&in_array($line['state'],$missing,true))
        $add($g,'daily_component_source_missing','Daily cost source required: '.$line['label'],['day'=>$line['day_key'],'component'=>$line['component_key'],'editor'=>$d['edit_url']]);
-      elseif(in_array($line['state'],['reference_calculated','quantity_or_fx_required'],true))$covered[$g]=true;
+      elseif(in_array($line['state'],['reference_calculated','quantity_or_fx_required','entrance_reference_calculated','entrance_source_recorded'],true))$covered[$g]=true;
      }
     }
    }
@@ -290,7 +294,7 @@ final class MAD4B_Dynamic_Cost_Alerts_V1 {
  }
  static function postMeta($mid,$id,$key):void {
   if(!class_exists('MAD4B_Product_Cost_Review_Ledger_V1',false)||!class_exists('MAD4B_Cost_Source_Registry_V1',false)||!is_string($key)||str_starts_with($key,'_rate_plan_')||str_starts_with($key,'_mad4b_rate_plan'))return;
-  if($key===MAD4B_Product_Cost_Review_Ledger_V1::HISTORY){self::wake();return;}
+  if($key==='_mad4b_entrance_source_rates_v1'||$key===MAD4B_Product_Cost_Review_Ledger_V1::HISTORY){self::wake();return;}
   foreach(MAD4B_Cost_Source_Registry_V1::mappings() as $m)
    if(in_array($key,[$m['amount_field'],$m['currency_field'],$m['basis_field'],$m['relation_field'],$m['repeater_field']],true)){self::wake();return;}
   if(in_array(get_post_type((int)$id),['transportations','transport-rates','operational-services','transport-com'],true))self::wake();
