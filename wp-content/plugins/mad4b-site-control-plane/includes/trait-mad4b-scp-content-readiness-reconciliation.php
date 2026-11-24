@@ -466,6 +466,9 @@ trait MAD4B_SCP_Content_Readiness_Reconciliation_Trait {
         }
     }
     private static function rule_enabled_for($issue,$cfg,array $brand_coverage=array()) {
+        // Dynamic cost findings own exact product/component/context reconciliation.
+        // Broad/partial scans never silently resolve this source.
+        if(($issue['source']??'')==='mad4b-dynamic-cost-readiness')return false;
         // Never resolve a Term Meta finding on an absent feed or source-only
         // disappearance; require complete raw census and public render readback.
         if (($issue['source']??'')==='mad4b-destination-term-integrity')
