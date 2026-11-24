@@ -107,7 +107,7 @@ final class MAD4B_Daily_Cost_Components_V1 {
      if(!empty($record['rows'])){
       $entrance['rate_editor']=MAD4B_Entrance_Source_Rates_V1::url($v['source_ref']);
       $entrance['rate_row_count']=count($record['rows']);
-      $entrance['dated_reference']=MAD4B_Entrance_Source_Rates_V1::resolve($record['rows'],$v['source_type'],$date??'', $ctx+['nationality'=>$options['nationality']??''],$v['source_row_key'],MAD4B_Generic_Cost_Composition_V1::fxSnapshot());
+      $entrance['dated_reference']=MAD4B_Entrance_Source_Rates_V1::resolve($record['rows'],$v['source_type'],$date??'', $ctx+['nationality'=>$options['nationality']??'','entrance_cohorts'=>$options['entrance_cohorts']??''],$v['source_row_key'],MAD4B_Generic_Cost_Composition_V1::fxSnapshot());
       $entrance['status']=$entrance['dated_reference']['status'];
       if(!$options){
        $validReference=false;
