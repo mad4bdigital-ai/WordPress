@@ -1,0 +1,35 @@
+{
+  "contract": "mad4b.form6.live-source-review.v1",
+  "requested_source": "https://tours.dev.mad4b.com",
+  "target": "https://wayfatours.com",
+  "selection_kind": "user_requested_live_source_for_review",
+  "live_source_snapshot_verified": true,
+  "files": {
+    "mu-plugins/mad4b-request-woocommerce-email-v1.php": "2c9c1b42e435dd2c810b909b0d33f2e7fa171dab762f053b83ae8e2f8dde97d2",
+    "mu-plugins/templates/emails/mad4b-request-lifecycle.php": "2271dfac57feb1bda85e84240b8d11c1024904a627653b6451055e0c396f25b6",
+    "mu-plugins/templates/emails/plain/mad4b-request-lifecycle.php": "9f0e5213cd1c2950dfa7b35b56433ea5134849328d520a7c8671ae8d5a616cd8",
+    "plugins/commerce-composition/includes/RequestLifecycle.php": "38e8f0e33fd3f7f50825cf2a4065444921cf0cc6a7bee68c4216dd8af4160eca",
+    "plugins/commerce-composition/includes/WorkflowJobs.php": "3f6c2695c04ba89874712fbc31f01bc342a311fbca5d563c384bea7a3e5d2fa3"
+  },
+  "staging_prior_isolated_tests": {
+    "passed": 13,
+    "total": 13
+  },
+  "source_ack_registered": true,
+  "source_notify_traveler": "disabled",
+  "native_admission": {
+    "preflight_ready": false,
+    "blocker": "source_not_selected",
+    "authorizing": false
+  },
+  "production_authorized": false,
+  "release_approved": false,
+  "requested_execution": "AI-only where an independently authorized machine lane exists",
+  "required_next": [
+    "Register source using native source admission",
+    "Reconcile canonical source paths and test current candidate",
+    "Obtain applicable signed release and scoped deployment authority",
+    "Verify deployment and mailbox delivery"
+  ],
+  "not_authorizing": true
+}
