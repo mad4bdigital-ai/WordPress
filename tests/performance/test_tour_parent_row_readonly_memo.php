@@ -3,11 +3,17 @@
 declare(strict_types=1);
 define('ABSPATH','/tmp/');
 $mode=$argv[1]??'tour-auth';
-if($mode==='ajax')define('DOING_AJAX',true);
+if(in_array($mode,['ajax','tracking-ajax'],true))define('DOING_AJAX',true);
 $_SERVER=['REQUEST_METHOD'=>($mode==='post'?'POST':'GET'),'QUERY_STRING'=>''];
 $_GET=$mode==='query'?['q'=>'test']:[];$_POST=[];$_COOKIE=$mode==='tour-anonymous'?[]:['wordpress_logged_in_fake'=>'opaque'];
 if($mode==='query')$_SERVER['QUERY_STRING']='q=test';
-if($mode==='authheader')$_SERVER['HTTP_AUTHORIZATION']='Bearer diagnostic';
+if(in_array($mode,['tracking','tracking-auth','tracking-ajax'],true)){
+ $_GET=['utm_source'=>'chatgpt','gclid'=>'example'];
+ $_SERVER['QUERY_STRING']='utm_source=chatgpt&gclid=example';
+}
+if($mode==='tracking-bad'){$_GET=['utm_source'=>'chatgpt','travel_date'=>'2027-01-17'];$_SERVER['QUERY_STRING']='utm_source=chatgpt&travel_date=2027-01-17';}
+if($mode==='tracking-array'){$_GET=['utm_source'=>['x']];$_SERVER['QUERY_STRING']='utm_source[]=x';}
+if(in_array($mode,['authheader','tracking-auth'],true))$_SERVER['HTTP_AUTHORIZATION']='Bearer diagnostic';
 if($mode==='wpnonce')$_SERVER['HTTP_X_WP_NONCE']='forbidden';
 $GLOBALS['mode']=$mode;
 $GLOBALS['wpml_calls']=0;
@@ -32,8 +38,9 @@ for($i=0;$i<6;$i++){
  $id=MAD4B_Company_Country_Operating_Scope_V1::canonical_country(100);
  if($id!==100){fwrite(STDERR,"BAD_CANONICAL_COUNTRY\n");exit(3);}
 }
-$expected=in_array($mode,['tour-auth','tour-unknown-cookie','tour-anonymous'],true)?1:6;
+$expected=in_array($mode,['tour-auth','tour-unknown-cookie','tour-anonymous','tracking'],true)?1:6;
 
 if($wpdb->queries!==$expected){fwrite(STDERR,"QUERY_POLICY_FAILURE mode=$mode got={$wpdb->queries} expected=$expected\n");exit(4);}
 if($GLOBALS['wpml_calls']!==6){fwrite(STDERR,"WPML_REVALIDATION_BROKEN\n");exit(5);}
 echo "PASS $mode parent_queries={$wpdb->queries} wpml_checks={$GLOBALS['wpml_calls']}\n";
+
