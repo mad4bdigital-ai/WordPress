@@ -1,0 +1,11 @@
+{
+  "contract": "mad4b.template-family-public-snapshot.v1",
+  "site_host": "tours.dev.mad4b.com",
+  "environment": "staging",
+  "status": "approved",
+  "family_document": 24784,
+  "widget_id": "6190bab",
+  "content_document": 48366,
+  "family_sha256": "654c8423fab10f7ab97f1d6f9d7b27eaec76a586f714ab0187b266e0cb53d44d",
+  "content_sha256": "491eb9ee7106f295745e99df11a5a5823adca6b37f055f34a07941e36f5daedd"
+}
