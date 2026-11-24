@@ -1,0 +1,9 @@
+# Native Governor navigation-card contract — isolated candidate
+
+No activation, WordPress hooks, production writes or new certificate issuer. This is a standalone tested core intended for the existing Render Query Governor listing callback. Existing live source hashes: Tours.dev Governor d4635f4cb0dffdbc840b0d98d5836fa223ba8206a352f6b01d037fa053c685f0; Wayfatours b3a222332dcf4ffeaf9623dad2e0315a0f4cd7515d293a902585821caf84cb8b. Both remain unchanged.
+
+The core takes the original native renderer, original cache group, authoritative fresh context, verified external receipt and asset replay adapter. The receipt and context are trusted server-internal inputs, never request fields. Their verification/issuance and binding to the current navigation scope must be implemented by an authorized original adapter before integration. The booleans in this candidate are assertions from that future adapter, not cryptographic verification by this core. Test receipts are synthetic and are never acceptable for live use.
+
+Cross-page keys omit the route ID only after independent evidence covers at least two explicit verified page IDs; unknown routes, stale dependencies, unknown market, sensitive HTML, unstable CSS, bad payload digest and asset replay failures remain native. Expiration is bounded by the original receipt and 600-second maximum. No blanket admission or self-issued certificate. Event-driven identity exists in the candidate, not live compilation.
+
+33 isolated checks and PHP syntax passed. Previous 44/44 per-cohort HTML subtree observations do not attest complete native callback bytes, asset dependencies, market or browser interaction. Do not deploy or merge as an active feature until the original authority adapter, integration tests and live staging acceptance are complete. The previously blocked independent observer is not included. Run: php test-navigation-card-contract.php navigation-card-contract.php.

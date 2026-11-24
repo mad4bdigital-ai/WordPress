@@ -1,0 +1,34 @@
+PASS complete mocked receipt admitted
+PASS two certified pages share card identity
+PASS unverified route denied
+PASS changed country rejected
+PASS changed currency rejected
+PASS changed language rejected
+PASS changed device rejected
+PASS changed generation rejected
+PASS changed term_dependency_sha rejected
+PASS changed runtime_dependency_sha rejected
+PASS changed template_sha rejected
+PASS changed market_policy_sha rejected
+PASS changed asset_manifest_sha rejected
+PASS missing anonymous rejected
+PASS missing native_navigation_scope rejected
+PASS missing original_governor_admitted rejected
+PASS missing market_attested rejected
+PASS production disabled
+PASS missing authority_verified denied
+PASS missing full_renderer_bytes_verified denied
+PASS missing asset_parity_verified denied
+PASS missing browser_parity_verified denied
+PASS expired receipt denied
+PASS sensitive or unstable output denied
+PASS sensitive or unstable output denied
+PASS sensitive or unstable output denied
+PASS no receipt stays native with no cache writes
+PASS store exact certified output within receipt lifetime
+PASS certified second page reuses card
+PASS asset failure falls back to original renderer
+PASS source change denies replay and write
+PASS page mutation within request denied
+PASS corrupt cached bytes fall back to native
+ALL_NAVIGATION_CARD_CONTRACT_TESTS_PASS
