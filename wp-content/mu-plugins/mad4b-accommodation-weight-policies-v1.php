@@ -1098,9 +1098,10 @@ final class MAD4B_Accommodation_Rate_Source_Preview_V1 {
             return new WP_Error('accommodation_rate_source_forbidden');
         $property=self::positive($input['property_id']??0);
         $unit=self::positive($input['unit_id']??0);
-        if(!$property||!$unit||get_post_type($property)!=='properties'||
-           get_post_type($unit)!=='units'||!current_user_can('edit_post',$property)||
-           !current_user_can('edit_post',$unit))
+        if(!$property||get_post_type($property)!=='properties'||
+           ($unit>0&&get_post_type($unit)!=='units')||
+           !current_user_can('edit_post',$property)||
+           ($unit>0&&!current_user_can('edit_post',$unit)))
             return new WP_Error('accommodation_rate_source_identity_invalid');
         $from=self::iso($input['from']??null);$to=self::iso($input['to']??null);
         if(!$from||!$to||$from>$to)
@@ -1111,7 +1112,9 @@ final class MAD4B_Accommodation_Rate_Source_Preview_V1 {
         $currency=strtoupper((string)($input['currency']??''));
         if(!preg_match('/^[A-Z]{3}$/D',$currency))
             return new WP_Error('accommodation_rate_source_currency_invalid');
-        $out=['contract'=>self::CONTRACT,'property_id'=>$property,'unit_id'=>$unit,
+        $out=['contract'=>self::CONTRACT,'property_id'=>$property,'unit_id'=>$unit?:null,
+            'unit_selection_required'=>false,
+            'standard_source_scope'=>$unit>0?'unit_or_property':'property',
             'from'=>$from,'to'=>$to,'currency'=>$currency,'price_basis'=>$basis,
             'priority'=>['unit_cost_rate','property_cost_rate_fallback'],
             'status'=>'source_unavailable','source'=>null,'rate_id'=>null,
@@ -1122,20 +1125,24 @@ final class MAD4B_Accommodation_Rate_Source_Preview_V1 {
             'commercial_ready'=>false,'checkout_ready'=>false];
         // A generic Property Rate is not a Unit contract. Unit provenance,
         // capacity and publication must be independently verified first.
-        if(get_post_status($property)!=='publish'||get_post_status($unit)!=='publish')
+        if(get_post_status($property)!=='publish'||
+           ($unit>0&&get_post_status($unit)!=='publish'))
             return array_replace($out,['status'=>'property_or_unit_unpublished']);
         global $wpdb;
         if(!isset($wpdb)||!isset($wpdb->prefix))
             return new WP_Error('accommodation_rate_source_relation_unavailable');
-        $relation=$wpdb->prefix.'jet_rel_default';
-        $count=(int)$wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM {$relation} WHERE rel_id=%d AND parent_object_id=%d AND child_object_id=%d",
-            223,$property,$unit));
-        $receipt=get_post_meta($unit,'_mad4b_room_source_receipt_v1',true);
-        if($count!==1||!is_array($receipt)||
-           (int)($receipt['property_id']??0)!==$property||
-           (int)get_post_meta($unit,'unit_max_occupancy',true)<1)
-            return array_replace($out,['status'=>'unit_source_relation_or_capacity_unverified']);
+        // Standard Property Rate works without a Unit or a synthetic cabin.
+        if($unit>0){
+            $relation=$wpdb->prefix.'jet_rel_default';
+            $count=(int)$wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM {$relation} WHERE rel_id=%d AND parent_object_id=%d AND child_object_id=%d",
+                223,$property,$unit));
+            $receipt=get_post_meta($unit,'_mad4b_room_source_receipt_v1',true);
+            if($count!==1||!is_array($receipt)||
+               (int)($receipt['property_id']??0)!==$property||
+               (int)get_post_meta($unit,'unit_max_occupancy',true)<1)
+                return array_replace($out,['status'=>'unit_source_relation_or_capacity_unverified']);
+        }
         $rates=get_posts(['post_type'=>'property-rates',
             'post_status'=>['publish','draft','pending','private'],
             'posts_per_page'=>201,'fields'=>'ids','no_found_rows'=>true,
@@ -1147,8 +1154,8 @@ final class MAD4B_Accommodation_Rate_Source_Preview_V1 {
         foreach($rates as $rate){
             $rate=(int)$rate;
             $related=(int)get_post_meta($rate,'prop_related_unit_id',true);
-            if($related!==0&&$related!==$unit)continue;
-            $scope=$related===$unit?'unit':'property';
+            if($related!==0&&($unit===0||$related!==$unit))continue;
+            $scope=$related>0?'unit':'property';
             $out['scope_candidates'][$scope]++;
             // Historical retail prices and unapproved Draft quotes cannot
             // masquerade as a published supplier cost Rate.

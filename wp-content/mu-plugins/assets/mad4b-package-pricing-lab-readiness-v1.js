@@ -47,20 +47,48 @@ p.id='mad4b-pcl-select-tour';p.setAttribute('aria-label','Package Tour');
 opts(p,packages);
 const t=el('select','regular-text');
 t.id='mad4b-pcl-select-tier';t.setAttribute('aria-label','Package level');
-opts(t,tiers);
+// Only the active operational assignment for the selected Tour is shown.
+// If there is no explicit tier, only the registered company policy may fill it.
+function applyTourTierOptions(preferred=''){
+  const pkg=packages.find(x=>String(x.id)===String(p.value));
+  const allowed=new Set((pkg&&Array.isArray(pkg.effective_tier_ids)
+     ?pkg.effective_tier_ids:[]).map(String));
+  const options=tiers.filter(x=>allowed.has(String(x.id)));
+  t.replaceChildren();
+  opts(t,options);
+  if(preferred && options.some(x=>String(x.id)===String(preferred)))t.value=String(preferred);
+  t.disabled=!options.length;
+  b.disabled=!options.length;
+  return {pkg,options};
+}
 // Deep links only select an item from the already-authorized server catalog.
 // The AJAX provider independently checks both Tour edit permission and tier.
 const query=new URLSearchParams(window.location.search);
 const linkedTour=query.get('mad4b_package_tour');
 const linkedTier=query.get('mad4b_package_tier');
 if(linkedTour&&packages.some(x=>String(x.id)===linkedTour))p.value=linkedTour;
-if(linkedTier&&tiers.some(x=>String(x.id)===linkedTier))t.value=linkedTier;
 const b=el('button','button button-primary','Inspect original sources');
 b.type='submit';
+const date=el('input','regular-text');
+date.type='date';date.id='mad4b-pcl-preview-start-date';
+date.setAttribute('aria-label','Tour travel start date for stage-date preview only');
+const numeric=(id,min,max,value)=>{const field=el('input','small-text');field.type='number';
+  field.id=id;field.min=String(min);field.max=String(max);field.step='1';
+  field.value=String(value);field.required=true;return field;};
+const rooms=numeric('mad4b-pcl-preview-rooms',1,30,1);
+const adults=numeric('mad4b-pcl-preview-adults',1,60,2);
+const children=numeric('mad4b-pcl-preview-children',0,30,0);
+const currency=el('select','regular-text');currency.id='mad4b-pcl-preview-currency';
+opts(currency,['USD','EGP','EUR','GBP'].map(x=>({id:x,label:x})));
 const form=el('form','mad4b-pcl-form');
 form.append(
   row('label',[el('span','','Package Tour'),p],'mad4b-pcl-label'),
   row('label',[el('span','','Package level'),t],'mad4b-pcl-label'),
+  row('label',[el('span','','Tour start date — operational preview only'),date],'mad4b-pcl-label'),
+  row('label',[el('span','','Rooms (cost preview)'),rooms],'mad4b-pcl-label'),
+  row('label',[el('span','','Adults'),adults],'mad4b-pcl-label'),
+  row('label',[el('span','','Children'),children],'mad4b-pcl-label'),
+  row('label',[el('span','','Cost currency'),currency],'mad4b-pcl-label'),
   b
 );
 // One primary editor per source: navigation never duplicates editable JetEngine fields.
@@ -83,6 +111,7 @@ const state=el('p','mad4b-pcl-status','Select a Package and tier to inspect sour
 state.setAttribute('role','status');
 const result=el('div','mad4b-pcl-result');
 inner.replaceChildren(form,responsibilities,note,state,result);
+applyTourTierOptions(linkedTier||'');
 if(!packages.length||!tiers.length){
   b.disabled=true;
   state.textContent=!packages.length
@@ -97,13 +126,26 @@ const metric=(value,label)=>{
   return box;
 };
 const status=(yes,good,bad)=>el('span',yes?'mad4b-pcl-good':'mad4b-pcl-missing',yes?good:bad);
+function dayDate(offset){
+  const raw=date.value||'';
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(raw))return '';
+  const d=new Date(raw+'T12:00:00Z');
+  if(!Number.isFinite(d.getTime())||d.toISOString().slice(0,10)!==raw)return '';
+  d.setUTCDate(d.getUTCDate()+offset);
+  return d.toISOString().slice(0,10);
+}
+let latestReport=null;
 function renderReport(data){
+  latestReport=data;
   result.replaceChildren();
   const s=data.summary||{};
   const h=el('div','mad4b-pcl-summary');
   h.append(el('h3','',data.tour_title+' · '+data.tier));
+  const sourceLabel=data.tier_source==='company_default_inherited'
+    ?'Inherited Company Package Levels (no Tour override)'
+    :'Assigned by operations to this Tour';
   const sub=el('p','','Duration: '+data.day_count+' days / '+data.night_count+
-    ' nights · '+data.plan_status+' · Source only / not a supplier quote');
+    ' nights · '+sourceLabel+' · '+data.plan_status+' · Source only / not a supplier quote');
   h.append(sub);
   const history=[];
   if(data.source_plan_policy_error)
@@ -171,6 +213,64 @@ function renderReport(data){
   gate.append(el('p','mad4b-pcl-note',
     'Pricing Lab does not select a date range here. Native Rate Planner rechecks the original sources for the requested travel window immediately before any proposed generation.'));
   h.append(gate);
+  const draft=data.indicative_offer_draft||null;
+  if(draft && draft.contract==='mad4b.package-indicative-offer-draft.v1'){
+    const pane=el('section','mad4b-pcl-draft-market-offer');
+    pane.append(el('h3','','Indicative Package Offer · Sales Draft (not confirmed)'));
+    pane.append(el('p','mad4b-pcl-warning',
+      'NO complete Package price or Starting From can be published yet. Web prices are retail offers, NOT supplier net cost, selling Rates, or availability.'));
+    pane.append(el('p','mad4b-pcl-note',
+      'Stage coverage: '+String(draft.stage_count||0)+
+      ' stay/overnight stages · '+String(draft.stage_total_missing||0)+
+      ' awaiting Reservations or Contracting. Tour guide, activities and non-overnight services also require complete pricing.'));
+    const disclosure=el('details','mad4b-pcl-draft-offer-details');
+    disclosure.open=Number(data.tour_id)===60629;
+    disclosure.append(el('summary','','Inspect original market offers and remaining supplier quote gaps'));
+    for(const item of draft.market_offer_stages||[]){
+      const content=el('div','mad4b-pcl-market-offer-stage');
+      content.append(el('strong','',String(item.stage_key||item.kind||'Stage')+
+        ' · '+String(item.nights||0)+' night(s) · '+String(item.status||'unpriced').replaceAll('_',' ')));
+      const offers=Array.isArray(item.web_offer_examples)?item.web_offer_examples:[];
+      if(item.kind==='sleeper_train'){
+        content.append(el('p','mad4b-pcl-note',
+          'Proposed train '+String(item.proposed_train_number||'?')+
+          ' · public Abela '+String(item.public_reference_year||'')+
+          ' fares only; choose travel date, nationality, cabin and passengers before using any supplier quote.'));
+      }
+      if(offers.length){
+        content.append(el('p','mad4b-pcl-note',
+          'WEB MARKET REFERENCE ONLY — all offers need 3-night date-specific room, nationality, All Inclusive, tax and guest validation.'));
+        const ul=el('ul','');
+        for(const offer of offers){
+          const line=el('li','');
+          line.append(el('span','',
+            String(offer.title||'Resort')+
+            ' · $'+String(offer.web_offer_usd_per_night)+
+            '/night · 3× illustration $'+String(offer.three_night_illustration_usd)+
+            ' (NOT an approved 3-night offer)'+
+            (offer.planning_eligible_by_operator_tier
+              ?' · tier assigned by Operations':' · tier needs Operations assignment')+
+            ' · '+String(offer.web_offer_date||'Date unknown')+
+            ' · '+String(offer.meal_evidence||'meal not verified')));
+          if(offer.source_url)line.append(document.createTextNode(' · '),
+              link(offer.source_url,'Original web offer'));
+          ul.append(line);
+        }
+        content.append(ul);
+      }else if(item.kind!=='sleeper_train'){
+        content.append(el('p','mad4b-pcl-note',
+          'No confirmed room/cabin cost or date-specific inventory. Not priced as zero.'));
+      }
+      disclosure.append(content);
+    }
+    pane.append(disclosure);
+    if(draft.reservations_review_sheet_url)
+      pane.append(row('p',[link(draft.reservations_review_sheet_url,
+        'Reservations review and supplier net cost worksheet')]));
+    pane.append(el('p','mad4b-pcl-warning',
+      'Draft-only · Cannot send as a binding quotation, generate a final Tour Rate, accept deposit or activate checkout.'));
+    h.append(pane);
+  }
   const actions=el('p','mad4b-pcl-links');
   if(data.tour_edit_url)actions.append(link(data.tour_edit_url,'Open original Tour editor'),document.createTextNode(' · '));
   actions.append(link(cfg.property_pricing_url,'Open native Property & Unit Pricing'));
@@ -185,6 +285,143 @@ function renderReport(data){
     el('span','','Existing non-published linked Rates: '+String(data.linked_original_rate_count||0)+' (never treated as supplier cost)')
   );
   result.append(h);
+  const hotel=data.hotel_cost_preview||null;
+  if(hotel && hotel.contract==='mad4b.package-hotel-stage-cost-preview.v1'){
+    const scope=el('section','mad4b-pcl-stage-cost-preview');
+    const header=el('h3','','Hotel / Resort Cost by Stage · Property Standard fallback');
+    scope.append(header);
+    scope.append(el('p','mad4b-pcl-note',
+      String(hotel.preliminary_stage_count||0)+' / '+String(hotel.hotel_resort_stage_count||0)+
+      ' hotel/resort stages with source-based preliminary cost. Remaining: '+
+      String(hotel.unpriced_stage_count||0)+' · Currency '+String(hotel.currency||'not selected')+
+      '. Auto-lowest cost Property default: '+String(hotel.auto_lowest_stage_count||0)+
+      ' stage(s). No hotel is reserved or assigned. Units are optional.'));
+    const profit=hotel.company_profit_policy||null;
+    if(profit)scope.append(el('p','mad4b-pcl-note','Company-wide profit policy ACTIVE: '+
+      String(profit.percent)+'% '+String(profit.kind||'')+
+      ' · applied ONCE to total certified Package cost, never again to selling Rates.'));
+    else scope.append(el('p','mad4b-pcl-warning','Company-wide profit policy needs review: '+
+      String(hotel.company_profit_status||'missing')));
+    if(hotel.preliminary_partial_total!==null)
+      scope.append(el('p','mad4b-pcl-warning','Preliminary PARTIAL hotel cost subtotal: '+
+        String(hotel.preliminary_partial_total)+' '+String(hotel.currency||'')+
+        ' · Not an approved Package cost, price, or payable amount.'));
+    const margin=hotel.hotel_cost_component_margin_preview;
+    if(margin && margin.margin_applied_once)
+      scope.append(el('p','mad4b-pcl-note','Hotel component ONLY — hypothetical selling share after '+
+        String(profit?.percent||'?')+'% company policy: '+String(margin.indicative_sale_component)+
+        ' '+String(margin.currency||'')+' (unapproved partial component; not a Tour Rate or payment amount).'));
+    const comparison=hotel.candidate_comparison_margin_preview;
+    if(comparison && comparison.company_profit_applied_once)
+      scope.append(el('p','mad4b-pcl-warning',
+        'UNASSIGNED candidate comparison (hotel stages ONLY): referenced cost '+
+        String(comparison.candidate_cost_total)+' '+String(comparison.currency||'')+
+        ' · indicative hotel-only selling component with company margin ONCE '+
+        String(comparison.hypothetical_hotel_component_with_margin)+' '+
+        String(comparison.currency||'')+
+        '. Not a Package Tour Rate; other services, inventory and approval not included.'));
+    const disclosure=el('details','mad4b-pcl-diagnostics');
+    disclosure.open=Boolean(hotel.start_date);
+    disclosure.append(el('summary','','Stage cost source and review status'));
+    const tbl=el('table','mad4b-pcl-table widefat striped');
+    const caption=el('caption','','Per-stage reference costs. No supplier certification or availability guaranteed.');
+    const head=el('thead');head.append(row('tr',[
+      el('th','','Stage / travel dates'),el('th','','Source'),
+      el('th','','Preliminary cost'),el('th','','Review needed')]));
+    tbl.append(caption,head);
+    const body=el('tbody');
+    for(const item of (Array.isArray(hotel.stages)?hotel.stages:[])){
+      const identity=String(item.destination||item.kind||'stay')+' · '+String(item.stage_key||'')+
+        (item.from?' · '+String(item.from)+' to '+String(item.to):'');
+      const src=item.source==='property'?'Property Standard Rate':
+        item.source==='unit'?'Unit-Specific Rate':
+        'No rate selected';
+      const mode=item.pricing_selection_mode||'';
+      const auto=mode==='automatic_lowest_cost_reference';
+      const amount=item.preliminary_cost===null?'Not priced':
+        String(item.preliminary_cost)+' '+String(item.currency||'');
+      const sourceCell=el('td','',(auto?'AUTO-LOWEST COST DEFAULT · ':'')+
+        src+(item.rate_id?' · #'+item.rate_id:'')+
+        (item.pricing_property_id?' · Property #'+item.pricing_property_id:''));
+      const alternatives=Array.isArray(item.candidate_costs)?item.candidate_costs:[];
+      if(alternatives.length){
+        sourceCell.append(el('p','mad4b-pcl-note','Date/tier/occupancy/meal-matched alternatives. Lowest cost is the automatic pricing default unless Operations explicitly overrides it; never a reservation:'));
+        const choices=el('ul','mad4b-pcl-candidate-costs');
+        for(const x of alternatives.slice(0,5)){
+          choices.append(el('li','',String(x.property_name||'Property #'+x.property_id)+
+            ' · '+String(x.preliminary_cost)+' '+String(x.currency||'')+
+            ' · Rate #'+String(x.rate_id||'')+
+            (auto&&Number(x.property_id)===Number(item.pricing_default_property_id)?
+              ' · AUTO-LOWEST DEFAULT':'')+
+            (x.stop_sale?' · STOP SALE / cost reference':'')+
+            ' · unapproved'));
+        }
+        sourceCell.append(choices);
+      }
+      body.append(row('tr',[
+        el('td','',identity),sourceCell,
+        el('td','',amount),
+        el('td','',String(item.reason||'review_required').replaceAll('_',' '))
+      ]));
+    }
+    const scroll=el('div','mad4b-pcl-property-body');
+    scroll.append(tbl);disclosure.append(scroll);scope.append(disclosure);
+    scope.append(el('p','mad4b-pcl-note',String(hotel.notice||'No commercial approval.')));
+    result.append(scope);
+  }
+  const costLedger=data.commercial_cost_preflight||null;
+  if(costLedger && costLedger.contract==='mad4b.package-commercial-cost-preflight.v1'){
+    const pane=el('section','mad4b-pcl-commercial-cost-preflight');
+    pane.append(el('h3','','Commercial Cost Composition · Readiness by Stage'));
+    pane.append(el('p','mad4b-pcl-note',
+      String(costLedger.hotel_costed_stage_count||0)+' / '+String(costLedger.stage_count||0)+
+      ' overnight stages have dated indicative hotel COST references. '+
+      'Cost Receipt certified: 0 · historical Tour Rates excluded.'));
+    if(costLedger.preliminary_hotel_reference_subtotal!==null)
+      pane.append(el('p','mad4b-pcl-warning','PARTIAL hotel-only reference: '+
+        String(costLedger.preliminary_hotel_reference_subtotal)+' '+
+        String(costLedger.currency||'')+' · NOT a customer sale price or deposit.'));
+    const details=el('details','mad4b-pcl-diagnostics');
+    details.append(el('summary','','Review missing commercial cost by original stage'));
+    const tbl=el('table','mad4b-pcl-table widefat striped');
+    const ledgerHead=el('thead');
+    ledgerHead.append(row('tr',[
+      el('th','','Stage'),el('th','','Source cost reference'),
+      el('th','','Commercial blocker')]));
+    tbl.append(ledgerHead);
+    const body=el('tbody');
+    for(const entry of (Array.isArray(costLedger.stages)?costLedger.stages:[])){
+      const cost=entry.reference_cost===null?'None':
+        String(entry.reference_cost)+' '+String(entry.currency||'')+
+        (entry.cost_rate_id?' · Rate #'+entry.cost_rate_id:'');
+      body.append(row('tr',[
+        el('td','',String(entry.stage_key||'')+' · '+String(entry.kind||'')),
+        el('td','',cost),
+        el('td','',(entry.missing||[]).join(' · ').replaceAll('_',' '))
+      ]));
+    }
+    tbl.append(body);details.append(tbl);pane.append(details);
+    const guide=costLedger.native_guide_cost_references;
+    if(guide){
+      pane.append(el('p','mad4b-pcl-note','Guide days: '+
+        JSON.stringify(guide.day_status_counts||{})+' · status '+String(guide.source_status||'')));
+      const options=Array.isArray(guide.priced_language_options)?guide.priced_language_options:[];
+      const valid=options.filter(x=>Number.isFinite(Number(x.internal_cost))&&
+        x.internal_cost!==null&&x.currency);
+      if(valid.length)
+        pane.append(el('p','mad4b-pcl-note','Native GUIDE cost alternatives (one guide, not the tour selling price): '+
+          valid.map(x=>String(x.language)+': '+String(x.internal_cost)+' '+String(x.currency)).join(' · ')+
+          '. These are NOT added to USD accommodation without approved FX and language selection.'));
+    }
+    const transport=costLedger.native_transport_cost_readiness;
+    if(transport)pane.append(el('p','mad4b-pcl-warning',
+      'Transport classification: '+JSON.stringify(transport.day_status_counts||{})+
+      ' · qualified cost receipts unavailable; review required travel legs.'));
+    pane.append(el('p','mad4b-pcl-warning',
+      'Remaining required groups: '+(costLedger.missing_groups||[]).join(' · ').replaceAll('_',' ')+
+      '. New Tour Rate, Form 6 final price and Woo deposit remain gated.'));
+    result.append(pane);
+  }
   const stages=Array.isArray(data.stages)?data.stages:[];
   const tabs=[
     ['sources','1 · Sources & stages','Confirm Package itinerary, destination and tier before selecting costs. This step reads source data only.'],
@@ -343,6 +580,58 @@ function renderReport(data){
         details.append(list);section.append(details);
       }
     }
+    // Show original-source research Drafts without creating a second editor.
+    // Research-only Unit references NEVER grant tier selection, rates or checkout.
+    const er=stage.editorial_source_review||{};
+    const draftProps=Array.isArray(er.draft_property_alternatives)?er.draft_property_alternatives:[];
+    const draftUnits=Array.isArray(er.draft_units)?er.draft_units:[];
+    if(draftProps.length || draftUnits.length || er.content_review || er.brand_review){
+      const review=el('details','mad4b-pcl-source-scout');
+      if(!stage.candidates || !stage.candidates.length)review.open=true;
+      const summary=el('summary','',
+        'Editorial source review · '+draftProps.length+' Draft hotel alternatives · '+draftUnits.length+' linked Draft rooms');
+      review.append(summary);
+      review.append(row('p',[
+        el('strong','','Responsibilities'),
+        help('Source review responsibilities',
+          'Content & Property Editors verify hotel identity, room labels, itinerary and media rights. Operations & Contracting verify supplier agreements, island/ferry access, dated availability and children policies. Pricing only generates rates after original signed cost receipts.'),
+      ],'mad4b-pcl-source-line'));
+      review.append(el('p','mad4b-pcl-warning',
+        'Research-only records. Draft Properties and Draft Units are not bookable, published stock, or an approved supplier cost, even when their room category appears on the official website.'));
+      if(er.content_review)review.append(el('p',er.content_review_state==='resolved_source_only'?'mad4b-pcl-info':'mad4b-pcl-warning',String(er.content_review)));
+      if(er.brand_review)review.append(el('p','mad4b-pcl-warning',String(er.brand_review)));
+      for(const prop of draftProps){
+        const item=el('div','mad4b-pcl-source-review-property');
+        item.append(row('p',[
+          link(prop.edit_url,prop.title || ('Property #'+prop.id)),
+          el('span','',' · Draft · '+String(prop.role||'review pending'))
+        ]));
+        const roomList=Array.isArray(prop.draft_units)?prop.draft_units:[];
+        if(prop.official_url)item.append(row('p',[link(prop.official_url,'Official room evidence')]));
+        if(roomList.length){
+          const more=el('details','mad4b-pcl-source-unit-drafts');
+          more.append(el('summary','','Review '+roomList.length+' original Draft Units'));
+          const ul=el('ul','');
+          for(const u of roomList)ul.append(row('li',[
+             link(u.edit_url,u.title||('Unit #'+u.id)),
+             el('small','',' · occupancy, inventory and cost unapproved')
+          ]));
+          more.append(ul);item.append(more);
+        }
+        review.append(item);
+      }
+      if(draftUnits.length){
+        const more=el('details','mad4b-pcl-source-unit-drafts');
+        more.append(el('summary','','Review '+draftUnits.length+' Draft Units at the existing hotel'));
+        const ul=el('ul','');
+        for(const u of draftUnits)ul.append(row('li',[
+          link(u.edit_url,u.title||('Unit #'+u.id)),
+          el('small','',' · not bookable, supplier contract pending')
+        ]));
+        more.append(ul);review.append(more);
+      }
+      section.append(review);
+    }
     const excluded=Array.isArray(stage.excluded_candidates)?stage.excluded_candidates:[];
     if(excluded.length){
       section.append(el('p','mad4b-pcl-warning',
@@ -430,6 +719,95 @@ function renderReport(data){
         ' → '+(route.to||'?')+' · '+trains.length+' published train candidate(s)'));
       scout.append(el('p','mad4b-pcl-warning',
         'Train station order is a route proposal, not a verified operating timetable, booked sleeper cabin or approved supplier fare.'));
+      const proposed=source.operational_route_proposal||null;
+      if(proposed && proposed.commercially_selected===false &&
+         proposed.rate_generation_authorized===false){
+        const contract=el('div','mad4b-pcl-rail-qualification');
+        const seg=proposed.segment||{};
+        const serviceDate=dayDate(Number(proposed.day_offset||0));
+        contract.append(el('h4','','Rail Supplier Qualification · Day '+String(proposed.day_number)));
+        contract.append(el('p','',
+          'Route: '+String(proposed.route_from||'?')+' → '+String(proposed.route_to||'?')+
+          ' · suggested train #'+String(proposed.train_number||'?')+
+          ' · declared operator '+String(proposed.declared_operator||'Not declared')));
+        contract.append(el('p','',
+          'Boarding station #'+String(seg.boarding_station_id||'?')+
+          ' at '+String(seg.boarding_time||'?')+
+          ' → arrival station #'+String(seg.arrival_station_id||'?')+
+          ' at '+String(seg.arrival_time||'?')+
+          '. These times are source records, NOT a confirmed timetable.'));
+        contract.append(el('p','mad4b-pcl-note',
+          'Planned service date: '+(serviceDate||'select a Tour start date above')+
+          ' · cabin types to quote: Standard or Elite · possible supplier cost basis: per cabin per trip or per passenger per trip.'));
+        const priceRole=proposed.direct_or_rate_price_source_review||null;
+        if(priceRole && priceRole.contract==='mad4b.transport.start-price-roles-and-source-weight.v1'){
+          const order=priceRole.global_priority||{};
+          const modeLabels={
+            indicative_only:'Indicative only',
+            cost_reference_only:'Cost reference for planning only',
+            both:'Both: indicative + planning cost'
+          };
+          contract.append(el('h4','','Transportation Price Source and Fallback'));
+          contract.append(el('p','',
+            'Source usage: '+(modeLabels[priceRole.mode]||String(priceRole.mode))+
+            ' · direct: '+(priceRole.direct&&priceRole.direct.price_present
+              ?String(priceRole.direct.amount)+' '+String(priceRole.direct.currency)+' / '+String(priceRole.direct.unit)
+              :'not entered')+
+            ' · published eligible cost Rate candidates: '+
+               String((priceRole.rate_cost_candidates||[]).filter(x=>x.planning_cost_candidate).length)));
+          contract.append(el('p','mad4b-pcl-note',
+            'Weights: Rate '+String(order.rate_weight??'—')+
+            ' / Direct '+String(order.direct_weight??'—')+
+            ' · fallback '+String(order.fallback||'—')+
+            ' · one qualifying source wins, amounts are never blended.'));
+          contract.append(el('p','mad4b-pcl-warning',
+            'Planning cost: '+(priceRole.planning_cost_source
+             ?priceRole.planning_cost_source+' '+String(priceRole.planning_cost_amount)+' '+
+                String(priceRole.planning_cost_currency)+' / '+String(priceRole.planning_cost_unit)
+             :'not available')+
+            '. Mode activation is not a signed supplier price or booking authorization.'));
+          if((priceRole.reasons||[]).length){
+            contract.append(el('p','mad4b-pcl-note',
+              'Price admission notes: '+priceRole.reasons.join(', ')));
+          }
+          const tariff=priceRole.published_public_tariff_evidence;
+          if(tariff && tariff.contract==='mad4b.abela.public-tariff-evidence.v1'){
+            const fares=tariff.money&&tariff.money.foreign_usd_one_way_per_person||{};
+            contract.append(el('h4','','Abela published fares · foreign adults · 2026 · USD per person one-way'));
+            for(const [season,seasonLabel] of [['off_peak','Outside peak'],['peak','Peak season']]){
+              for(const [kind,label] of [['standard','Standard'],['elite','Elite']]){
+                const row=fares[season]&&fares[season][kind];
+                if(!row)continue;
+                contract.append(el('p','mad4b-pcl-note',seasonLabel+' · '+label+
+                  ': shared two-berth $'+String(row.shared_double)+' / sole occupancy $'+
+                  String(row.single_sole_use)));
+              }
+            }
+            contract.append(el('p','mad4b-pcl-warning',
+              'Public tariff only. Children have conflicting published figures. Do not infer Egyptian/Arab, 2027, supplier contract, stock or commercial cost.'));
+            if(tariff.sources&&tariff.sources.official_2026_current_link)
+              contract.append(link(tariff.sources.official_2026_current_link,
+                'Abela current tariff publication'));
+          }
+        }
+        const todo=el('ul','');
+        const tasks={
+          operator_confirmed_current_date_timetable:'Confirm actual train, station and times for the selected travel date',
+          supplier_agreement_or_actual_ticket_quote:'Collect Abela contractual rate or dated ticket quotation',
+          cabin_class_and_number_of_passengers:'Specify Standard/Elite and single/double cabin allocations',
+          adults_children_infants_cabin_rules:'Confirm adult, child and infant berth-sharing rules',
+          ticket_cost_currency_meals_and_cancellation_terms:'Confirm total cost, currency, dinner/breakfast and cancellation policy',
+          date_specific_cabin_availability_reference:'Record supplier inventory or booking reference and expiration',
+          signed_supplier_cost_approval:'Obtain original authorized supplier cost approval before enabling any Rate'
+        };
+        for(const code of proposed.missing_evidence||[]){
+          todo.append(el('li','',tasks[code]||String(code)));
+        }
+        contract.append(todo);
+        contract.append(el('p','mad4b-pcl-warning',
+          'Operations proposal only. No train, compartment or cost has been approved. Avoid using the hotel-night rate for this stage.'));
+        scout.append(contract);
+      }
       for(const train of trains){
         scout.append(row('p',[
           link(train.edit_url,train.title||('Train #'+train.id)),
@@ -437,9 +815,18 @@ function renderReport(data){
             ' · '+String(train.published_transport_rate_count||0)+
             ' published transport rates · sleeper cabin fare not verified')
         ]));
+        scout.append(el('p','',
+          'Tour Rate opt-in: '+(train.tour_rate_generation_enabled?'enabled for train record (not cost-authorized)':
+            'OFF — operator has not enabled this transport service for automatic Tour Rates')+
+          ' · approved supplier contract: NO · dated sleeper fare: NOT VERIFIED'));
+        scout.append(row('p',[
+          link(train.public_timetable_reference,'Public timetable reference'),
+          el('span','',' · '),
+          link(train.official_operator_booking_url,'Verify directly with Abela')
+        ],'mad4b-pcl-source-line'));
         if(train.native_terminal_needs_schedule_revalidation){
           scout.append(el('p','mad4b-pcl-warning',
-            'Station source requires review: the saved route does not include a verified Upper Egypt (Bashtil) terminal. Revalidate the station, service date, cabin class and fare directly with Abela before booking.'));
+            'Station source conflict: the saved train stop data uses Ramses. The late-2026 published reference lists Upper Egypt (Bashtil) as the Cairo terminal. Revalidate the service station, date, ticket class and fare with Abela before booking.'));
           scout.append(row('p',[
             link(train.public_timetable_reference,'Review published timetable reference'),
             el('span','',' · '),
@@ -521,13 +908,23 @@ function renderReport(data){
 }
 async function load(event){
   if(event)event.preventDefault();
-  if(!p.value||!t.value)return;
+  if(!p.value||!t.value){
+    result.replaceChildren();
+    const selected=packages.find(x=>String(x.id)===String(p.value));
+    state.textContent=selected&&selected.tier_source==='unassigned_company_policy_missing'
+      ?'No operational tier assignment or active company fallback. Set Company Package Levels in Pricing Controls.'
+      :'No allowed level for this Tour under its operational assignment or company strategy.';
+    b.disabled=true;
+    return;
+  }
   const token=++requestToken;
   b.disabled=true;
   state.textContent='Reading native Package, Property and Unit sources…';
   const body=new URLSearchParams({
     action:String(cfg.action),nonce:String(cfg.nonce),
-    tour_id:p.value,tier_id:t.value
+    tour_id:p.value,tier_id:t.value,
+    travel_date:date.value,rooms:rooms.value,adults:adults.value,
+    children:children.value,infants:'0',currency:currency.value
   });
   try{
     const response=await fetch(cfg.endpoint,{method:'POST',credentials:'same-origin',
@@ -550,7 +947,9 @@ async function load(event){
   }
 }
 form.addEventListener('submit',load);
-p.addEventListener('change',load);
+date.addEventListener('change',load);
+for(const field of [rooms,adults,children,currency])field.addEventListener('change',load);
+p.addEventListener('change',()=>{applyTourTierOptions();load();});
 t.addEventListener('change',load);
 load();
 })();

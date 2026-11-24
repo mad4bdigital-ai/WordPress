@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Stay Price Layers Admin
  * Description: Self-provider price authoring on existing JetEngine Properties, Units, and Property Rates.
- * Version: 0.1.0
+ * Version: 0.3.0
  */
 defined('ABSPATH') || exit;
 
@@ -22,12 +22,12 @@ final class MAD4B_Stay_Layers_Admin_V1 {
         foreach(['properties','units'] as $type)
             add_action('add_meta_boxes_'.$type,static function($post)use($type){
                 if(!($post instanceof WP_Post)||!self::allowed((int)$post->ID))return;
-                add_meta_box('mad4b-stay-direct','Self Provider — Direct Price',
+                add_meta_box('mad4b-stay-direct','Company / Self — Direct Cost & Rate Sales',
                     [self::class,'direct_box'],$type,'normal','default');
             });
         add_action('add_meta_boxes_property-rates',static function($post){
             if(!($post instanceof WP_Post)||!self::allowed((int)$post->ID))return;
-            add_meta_box('mad4b-stay-rate-scope','Self Provider — Rate Layer',
+            add_meta_box('mad4b-stay-rate-scope','Company / Self — Selling Rate',
                 [self::class,'rate_box'],'property-rates','normal','default');
         });
     }
@@ -52,28 +52,73 @@ final class MAD4B_Stay_Layers_Admin_V1 {
         $id=(int)$post->ID;
         $unit=$post->post_type==='units';
         wp_nonce_field('mad4b_stay_price_'.$id,self::NONCE);
-        echo '<p>Pricing provider: <strong>Company / Self</strong>. This extends existing JetEngine price fields, without creating another price store.</p>';
-        if($unit){
-            $price=(string)get_post_meta($id,'unit_start_price',true);
-            echo '<p><strong>Unit Direct Price:</strong> '.($price!==''?esc_html($price):'Not entered')
-                .'. Edit this in the existing JetEngine <strong>Unit Price</strong> field above.</p>';
-        }else{
-            self::field('Property Direct Price (optional)','amount',
-                (string)get_post_meta($id,'prop_start_price',true),'number');
+        echo '<p><strong>Cost and selling prices are separate:</strong> Use Direct Cost for the company acquisition price; existing Property / Unit Rates hold customer selling prices. No additional cost field is stored on a Rate.</p>';
+        $savedCost=get_post_meta($id,'_mad4b_direct_cost_v1',true);
+        $savedCost=is_array($savedCost)?$savedCost:[];
+        echo '<h4>Option 1 · Direct Acquisition Cost (private)</h4>';
+        self::field('Direct Cost amount','cost_amount',
+            (string)($savedCost['amount']??''),'number');
+        self::field('Cost currency (ISO)','cost_currency',
+            (string)($savedCost['currency']??'USD'));
+        self::choice('Cost basis','cost_basis',
+            (string)($savedCost['price_unit']??''),
+            [''=>'Select cost basis']+self::basis());
+        self::field('Supplier / company source reference','cost_reference',
+            (string)($savedCost['source_reference']??''));
+        echo '<p><small>This is a private acquisition-cost record. The amount is NOT written to public Starting From fields or to Property Rates; it cannot confirm inventory or approve checkout.</small></p>';
+        $legacyKey=$unit?'unit_start_price':'prop_start_price';
+        $legacy=(string)get_post_meta($id,$legacyKey,true);
+        if($legacy!=='')echo '<p><strong>Existing public starting amount (unchanged):</strong> '.
+           esc_html($legacy).' · Stored in '.esc_html($legacyKey).
+           '. This is not automatically imported as acquisition cost.</p>';
+        echo '<p><small>Company profit is applied once to the certified total cost. Existing selling Rates take precedence and must not receive an additional margin.</small></p>';
+        if(class_exists('MAD4B_Company_Global_Profit_V1',false)){
+          $profit=MAD4B_Company_Global_Profit_V1::current();
+          if(!is_wp_error($profit)){
+            echo '<p><strong>Company profit policy:</strong> '.esc_html(
+              (string)($profit['percent']??'?').'% · '.(string)($profit['kind']??'')
+            ).' · applied once to certified total cost. <strong>Not added to an existing Selling Rate.</strong></p>';
+          }
         }
-        $pre=$unit?'unit_':'prop_';
-        $currencyKey=$unit?'unit_base_currency':'prop_base_currency';
-        $basisKey=$unit?'unit_direct_price_unit':'prop_direct_price_unit';
-        $kindKey=$unit?'unit_direct_price_kind':'prop_direct_price_kind';
-        self::field('Currency (3-letter ISO)','currency',
-            (string)get_post_meta($id,$currencyKey,true));
-        self::choice('Selling Basis','basis',
-            (string)get_post_meta($id,$basisKey,true),
-            [''=>'Select price basis']+self::basis());
-        self::choice('Source amount represents','kind',
-            (string)get_post_meta($id,$kindKey,true)?:'sell',
-            ['sell'=>'Direct selling price','cost'=>'Internal cost (not a selling price)']);
-        echo '<p><small>Direct prices are indicative until availability, meal inclusion and checkout readiness are independently verified.</small></p>';
+        if(!$unit)self::renderPropertyRateSales($id);
+    }
+    private static function renderPropertyRateSales(int $property):void {
+        if(!current_user_can('edit_post',$property))return;
+        $ids=get_posts(['post_type'=>'property-rates','post_status'=>['publish','draft'],
+           'fields'=>'ids','posts_per_page'=>60,'no_found_rows'=>true,
+           'suppress_filters'=>true,'meta_query'=>[
+              ['key'=>'prop_related_property_id','value'=>(string)$property,'compare'=>'=']
+           ]]);
+        $sell=[];$historical=[];$held=[];
+        foreach($ids as $rate){
+           $rate=(int)$rate;
+           if((int)get_post_meta($rate,'prop_related_unit_id',true)>0)continue;
+           if((string)get_post_meta($rate,'mad4b_rate_scope_v1',true)!=='property')continue;
+           $kind=(string)get_post_meta($rate,'mad4b_rate_price_kind_v1',true);
+           if($kind==='cost'){$historical[]=$rate;continue;}
+           if($kind!==''&&$kind!=='sell'){$held[]=$rate;continue;}
+           $entry=['id'=>$rate,'price'=>get_post_meta($rate,'base_amount',true),
+             'currency'=>(string)get_post_meta($rate,'currency',true),
+             'unit'=>(string)get_post_meta($rate,'prop_price_unit',true),
+             'status'=>get_post_status($rate),'stop'=>(string)get_post_meta($rate,'stop_sale',true)];
+           if($entry['status']!=='publish'||$entry['stop']!=='0')$held[]=$rate;
+           else $sell[]=$entry;
+        }
+        echo '<hr><h4>Option 2 · Property Rate — Selling Prices</h4>';
+        echo '<p>Existing published Property Rates are selling prices. Their amount, currency, season and occupancy are edited in the native Property Rate, never as a second amount on this Property.</p>';
+        if($sell)foreach(array_slice($sell,0,6) as $row){
+          echo '<p><a href="'.esc_url(get_edit_post_link($row['id'],'raw')).'">'.
+            esc_html(get_the_title($row['id'])).'</a> · <strong>'.
+            esc_html((string)$row['price'].' '.$row['currency']).'</strong> / '.
+            esc_html($row['unit']).'</p>';
+        }
+        else echo '<p><em>No active selling Property Rate is assigned. Direct Cost remains available as an indicative fallback.</em></p>';
+        if($historical||$held)echo '<p><small>'.count($historical).
+          ' historical cost-reference Rate(s) excluded from selling-source selection; '.
+          count($held).' other held / draft Rate(s). These records were not converted.</small></p>';
+        if(count($ids)>=60)echo '<p><small>More Rates may exist; open the full Rate list for review.</small></p>';
+        echo '<p><a class="button button-secondary" href="'.
+           esc_url(admin_url('edit.php?post_type=property-rates')).'">Review Property Rates</a></p>';
     }
     public static function rate_box(WP_Post $post):void {
         $id=(int)$post->ID;
@@ -84,9 +129,14 @@ final class MAD4B_Stay_Layers_Admin_V1 {
         self::choice('Price scope','scope',$scope?:($unit?'unit':''),
             [''=>'Choose rate scope','unit'=>'Unit Rate — existing Unit relation',
              'property'=>'Property Rate — applies without a Unit relation']);
-        self::choice('Source amount represents','kind',
-            (string)get_post_meta($id,'mad4b_rate_price_kind_v1',true)?:'sell',
-            ['sell'=>'Selling price','cost'=>'Internal cost (not a selling price)']);
+        $legacyCost=(string)get_post_meta($id,'mad4b_rate_price_kind_v1',true)==='cost';
+        if($legacyCost){
+           echo '<p class="notice notice-warning" style="padding:9px"><strong>Legacy cost-reference Rate — not a selling Rate.</strong> This historical record stays unchanged and excluded from customer price sourcing. Move its validated acquisition cost to Property/Unit Direct Cost, then generate a new selling Rate. No automatic conversion.</p>';
+        }else echo '<p><strong>Price type: Selling Rate only.</strong> Margin must not be applied again to its native amount.</p>';
+        echo '<p>Native selling amount: <strong>'.
+          esc_html((string)get_post_meta($id,'base_amount',true).' '.
+          (string)get_post_meta($id,'currency',true)).'</strong> / '.
+          esc_html((string)get_post_meta($id,'prop_price_unit',true)).'</p>';
         echo '<p>Property ID: '.($property?:'Not linked').' · Unit ID: '.($unit?:'Not linked').'.</p>';
         echo '<p><small>A Property-wide Rate must have a linked Property and <strong>no Unit ID</strong>. Keep native amount, currency, dates, meal plan, occupancy, and Stop Sale in the existing JetEngine fields. Draft/Stop Sale rates are never selected.</small></p>';
         $proposal=get_post_meta($id,'_mad4b_supplier_sheet_proposal_v1',true);
@@ -107,7 +157,9 @@ final class MAD4B_Stay_Layers_Admin_V1 {
                  .esc_html($cell).'</a>'
                  .' · <strong>'.esc_html__('Occupancy','mad4b').':</strong> '
                  .esc_html((string)($proposal['occupancy']??'unknown'))
-                 .' · <strong>'.esc_html__('Selling basis','mad4b').':</strong> per person'
+                 .' · <strong>'.esc_html__('Original sheet unit','mad4b').':</strong> per person'
+                 .' · <strong>'.esc_html__('Cost calculation unit','mad4b').':</strong> '
+                 .esc_html((string)get_post_meta($id,'prop_price_unit',true))
                  .' · <strong>'.esc_html__('Meal Plan','mad4b').':</strong> BB</p>';
             echo '<p><strong>'.esc_html__('Season source','mad4b').':</strong> ';
             if(!empty($window['valid']))
@@ -142,44 +194,57 @@ final class MAD4B_Stay_Layers_Admin_V1 {
     public static function save_direct(int $id,WP_Post $post):void {
         if(!in_array($post->post_type,['properties','units'],true)
             ||!self::approved_post($id,'mad4b_stay_price_'.$id))return;
-        $amount=self::post_string('amount');
-        $currency=self::post_string('currency');
-        $basis=self::post_string('basis');
-        $kind=self::post_string('kind');
-        if($currency===null||$basis===null||$kind===null)return;
-        $currency=strtoupper($currency);
-        if($currency!==''&&!preg_match('/^[A-Z]{3}$/D',$currency))return;
-        if($currency!==''&&function_exists('get_woocommerce_currencies')
-            &&!array_key_exists($currency,(array)get_woocommerce_currencies()))return;
-        if($basis!==''&&!array_key_exists($basis,self::basis()))return;
-        if(!in_array($kind,['sell','cost'],true))return;
-        if($post->post_type==='properties'){
-            if($amount===null)return;
-            if($amount!==''&&(!preg_match('/^(?:0|[1-9][0-9]{0,7})(?:\.[0-9]{1,4})?$/D',$amount)
-                ||(float)$amount<=0))return;
-            if($amount!=='')update_post_meta($id,'prop_start_price',$amount);
-            else delete_post_meta($id,'prop_start_price');
+        $amount=self::post_string('cost_amount');
+        $currency=self::post_string('cost_currency');
+        $basis=self::post_string('cost_basis');
+        $reference=self::post_string('cost_reference');
+        if($amount===null||$currency===null||$basis===null||$reference===null)return;
+        if($amount===''){
+           delete_post_meta($id,'_mad4b_direct_cost_v1');
+           return;
         }
-        $unit=$post->post_type==='units';
-        update_post_meta($id,$unit?'unit_base_currency':'prop_base_currency',$currency);
-        update_post_meta($id,$unit?'unit_direct_price_unit':'prop_direct_price_unit',$basis);
-        update_post_meta($id,$unit?'unit_direct_price_kind':'prop_direct_price_kind',$kind);
+        if(!preg_match('/^(?:0|[1-9][0-9]{0,7})(?:\\.[0-9]{1,4})?$/D',$amount)
+           ||(float)$amount<=0)return;
+        $currency=strtoupper($currency);
+        if(!preg_match('/^[A-Z]{3}$/D',$currency))return;
+        if(function_exists('get_woocommerce_currencies') &&
+          !isset(get_woocommerce_currencies()[$currency]))return;
+        if(!array_key_exists($basis,self::basis()))return;
+        if(strlen($reference)>180)return;
+        $current=get_post_meta($id,'_mad4b_direct_cost_v1',true);
+        $record=[
+           'contract'=>'mad4b.private-direct-acquisition-cost.v1',
+           'amount'=>$amount,'currency'=>$currency,
+           'price_unit'=>$basis,
+           'supplier'=>'self','source_reference'=>sanitize_text_field($reference),
+           'recorded_at'=>gmdate('c'),
+           'cost_certified'=>false,
+           'retail_quote_authorized'=>false
+        ];
+        if(is_array($current)&&
+           (string)($current['amount']??'')===$amount &&
+           (string)($current['currency']??'')===$currency &&
+           (string)($current['price_unit']??'')===$basis &&
+           (string)($current['source_reference']??'')===$reference)return;
+        update_post_meta($id,'_mad4b_direct_cost_v1',$record);
     }
     public static function save_rate(int $id,WP_Post $post):void {
         if(!self::approved_post($id,'mad4b_stay_rate_'.$id))return;
         $scope=self::post_string('scope');
-        $kind=self::post_string('kind');
-        if(!in_array($scope,['unit','property'],true)||!in_array($kind,['sell','cost'],true))return;
+        if(!in_array($scope,['unit','property'],true))return;
+        // Historical cost references stay isolated; they are not silently
+        // reclassified as customer selling Rates by saving an editor screen.
+        if((string)get_post_meta($id,'mad4b_rate_price_kind_v1',true)==='cost')return;
         $unit=(int)get_post_meta($id,'prop_related_unit_id',true);
         $property=(int)get_post_meta($id,'prop_related_property_id',true);
         if(!$property||get_post_type($property)!=='properties')return;
         if(($scope==='property'&&$unit) || ($scope==='unit'&&!$unit))return;
-        // Do not allow a draft supplier quote to be reclassified as a sale
-        // or moved to Unit scope before its verified contract is received.
+        // An unapproved supplier cost quote can never become a Retail Rate
+        // merely by changing its UI scope or saving the post.
         if((string)get_post_meta($id,'_mad4b_supplier_sheet_quote_unapproved_v1',true)==='1'
-            &&($scope!=='property'||$kind!=='cost'))return;
+           ||get_post_meta($id,'_mad4b_supplier_sheet_proposal_v1',true))return;
         update_post_meta($id,'mad4b_rate_scope_v1',$scope);
-        update_post_meta($id,'mad4b_rate_price_kind_v1',$kind);
+        update_post_meta($id,'mad4b_rate_price_kind_v1','sell');
     }
     public static function page():void {
         if(!current_user_can('commerce_manage_pricing'))wp_die('Pricing permission required');
@@ -257,7 +322,10 @@ final class MAD4B_Stay_Layers_Admin_V1 {
           ||get_post_meta($id,'mad4b_rate_scope_v1',true)!=='property'
           ||get_post_meta($id,'mad4b_rate_price_kind_v1',true)!=='cost'
           ||(int)get_post_meta($id,'prop_related_unit_id',true)!==0
-          ||get_post_meta($id,'prop_price_unit',true)!=='per_person'
+          ||!in_array((string)get_post_meta($id,'prop_price_unit',true),['per_person','per_person_night'],true)
+          ||((string)get_post_meta($id,'prop_price_unit',true)==='per_person_night' &&
+              (!class_exists('MAD4B_Hotel_Nightly_Cost_Basis_V1',false) ||
+               !MAD4B_Hotel_Nightly_Cost_Basis_V1::effective($id)))
           ||get_post_meta($id,'currency',true)!=='USD'
           ||get_post_meta($id,'stop_sale',true)!=='1'
           ||(string)get_post_meta($id,'avilabile_status',true)!=='0'

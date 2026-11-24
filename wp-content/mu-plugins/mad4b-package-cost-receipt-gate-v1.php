@@ -69,18 +69,18 @@ final class MAD4B_Package_Cost_Receipt_Gate_V1 {
             if ((int)($receipt['property_id']??0)<1 ||
                 (int)($receipt['property_id']??0)!==(int)($context['property_id']??0) ||
                 get_post_type((int)($receipt['property_id']??0))!=='properties' ||
-                $unitId<1 || get_post_type($unitId)!=='units' ||
-                !in_array($unitId,array_map('intval',(array)($context['unit_ids']??[])),true))
+                ($unitId>0&&(get_post_type($unitId)!=='units'||
+                !in_array($unitId,array_map('intval',(array)($context['unit_ids']??[])),true))))
                 $fail('receipt_room_property_unit_mismatch');
             if (!in_array($receipt['meal_plan']??null,['BB','HB','FB','AI','SAI','RO'],true))
                 $fail('receipt_meal_plan_missing');
         } elseif ($kind==='cruise') {
             if ((int)($receipt['vessel_id']??0)<1 ||
                 (int)($receipt['vessel_id']??0)!==(int)($context['vessel_id']??0) ||
-                (int)($receipt['cabin_unit_id']??0)<1 ||
-                (int)($receipt['cabin_unit_id']??0)!==(int)($context['cabin_unit_id']??0) ||
+                ((int)($receipt['cabin_unit_id']??0)>0 && (
+                    (int)($receipt['cabin_unit_id']??0)!==(int)($context['cabin_unit_id']??0)||
+                    get_post_type((int)$receipt['cabin_unit_id'])!=='units')) ||
                 get_post_type((int)($receipt['vessel_id']??0))!=='properties' ||
-                get_post_type((int)($receipt['cabin_unit_id']??0))!=='units' ||
                 empty($context['cruise_program']) ||
                 ($receipt['cruise_program']??null)!==$context['cruise_program'] ||
                 ($receipt['sailing_date']??null)!==$context['service_date'])
@@ -89,15 +89,42 @@ final class MAD4B_Package_Cost_Receipt_Gate_V1 {
             $train=(int)($receipt['train_id']??0);
             if ($train<1 || $train!==(int)($context['train_id']??0) ||
                 !in_array((string)($receipt['cabin_class']??''),['Standard','Elite'],true) ||
+                ($receipt['cabin_class']??'')!==($context['cabin_class']??'') ||
                 ($receipt['service_date']??null)!==$context['service_date'])
                 $fail('receipt_train_or_cabin_mismatch');
             if (get_post_type($train)!=='transportations' ||
-                (string)get_post_meta($train,'trans_train_number',true)!==(string)($context['train_number']??'') ||
-                (int)get_post_meta($train,'trans_from_station_id',true)!==(int)($receipt['boarding_station_id']??0) ||
-                (int)get_post_meta($train,'trans_to_station_id',true)!==(int)($receipt['arrival_station_id']??0))
-                $fail('receipt_train_boarding_station_invalid');
-            if (($receipt['departure_time']??'')!==(string)get_post_meta($train,'trans_departure_time',true) ||
-                ($receipt['arrival_time']??'')!==(string)get_post_meta($train,'trans_arrival_time',true))
+                (string)get_post_meta($train,'trans_train_number',true)!==(string)($context['train_number']??''))
+                $fail('receipt_train_identity_invalid');
+            // The booked leg must match the original stage itinerary and its
+            // native, source-owned proposal. A train's first station is NOT
+            // necessarily the passenger's boarding station (e.g. 87 from Luxor).
+            $boarding=(int)($receipt['boarding_station_id']??0);
+            $arrival=(int)($receipt['arrival_station_id']??0);
+            if ($boarding<=0 || $arrival<=0 ||
+                $boarding===$arrival ||
+                $boarding!==(int)($context['boarding_station_id']??0) ||
+                $arrival!==(int)($context['arrival_station_id']??0))
+                $fail('receipt_train_stage_segment_unverified');
+            $fromStops=[];$toStops=[];
+            foreach((array)get_post_meta($train,'trans_train_stops',true) as $stop){
+                if(!is_array($stop))continue;
+                $id=(int)($stop['station_id']??0);
+                $order=$stop['sort_num']??null;
+                $time=(string)($stop['time']??'');
+                if($id<1 || !is_numeric($order) || (int)$order<1 ||
+                   !preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/D',$time) ||
+                   get_post_type($id)!=='stations' || get_post_status($id)!=='publish')
+                    continue;
+                $entry=['order'=>(int)$order,'time'=>$time];
+                if($id===$boarding)$fromStops[]=$entry;
+                if($id===$arrival)$toStops[]=$entry;
+            }
+            if(count($fromStops)!==1 || count($toStops)!==1 ||
+               ($fromStops[0]['order']??PHP_INT_MAX)>=($toStops[0]['order']??0))
+                $fail('receipt_train_stop_order_invalid');
+            if(count($fromStops)!==1 || count($toStops)!==1 ||
+               ($receipt['departure_time']??'')!==($fromStops[0]['time']??null) ||
+               ($receipt['arrival_time']??'')!==($toStops[0]['time']??null))
                 $fail('receipt_train_timetable_invalid');
         }
         $stock=$receipt['availability']??null;

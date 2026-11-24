@@ -415,6 +415,9 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         $link=$row['object_id']?(($row['source']??'')==='mad4b-destination-term-integrity'
             ?get_edit_term_link((int)$row['object_id'],'destinations')
             :get_edit_post_link($row['object_id'],'raw')):'';
+        if(class_exists('MAD4B_Dynamic_Cost_Alerts_V1',false) &&
+            MAD4B_Dynamic_Cost_Alerts_V1::costLink($row))
+                $link=MAD4B_Dynamic_Cost_Alerts_V1::url((int)$row['object_id'],(array)($row['source_evidence']['context']??[]));
         $taskChecklist='';
         if (($row['source']??'')==='mad4b-google-ttd-pricing') {
             foreach(['price','fees_and_taxes','occupancy','availability','checkout_match'] as $name) {
@@ -430,7 +433,7 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
         $assigned=MAD4B_SCP_Readiness_Workflow_Options::assigned_user($row);
         if($assigned)$taskData['assignees']=array($assigned);
         try {
-            $svc=$ratePlan?new class extends \FluentBoards\App\Services\TaskService {public function sendMailAfterTaskModify($column,$assigneeIds,$taskId){return;}}:new \FluentBoards\App\Services\TaskService();
+            $svc=($ratePlan||($row['source']??'')==='mad4b-dynamic-cost-readiness')?new class extends \FluentBoards\App\Services\TaskService {public function sendMailAfterTaskModify($column,$assigneeIds,$taskId){return;}}:new \FluentBoards\App\Services\TaskService();
             $task=$svc->createTask($taskData,$board);
         } catch (Throwable $e) {
             return new WP_Error('mad4b_readiness_board_provider_failed','Fluent Boards rejected task creation.');
@@ -578,6 +581,9 @@ final class MAD4B_SCP_Content_Readiness_Alerts {
             $url=$row['object_id']?(($row['source']??'')==='mad4b-destination-term-integrity'
                 ?get_edit_term_link((int)$row['object_id'],'destinations')
                 :get_edit_post_link($row['object_id'])):'';
+            if(class_exists('MAD4B_Dynamic_Cost_Alerts_V1',false) &&
+                MAD4B_Dynamic_Cost_Alerts_V1::costLink($row))
+                $url=MAD4B_Dynamic_Cost_Alerts_V1::url((int)$row['object_id'],(array)($row['source_evidence']['context']??[]));
             $label=esc_html((string)$row['post_type'].' #'.(int)$row['object_id']);
             if($url)$label='<a href="'.esc_url($url).'">'.$label.'</a>';
             $evidence=(array)($row['source_evidence']??array());
