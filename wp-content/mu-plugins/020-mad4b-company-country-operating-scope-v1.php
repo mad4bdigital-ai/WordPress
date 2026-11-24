@@ -39,6 +39,21 @@ final class MAD4B_Company_Country_Operating_Scope_V1 {
         }
         return $value;
     }
+    /**
+     * Marketing attribution parameters are read-only presentation metadata,
+     * not a mutation of taxonomy parent rows. Permit their use only for the
+     * request-local *raw row memo* on public Tour detail GET. Every pricing,
+     * authorization, payment, date/filter and unknown query remains fresh.
+     */
+    private static function read_only_tracking_query():bool {
+        if (!empty($_POST) || !is_array($_GET) || count($_GET)>12) return false;
+        if (!$_GET) return empty($_SERVER['QUERY_STRING']);
+        foreach ($_GET as $name=>$value) {
+            if (!is_string($name) || !preg_match('/^(?:utm_[a-z0-9_]{1,60}|gclid|fbclid|msclkid)$/iD',$name)
+                || !is_string($value) || strlen($value)>256) return false;
+        }
+        return true;
+    }
     public static function canonical_country(int $term_id):int {
         if($term_id<1 || !taxonomy_exists('destinations'))return 0;
         // WPML's get_term() changes a canonical EN term into the *current*
@@ -84,6 +99,7 @@ final class MAD4B_Company_Country_Operating_Scope_V1 {
         // *taxonomy parent row* within this read-only HTML render. Reuse raw
         // parent rows for this exact presentation context only; do not memoize
         // the final country approval, public sale or publication decision.
+        // Safe analytics UTMs only may use the same raw parent row memo.
         // This is NOT a public-cache bypass, user authorization or WPML
         // cross-request cache. All POST/AJAX/REST/admin/CLI/cron and preview
         // requests retain fresh parent-row reads for every decision.
@@ -94,8 +110,7 @@ final class MAD4B_Company_Country_Operating_Scope_V1 {
             && !(defined('REST_REQUEST')&&REST_REQUEST)
             && !(defined('DOING_AJAX')&&DOING_AJAX)
             && !(defined('DOING_CRON')&&DOING_CRON)
-            && empty($_GET) && empty($_POST)
-            && empty($_SERVER['QUERY_STRING'])
+            && self::read_only_tracking_query()
             && function_exists('is_singular') && is_singular('tours-and-activities')
             && !(function_exists('is_preview')&&is_preview())
             && empty($_SERVER['HTTP_AUTHORIZATION'])
