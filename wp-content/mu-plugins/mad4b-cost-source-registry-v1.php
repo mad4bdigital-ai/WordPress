@@ -29,9 +29,14 @@ final class MAD4B_Cost_Source_Registry_V1 {
    !is_string($basisField)||($basisField!==''&&!self::validKey($basisField))||
    !in_array($currency,['USD','EGP','EUR','GBP'],true)||!in_array($basis,self::BASIS,true))
    return new WP_Error('cost_source_mapping_invalid');
+  $provider=$in['source_provider']??'';
+  if(!in_array($provider,['','company_hotel_sheet'],true)||
+   ($provider==='company_hotel_sheet'&&($kind!=='post_type'||$slug!=='property-rates'||$amount!=='base_amount'||$relation!==''||
+   $currencyField!=='currency'||$basisField!=='prop_price_unit'||!empty($in['relation_id'])||!empty($in['repeater_field']))))
+   return new WP_Error('cost_source_provider_mapping_invalid');
   // Only numeric cost references; never return arbitrary meta, secrets, callbacks or SQL.
   $base=['kind'=>$kind,'slug'=>$slug,'amount_field'=>$amount,'relation_field'=>$relation,
-   'currency'=>$currency,'basis'=>$basis,'currency_field'=>$currencyField,'basis_field'=>$basisField,'role'=>'unverified_cost_reference'];
+   'currency'=>$currency,'basis'=>$basis,'currency_field'=>$currencyField,'basis_field'=>$basisField,'role'=>'unverified_cost_reference','source_provider'=>$provider];
   if(!class_exists('MAD4B_Cost_Component_Rules_V1'))return $base;
   $extra=MAD4B_Cost_Component_Rules_V1::normalize($in,$base);
   return is_wp_error($extra)?$extra:array_merge($base,$extra);
@@ -107,15 +112,21 @@ final class MAD4B_Cost_Source_Registry_V1 {
     $values=class_exists('MAD4B_Cost_Component_Rules_V1')?MAD4B_Cost_Component_Rules_V1::values(
       $m['repeater_field']!==''?$read($m['repeater_field']):null,$m,$read):
       [['row_key'=>null,'amount'=>$read($m['amount_field']),'currency'=>$m['currency_field']!==''?$read($m['currency_field']):$m['currency'],'basis'=>$m['basis_field']!==''?$read($m['basis_field']):$m['basis']]];
+    $sourceAdmission=null;
+    if(($m['source_provider']??'')==='company_hotel_sheet'){
+     $sourceAdmission=class_exists('MAD4B_Company_Cost_Source_Admission_V1',false)?
+      MAD4B_Company_Cost_Source_Admission_V1::verify($sid):['qualified'=>false,'reason'=>'source_provider_unavailable'];
+    }
     foreach($values as $v){
      $amount=self::amount($v['amount']);
+     if(is_array($sourceAdmission)&&empty($sourceAdmission['qualified']))$amount=null;
      $currency=in_array($v['currency'],['USD','EGP','EUR','GBP'],true)?$v['currency']:null;
      $basis=in_array($v['basis'],self::BASIS,true)?$v['basis']:null;
      $out[]=['component'=>wp_strip_all_tags($label).' · '.$m['amount_field'].($v['row_key']!==null?' · '.$v['row_key']:''),
       'source'=>'registry:'.$key,'status'=>$amount===null||$currency===null||$basis===null?'missing':'reverify',
       'value'=>['entity_kind'=>$kind,'entity_type'=>$slug,'entity_id'=>$sid,'row_key'=>$v['row_key'],
-       'amount'=>$amount,'currency'=>$currency,'basis'=>$basis,'mapping'=>$m,'issue'=>$v['issue']??null,
-       'native_edit_url'=>$url?:null,'commercially_authorized'=>false,'cost_receipt_qualified'=>false,'included_in_commercial_total'=>false]];
+       'amount'=>$amount,'currency'=>$currency,'basis'=>$basis,'mapping'=>$m,'issue'=>$sourceAdmission!==null&&!$sourceAdmission['qualified']?($sourceAdmission['reason']??'source_admission_failed'):($v['issue']??null),
+       'source_admission'=>$sourceAdmission,'native_edit_url'=>$url?:null,'commercially_authorized'=>false,'cost_receipt_qualified'=>false,'included_in_commercial_total'=>false]];
      if(count($out)>=100){
       $out[]=['component'=>'Registry candidate limit','source'=>'registry:'.$key,'status'=>'missing','value'=>['issue'=>'partial_candidate_set','amount'=>null,'currency'=>null,'basis'=>null,'mapping'=>$m,'entity_id'=>0,'entity_type'=>$slug,'entity_kind'=>$kind]];
       return $out;
@@ -130,7 +141,7 @@ final class MAD4B_Cost_Source_Registry_V1 {
  static function save():void {
   if(!self::manageable())wp_die('Registry configuration denied','Denied',['response'=>403]);
   check_admin_referer('mad4b_cost_source_registry');
-  $raw=[];foreach(['kind','slug','amount_field','relation_field','currency','basis','currency_field','basis_field','relation_id','relation_direction','repeater_field','row_key_field','component_key','component_role','selection_mode','inclusion','quantity_source','fixed_quantity','priority','weight'] as $k){
+  $raw=[];foreach(['kind','slug','amount_field','relation_field','currency','basis','currency_field','basis_field','relation_id','relation_direction','repeater_field','row_key_field','component_key','component_role','selection_mode','inclusion','quantity_source','fixed_quantity','priority','weight','source_provider'] as $k){
    $v=$_POST[$k]??null;if($v===null)continue;if(!is_string($v))wp_die('Invalid mapping');
    $raw[$k]=wp_unslash($v);
   }
@@ -160,7 +171,7 @@ final class MAD4B_Cost_Source_Registry_V1 {
  static function renderMappings():void {
   if(!self::manageable())return;
   echo '<table class="widefat striped"><thead><tr><th>Kind / source</th><th>Amount field</th><th>Relation / repeater</th><th>Currency / basis</th><th>Component policy</th></tr></thead><tbody>';
-  foreach(self::mappings() as $m)echo '<tr><td>'.esc_html($m['kind'].':'.$m['slug']).'</td><td>'.esc_html($m['amount_field']).'</td><td>'.esc_html(($m['relation_id']??0)?('Relation #'.$m['relation_id'].' '.$m['relation_direction'].($m['repeater_field']?' / '.$m['repeater_field']:'')):($m['relation_field']?:($m['repeater_field']??'')?:'Native assignment / own record')).'</td><td>'.esc_html($m['currency'].' / '.$m['basis']).'</td><td>'.esc_html(($m['component_key']??'').' / '.($m['selection_mode']??'manual').' / Priority '.($m['priority']??100).' / Weight '.($m['weight']??100)).'</td></tr>';
+  foreach(self::mappings() as $m)echo '<tr><td>'.esc_html($m['kind'].':'.$m['slug']).'</td><td>'.esc_html($m['amount_field'].(!empty($m['source_provider'])?' · '.$m['source_provider']:'' )).'</td><td>'.esc_html(($m['relation_id']??0)?('Relation #'.$m['relation_id'].' '.$m['relation_direction'].($m['repeater_field']?' / '.$m['repeater_field']:'')):($m['relation_field']?:($m['repeater_field']??'')?:'Native assignment / own record')).'</td><td>'.esc_html($m['currency'].' / '.$m['basis']).'</td><td>'.esc_html(($m['component_key']??'').' / '.($m['selection_mode']??'manual').' / Priority '.($m['priority']??100).' / Weight '.($m['weight']??100)).'</td></tr>';
   echo '</tbody></table>';
  }
  static function renderForm():void {
@@ -178,6 +189,7 @@ final class MAD4B_Cost_Source_Registry_V1 {
   echo '</select></label> <label>Cost basis <select name="basis">';
   foreach(self::BASIS as $basis)echo '<option>'.esc_html($basis).'</option>';
   echo '</select></label></p><p><label>Currency meta field (optional) <input name="currency_field"></label></p><p><label>Cost basis meta field (optional) <input name="basis_field"></label></p>';
+  echo '<p><label>Native source provider <select name="source_provider"><option value="">Generic reference</option><option value="company_hotel_sheet">Company hotel sheet — verified cost value only</option></select></label></p>';
   echo '<h4>Relation &amp; repeater</h4><p><label>JetEngine Relation ID <input type="number" name="relation_id" min="0" value="0" list="mad4b-cost-relations"></label> <label>Direction <select name="relation_direction"><option value="children">Parent → children</option><option value="parents">Child → parents</option></select></label></p>';
   echo '<datalist id="mad4b-cost-relations">';
   if(function_exists('jet_engine')){
