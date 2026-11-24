@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Automatic Public Elementor Family Certifier
  * Description: Discover only verifiable public container subtrees in signed Elementor family documents.
- * Version: 0.1.1
+ * Version: 0.1.3
  */
 defined('ABSPATH') || exit;
 
@@ -173,7 +173,18 @@ final class MAD4B_Auto_Public_Family_V1 {
     public static function root_for(int $family,string $id):?array {
         if(self::mode()==='off')return null;
         $roots=self::discover($family);
-        return $roots[$family.'|'.$id]??null;
+        $root=$roots[$family.'|'.$id]??null;
+        if(!is_array($root))return null;
+        // Save-triggered family re-certification does NOT authorize a newly
+        // changed public subtree. Two real native SSR witnesses must match
+        // before this root can enter the public snapshot path.
+        $pending=get_option('mad4b_auto_family_pending_v1',[]);
+        $entry=is_array($pending)?($pending['roots'][$family.'|'.$id]??null):null;
+        if(is_array($entry)
+            && ($entry['family_sha']??'')===$root['family_sha256']
+            && ($entry['root_sha']??'')===$root['root_sha256'])
+            return null;
+        return $root;
     }
     public static function validate(array $sub,array $root):bool {
         $meta=self::analyze_node($sub);
@@ -192,6 +203,8 @@ final class MAD4B_Auto_Public_Family_V1 {
           || preg_match('~\bon[a-z]{3,25}\s*=~i',$html)
           || preg_match('~\b(?:_wpnonce|wp_nonce|auth_token|access_token|session_id|client_secret|order_key)\s*=~i',$html)
           || preg_match('~\bclass\s*=\s*["\'][^"\']{0,400}\b(?:fluentform|woocommerce|checkout-form|booking-form|rate-calculator|payment-form|order-total)(?:\b|[-_])~i',$html))return false;
+        if(preg_match('~\b(?:href|src|action|formaction)\s*=\s*["\']\s*(?:javascript:|vbscript:|data:text/html)~i',$html)
+            || preg_match('~\b(?:srcdoc|contenteditable)\s*=~i',$html))return false;
         $text=html_entity_decode(strip_tags($html),ENT_QUOTES|ENT_HTML5,'UTF-8');
         if(preg_match('~(?:[$€£]\s*\d{1,3}(?:[.,]\d{3})*|\b(?:USD|EUR|GBP|EGP)\s*\d+(?:[.,]\d+)?|\d+(?:[.,]\d+)?\s*(?:USD|EUR|GBP|EGP)\b)~iu',$text))return false;
         return true;
