@@ -1,0 +1,19 @@
+[Unit]
+Description=MAD4B source private-safe cache decision and origin latency monitoring
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+ExecStart=/usr/bin/flock -n /run/lock/mad4b-source-cache-origin-observer.lock /usr/bin/python3 /opt/mad4b-company-provisioning/bin/mad4b-cache-origin-observer-v1.py --site source
+TimeoutStartSec=100s
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+MemoryMax=128M
+Nice=15
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

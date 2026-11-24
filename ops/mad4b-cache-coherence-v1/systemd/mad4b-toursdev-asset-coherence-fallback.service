@@ -1,0 +1,18 @@
+[Unit]
+Description=MAD4B Tours.dev scoped LiteSpeed/FastCGI native coherence backup
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+ExecStart=/usr/bin/flock -n /run/lock/mad4b-toursdev-asset-coherence.lock /usr/bin/python3 /opt/mad4b-company-provisioning/bin/toursdev-litespeed-fastcgi-coherence-v1.py --repair
+TimeoutStartSec=50s
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6

@@ -1,0 +1,12 @@
+[Unit]
+Description=MAD4B Wayfatours tour CSS/JS and FastCGI integrity every minute
+
+[Timer]
+OnBootSec=90s
+OnUnitInactiveSec=60s
+AccuracySec=10s
+RandomizedDelaySec=5s
+Unit=mad4b-wayfa-tour-asset-coherence.service
+
+[Install]
+WantedBy=timers.target

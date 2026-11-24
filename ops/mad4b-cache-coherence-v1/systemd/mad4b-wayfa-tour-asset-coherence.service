@@ -1,0 +1,19 @@
+[Unit]
+Description=MAD4B Wayfatours hashed CSS/JS retention and tour FastCGI integrity
+Wants=docker.service
+After=docker.service
+ConditionPathIsDirectory=/opt/wayfa-rebuild-20261102/site-copy/wp-content/litespeed
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+ExecStart=/usr/bin/flock -n /run/lock/mad4b-wayfa-tour-asset-coherence.lock /usr/bin/python3 /opt/mad4b-company-provisioning/bin/wayfa-litespeed-fastcgi-asset-coherence-v1.py --repair
+TimeoutStartSec=50s
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
