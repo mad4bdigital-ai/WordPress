@@ -1,0 +1,69 @@
+{
+  "contract": "mad4b.operation-request-review.v1",
+  "source": "https://tours.dev.mad4b.com",
+  "target": "https://wayfatours.com",
+  "scope": "Form 6 WooCommerce acknowledgement files only",
+  "rows": [
+    {
+      "path": "mu-plugins/mad4b-request-woocommerce-email-v1.php",
+      "source_sha256": "2c9c1b42e435dd2c810b909b0d33f2e7fa171dab762f053b83ae8e2f8dde97d2",
+      "target_sha256": "a741f269a1575b9e0f5172523d2144c6273930633ce1f399ad6c82a47940077f",
+      "checks": {
+        "source": true,
+        "target": true,
+        "candidate": true,
+        "rollback": true
+      }
+    },
+    {
+      "path": "mu-plugins/templates/emails/mad4b-request-lifecycle.php",
+      "source_sha256": "2271dfac57feb1bda85e84240b8d11c1024904a627653b6451055e0c396f25b6",
+      "target_sha256": "93d2acb4d54a32cb1d0bb5cfe4102ad17201a9a912ea80d5cfc86e8448088f3c",
+      "checks": {
+        "source": true,
+        "target": true,
+        "candidate": true,
+        "rollback": true
+      }
+    },
+    {
+      "path": "mu-plugins/templates/emails/plain/mad4b-request-lifecycle.php",
+      "source_sha256": "9f0e5213cd1c2950dfa7b35b56433ea5134849328d520a7c8671ae8d5a616cd8",
+      "target_sha256": "57ad0dadae7874dadb4dc4d5dbbb67175f471138050d5e8e1e20f84dd9c21f67",
+      "checks": {
+        "source": true,
+        "target": true,
+        "candidate": true,
+        "rollback": true
+      }
+    },
+    {
+      "path": "plugins/commerce-composition/includes/RequestLifecycle.php",
+      "source_sha256": "38e8f0e33fd3f7f50825cf2a4065444921cf0cc6a7bee68c4216dd8af4160eca",
+      "target_sha256": "634fa7d46a39c69634ff2e8b825fa4d2f025e21355b534bbf054aca540d38029",
+      "checks": {
+        "source": true,
+        "target": true,
+        "candidate": true,
+        "rollback": true
+      }
+    },
+    {
+      "path": "plugins/commerce-composition/includes/WorkflowJobs.php",
+      "source_sha256": "3f6c2695c04ba89874712fbc31f01bc342a311fbca5d563c384bea7a3e5d2fa3",
+      "target_sha256": "24e8aab7db7811523759d3d26dc01124887349fe5096d9ac722f60387627a300",
+      "checks": {
+        "source": true,
+        "target": true,
+        "candidate": true,
+        "rollback": true
+      }
+    }
+  ],
+  "file_evidence_verified": true,
+  "status": "awaiting_native_authority",
+  "authorizing": false,
+  "approval_ticket_created": false,
+  "execution_performed": false,
+  "review_sha256": "6fee2165940a23b8831a0159039c4f72638952549e6e5716d073d30a651fb375"
+}

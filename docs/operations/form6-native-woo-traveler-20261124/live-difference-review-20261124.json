@@ -1,0 +1,760 @@
+{
+  "contract": "mad4b.live-difference-review.v1",
+  "date": "2026-11-24",
+  "scope": "manifest paths only",
+  "official_channel_used": false,
+  "rows": [
+    {
+      "path": "bootstrap/mad4b-mcp-adapter-mu-bootstrap.php",
+      "source_sha256": "766e5bef911cdc50f76b7aef3721a96e2488c5429a9afdc3abf16eb8e823eda0",
+      "target_sha256": "bd8d52406c9f35f61d0df5a76052956545ce677f7bc2908e1af12deab5588add",
+      "local_git_sha256": "766e5bef911cdc50f76b7aef3721a96e2488c5429a9afdc3abf16eb8e823eda0",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "config/adapter-registration-policy.json",
+      "source_sha256": "af3c124aa931f23dfa7ec955521147637de5f3219e6a756f57f81a8fed32f9ec",
+      "target_sha256": "f529918e36df9ff90256110cf2f91092e3361dd8a907cf00127234ae5e4d2846",
+      "local_git_sha256": "af3c124aa931f23dfa7ec955521147637de5f3219e6a756f57f81a8fed32f9ec",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "config/mcp-provider-handshake-inheritance.json",
+      "source_sha256": "3bcdb795e8b85a7ea1faf7b5e8942ae4c6c50e6277f2a6c7141da37254df3a3c",
+      "target_sha256": null,
+      "local_git_sha256": "3bcdb795e8b85a7ea1faf7b5e8942ae4c6c50e6277f2a6c7141da37254df3a3c",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "absent",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "config/skill-seed-manifest.json",
+      "source_sha256": "376eced31a0a68c21a0177662d486521e697456c2364e05c80923e3710ab080e",
+      "target_sha256": "3beaca42eaa7d15b17ff7d86f6906af8e0ae59f683228bf10a4c0f8a6a97038a",
+      "local_git_sha256": "376eced31a0a68c21a0177662d486521e697456c2364e05c80923e3710ab080e",
+      "category": "functional_dependency_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "config/wordpress-addon-catalog.json",
+      "source_sha256": "7675836ae733bbb198c1373c8ceae254d1c7a1e762e2121f8139ff5d94cdd4eb",
+      "target_sha256": "b6a45e1e5052f06b00751f63627405db0820c1e865bc00f1f831e2a0b6e293be",
+      "local_git_sha256": "7675836ae733bbb198c1373c8ceae254d1c7a1e762e2121f8139ff5d94cdd4eb",
+      "category": "shared_entrypoint_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php",
+      "source_sha256": "4b58adad617d2fa7bb953604dee4c107b255649f5a747759cec37b21a326b2d6",
+      "target_sha256": "ab6492af7fa7539d2ac7dde7e53f9f70b5be45240eef9307c0bdf294f341e95c",
+      "local_git_sha256": "4b58adad617d2fa7bb953604dee4c107b255649f5a747759cec37b21a326b2d6",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-abilities.php",
+      "source_sha256": "627c96bde07f0e5ce0f9042b968289e9256597f1fcf686e152ed7b36daca54fc",
+      "target_sha256": "ba23ad51a5b4cf4ec3c3c1a3be04008f3d6cbee6ed4b78a05143ba52acf08d4e",
+      "local_git_sha256": "627c96bde07f0e5ce0f9042b968289e9256597f1fcf686e152ed7b36daca54fc",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-adapter-registry.php",
+      "source_sha256": "c2250868f60770623c3fc4a04aaba2cf4910adaee879336dc06e5d32baf0fa81",
+      "target_sha256": "bf761a66478374f4002817065d87a68519db7b6b0a2365fed45aefc98989c794",
+      "local_git_sha256": "c2250868f60770623c3fc4a04aaba2cf4910adaee879336dc06e5d32baf0fa81",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-admin-query-performance-ui.php",
+      "source_sha256": "f35e45e9f10293b91e39c6deb42c14d405e91cddb4d8032b81cec923fe6a57c5",
+      "target_sha256": "ed4036747d15cd6b081a749d2d1f127e77ab387f794a6fd4c198421c81b7a881",
+      "local_git_sha256": "f35e45e9f10293b91e39c6deb42c14d405e91cddb4d8032b81cec923fe6a57c5",
+      "category": "functional_dependency_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-agent-registry.php",
+      "source_sha256": "8e70066c537a02b5ca6a7ef53d810a2066df9dfc6df14ca888a012f75924c94b",
+      "target_sha256": "1fa45d7b3fbe193c59fe3593554ba09c88e5a7921cba9c0d817952575a5c0547",
+      "local_git_sha256": "8e70066c537a02b5ca6a7ef53d810a2066df9dfc6df14ca888a012f75924c94b",
+      "category": "shared_entrypoint_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-artifacts.php",
+      "source_sha256": "fdca215f3958943e5770628e57145db034565045fe2df9f0423a9f9d9a1499c9",
+      "target_sha256": "813ee18576336be026f820e333357cc02d822c0d571084fdfd8b25f0d947235e",
+      "local_git_sha256": "fdca215f3958943e5770628e57145db034565045fe2df9f0423a9f9d9a1499c9",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-brand-context-builder.php",
+      "source_sha256": "7f32ec069ce43b0f1276a8aa240e63c305e4fd63f423fd17c3a73abd0f265330",
+      "target_sha256": "da745f1efb70bb673abd052b3f6e277a139895018476bc4fd323dbbcb9abbadd",
+      "local_git_sha256": "7f32ec069ce43b0f1276a8aa240e63c305e4fd63f423fd17c3a73abd0f265330",
+      "category": "functional_dependency_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-brand-core-remote-recovery.php",
+      "source_sha256": "8931642ac653b10a06fb0a0b21955aa0e0bd4c7bba26b4508eeee30d1b07f0c8",
+      "target_sha256": "9b2ae11ba135bbde368cdc24388ba2d6f93345050b6b49403ad21bdcc29958c4",
+      "local_git_sha256": "8931642ac653b10a06fb0a0b21955aa0e0bd4c7bba26b4508eeee30d1b07f0c8",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-capability-source-inventory.php",
+      "source_sha256": "50881628d9bd50e29297b3ff4be191198033dacb987746b7e8b11b0e50d7637f",
+      "target_sha256": "166f8bcb1f3a120b06550d719ae5fb228c117f4f6d83ea4aa34006c8417f54d0",
+      "local_git_sha256": "50881628d9bd50e29297b3ff4be191198033dacb987746b7e8b11b0e50d7637f",
+      "category": "shared_entrypoint_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-chatgpt-connection-admin-ui.php",
+      "source_sha256": "34da73b227eb96701cc376573fd6b789ea7066ecc7f0ae5057b7ce247f1e2de7",
+      "target_sha256": "6aba98a1c1495d233697cf24f1ad130f41a895b6b54fb0454678cfeac1570329",
+      "local_git_sha256": "34da73b227eb96701cc376573fd6b789ea7066ecc7f0ae5057b7ce247f1e2de7",
+      "category": "shared_entrypoint_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-chatgpt-tool-projection.php",
+      "source_sha256": "74c48c95290b82e7a81550a1a071e2c02fd2cde259043704433f6eddbf92e354",
+      "target_sha256": "9a1f9080c9a25c935b9ab55987a4526eeeab98a552e94e9a9f982a8cf453493a",
+      "local_git_sha256": "74c48c95290b82e7a81550a1a071e2c02fd2cde259043704433f6eddbf92e354",
+      "category": "shared_entrypoint_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-cli-readiness.php",
+      "source_sha256": "3242bd0236e19f6901078fd7c98e1a59444326205759b319dd9ccd0c1a36ae2a",
+      "target_sha256": "90611cfbeb67dee9187af6cc6f9dfa9a6b402ffacb7041199b158d6ce90f590c",
+      "local_git_sha256": "3242bd0236e19f6901078fd7c98e1a59444326205759b319dd9ccd0c1a36ae2a",
+      "category": "shared_entrypoint_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-reconcile-skill-set.php",
+      "source_sha256": "75586bbcd4d89d160b079be43a4f613a7d26fa788d9b936003867a3bf12b6464",
+      "target_sha256": "275e3207270dc82688c950250af0de20fe9bd650795379606e18faf6ab3e1349",
+      "local_git_sha256": "75586bbcd4d89d160b079be43a4f613a7d26fa788d9b936003867a3bf12b6464",
+      "category": "functional_dependency_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-completeness.php",
+      "source_sha256": "75c5a73e1a91e9b356f7f5adad494789daf8a774d754f33620d4c395b152bee8",
+      "target_sha256": "e136b1e86aef38f8b0cc33f1c1fc2183bfe661b1beebbba903d11bfad83ce7cf",
+      "local_git_sha256": "75c5a73e1a91e9b356f7f5adad494789daf8a774d754f33620d4c395b152bee8",
+      "category": "functional_dependency_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-experience-media-rights.php",
+      "source_sha256": "493e634dc68fe0f868860a4d865098d8482734332839fc7a1950e060357c0094",
+      "target_sha256": "dc8e2f5914818ab0fe492970c13b58a0a205fe266942a3b99769a9ddfd9ae958",
+      "local_git_sha256": "493e634dc68fe0f868860a4d865098d8482734332839fc7a1950e060357c0094",
+      "category": "functional_dependency_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-jobs.php",
+      "source_sha256": "ace1668fea59e603fec52b73e833e093e5d62bc690f0e9d35787fa5b5f02a071",
+      "target_sha256": "13e9401f437eef797120047fbaab69330c3ca63c4f47e85c9b263416edc22996",
+      "local_git_sha256": "ace1668fea59e603fec52b73e833e093e5d62bc690f0e9d35787fa5b5f02a071",
+      "category": "functional_dependency_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source_sha256": "9f21ba56004951ac5b30c05a3381544e169c906457122cd7f7994af9472aa0c5",
+      "target_sha256": "8d91a0c4f9a8f7accd7974f1c72e2999d8f4f28ddd441e24bd3bd7b796d40fb2",
+      "local_git_sha256": "4ef78e13010555cd7ce2c90f2650e68b8b44e7b44c6511aedbff1356dd9986cf",
+      "category": "functional_dependency_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-context-admin-ui.php",
+      "source_sha256": "3dd88f2b86322431ed4a8bcf880f7e49cf1a95c67bfc8bf30e26621a23f7aa9a",
+      "target_sha256": "f5ce249cf00c2e22c28d0a5a5eb5449e84c5a52c758958044e83b7db268cb49e",
+      "local_git_sha256": "3dd88f2b86322431ed4a8bcf880f7e49cf1a95c67bfc8bf30e26621a23f7aa9a",
+      "category": "functional_dependency_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-context-authority.php",
+      "source_sha256": "f09fce169c4cad6834f7bb871055c4dd2c07b656b4e62f38e01a8e3c659a6d11",
+      "target_sha256": "0b90c3175160078a9bccb713ba3032d6274cc8e7b974ddd83e366f8530a0d556",
+      "local_git_sha256": "f09fce169c4cad6834f7bb871055c4dd2c07b656b4e62f38e01a8e3c659a6d11",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-context-provider-gateway.php",
+      "source_sha256": "ec47d824487180957cd6d4faa5aa86ee8325d276fcf551ff7561f2ed422673c9",
+      "target_sha256": "10e197d9b9b897530f1ed5d09f1e10c80bde01c49fa36985dbb1d3f52efb04d1",
+      "local_git_sha256": "ec47d824487180957cd6d4faa5aa86ee8325d276fcf551ff7561f2ed422673c9",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-context-source-pipeline.php",
+      "source_sha256": "85b6bc7cdd14195753ff0c0151fdad02c3922a797d592dd31e3b46093e58359e",
+      "target_sha256": "1b384dca47ac2eeb397fdd685a192e6f91449428697169c4e6c2d71c7a772dca",
+      "local_git_sha256": "85b6bc7cdd14195753ff0c0151fdad02c3922a797d592dd31e3b46093e58359e",
+      "category": "functional_dependency_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-delegation-mode.php",
+      "source_sha256": "399774b9e239c9dc3957a66cb01b1189def9ed4a1cbfd7c52180fe94a52fb781",
+      "target_sha256": "376da64e3375050857c74b2a27f814083580e2ba50df49e64a42e44445122b5f",
+      "local_git_sha256": "399774b9e239c9dc3957a66cb01b1189def9ed4a1cbfd7c52180fe94a52fb781",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-dependency-manager.php",
+      "source_sha256": "a6fae1effb7a93adabb37ca17b68352beee5944c200377ad1b82abf0d09380b2",
+      "target_sha256": "882e93a5505294f9d03c74a925b7d49a77c7a9e9b5af3bbb876ed4f9fa1bd19c",
+      "local_git_sha256": "a6fae1effb7a93adabb37ca17b68352beee5944c200377ad1b82abf0d09380b2",
+      "category": "shared_entrypoint_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-deployment-binding-native.php",
+      "source_sha256": "d897f40b2363fafef58813612ee8047531b5fc09852863532f8457e9fff8e532",
+      "target_sha256": "62f962536539bf5e4df8edac4c2edfb1b342bf23f45a706f83c0ee590dab30ab",
+      "local_git_sha256": "d897f40b2363fafef58813612ee8047531b5fc09852863532f8457e9fff8e532",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-drive-scan-admin.php",
+      "source_sha256": "55f93dbb08bc129367e9f5f5eacef6c894d3ab3ba3beb4cddc6094f258c37cd8",
+      "target_sha256": "19321671b6337e08f3c78cf02bb879793443e42cb47bb4278a3c7750d962abd0",
+      "local_git_sha256": "55f93dbb08bc129367e9f5f5eacef6c894d3ab3ba3beb4cddc6094f258c37cd8",
+      "category": "functional_dependency_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-dynamic-provider-contract.php",
+      "source_sha256": "0968c26d96b6984b51b733bf903959a14a718a254d8ee673417aa63de066c954",
+      "target_sha256": "8b8a490b3ceaf93db96163a74a3884e2aecf78ee5404da3ac5ed40a7dc222fe3",
+      "local_git_sha256": "0968c26d96b6984b51b733bf903959a14a718a254d8ee673417aa63de066c954",
+      "category": "shared_entrypoint_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-execution-authority.php",
+      "source_sha256": "a5f006f42e5eb1be37c60193480fdc0182b138e84204980ed6352cce691f3dc6",
+      "target_sha256": "ac9c06b517e12243d0619d28798061bbc741a0a3b3811af75dc2ca95140e2d6e",
+      "local_git_sha256": "a5f006f42e5eb1be37c60193480fdc0182b138e84204980ed6352cce691f3dc6",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-firecrawl-provider.php",
+      "source_sha256": "b58617ece1243ce936070c692c3fbefd699321df7da787d2b9f88f1a54ee686d",
+      "target_sha256": "e390caac97aa0736b579484412ca745316ad9625843f6aa972ac3d19f5517130",
+      "local_git_sha256": "b58617ece1243ce936070c692c3fbefd699321df7da787d2b9f88f1a54ee686d",
+      "category": "functional_dependency_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-governance-abilities.php",
+      "source_sha256": "3213d2a07176b9dbe875bfcce7926070eb84990b3a06993ce5b30d67df502f40",
+      "target_sha256": "37b3de5b298c5982b3feb03d2ef26844b85bd15baa19944c1357d9a2d482d2b4",
+      "local_git_sha256": "3213d2a07176b9dbe875bfcce7926070eb84990b3a06993ce5b30d67df502f40",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-host-bridge.php",
+      "source_sha256": "5291504a8681eff17690b6bc8fab2e7473477829f26a4a0da568e8ddf2a532ee",
+      "target_sha256": "522e89d3445f31027ff45d0c1c7661a57300b58600f863ac3472d2dac4b5acfc",
+      "local_git_sha256": "5291504a8681eff17690b6bc8fab2e7473477829f26a4a0da568e8ddf2a532ee",
+      "category": "shared_entrypoint_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-live-truth.php",
+      "source_sha256": "5a7e487b28c9fc3f5c9778bf8a686baa531f8bc76f7f2af892d345bfe5ee22e0",
+      "target_sha256": "b2b6db2b894506b261964f3d9dedc6ab5ad0d0b3bbdd337742fb745634f1771f",
+      "local_git_sha256": "5a7e487b28c9fc3f5c9778bf8a686baa531f8bc76f7f2af892d345bfe5ee22e0",
+      "category": "shared_entrypoint_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-mcp-adapter-dynamic-integrity.php",
+      "source_sha256": "7f7c2b85ba8e6297e94a06c89afcd53c8d3b7eb32d217625859316be11af5e8c",
+      "target_sha256": "7bd880db443e5ab642766d9982f3f2719cf4a6fdf8772419623de21b640e3027",
+      "local_git_sha256": "7f7c2b85ba8e6297e94a06c89afcd53c8d3b7eb32d217625859316be11af5e8c",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-mcp-catalog-budget.php",
+      "source_sha256": "f3b67946d550347e977f15f9aa9e5ffd3a305b4d89e4bde184ff9987ac1296e1",
+      "target_sha256": "34a9da564732614392c61324eba407e1b6a049de39c95d9fcfe59694dc6f0035",
+      "local_git_sha256": "f3b67946d550347e977f15f9aa9e5ffd3a305b4d89e4bde184ff9987ac1296e1",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-mcp-catalog-diagnostics.php",
+      "source_sha256": "8ca1c48a1e4135f9d60e18eecab2192b07cc80262d9df11c194d3958f3097d80",
+      "target_sha256": "805a457b3253aa993400371d0df7d43592f764b06d638668bd391d06318a73a9",
+      "local_git_sha256": "8ca1c48a1e4135f9d60e18eecab2192b07cc80262d9df11c194d3958f3097d80",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php",
+      "source_sha256": "7bc26c4064cdf13e204bd92fdab98d2be7edd4ed39cb1edc1b87078fe82c3607",
+      "target_sha256": "b7831c7e41328ed1c6155fb31d6f0f00e29f0f7e16c49180a43da6c549a25e48",
+      "local_git_sha256": "7bc26c4064cdf13e204bd92fdab98d2be7edd4ed39cb1edc1b87078fe82c3607",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-mcp-protocol-profile.php",
+      "source_sha256": "586f03bc6e63f4ffc218386d8b31ef15f07c44506bec294ea119f3abb8a8d708",
+      "target_sha256": "9508275380e1ffdb5d5a469d7bca7d8eb38c605903581180011193a916303285",
+      "local_git_sha256": "586f03bc6e63f4ffc218386d8b31ef15f07c44506bec294ea119f3abb8a8d708",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-mcp-request-scope.php",
+      "source_sha256": "fc1f4c185945e515bc48d4ff2de761f2f831c74aa3d092b738c1be81fddbb4ee",
+      "target_sha256": "158b16e1585807bcd9dbf595f44e508cc2b34a5c6d835cfacd015de8f1ccbd56",
+      "local_git_sha256": "fc1f4c185945e515bc48d4ff2de761f2f831c74aa3d092b738c1be81fddbb4ee",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-mcp-runtime-recovery.php",
+      "source_sha256": "9d58475b9be87957c41da5ca8b6f65cb60bf40bfe8a356f2431a04371ee65ae6",
+      "target_sha256": "f2d0e77e1f0bbb8a6610e905f6314034ab74692fb00d791b0f469041275a0721",
+      "local_git_sha256": "9d58475b9be87957c41da5ca8b6f65cb60bf40bfe8a356f2431a04371ee65ae6",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-mutation-principal.php",
+      "source_sha256": "5effe9ed6934d272fd24dfc2300d42ee7bb1b201d974ca3289f2d53752a83162",
+      "target_sha256": "719e21aa9165d092cbed5bea531b9c338acb63f8253cb92db1b539f35dbd0f82",
+      "local_git_sha256": "5effe9ed6934d272fd24dfc2300d42ee7bb1b201d974ca3289f2d53752a83162",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-native-runtime-diagnostics.php",
+      "source_sha256": "367c9ee747a37916ca59271dcb318faef9ba1ccf767e077f53eaf0bfc277ae2f",
+      "target_sha256": "aca1eb0e9ccc227073daadbb0a463f8e8e54edba52e6e9536a73e80510d45fac",
+      "local_git_sha256": "367c9ee747a37916ca59271dcb318faef9ba1ccf767e077f53eaf0bfc277ae2f",
+      "category": "shared_entrypoint_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-operational-integrity.php",
+      "source_sha256": "eb76d84dcb357121bc8f58bfa00bd67eb9379f633b6bb753ceb5f31e05a61649",
+      "target_sha256": "c392b6c73dc2807d7e40839f187fa4bda7a32ec8361e6eb0e0bff5320cf6b409",
+      "local_git_sha256": "eb76d84dcb357121bc8f58bfa00bd67eb9379f633b6bb753ceb5f31e05a61649",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-operator-control-center.php",
+      "source_sha256": "c2971f15e19e60314e98a066c7779661f1e7c0a78ad5380866b5b14f3824199d",
+      "target_sha256": "1ecbe6d633e11fef73ac541a8a3b47d44a4369dc33c2a62610a915c25f820d8b",
+      "local_git_sha256": "c2971f15e19e60314e98a066c7779661f1e7c0a78ad5380866b5b14f3824199d",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-operator-runner-profile.php",
+      "source_sha256": "9f02ff353a0bc59969c84492dfbbc062dfb5900dbe483cc1af839a0c1483f26d",
+      "target_sha256": "cfd09a148c96ac9db6e081d0888acddb1a459bc81abdc81b2d5dc2c6d38c3347",
+      "local_git_sha256": "9f02ff353a0bc59969c84492dfbbc062dfb5900dbe483cc1af839a0c1483f26d",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-provider-mcp-path-review.php",
+      "source_sha256": "092888ec774f0e78f6b78f0eaa920a3134b460c3a4d91961334f6c04f647bf44",
+      "target_sha256": "a8a41d7f881afd06fb54d95bfcea6a0ec8931cb688686b6465373703d494073d",
+      "local_git_sha256": "092888ec774f0e78f6b78f0eaa920a3134b460c3a4d91961334f6c04f647bf44",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-read-consistency.php",
+      "source_sha256": "cb266ca91341d8276a3609940e3d2b67efcb0ff78c2250462297470532bb7b52",
+      "target_sha256": "3a5b5d0f411eb03e69243b739c50998d42634b54a1de36203b46078967309ecc",
+      "local_git_sha256": "cb266ca91341d8276a3609940e3d2b67efcb0ff78c2250462297470532bb7b52",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-readiness-workflow-options.php",
+      "source_sha256": "fd4884ad0ae33543561bb349cff677fbb7aa0cf031c7ae0e2d6f35324e3a675c",
+      "target_sha256": "3ab41e5e0ce2c6832c323fcad7b686f034e62f31b48ce9f54b4259889ec32b25",
+      "local_git_sha256": "fd4884ad0ae33543561bb349cff677fbb7aa0cf031c7ae0e2d6f35324e3a675c",
+      "category": "shared_entrypoint_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-reconnect-hardening.php",
+      "source_sha256": "d17f55fcb5e384d6f73706392732c66d61281d2736b5c329f13e2529cfa30ad3",
+      "target_sha256": "7ed98d1effb73383b2f387f00b877cacfd3281be8dd5d99bd960c499f8c60cf7",
+      "local_git_sha256": "d17f55fcb5e384d6f73706392732c66d61281d2736b5c329f13e2529cfa30ad3",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-remote-media-rights.php",
+      "source_sha256": "ab80f9d55ca2c6b96fb305023bf907a5d9da73dcb0f1abf7afe448b09b7d0a61",
+      "target_sha256": "c656a5da122a6844bea94a4a1444e65b7be4b392246fb0e867baaf83636d63e5",
+      "local_git_sha256": "ab80f9d55ca2c6b96fb305023bf907a5d9da73dcb0f1abf7afe448b09b7d0a61",
+      "category": "functional_dependency_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-rest-compatibility.php",
+      "source_sha256": "aa02227719fadb3309628bcfdbbb7763cbe449f09a09e6d6b811f8b80b11f444",
+      "target_sha256": "9b94db4675766be85496c788baf04af5408cc8cc4d97d8c5b2c44b88105cd148",
+      "local_git_sha256": "aa02227719fadb3309628bcfdbbb7763cbe449f09a09e6d6b811f8b80b11f444",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-runtime-backend-registry.php",
+      "source_sha256": "6609e82251e9368f3bba85289405cac0f99666213dca10644ef45aec3bc8274c",
+      "target_sha256": "0d84af55730efdac90b6299782d3900e1aec2f5f1e9d18fa3c24995179dc19b8",
+      "local_git_sha256": "6609e82251e9368f3bba85289405cac0f99666213dca10644ef45aec3bc8274c",
+      "category": "shared_entrypoint_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-runtime-components-admin-ui.php",
+      "source_sha256": "5a41a8732dde0501d0ed99b28e10c08d68a0a1934793124cc810afe87d840af7",
+      "target_sha256": "d2f6016cb3cbd397aff2f2a984676484d67f1f5c02c9c0a8dafc0a42e9a3f694",
+      "local_git_sha256": "5a41a8732dde0501d0ed99b28e10c08d68a0a1934793124cc810afe87d840af7",
+      "category": "shared_entrypoint_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-runtime-convergence.php",
+      "source_sha256": "4278691b927a41849babe623e1ff4a32c9bfdd35a8871f58f364595d69ab65e0",
+      "target_sha256": "c2d05a66a2d754f34fc72cb390471b7391f0dd422308ca06c0464fb3d40ba690",
+      "local_git_sha256": "4278691b927a41849babe623e1ff4a32c9bfdd35a8871f58f364595d69ab65e0",
+      "category": "shared_entrypoint_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-server-write-catalog.php",
+      "source_sha256": "3fae2d3ca06b62d16c16d57a88a176e325b85c41653a270e2b8bea8e2e683a14",
+      "target_sha256": "502631843f465da3fec7e16e3ab2a2afe07cf307d7a24381070d35e17ca94c55",
+      "local_git_sha256": "3fae2d3ca06b62d16c16d57a88a176e325b85c41653a270e2b8bea8e2e683a14",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-servers.php",
+      "source_sha256": "e96849270c733c33b28f50d47cdbc912a90f47d5e267207210db3d9d8199ddfa",
+      "target_sha256": "ddd5f9cbd16b48ace6af539fac0165feb4be8907188e4c1ccc0660b0d1876786",
+      "local_git_sha256": "e96849270c733c33b28f50d47cdbc912a90f47d5e267207210db3d9d8199ddfa",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-site-lifecycle-rest.php",
+      "source_sha256": "0a15798fca4cb26390d5dd2b214bf7da39e9d0b7846bfed358831e4b22c5dd23",
+      "target_sha256": "046b4a2f23f05a942ad4fc838bfc8731449b2db401e4064e738d877028d4dbb3",
+      "local_git_sha256": "0a15798fca4cb26390d5dd2b214bf7da39e9d0b7846bfed358831e4b22c5dd23",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-site-profile.php",
+      "source_sha256": "f643847a8dbf590e48dda561f29a7eae36da66ce4f079c16f2fd34be22f2a175",
+      "target_sha256": "ae646c89a4bb6e123cbf42b85a93bce642804ad371a71a96c263ebcfd16dbf07",
+      "local_git_sha256": "f643847a8dbf590e48dda561f29a7eae36da66ce4f079c16f2fd34be22f2a175",
+      "category": "shared_entrypoint_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skill-abilities.php",
+      "source_sha256": "f58ddf578579c0abd2a64e7867db0c4059fb1e10c866649a4ba2ea48fd2870ce",
+      "target_sha256": "6ce38e56739813c5fb716a2845833d6ed75e6134bf8f15426f5bcd94e96de71d",
+      "local_git_sha256": "f58ddf578579c0abd2a64e7867db0c4059fb1e10c866649a4ba2ea48fd2870ce",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skill-registry.php",
+      "source_sha256": "bbb97df08740a4f56ed03e0cb7a8b4fc6ae4c75157f26f0a3d85e7c37ef07f76",
+      "target_sha256": "f7856a25051538cfaeaf176b71b6310f2e73ddeca43c574f30735d6ce62944a3",
+      "local_git_sha256": "bbb97df08740a4f56ed03e0cb7a8b4fc6ae4c75157f26f0a3d85e7c37ef07f76",
+      "category": "functional_dependency_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skill-seeder.php",
+      "source_sha256": "f1edddaaf3ab81a5cd74a6a3be4946a23c32500752b8d3089d02514a7f8bb66a",
+      "target_sha256": "a2b40159fa858cdff9821ea6bad1b821a2ec03b0c75ffee721aa622ef0b4154f",
+      "local_git_sha256": "f1edddaaf3ab81a5cd74a6a3be4946a23c32500752b8d3089d02514a7f8bb66a",
+      "category": "functional_dependency_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-staging-write-authority.php",
+      "source_sha256": "d8a054f3ef8aef7077566ef77efd22027dbf1635d621ba4eed23603c0d5b0812",
+      "target_sha256": "50aa9517b979f9a3a03ddde1b6c7d60d964961d878a3ecec0f2ded7dbc90b442",
+      "local_git_sha256": "d8a054f3ef8aef7077566ef77efd22027dbf1635d621ba4eed23603c0d5b0812",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-staging-write-candidate-binding.php",
+      "source_sha256": "c288b5e3a0cc9f447670ea52c4f3a983c94142b48cf732ccef5b2ab5e0347b78",
+      "target_sha256": "e820a0ff6e823d3605b53d522da0bbd984a979dd5748a991e1ef82a67c214c38",
+      "local_git_sha256": "c288b5e3a0cc9f447670ea52c4f3a983c94142b48cf732ccef5b2ab5e0347b78",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-staging-write-grant-reconciliation.php",
+      "source_sha256": "170e6485105869e8aa9d8bdc188fe14cc80d66b7d40fc58f3ef0558619e6ce56",
+      "target_sha256": "fa0d4eae5912681f203177efceb4b3a2bd6e26345f2ef231d1920b7dec6e42d3",
+      "local_git_sha256": "170e6485105869e8aa9d8bdc188fe14cc80d66b7d40fc58f3ef0558619e6ce56",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-staging-write-owner-intent.php",
+      "source_sha256": "4d9ee650700bad85d3857fe3d30627057c5453d378215198b85a047a58dde929",
+      "target_sha256": "743a77012b9d2b9166c9d3b874f764c31fb5c239c206fe7c5d01baae0b0e8a9d",
+      "local_git_sha256": "4d9ee650700bad85d3857fe3d30627057c5453d378215198b85a047a58dde929",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-staging-write-planning-guard.php",
+      "source_sha256": "4b9ea0118c3f8ce89354dbe45e00da653e0e2be265ebe7abd9f2ac1403e46838",
+      "target_sha256": "1197922530790103ed65ab1c16a5981b712812f5b1abf123d74be3e4157563ec",
+      "local_git_sha256": "4b9ea0118c3f8ce89354dbe45e00da653e0e2be265ebe7abd9f2ac1403e46838",
+      "category": "shared_entrypoint_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-transport-context.php",
+      "source_sha256": "e03f339b0b90aaeef0fceed73e14971b81cbaa6083220bc26f3c17cc48f1b1e2",
+      "target_sha256": "b5e113031d0ee6531a42eeb5af5055b214a105252524693ef1c22f843092af73",
+      "local_git_sha256": "e03f339b0b90aaeef0fceed73e14971b81cbaa6083220bc26f3c17cc48f1b1e2",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-unified-agent-connection.php",
+      "source_sha256": "e68e1e600b28d9f3f4a120f865a8a1b9773ae2d472e7eaa396b018ba2df37145",
+      "target_sha256": "b5c5a2bb41e22976b4e1a9540a6d65dde70508d00ad4ae2347929a5de3349d72",
+      "local_git_sha256": "e68e1e600b28d9f3f4a120f865a8a1b9773ae2d472e7eaa396b018ba2df37145",
+      "category": "shared_entrypoint_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-unified-capability-gateway.php",
+      "source_sha256": "c581ee16ad85d47aaf98cbd693ae3ac225e0f5a08ee80ec246f7d336da9025f9",
+      "target_sha256": "17ab6e5b1a5968b44a7bc8aae3217a2ceb6b3c5b76ceb0cc796f97bc677afec3",
+      "local_git_sha256": "c581ee16ad85d47aaf98cbd693ae3ac225e0f5a08ee80ec246f7d336da9025f9",
+      "category": "authority_or_shared_infrastructure_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "includes/class-mad4b-scp-wordpress-media-context.php",
+      "source_sha256": "2e8a2c97ce988750e67f6d0dcdb22b400da141d086b1e43b6179c1f535a80f95",
+      "target_sha256": "5bbe57ebdfe4d44e2ba08d37add254269afe3282cb75dbaf9d117cf456f9cd1e",
+      "local_git_sha256": "2e8a2c97ce988750e67f6d0dcdb22b400da141d086b1e43b6179c1f535a80f95",
+      "category": "functional_dependency_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "mad4b-site-control-plane.php",
+      "source_sha256": "96f7623e3fa66dff10f5ed03fd9faef4005d3cbce576350b4e39bc67c03dfc5f",
+      "target_sha256": "47934ce963e96f675f41c2cf9295cd5b84293752381990845c0110902c783963",
+      "local_git_sha256": "96f7623e3fa66dff10f5ed03fd9faef4005d3cbce576350b4e39bc67c03dfc5f",
+      "category": "shared_entrypoint_review",
+      "source_syntax": "pass",
+      "target_syntax": "pass",
+      "disposition": "review_only_not_deploy_approved"
+    },
+    {
+      "path": "skill-seeds/wordpress-connection-diagnostics/SKILL.md",
+      "source_sha256": "21c81d1c1bd1f99364725057fe10a44189254a6fc68baaba799e01b39aa8755a",
+      "target_sha256": "66f4e9ae46bd7a774b0eaac89431a9514958cf9a82d41bbd9e95bd4a76776b27",
+      "local_git_sha256": "21c81d1c1bd1f99364725057fe10a44189254a6fc68baaba799e01b39aa8755a",
+      "category": "functional_dependency_review",
+      "source_syntax": "not_applicable",
+      "target_syntax": "not_applicable",
+      "disposition": "review_only_not_deploy_approved"
+    }
+  ],
+  "source_certified": false,
+  "mutation_performed": false
+}

@@ -1,0 +1,1232 @@
+{
+  "contract": "mad4b.live-reconciliation-inventory.review.v1",
+  "date": "2026-11-24",
+  "scope": "manifest-listed Control Plane files only",
+  "source_origin": "https://tours.dev.mad4b.com",
+  "target_origin": "https://wayfatours.com",
+  "source_commit": "e18c8090ad217d467296bbfa327fc238799393e0",
+  "target_commit": "3e6ce498b75390bc900c2c083f92891b8433b774",
+  "source_manifest_files": 956,
+  "target_manifest_files": 955,
+  "source_drift": [
+    {
+      "path": "assets/deferred-admin-reports.js",
+      "expected": "cdcc8ff6914bb79963de91577f80859fc6e25b6590ba824ae4d8164714818d22",
+      "actual": "fde2a7a052938b26967061719d29d7aa9a42aad7699c1dc697a2e240d42bfab7"
+    },
+    {
+      "path": "config/skill-seed-manifest.json",
+      "expected": "2696f823f63dcf498aca7cc74060249cc5728d4b7625af3c2c3d4b6b881b7b92",
+      "actual": "376eced31a0a68c21a0177662d486521e697456c2364e05c80923e3710ab080e"
+    },
+    {
+      "path": "config/staging-deployment-handoff.json",
+      "expected": "6d6721849532587dd3dff3d1ca51ac1d76aa6b7d5c793cac8990bc707694de18",
+      "actual": "99faacbb9439a7d3406272280352244d417592f07eea8d6396fe0cf3ced1678f"
+    },
+    {
+      "path": "config/wordpress-addon-catalog.json",
+      "expected": "efadb0edf80c362059d664fd9a84fc05ca94a79abc74c4a231d24726503e7482",
+      "actual": "7675836ae733bbb198c1373c8ceae254d1c7a1e762e2121f8139ff5d94cdd4eb"
+    },
+    {
+      "path": "includes/adapters/class-mad4b-scp-remote-media-adapter.php",
+      "expected": "45b554761a3d06112e7d5172197a97aa0452170bd190e8e5774c72fc78dcc672",
+      "actual": "374ca2bd8073357e77313be564748203b005db4da0cca0031a1a68a3a6b01239"
+    },
+    {
+      "path": "includes/adapters/class-mad4b-scp-skills-adapter.php",
+      "expected": "e27df6e6638cc45d1d607f2fd38773518d8210b7eeb909dde9dfca9823bfdea0",
+      "actual": "e8589e3d9c0fef3dfaae7a2e168fd3c4ee579fecaa64fee93d8db767e089cc83"
+    },
+    {
+      "path": "includes/class-mad4b-scp-activity-import-review.php",
+      "expected": "cb96c905ec74647750888faeacadec6937f46cf05e07c0f829147976506f0204",
+      "actual": "7dec46f40fdec0e5594509b07d1319bb6c2a7fa23d092aba5d65e172547cb146"
+    },
+    {
+      "path": "includes/class-mad4b-scp-activity-import-snapshot.php",
+      "expected": "1b9d2041c23f3019a75f2bd8283eddb5121f7b3e0340e60064a3c1a22d7185ab",
+      "actual": "1518b0d581cc32dd8e39be2121230013289d85788343b0d2c4db08c02a5c938f"
+    },
+    {
+      "path": "includes/class-mad4b-scp-addon-registry.php",
+      "expected": "c87151226bb26cd7860052be791ff09922a5fc40de3e5fd6bd6af065f662e700",
+      "actual": "8153b244678120e53937e8ca13bf36158e7273b5f8714a9128be9ff728f036c5"
+    },
+    {
+      "path": "includes/class-mad4b-scp-agent-grant-lifecycle.php",
+      "expected": "7d4bbb9b65003edc623138861e91f0216025eaff60e299582266c11dde47d68e",
+      "actual": "389c858945fd69e3bd9966a0995d53ffbb0d2bb13d94852ecdfc14cd281a3228"
+    },
+    {
+      "path": "includes/class-mad4b-scp-ai-grant-mode.php",
+      "expected": "3fd0093d26be8fe797e3c5819e30d362407f6aaefefb129cfc25e5a4f3b09c27",
+      "actual": "9babec220a1d02a990c99c5e1f5ee86990064dfb2e65820b4bf8783807459fae"
+    },
+    {
+      "path": "includes/class-mad4b-scp-ai-review-lifecycle.php",
+      "expected": "273bcb162bcd1e45a428bf9163e4c0d54e7029f9d0552b0dc7d6650fe8a5bed6",
+      "actual": "155d282bb105138b1a46314bf035d4bc9f65a05cded265c123318c47829a6357"
+    },
+    {
+      "path": "includes/class-mad4b-scp-artifacts.php",
+      "expected": "5e81eddea789779ea3eca90c21c05e23514631174b060049cbd14a3f1131b6ae",
+      "actual": "fdca215f3958943e5770628e57145db034565045fe2df9f0423a9f9d9a1499c9"
+    },
+    {
+      "path": "includes/class-mad4b-scp-authorization.php",
+      "expected": "fb1087b4158631b0954cd16ec0ed89e4b1180e331c8f10ff83433b964b060f0e",
+      "actual": "7397378a5fcc4bebc1f112086a76477c4868f17666bd971579a03c3006ddce7a"
+    },
+    {
+      "path": "includes/class-mad4b-scp-brand-context-builder.php",
+      "expected": "20c7c7688cccf049477c2cf1bda08fd029200deb6d818fda4b374240e848b260",
+      "actual": "7f32ec069ce43b0f1276a8aa240e63c305e4fd63f423fd17c3a73abd0f265330"
+    },
+    {
+      "path": "includes/class-mad4b-scp-chatgpt-auto-binding.php",
+      "expected": "7911be8fc82d84d55212c62e2de89d6c482c9ff9103cd59cb5e098c43e69c6aa",
+      "actual": "9ff417b5d79b446c0c9636d775f6a093cf90cd842f85c58d2f5a00b8d23681e4"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-communication.php",
+      "expected": "b864108c69f119b9378b488bb6786e5be6fa22dd476d8f032ef3707ee87a0115",
+      "actual": "431d6d1142bd84ca8e23f3d810f51648557abb0d37511a7dda7c30a4b72c3f1c"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-email-routing.php",
+      "expected": "befb397659902c8ac8af948f237007e3bc48cf2a396ade42d81b2521ffe6b9ff",
+      "actual": "24cdaf2f83ba1e19b43eaffa3279ed3b3edf5639fe52db484cdd71ccd0ac9eef"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-local-wpcli.php",
+      "expected": "a2057b090e005d374f3039ef164a1c4793d8723d72cd125fe45dec90a46eed4a",
+      "actual": "673e760157b1c3a9b047c655dfe1353afc9d5d7f363f639609616a09403a57fb"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-master-admin.php",
+      "expected": "0cfe68ea11598587a9cdaeed2313859cb95dff893b3972d2bb6a593fd2af4e4d",
+      "actual": "e5da7ea83d8c2f0290dfddfcf9c52bc585dd8a24db12bb844cde04bbb8766fff"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-migration-decisions.php",
+      "expected": "408febe1cea99ce389f84e9035f91dce1930843ec2f535e9cbc9d987198e2488",
+      "actual": "271574aec2013c0613010afee9f7ee2c75e865b758ea2a0e71703db9f0cd1883"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-owner-activation.php",
+      "expected": "ca980531ed98d3391deb66a63573b4ef6becebf2ba3e009d92467879b3212bc3",
+      "actual": "4359c6322cdc5bb64dc33e36c9c9cff32062d819c6387cf3dbce3e4a1409cbc1"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-reconcile-skill-set.php",
+      "expected": "275e3207270dc82688c950250af0de20fe9bd650795379606e18faf6ab3e1349",
+      "actual": "75586bbcd4d89d160b079be43a4f613a7d26fa788d9b936003867a3bf12b6464"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-sender-policy.php",
+      "expected": "cd6208903478ab64accc8a4f56e230682cfd1c5d217cb048f02abe78a82826e1",
+      "actual": "d21213e1d2353296f18f56bcdb6e4688c59ef1404db03489fed3ea6978f885ce"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-tenant-migration.php",
+      "expected": "06447093ff420e76af963d07285922972ff29be17ca1cb5d2072738d9c41bbf9",
+      "actual": "a4dfa1ad167d3201f88e4f725986af595dcd789254ecc0ddb18a2fe131a63d02"
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-experience-media-rights.php",
+      "expected": "ce49fe7008e7575dcda1ac141f3dfb96feafe2e4a8915ab67bdc85085fb0c5de",
+      "actual": "493e634dc68fe0f868860a4d865098d8482734332839fc7a1950e060357c0094"
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-experience-media.php",
+      "expected": "ff38fbce84b55a9b9d922282c906571bd615b89d0608a54686c9f71362881e30",
+      "actual": "fd49c8449dd314b17f6b50708dc478ac69b650fdbd1ac236be85d284d123c08d"
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-experience-runtime.php",
+      "expected": "500f5b4699543dadfedb6c363fde0bade78ce98d2a89ea3a2161c5c7f475aecb",
+      "actual": "96a9a12f3dbcc6bcf780b3a9cf1f5a4a5f0145214ed8ebba534e758cc210125b"
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-job-structural-qa.php",
+      "expected": "0c260265d3dea4a496a16c0faf19688b6d11b0bff8bc7d5b3869b52b9254df63",
+      "actual": "14adbf1821fd08866c633549245b57df1ae993ae6ec2a4cba7bb232992f6a715"
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-jobs.php",
+      "expected": "cc8ed43625db6ea74cb3d20b395f06545db661267880cec5b37f94dedcca7a70",
+      "actual": "ace1668fea59e603fec52b73e833e093e5d62bc690f0e9d35787fa5b5f02a071"
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-readiness-alerts.php",
+      "expected": "77f39606f11ceec86a8cfeb808a6422ea503a15c4cb9b37ae3ffaee5889363ef",
+      "actual": "9f21ba56004951ac5b30c05a3381544e169c906457122cd7f7994af9472aa0c5"
+    },
+    {
+      "path": "includes/class-mad4b-scp-contentjob-structural-cwa.php",
+      "expected": "a7eb77de9f5ad2cadfacfd7be5105845f888110b3563dc4134a300e16dfa90af",
+      "actual": "a828ea29c5421da2ecb2fc2bd2e80db65f1301253c2cb499b3d175d4c2b95929"
+    },
+    {
+      "path": "includes/class-mad4b-scp-context-admin-ui.php",
+      "expected": "f08bc27ae1cf7b751c7492b44a6ac8e43f1c2a81997f994c938d1905ee93af1d",
+      "actual": "3dd88f2b86322431ed4a8bcf880f7e49cf1a95c67bfc8bf30e26621a23f7aa9a"
+    },
+    {
+      "path": "includes/class-mad4b-scp-context-authority.php",
+      "expected": "d918f851f5e95a0c26c14c2366344e2a2d7e47adca58020b6cc6d693fea1e39a",
+      "actual": "f09fce169c4cad6834f7bb871055c4dd2c07b656b4e62f38e01a8e3c659a6d11"
+    },
+    {
+      "path": "includes/class-mad4b-scp-context-preflight.php",
+      "expected": "434ca62064e7deebc4034e910796cf479095b77ae8952b58ce8978d7bcd66c12",
+      "actual": "a92840334a2f3bc2843634131a75d600bda2c375a91a36ff48b46e66c9ccedf7"
+    },
+    {
+      "path": "includes/class-mad4b-scp-deferred-admin-reports.php",
+      "expected": "3d8b983ad3911fffa084d8f1093cea2a9f50556d5186836a925ab7f2d707cf1f",
+      "actual": "f94c1befb9c97183d4b860f623f9a5cab6e1259715677ccdd524badd80f9fb9d"
+    },
+    {
+      "path": "includes/class-mad4b-scp-developer-authority.php",
+      "expected": "1dc1c1e3d04a28d494f93ca26d743b7d604f82e9b2d088148c084f4c966edaed",
+      "actual": "f98848537d910d509ea05edc4fd555fa2db1d00517efe9ad9f233820bd3dd5a4"
+    },
+    {
+      "path": "includes/class-mad4b-scp-developer-runtime.php",
+      "expected": "e63063cddb62b9528ae620c7b0c9e63c46f1bcea8cbe57a8db1fd72a1ccfd403",
+      "actual": "4076bbf0297b7743bfa9d5d69d7d068d842033c78dccb79237bd6ed01bceb346"
+    },
+    {
+      "path": "includes/class-mad4b-scp-developer-workspace.php",
+      "expected": "7f51a263a9cd3579988cea24f8eead6b7c2b9b53a0deec8b4a8c0c7e6c69ade5",
+      "actual": "715971d6e6dd986767b68b785a31bebe118fb046a80347cd93615cab2d47f7e5"
+    },
+    {
+      "path": "includes/class-mad4b-scp-drive-scan-continuation.php",
+      "expected": "b6425a1c74c7952e1cc22b2a5df5ad062c2d08b602f9f5c9725b89a2b74ce446",
+      "actual": "2a25215548d24f4dda8aed9a860e88e47357ac480c612b019845bc31b37cbd62"
+    },
+    {
+      "path": "includes/class-mad4b-scp-dynamic-content-pipeline-admin.php",
+      "expected": "48ccac77b8d6840f2eb508908f97e864f298d708ba36fa3cb09d3674cc622615",
+      "actual": "5b38efca166c1cc4618a3354bde9de342fdda76a0fd214f317d6a1c269d15d45"
+    },
+    {
+      "path": "includes/class-mad4b-scp-external-handshake-evidence.php",
+      "expected": "b78a4842d262cd530047b25f7d2c36eb4cd5ae12a8eabebd3c6872dba0464cd0",
+      "actual": "4441c16f8446e06a395550c6d03fd21832dc33f4977ea03f5002443828d5ba7e"
+    },
+    {
+      "path": "includes/class-mad4b-scp-external-snapshot-finalizer.php",
+      "expected": "f71f751c0ab5c6be87e7aa97ecd60770dbe899250a5f77312f0a9cef13df2459",
+      "actual": "1ed40f3c7c5acb46b325196d2a9f21c99ae66e2a3d137b18ebf2260eed30b56d"
+    },
+    {
+      "path": "includes/class-mad4b-scp-google-drive-context.php",
+      "expected": "c21d0a4fe58c3f2a23e00cebd13e68c2f89e765c2fec15d1cc96f07f2a59ce35",
+      "actual": "9fbc48eed4aa7fb4af69842925182ee7eb6be35bd36a73e3b4a507be1dba681e"
+    },
+    {
+      "path": "includes/class-mad4b-scp-impact-policy.php",
+      "expected": "9cd7edef9bf31ccee693bb71f1c743899bf64a435fbb386e486e728d5213da0a",
+      "actual": "2d8999fcdb938ece779574de7d000e68f689565ee1be59373554f1f860e8ffc3"
+    },
+    {
+      "path": "includes/class-mad4b-scp-live-acceptance-finalizer.php",
+      "expected": "70b9bfbfaccb9d765c8e66b06255cbc794fda13cbdd4c9aaf31e43ed3191d90b",
+      "actual": "4ee335658a2b7d0d772a0d1a12769c6dd9183146215355954d185d13450468a2"
+    },
+    {
+      "path": "includes/class-mad4b-scp-live-acceptance-observer.php",
+      "expected": "c1606b1230d6214bacd53444f560328b38d35520e73fc7154d03e42ee7b6661a",
+      "actual": "b5c98f343ce0c25bfeaa351013bc061efb1277f42f267677e9447ca5bfdde497"
+    },
+    {
+      "path": "includes/class-mad4b-scp-live-acceptance-reconciler.php",
+      "expected": "2706c9457248324006c61c4c2837e98a12555627f527cbdf8fd0a8931973bcfd",
+      "actual": "7292436ce9bd2a52be037ff1089e87ebcfbc4f7c3016ae890853fdd3dbb7f4a3"
+    },
+    {
+      "path": "includes/class-mad4b-scp-local-oauth-server.php",
+      "expected": "8408f559be99bf92bdc1d42dc5abcbc831261a8e2d2dcbedf2dda9261935dab3",
+      "actual": "ccd40b81e8d051807566a51557ea47b1b3fb781aec9c5f29d07e5c28a390913c"
+    },
+    {
+      "path": "includes/class-mad4b-scp-market-profiles.php",
+      "expected": "db48d7f29f7ff142aceeedd634586e09f5b4971d77a476416616e590d5e6fad4",
+      "actual": "1e9dd09979f8b6b329b8d640081a37f818c10cdf6aca38a233f4e91f71797e88"
+    },
+    {
+      "path": "includes/class-mad4b-scp-native-runtime-diagnostics.php",
+      "expected": "aca1eb0e9ccc227073daadbb0a463f8e8e54edba52e6e9536a73e80510d45fac",
+      "actual": "367c9ee747a37916ca59271dcb318faef9ba1ccf767e077f53eaf0bfc277ae2f"
+    },
+    {
+      "path": "includes/class-mad4b-scp-oauth-resource-bridge.php",
+      "expected": "6a8437b1db9c6e06026d4f26ef4b8e0f4255f2be4ce83309c7edcece7c34a689",
+      "actual": "8e83b25942c96ac4483981bc8a2e75a74f7bfd0dc1b66e1502bdee123016c636"
+    },
+    {
+      "path": "includes/class-mad4b-scp-operator-control-center.php",
+      "expected": "1ecbe6d633e11fef73ac541a8a3b47d44a4369dc33c2a62610a915c25f820d8b",
+      "actual": "c2971f15e19e60314e98a066c7779661f1e7c0a78ad5380866b5b14f3824199d"
+    },
+    {
+      "path": "includes/class-mad4b-scp-operator-grant-convergence.php",
+      "expected": "e31db389b5e21fc76e580a5af3b107145e7c2a59a83bbdde03ddaf177209c712",
+      "actual": "70bd96163aa125f6e317daea7dc06632793e3b60557b373b6399a4a8761f3246"
+    },
+    {
+      "path": "includes/class-mad4b-scp-origin-evidence-workflow.php",
+      "expected": "99ac80e3bb4c96033092668abb8ce9d346fe840278b77adc2ffcac3c3fd40322",
+      "actual": "fa78965175089ed302c82006bd41f71a8fc92ac488d8953586a940253481b1c3"
+    },
+    {
+      "path": "includes/class-mad4b-scp-plugin.php",
+      "expected": "0f2bbc1c924776fa881b8dffc8b3e4151e36afd74f51fd0c9d4b76d0ae75bd79",
+      "actual": "64479de6b38e5b7b7c6effdb19b3d231fba1bbe0b7b95b059bede92ea3bff02a"
+    },
+    {
+      "path": "includes/class-mad4b-scp-production-promotion-attestation.php",
+      "expected": "c63f9ea7185394a96a920a91d75f0fc6f6a2fa88a23167a8134876d4aae86741",
+      "actual": "0754b96b72bdee315b533c6b4d9ab3dc5224b9401674c7e4d24093d253f06846"
+    },
+    {
+      "path": "includes/class-mad4b-scp-production-unchanged-attestation.php",
+      "expected": "f2f462cec84e091d5db4c7fa2e75cc8d9b684a58037e5e19d8827657e262602e",
+      "actual": "460cadf1a4211047e0f00e8c459105b8f66f556af88ed29b795e1822a4d1ddb9"
+    },
+    {
+      "path": "includes/class-mad4b-scp-readiness-event-automation.php",
+      "expected": "68b693e28da0c1ca0a5c5a887f5c8916d0b0132f8c0629babe7c347a708babef",
+      "actual": "ad8eac90e66ac695ea2ee6aab0c06ed5cb90fea2ffb7415ee6bc45d85b53a01d"
+    },
+    {
+      "path": "includes/class-mad4b-scp-readiness-workflow-options.php",
+      "expected": "b99f4b8fd77c8f9578b104258dd624aa12a78eaa44857ffaf15fc00d39819e8c",
+      "actual": "fd4884ad0ae33543561bb349cff677fbb7aa0cf031c7ae0e2d6f35324e3a675c"
+    },
+    {
+      "path": "includes/class-mad4b-scp-reconnect-hardening.php",
+      "expected": "e40d0b368d59140c92a34eab08fcb79bd9f8f3abda94d326faf403b5d50dc59f",
+      "actual": "d17f55fcb5e384d6f73706392732c66d61281d2736b5c329f13e2529cfa30ad3"
+    },
+    {
+      "path": "includes/class-mad4b-scp-remote-media-rights.php",
+      "expected": "fc8fa46c155a6d4b8ef8d7de7f182a01d16cabafa84e2501ce71a05aecd461d7",
+      "actual": "ab80f9d55ca2c6b96fb305023bf907a5d9da73dcb0f1abf7afe448b09b7d0a61"
+    },
+    {
+      "path": "includes/class-mad4b-scp-research-groups.php",
+      "expected": "9eb210a8fca3e7c4f547d4e041639c15c3cbdf48fc524a95ef0d7a23e4fe5d70",
+      "actual": "e154447d2dc0368f61997e4139b16f774344f171b4cee07a3770939bd9a891e2"
+    },
+    {
+      "path": "includes/class-mad4b-scp-research-intelligence.php",
+      "expected": "e585452c42745d1c26721faf810bea755aacce0f232143b065b73d8202dcadac",
+      "actual": "dfe3bad6c16933a7c5765a0c4cd94e155aa5c5fdcafaa3dba055bdf31e3e89f0"
+    },
+    {
+      "path": "includes/class-mad4b-scp-research-task-bridge.php",
+      "expected": "5536e2fc9abcda88ce91ee40e5b088b6ca6ed488278029f8cce07fb762003cff",
+      "actual": "bb3c9a2d6db3a47bfd062a62ca27bfccc148ba21dbc7dcbe2ca6a1169b42c316"
+    },
+    {
+      "path": "includes/class-mad4b-scp-runtime-components-admin-ui.php",
+      "expected": "388211469ba528fe63f5f32f390a78ac1a8a226b4d3b6a942718414255178e40",
+      "actual": "5a41a8732dde0501d0ed99b28e10c08d68a0a1934793124cc810afe87d840af7"
+    },
+    {
+      "path": "includes/class-mad4b-scp-selected-head-update.php",
+      "expected": "b1310d397c374b510a40526161ac62227081c453eab36a7b5624c5755a38a70c",
+      "actual": "60bec66e342cf51d797df0c114abb46d761f3ee39e07d4d93900c319b29f7a36"
+    },
+    {
+      "path": "includes/class-mad4b-scp-self-update.php",
+      "expected": "34c238dfcc51a782ff3484af19ef3510863b5dd941450fa533a4cbb673795eb2",
+      "actual": "22a285af135487234d4691d2f7f6f71fcbd32975ed43729af434e0fa17967d38"
+    },
+    {
+      "path": "includes/class-mad4b-scp-server-core-catalog.php",
+      "expected": "8f5a75df361f70337e7a13c479fc3f7744f34e9d3fe5d1df4d160648d429fa84",
+      "actual": "1929d93326743fae0289b01a5132b17e7e953ef46ddffab70251e9c746de61b5"
+    },
+    {
+      "path": "includes/class-mad4b-scp-server-write-catalog.php",
+      "expected": "1176d79e03c0f1dc1c55db85285ffda94acaa876864dbc0b3ddc1e1860bfc719",
+      "actual": "3fae2d3ca06b62d16c16d57a88a176e325b85c41653a270e2b8bea8e2e683a14"
+    },
+    {
+      "path": "includes/class-mad4b-scp-servers.php",
+      "expected": "2d12cef38b22822792cfa52f2badae4a26a36291511b2588016087f4848af6ec",
+      "actual": "e96849270c733c33b28f50d47cdbc912a90f47d5e267207210db3d9d8199ddfa"
+    },
+    {
+      "path": "includes/class-mad4b-scp-site-lifecycle-rest.php",
+      "expected": "046b4a2f23f05a942ad4fc838bfc8731449b2db401e4064e738d877028d4dbb3",
+      "actual": "0a15798fca4cb26390d5dd2b214bf7da39e9d0b7846bfed358831e4b22c5dd23"
+    },
+    {
+      "path": "includes/class-mad4b-scp-site-profile.php",
+      "expected": "47da493a8c171d1a9c7912afb3dfa47af397fbb7f490be99b9acc70267351eaf",
+      "actual": "f643847a8dbf590e48dda561f29a7eae36da66ce4f079c16f2fd34be22f2a175"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skill-abilities.php",
+      "expected": "64143f2b8334d93bba670d9981d2fcc27f0dcc00178d1ee8993c1d2cabb3c8c0",
+      "actual": "f58ddf578579c0abd2a64e7867db0c4059fb1e10c866649a4ba2ea48fd2870ce"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skill-provider-discovery.php",
+      "expected": "a06146d42c96dabfe0b1d17f5ec770d7bf0a686facbe3f1f410289c3b7a2099a",
+      "actual": "4b3d01770beb065a9fa0a64b88c9568f9ea72b8c0c8becd9a1ae4344b32abe33"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skill-registry.php",
+      "expected": "4510bb92ea5d67d87e8677494d466bb8464c3fbc6e95449cd8730c07efe15fe5",
+      "actual": "bbb97df08740a4f56ed03e0cb7a8b4fc6ae4c75157f26f0a3d85e7c37ef07f76"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skill-runtime-certification.php",
+      "expected": "1ffb6a199adb5799e2175cbbc2cae2f0de4e0d502c2271ea8269255e99c9caeb",
+      "actual": "8b006251b9ec06b393c8d3e72f0e50afbe909376802029e7854fc196f325614f"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skill-seeder.php",
+      "expected": "3009d34b3fdbe9b227d116ae3335bfdb0af2319dc5cc1052248b3cee0e0f5401",
+      "actual": "f1edddaaf3ab81a5cd74a6a3be4946a23c32500752b8d3089d02514a7f8bb66a"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skills-admin-ui.php",
+      "expected": "9427dca11263e82e7c485ec934f158976f728cc9c9ee41bd96398e0aa9bf2014",
+      "actual": "840ab64e0ca448e954bdd49131bdfb6b955b053189e9ee8f01cc981f82909e50"
+    },
+    {
+      "path": "includes/class-mad4b-scp-staging-write-grant-reconciliation.php",
+      "expected": "28206a9ff3b56193e08bf45b916f7c53c5242382af8c279afa25daf68925b6ad",
+      "actual": "170e6485105869e8aa9d8bdc188fe14cc80d66b7d40fc58f3ef0558619e6ce56"
+    },
+    {
+      "path": "includes/class-mad4b-scp-switcher-sources.php",
+      "expected": "14baa5105a5cbc14bc0abb2eb911f36884fe9c123ddca2f99257c9c923c2e3dd",
+      "actual": "3100ff5c698fdf5b8de9870ad0360ead67dfdcadf963b0420504c77b6a3efccf"
+    },
+    {
+      "path": "includes/class-mad4b-scp-unified-agent-connection.php",
+      "expected": "0d9cac5ed364d33d53313f1eaa68f4fd3efabd93ce480e41310b7394761c63e0",
+      "actual": "e68e1e600b28d9f3f4a120f865a8a1b9773ae2d472e7eaa396b018ba2df37145"
+    },
+    {
+      "path": "includes/class-mad4b-scp-upgrade-continuity.php",
+      "expected": "c229b77426e4c857e231aabda914d3f68e768881ae47cff7041266762a3bb1a6",
+      "actual": "dcf205cb4e0f9af7846cd1b9e47cd6ce820efcef5a37ab2502673d0616d4b768"
+    },
+    {
+      "path": "mad4b-site-control-plane.php",
+      "expected": "ca8da1b4bbeb5db6a87e9cf8ee6d864f6e4d9f82e2a43b16c8cdef2263c8bc3e",
+      "actual": "96f7623e3fa66dff10f5ed03fd9faef4005d3cbce576350b4e39bc67c03dfc5f"
+    }
+  ],
+  "target_drift": [
+    {
+      "path": "assets/admin-settings-persistence.js",
+      "expected": "f17a03176cb33cc2558939dc311ec852db738f0223727eb22310ad2b548e3fef",
+      "actual": "6bf359c21d76c1856f70d73ed8468d475e0fd8cb30f1f506f586cdddea25a553"
+    },
+    {
+      "path": "assets/deferred-admin-reports.js",
+      "expected": "cdcc8ff6914bb79963de91577f80859fc6e25b6590ba824ae4d8164714818d22",
+      "actual": "fde2a7a052938b26967061719d29d7aa9a42aad7699c1dc697a2e240d42bfab7"
+    },
+    {
+      "path": "config/certified-provider-profiles.json",
+      "expected": "b4f85ea7fba63353b170e231660f7dab3eab1803e0fa42b96189d5582be11ba1",
+      "actual": "b66d82c06ba735a3ea0e7c3b8035741d64ec57318809d6002b5cdb1c3c14c80b"
+    },
+    {
+      "path": "config/mcp-protocol-profiles.json",
+      "expected": "ca6f986560c75232ef8357d3270a90d39ea360e46e6f5619c47b2935d76481ae",
+      "actual": "427cfc79b3e5fb46ee9ce874680ff219a988529eeab1206ea1246469967f1ecc"
+    },
+    {
+      "path": "config/runtime-release-policy.json",
+      "expected": "bf1bb078f0194c6831b104b290ee29c5e1f1c67e3b6aa47504aa5abfcd421e72",
+      "actual": "c08a542c11f9418f7ba443aeb612ae4a2acc9815f22e5fc1f0a824756894e16e"
+    },
+    {
+      "path": "config/skill-seed-manifest.json",
+      "expected": "ab0134f0725c42dbe87ce190b2df8aa68182ae7387406fa22b513e3d631e7760",
+      "actual": "3beaca42eaa7d15b17ff7d86f6906af8e0ae59f683228bf10a4c0f8a6a97038a"
+    },
+    {
+      "path": "config/staging-deployment-handoff.json",
+      "expected": "6d6721849532587dd3dff3d1ca51ac1d76aa6b7d5c793cac8990bc707694de18",
+      "actual": "99faacbb9439a7d3406272280352244d417592f07eea8d6396fe0cf3ced1678f"
+    },
+    {
+      "path": "includes/adapters/class-mad4b-scp-remote-media-adapter.php",
+      "expected": "45b554761a3d06112e7d5172197a97aa0452170bd190e8e5774c72fc78dcc672",
+      "actual": "374ca2bd8073357e77313be564748203b005db4da0cca0031a1a68a3a6b01239"
+    },
+    {
+      "path": "includes/adapters/class-mad4b-scp-skills-adapter.php",
+      "expected": "e27df6e6638cc45d1d607f2fd38773518d8210b7eeb909dde9dfca9823bfdea0",
+      "actual": "e8589e3d9c0fef3dfaae7a2e168fd3c4ee579fecaa64fee93d8db767e089cc83"
+    },
+    {
+      "path": "includes/class-mad4b-scp-activity-import-review.php",
+      "expected": "cb96c905ec74647750888faeacadec6937f46cf05e07c0f829147976506f0204",
+      "actual": "7dec46f40fdec0e5594509b07d1319bb6c2a7fa23d092aba5d65e172547cb146"
+    },
+    {
+      "path": "includes/class-mad4b-scp-activity-import-snapshot.php",
+      "expected": "1b9d2041c23f3019a75f2bd8283eddb5121f7b3e0340e60064a3c1a22d7185ab",
+      "actual": "1518b0d581cc32dd8e39be2121230013289d85788343b0d2c4db08c02a5c938f"
+    },
+    {
+      "path": "includes/class-mad4b-scp-addon-registry.php",
+      "expected": "58aab53678ca156babc9927fe961624e97436a1c84f7a1f3c7312bb114e5ecf8",
+      "actual": "8153b244678120e53937e8ca13bf36158e7273b5f8714a9128be9ff728f036c5"
+    },
+    {
+      "path": "includes/class-mad4b-scp-admin-settings-persistence.php",
+      "expected": "f6fa1fbccf4855aa4b349059e97fedc1cba0a165cb6f42034602aa4ac113e56f",
+      "actual": "2bc7457c374ece48e4072d4bb1c8f8bac8826f18ceabe22cee81d9aafcf876b1"
+    },
+    {
+      "path": "includes/class-mad4b-scp-agent-grant-lifecycle.php",
+      "expected": "7d4bbb9b65003edc623138861e91f0216025eaff60e299582266c11dde47d68e",
+      "actual": "389c858945fd69e3bd9966a0995d53ffbb0d2bb13d94852ecdfc14cd281a3228"
+    },
+    {
+      "path": "includes/class-mad4b-scp-ai-grant-mode.php",
+      "expected": "3fd0093d26be8fe797e3c5819e30d362407f6aaefefb129cfc25e5a4f3b09c27",
+      "actual": "9babec220a1d02a990c99c5e1f5ee86990064dfb2e65820b4bf8783807459fae"
+    },
+    {
+      "path": "includes/class-mad4b-scp-ai-review-lifecycle.php",
+      "expected": "273bcb162bcd1e45a428bf9163e4c0d54e7029f9d0552b0dc7d6650fe8a5bed6",
+      "actual": "155d282bb105138b1a46314bf035d4bc9f65a05cded265c123318c47829a6357"
+    },
+    {
+      "path": "includes/class-mad4b-scp-authorization.php",
+      "expected": "fb1087b4158631b0954cd16ec0ed89e4b1180e331c8f10ff83433b964b060f0e",
+      "actual": "7397378a5fcc4bebc1f112086a76477c4868f17666bd971579a03c3006ddce7a"
+    },
+    {
+      "path": "includes/class-mad4b-scp-brand-context-builder.php",
+      "expected": "b7e4e9109386b4a8f2ff9d6fc0e208973c68cbb5ec788912e2f5e66fec6f2023",
+      "actual": "da745f1efb70bb673abd052b3f6e277a139895018476bc4fd323dbbcb9abbadd"
+    },
+    {
+      "path": "includes/class-mad4b-scp-chatgpt-auto-binding.php",
+      "expected": "7911be8fc82d84d55212c62e2de89d6c482c9ff9103cd59cb5e098c43e69c6aa",
+      "actual": "9ff417b5d79b446c0c9636d775f6a093cf90cd842f85c58d2f5a00b8d23681e4"
+    },
+    {
+      "path": "includes/class-mad4b-scp-cli-readiness.php",
+      "expected": "3242bd0236e19f6901078fd7c98e1a59444326205759b319dd9ccd0c1a36ae2a",
+      "actual": "90611cfbeb67dee9187af6cc6f9dfa9a6b402ffacb7041199b158d6ce90f590c"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-communication.php",
+      "expected": "81a8c4d77b66750abeb6e568bf88360ea8a26b37abfe724902f6b4c7e93d0efd",
+      "actual": "431d6d1142bd84ca8e23f3d810f51648557abb0d37511a7dda7c30a4b72c3f1c"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-email-routing.php",
+      "expected": "befb397659902c8ac8af948f237007e3bc48cf2a396ade42d81b2521ffe6b9ff",
+      "actual": "24cdaf2f83ba1e19b43eaffa3279ed3b3edf5639fe52db484cdd71ccd0ac9eef"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-local-wpcli.php",
+      "expected": "a2057b090e005d374f3039ef164a1c4793d8723d72cd125fe45dec90a46eed4a",
+      "actual": "673e760157b1c3a9b047c655dfe1353afc9d5d7f363f639609616a09403a57fb"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-master-admin.php",
+      "expected": "0cfe68ea11598587a9cdaeed2313859cb95dff893b3972d2bb6a593fd2af4e4d",
+      "actual": "e5da7ea83d8c2f0290dfddfcf9c52bc585dd8a24db12bb844cde04bbb8766fff"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-migration-decisions.php",
+      "expected": "408febe1cea99ce389f84e9035f91dce1930843ec2f535e9cbc9d987198e2488",
+      "actual": "271574aec2013c0613010afee9f7ee2c75e865b758ea2a0e71703db9f0cd1883"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-owner-activation.php",
+      "expected": "ca980531ed98d3391deb66a63573b4ef6becebf2ba3e009d92467879b3212bc3",
+      "actual": "4359c6322cdc5bb64dc33e36c9c9cff32062d819c6387cf3dbce3e4a1409cbc1"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-sender-policy.php",
+      "expected": "cd6208903478ab64accc8a4f56e230682cfd1c5d217cb048f02abe78a82826e1",
+      "actual": "d21213e1d2353296f18f56bcdb6e4688c59ef1404db03489fed3ea6978f885ce"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-tenant-migration.php",
+      "expected": "06447093ff420e76af963d07285922972ff29be17ca1cb5d2072738d9c41bbf9",
+      "actual": "a4dfa1ad167d3201f88e4f725986af595dcd789254ecc0ddb18a2fe131a63d02"
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-experience-media-rights.php",
+      "expected": "ce49fe7008e7575dcda1ac141f3dfb96feafe2e4a8915ab67bdc85085fb0c5de",
+      "actual": "dc8e2f5914818ab0fe492970c13b58a0a205fe266942a3b99769a9ddfd9ae958"
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-experience-media.php",
+      "expected": "ff38fbce84b55a9b9d922282c906571bd615b89d0608a54686c9f71362881e30",
+      "actual": "fd49c8449dd314b17f6b50708dc478ac69b650fdbd1ac236be85d284d123c08d"
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-experience-runtime.php",
+      "expected": "500f5b4699543dadfedb6c363fde0bade78ce98d2a89ea3a2161c5c7f475aecb",
+      "actual": "96a9a12f3dbcc6bcf780b3a9cf1f5a4a5f0145214ed8ebba534e758cc210125b"
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-job-structural-qa.php",
+      "expected": "0c260265d3dea4a496a16c0faf19688b6d11b0bff8bc7d5b3869b52b9254df63",
+      "actual": "14adbf1821fd08866c633549245b57df1ae993ae6ec2a4cba7bb232992f6a715"
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-readiness-alerts.php",
+      "expected": "8ea82ea706a5b464c2ea6f108b3423419f759311616d2b7766f306bc72f6158c",
+      "actual": "8d91a0c4f9a8f7accd7974f1c72e2999d8f4f28ddd441e24bd3bd7b796d40fb2"
+    },
+    {
+      "path": "includes/class-mad4b-scp-contentjob-structural-cwa.php",
+      "expected": "a7eb77de9f5ad2cadfacfd7be5105845f888110b3563dc4134a300e16dfa90af",
+      "actual": "a828ea29c5421da2ecb2fc2bd2e80db65f1301253c2cb499b3d175d4c2b95929"
+    },
+    {
+      "path": "includes/class-mad4b-scp-context-admin-ui.php",
+      "expected": "54a183f8a21e3952e378d2a9e2c0ce5fc6f4f60ba92736d3f4f1e7b6095c455a",
+      "actual": "f5ce249cf00c2e22c28d0a5a5eb5449e84c5a52c758958044e83b7db268cb49e"
+    },
+    {
+      "path": "includes/class-mad4b-scp-context-authority.php",
+      "expected": "4cc5d9425b31b86f00a015f597b70c17dfb96e5df20bb771de930f357a782c2a",
+      "actual": "0b90c3175160078a9bccb713ba3032d6274cc8e7b974ddd83e366f8530a0d556"
+    },
+    {
+      "path": "includes/class-mad4b-scp-context-preflight.php",
+      "expected": "434ca62064e7deebc4034e910796cf479095b77ae8952b58ce8978d7bcd66c12",
+      "actual": "a92840334a2f3bc2843634131a75d600bda2c375a91a36ff48b46e66c9ccedf7"
+    },
+    {
+      "path": "includes/class-mad4b-scp-deferred-admin-reports.php",
+      "expected": "3d8b983ad3911fffa084d8f1093cea2a9f50556d5186836a925ab7f2d707cf1f",
+      "actual": "f94c1befb9c97183d4b860f623f9a5cab6e1259715677ccdd524badd80f9fb9d"
+    },
+    {
+      "path": "includes/class-mad4b-scp-developer-authority.php",
+      "expected": "1dc1c1e3d04a28d494f93ca26d743b7d604f82e9b2d088148c084f4c966edaed",
+      "actual": "f98848537d910d509ea05edc4fd555fa2db1d00517efe9ad9f233820bd3dd5a4"
+    },
+    {
+      "path": "includes/class-mad4b-scp-developer-runtime.php",
+      "expected": "e63063cddb62b9528ae620c7b0c9e63c46f1bcea8cbe57a8db1fd72a1ccfd403",
+      "actual": "4076bbf0297b7743bfa9d5d69d7d068d842033c78dccb79237bd6ed01bceb346"
+    },
+    {
+      "path": "includes/class-mad4b-scp-developer-workspace.php",
+      "expected": "7f51a263a9cd3579988cea24f8eead6b7c2b9b53a0deec8b4a8c0c7e6c69ade5",
+      "actual": "715971d6e6dd986767b68b785a31bebe118fb046a80347cd93615cab2d47f7e5"
+    },
+    {
+      "path": "includes/class-mad4b-scp-drive-scan-continuation.php",
+      "expected": "b6425a1c74c7952e1cc22b2a5df5ad062c2d08b602f9f5c9725b89a2b74ce446",
+      "actual": "2a25215548d24f4dda8aed9a860e88e47357ac480c612b019845bc31b37cbd62"
+    },
+    {
+      "path": "includes/class-mad4b-scp-dynamic-content-pipeline-admin.php",
+      "expected": "48ccac77b8d6840f2eb508908f97e864f298d708ba36fa3cb09d3674cc622615",
+      "actual": "5b38efca166c1cc4618a3354bde9de342fdda76a0fd214f317d6a1c269d15d45"
+    },
+    {
+      "path": "includes/class-mad4b-scp-external-handshake-evidence.php",
+      "expected": "b78a4842d262cd530047b25f7d2c36eb4cd5ae12a8eabebd3c6872dba0464cd0",
+      "actual": "4441c16f8446e06a395550c6d03fd21832dc33f4977ea03f5002443828d5ba7e"
+    },
+    {
+      "path": "includes/class-mad4b-scp-external-snapshot-finalizer.php",
+      "expected": "f71f751c0ab5c6be87e7aa97ecd60770dbe899250a5f77312f0a9cef13df2459",
+      "actual": "1ed40f3c7c5acb46b325196d2a9f21c99ae66e2a3d137b18ebf2260eed30b56d"
+    },
+    {
+      "path": "includes/class-mad4b-scp-google-drive-context.php",
+      "expected": "baaa00bb33e101856db51bfc426ee01b3e62a8d9860fec79f818f803ec063d10",
+      "actual": "9fbc48eed4aa7fb4af69842925182ee7eb6be35bd36a73e3b4a507be1dba681e"
+    },
+    {
+      "path": "includes/class-mad4b-scp-impact-policy.php",
+      "expected": "9cd7edef9bf31ccee693bb71f1c743899bf64a435fbb386e486e728d5213da0a",
+      "actual": "2d8999fcdb938ece779574de7d000e68f689565ee1be59373554f1f860e8ffc3"
+    },
+    {
+      "path": "includes/class-mad4b-scp-live-acceptance-finalizer.php",
+      "expected": "70b9bfbfaccb9d765c8e66b06255cbc794fda13cbdd4c9aaf31e43ed3191d90b",
+      "actual": "4ee335658a2b7d0d772a0d1a12769c6dd9183146215355954d185d13450468a2"
+    },
+    {
+      "path": "includes/class-mad4b-scp-live-acceptance-observer.php",
+      "expected": "c1606b1230d6214bacd53444f560328b38d35520e73fc7154d03e42ee7b6661a",
+      "actual": "b5c98f343ce0c25bfeaa351013bc061efb1277f42f267677e9447ca5bfdde497"
+    },
+    {
+      "path": "includes/class-mad4b-scp-live-acceptance-reconciler.php",
+      "expected": "2706c9457248324006c61c4c2837e98a12555627f527cbdf8fd0a8931973bcfd",
+      "actual": "7292436ce9bd2a52be037ff1089e87ebcfbc4f7c3016ae890853fdd3dbb7f4a3"
+    },
+    {
+      "path": "includes/class-mad4b-scp-local-oauth-server.php",
+      "expected": "8408f559be99bf92bdc1d42dc5abcbc831261a8e2d2dcbedf2dda9261935dab3",
+      "actual": "ccd40b81e8d051807566a51557ea47b1b3fb781aec9c5f29d07e5c28a390913c"
+    },
+    {
+      "path": "includes/class-mad4b-scp-market-profiles.php",
+      "expected": "5489499dbd9ecbaef3ac37f04c3e9bfc26fa3481cb412efa24a04a12d3bdcd67",
+      "actual": "1e9dd09979f8b6b329b8d640081a37f818c10cdf6aca38a233f4e91f71797e88"
+    },
+    {
+      "path": "includes/class-mad4b-scp-mcp-protocol-profile.php",
+      "expected": "8fdcbfb8958a184a5c8cc757d930c61c5de178959ac881a95c3a2d38623e74ce",
+      "actual": "9508275380e1ffdb5d5a469d7bca7d8eb38c605903581180011193a916303285"
+    },
+    {
+      "path": "includes/class-mad4b-scp-oauth-resource-bridge.php",
+      "expected": "6a8437b1db9c6e06026d4f26ef4b8e0f4255f2be4ce83309c7edcece7c34a689",
+      "actual": "8e83b25942c96ac4483981bc8a2e75a74f7bfd0dc1b66e1502bdee123016c636"
+    },
+    {
+      "path": "includes/class-mad4b-scp-operator-grant-convergence.php",
+      "expected": "e31db389b5e21fc76e580a5af3b107145e7c2a59a83bbdde03ddaf177209c712",
+      "actual": "70bd96163aa125f6e317daea7dc06632793e3b60557b373b6399a4a8761f3246"
+    },
+    {
+      "path": "includes/class-mad4b-scp-origin-evidence-workflow.php",
+      "expected": "99ac80e3bb4c96033092668abb8ce9d346fe840278b77adc2ffcac3c3fd40322",
+      "actual": "fa78965175089ed302c82006bd41f71a8fc92ac488d8953586a940253481b1c3"
+    },
+    {
+      "path": "includes/class-mad4b-scp-plugin.php",
+      "expected": "0f2bbc1c924776fa881b8dffc8b3e4151e36afd74f51fd0c9d4b76d0ae75bd79",
+      "actual": "64479de6b38e5b7b7c6effdb19b3d231fba1bbe0b7b95b059bede92ea3bff02a"
+    },
+    {
+      "path": "includes/class-mad4b-scp-production-promotion-attestation.php",
+      "expected": "c63f9ea7185394a96a920a91d75f0fc6f6a2fa88a23167a8134876d4aae86741",
+      "actual": "0754b96b72bdee315b533c6b4d9ab3dc5224b9401674c7e4d24093d253f06846"
+    },
+    {
+      "path": "includes/class-mad4b-scp-production-unchanged-attestation.php",
+      "expected": "f2f462cec84e091d5db4c7fa2e75cc8d9b684a58037e5e19d8827657e262602e",
+      "actual": "460cadf1a4211047e0f00e8c459105b8f66f556af88ed29b795e1822a4d1ddb9"
+    },
+    {
+      "path": "includes/class-mad4b-scp-read-consistency.php",
+      "expected": "f274adfa765f8a876826a9cad7cacf1b3d1798879b1566caba50fdaf00036df8",
+      "actual": "3a5b5d0f411eb03e69243b739c50998d42634b54a1de36203b46078967309ecc"
+    },
+    {
+      "path": "includes/class-mad4b-scp-readiness-event-automation.php",
+      "expected": "68b693e28da0c1ca0a5c5a887f5c8916d0b0132f8c0629babe7c347a708babef",
+      "actual": "ad8eac90e66ac695ea2ee6aab0c06ed5cb90fea2ffb7415ee6bc45d85b53a01d"
+    },
+    {
+      "path": "includes/class-mad4b-scp-readiness-workflow-options.php",
+      "expected": "fe08e57136a4553d4498e22c520fccdae419e944a349acf5cb31c808ea764ff4",
+      "actual": "3ab41e5e0ce2c6832c323fcad7b686f034e62f31b48ce9f54b4259889ec32b25"
+    },
+    {
+      "path": "includes/class-mad4b-scp-reconnect-hardening.php",
+      "expected": "c6910e9c6d23d9f77a671d7ce9d47e1a291150b7f738a456541b376c0ca7faa2",
+      "actual": "7ed98d1effb73383b2f387f00b877cacfd3281be8dd5d99bd960c499f8c60cf7"
+    },
+    {
+      "path": "includes/class-mad4b-scp-remote-media-rights.php",
+      "expected": "fc8fa46c155a6d4b8ef8d7de7f182a01d16cabafa84e2501ce71a05aecd461d7",
+      "actual": "c656a5da122a6844bea94a4a1444e65b7be4b392246fb0e867baaf83636d63e5"
+    },
+    {
+      "path": "includes/class-mad4b-scp-research-groups.php",
+      "expected": "e3c30868e5d996a07c0a49bb77bd0d87ff8fc9f20f7b5a9ba11b76794899768d",
+      "actual": "e154447d2dc0368f61997e4139b16f774344f171b4cee07a3770939bd9a891e2"
+    },
+    {
+      "path": "includes/class-mad4b-scp-research-intelligence.php",
+      "expected": "e585452c42745d1c26721faf810bea755aacce0f232143b065b73d8202dcadac",
+      "actual": "dfe3bad6c16933a7c5765a0c4cd94e155aa5c5fdcafaa3dba055bdf31e3e89f0"
+    },
+    {
+      "path": "includes/class-mad4b-scp-research-task-bridge.php",
+      "expected": "5536e2fc9abcda88ce91ee40e5b088b6ca6ed488278029f8cce07fb762003cff",
+      "actual": "bb3c9a2d6db3a47bfd062a62ca27bfccc148ba21dbc7dcbe2ca6a1169b42c316"
+    },
+    {
+      "path": "includes/class-mad4b-scp-runtime-components-admin-ui.php",
+      "expected": "388211469ba528fe63f5f32f390a78ac1a8a226b4d3b6a942718414255178e40",
+      "actual": "d2f6016cb3cbd397aff2f2a984676484d67f1f5c02c9c0a8dafc0a42e9a3f694"
+    },
+    {
+      "path": "includes/class-mad4b-scp-selected-head-update.php",
+      "expected": "b1310d397c374b510a40526161ac62227081c453eab36a7b5624c5755a38a70c",
+      "actual": "60bec66e342cf51d797df0c114abb46d761f3ee39e07d4d93900c319b29f7a36"
+    },
+    {
+      "path": "includes/class-mad4b-scp-self-update.php",
+      "expected": "34c238dfcc51a782ff3484af19ef3510863b5dd941450fa533a4cbb673795eb2",
+      "actual": "22a285af135487234d4691d2f7f6f71fcbd32975ed43729af434e0fa17967d38"
+    },
+    {
+      "path": "includes/class-mad4b-scp-server-core-catalog.php",
+      "expected": "8f5a75df361f70337e7a13c479fc3f7744f34e9d3fe5d1df4d160648d429fa84",
+      "actual": "1929d93326743fae0289b01a5132b17e7e953ef46ddffab70251e9c746de61b5"
+    },
+    {
+      "path": "includes/class-mad4b-scp-site-profile.php",
+      "expected": "837e62faad70393fb438cafc9c49dac59d14ffcbaaf5cab7677caa3b0d35499a",
+      "actual": "ae646c89a4bb6e123cbf42b85a93bce642804ad371a71a96c263ebcfd16dbf07"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skill-abilities.php",
+      "expected": "94dea9e123e142a8b1b3ac11ba94e3478bd9209abcf0f0f40483378da51cac3b",
+      "actual": "6ce38e56739813c5fb716a2845833d6ed75e6134bf8f15426f5bcd94e96de71d"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skill-provider-discovery.php",
+      "expected": "a06146d42c96dabfe0b1d17f5ec770d7bf0a686facbe3f1f410289c3b7a2099a",
+      "actual": "4b3d01770beb065a9fa0a64b88c9568f9ea72b8c0c8becd9a1ae4344b32abe33"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skill-registry.php",
+      "expected": "5b3b68e67e50d8e1062a4c5effb2a8e453e218dad89d8e1b95dca3ca1d3be9cc",
+      "actual": "f7856a25051538cfaeaf176b71b6310f2e73ddeca43c574f30735d6ce62944a3"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skill-runtime-certification.php",
+      "expected": "1ffb6a199adb5799e2175cbbc2cae2f0de4e0d502c2271ea8269255e99c9caeb",
+      "actual": "8b006251b9ec06b393c8d3e72f0e50afbe909376802029e7854fc196f325614f"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skill-seeder.php",
+      "expected": "f15712366a23f77ded2de80b04f8e91050e5faff5a72f299476cb3b7fe5e5089",
+      "actual": "a2b40159fa858cdff9821ea6bad1b821a2ec03b0c75ffee721aa622ef0b4154f"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skills-admin-ui.php",
+      "expected": "9427dca11263e82e7c485ec934f158976f728cc9c9ee41bd96398e0aa9bf2014",
+      "actual": "840ab64e0ca448e954bdd49131bdfb6b955b053189e9ee8f01cc981f82909e50"
+    },
+    {
+      "path": "includes/class-mad4b-scp-staging-write-grant-reconciliation.php",
+      "expected": "1dd59bb15297eb23632f5439b43273d573e0f884643cedab35b9c24b428c7a9e",
+      "actual": "fa0d4eae5912681f203177efceb4b3a2bd6e26345f2ef231d1920b7dec6e42d3"
+    },
+    {
+      "path": "includes/class-mad4b-scp-switcher-sources.php",
+      "expected": "14baa5105a5cbc14bc0abb2eb911f36884fe9c123ddca2f99257c9c923c2e3dd",
+      "actual": "3100ff5c698fdf5b8de9870ad0360ead67dfdcadf963b0420504c77b6a3efccf"
+    },
+    {
+      "path": "includes/class-mad4b-scp-unified-agent-connection.php",
+      "expected": "fca4967380f220fbcfb32459115c0c215b5d8b31dd93a86754c3ee4e9ee167ee",
+      "actual": "b5c5a2bb41e22976b4e1a9540a6d65dde70508d00ad4ae2347929a5de3349d72"
+    },
+    {
+      "path": "includes/class-mad4b-scp-upgrade-continuity.php",
+      "expected": "c229b77426e4c857e231aabda914d3f68e768881ae47cff7041266762a3bb1a6",
+      "actual": "dcf205cb4e0f9af7846cd1b9e47cd6ce820efcef5a37ab2502673d0616d4b768"
+    },
+    {
+      "path": "mad4b-site-control-plane.php",
+      "expected": "5597a33f45cc670e4a745ec5f4ebf0af65b22e1ce34e5f6f8e2da71efe14c182",
+      "actual": "47934ce963e96f675f41c2cf9295cd5b84293752381990845c0110902c783963"
+    }
+  ],
+  "common_count": 955,
+  "identical_common": 881,
+  "different_common": [
+    {
+      "path": "bootstrap/mad4b-mcp-adapter-mu-bootstrap.php",
+      "source": "766e5bef911cdc50f76b7aef3721a96e2488c5429a9afdc3abf16eb8e823eda0",
+      "target": "bd8d52406c9f35f61d0df5a76052956545ce677f7bc2908e1af12deab5588add"
+    },
+    {
+      "path": "config/adapter-registration-policy.json",
+      "source": "af3c124aa931f23dfa7ec955521147637de5f3219e6a756f57f81a8fed32f9ec",
+      "target": "f529918e36df9ff90256110cf2f91092e3361dd8a907cf00127234ae5e4d2846"
+    },
+    {
+      "path": "config/skill-seed-manifest.json",
+      "source": "376eced31a0a68c21a0177662d486521e697456c2364e05c80923e3710ab080e",
+      "target": "3beaca42eaa7d15b17ff7d86f6906af8e0ae59f683228bf10a4c0f8a6a97038a"
+    },
+    {
+      "path": "config/wordpress-addon-catalog.json",
+      "source": "7675836ae733bbb198c1373c8ceae254d1c7a1e762e2121f8139ff5d94cdd4eb",
+      "target": "b6a45e1e5052f06b00751f63627405db0820c1e865bc00f1f831e2a0b6e293be"
+    },
+    {
+      "path": "includes/adapters/class-mad4b-scp-chatbotx-provider-adapter.php",
+      "source": "4b58adad617d2fa7bb953604dee4c107b255649f5a747759cec37b21a326b2d6",
+      "target": "ab6492af7fa7539d2ac7dde7e53f9f70b5be45240eef9307c0bdf294f341e95c"
+    },
+    {
+      "path": "includes/class-mad4b-scp-abilities.php",
+      "source": "627c96bde07f0e5ce0f9042b968289e9256597f1fcf686e152ed7b36daca54fc",
+      "target": "ba23ad51a5b4cf4ec3c3c1a3be04008f3d6cbee6ed4b78a05143ba52acf08d4e"
+    },
+    {
+      "path": "includes/class-mad4b-scp-adapter-registry.php",
+      "source": "c2250868f60770623c3fc4a04aaba2cf4910adaee879336dc06e5d32baf0fa81",
+      "target": "bf761a66478374f4002817065d87a68519db7b6b0a2365fed45aefc98989c794"
+    },
+    {
+      "path": "includes/class-mad4b-scp-admin-query-performance-ui.php",
+      "source": "f35e45e9f10293b91e39c6deb42c14d405e91cddb4d8032b81cec923fe6a57c5",
+      "target": "ed4036747d15cd6b081a749d2d1f127e77ab387f794a6fd4c198421c81b7a881"
+    },
+    {
+      "path": "includes/class-mad4b-scp-agent-registry.php",
+      "source": "8e70066c537a02b5ca6a7ef53d810a2066df9dfc6df14ca888a012f75924c94b",
+      "target": "1fa45d7b3fbe193c59fe3593554ba09c88e5a7921cba9c0d817952575a5c0547"
+    },
+    {
+      "path": "includes/class-mad4b-scp-artifacts.php",
+      "source": "fdca215f3958943e5770628e57145db034565045fe2df9f0423a9f9d9a1499c9",
+      "target": "813ee18576336be026f820e333357cc02d822c0d571084fdfd8b25f0d947235e"
+    },
+    {
+      "path": "includes/class-mad4b-scp-brand-context-builder.php",
+      "source": "7f32ec069ce43b0f1276a8aa240e63c305e4fd63f423fd17c3a73abd0f265330",
+      "target": "da745f1efb70bb673abd052b3f6e277a139895018476bc4fd323dbbcb9abbadd"
+    },
+    {
+      "path": "includes/class-mad4b-scp-brand-core-remote-recovery.php",
+      "source": "8931642ac653b10a06fb0a0b21955aa0e0bd4c7bba26b4508eeee30d1b07f0c8",
+      "target": "9b2ae11ba135bbde368cdc24388ba2d6f93345050b6b49403ad21bdcc29958c4"
+    },
+    {
+      "path": "includes/class-mad4b-scp-capability-source-inventory.php",
+      "source": "50881628d9bd50e29297b3ff4be191198033dacb987746b7e8b11b0e50d7637f",
+      "target": "166f8bcb1f3a120b06550d719ae5fb228c117f4f6d83ea4aa34006c8417f54d0"
+    },
+    {
+      "path": "includes/class-mad4b-scp-chatgpt-connection-admin-ui.php",
+      "source": "34da73b227eb96701cc376573fd6b789ea7066ecc7f0ae5057b7ce247f1e2de7",
+      "target": "6aba98a1c1495d233697cf24f1ad130f41a895b6b54fb0454678cfeac1570329"
+    },
+    {
+      "path": "includes/class-mad4b-scp-chatgpt-tool-projection.php",
+      "source": "74c48c95290b82e7a81550a1a071e2c02fd2cde259043704433f6eddbf92e354",
+      "target": "9a1f9080c9a25c935b9ab55987a4526eeeab98a552e94e9a9f982a8cf453493a"
+    },
+    {
+      "path": "includes/class-mad4b-scp-cli-readiness.php",
+      "source": "3242bd0236e19f6901078fd7c98e1a59444326205759b319dd9ccd0c1a36ae2a",
+      "target": "90611cfbeb67dee9187af6cc6f9dfa9a6b402ffacb7041199b158d6ce90f590c"
+    },
+    {
+      "path": "includes/class-mad4b-scp-company-reconcile-skill-set.php",
+      "source": "75586bbcd4d89d160b079be43a4f613a7d26fa788d9b936003867a3bf12b6464",
+      "target": "275e3207270dc82688c950250af0de20fe9bd650795379606e18faf6ab3e1349"
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-completeness.php",
+      "source": "75c5a73e1a91e9b356f7f5adad494789daf8a774d754f33620d4c395b152bee8",
+      "target": "e136b1e86aef38f8b0cc33f1c1fc2183bfe661b1beebbba903d11bfad83ce7cf"
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-experience-media-rights.php",
+      "source": "493e634dc68fe0f868860a4d865098d8482734332839fc7a1950e060357c0094",
+      "target": "dc8e2f5914818ab0fe492970c13b58a0a205fe266942a3b99769a9ddfd9ae958"
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-jobs.php",
+      "source": "ace1668fea59e603fec52b73e833e093e5d62bc690f0e9d35787fa5b5f02a071",
+      "target": "13e9401f437eef797120047fbaab69330c3ca63c4f47e85c9b263416edc22996"
+    },
+    {
+      "path": "includes/class-mad4b-scp-content-readiness-alerts.php",
+      "source": "9f21ba56004951ac5b30c05a3381544e169c906457122cd7f7994af9472aa0c5",
+      "target": "8d91a0c4f9a8f7accd7974f1c72e2999d8f4f28ddd441e24bd3bd7b796d40fb2"
+    },
+    {
+      "path": "includes/class-mad4b-scp-context-admin-ui.php",
+      "source": "3dd88f2b86322431ed4a8bcf880f7e49cf1a95c67bfc8bf30e26621a23f7aa9a",
+      "target": "f5ce249cf00c2e22c28d0a5a5eb5449e84c5a52c758958044e83b7db268cb49e"
+    },
+    {
+      "path": "includes/class-mad4b-scp-context-authority.php",
+      "source": "f09fce169c4cad6834f7bb871055c4dd2c07b656b4e62f38e01a8e3c659a6d11",
+      "target": "0b90c3175160078a9bccb713ba3032d6274cc8e7b974ddd83e366f8530a0d556"
+    },
+    {
+      "path": "includes/class-mad4b-scp-context-provider-gateway.php",
+      "source": "ec47d824487180957cd6d4faa5aa86ee8325d276fcf551ff7561f2ed422673c9",
+      "target": "10e197d9b9b897530f1ed5d09f1e10c80bde01c49fa36985dbb1d3f52efb04d1"
+    },
+    {
+      "path": "includes/class-mad4b-scp-context-source-pipeline.php",
+      "source": "85b6bc7cdd14195753ff0c0151fdad02c3922a797d592dd31e3b46093e58359e",
+      "target": "1b384dca47ac2eeb397fdd685a192e6f91449428697169c4e6c2d71c7a772dca"
+    },
+    {
+      "path": "includes/class-mad4b-scp-delegation-mode.php",
+      "source": "399774b9e239c9dc3957a66cb01b1189def9ed4a1cbfd7c52180fe94a52fb781",
+      "target": "376da64e3375050857c74b2a27f814083580e2ba50df49e64a42e44445122b5f"
+    },
+    {
+      "path": "includes/class-mad4b-scp-dependency-manager.php",
+      "source": "a6fae1effb7a93adabb37ca17b68352beee5944c200377ad1b82abf0d09380b2",
+      "target": "882e93a5505294f9d03c74a925b7d49a77c7a9e9b5af3bbb876ed4f9fa1bd19c"
+    },
+    {
+      "path": "includes/class-mad4b-scp-deployment-binding-native.php",
+      "source": "d897f40b2363fafef58813612ee8047531b5fc09852863532f8457e9fff8e532",
+      "target": "62f962536539bf5e4df8edac4c2edfb1b342bf23f45a706f83c0ee590dab30ab"
+    },
+    {
+      "path": "includes/class-mad4b-scp-drive-scan-admin.php",
+      "source": "55f93dbb08bc129367e9f5f5eacef6c894d3ab3ba3beb4cddc6094f258c37cd8",
+      "target": "19321671b6337e08f3c78cf02bb879793443e42cb47bb4278a3c7750d962abd0"
+    },
+    {
+      "path": "includes/class-mad4b-scp-dynamic-provider-contract.php",
+      "source": "0968c26d96b6984b51b733bf903959a14a718a254d8ee673417aa63de066c954",
+      "target": "8b8a490b3ceaf93db96163a74a3884e2aecf78ee5404da3ac5ed40a7dc222fe3"
+    },
+    {
+      "path": "includes/class-mad4b-scp-execution-authority.php",
+      "source": "a5f006f42e5eb1be37c60193480fdc0182b138e84204980ed6352cce691f3dc6",
+      "target": "ac9c06b517e12243d0619d28798061bbc741a0a3b3811af75dc2ca95140e2d6e"
+    },
+    {
+      "path": "includes/class-mad4b-scp-firecrawl-provider.php",
+      "source": "b58617ece1243ce936070c692c3fbefd699321df7da787d2b9f88f1a54ee686d",
+      "target": "e390caac97aa0736b579484412ca745316ad9625843f6aa972ac3d19f5517130"
+    },
+    {
+      "path": "includes/class-mad4b-scp-governance-abilities.php",
+      "source": "3213d2a07176b9dbe875bfcce7926070eb84990b3a06993ce5b30d67df502f40",
+      "target": "37b3de5b298c5982b3feb03d2ef26844b85bd15baa19944c1357d9a2d482d2b4"
+    },
+    {
+      "path": "includes/class-mad4b-scp-host-bridge.php",
+      "source": "5291504a8681eff17690b6bc8fab2e7473477829f26a4a0da568e8ddf2a532ee",
+      "target": "522e89d3445f31027ff45d0c1c7661a57300b58600f863ac3472d2dac4b5acfc"
+    },
+    {
+      "path": "includes/class-mad4b-scp-live-truth.php",
+      "source": "5a7e487b28c9fc3f5c9778bf8a686baa531f8bc76f7f2af892d345bfe5ee22e0",
+      "target": "b2b6db2b894506b261964f3d9dedc6ab5ad0d0b3bbdd337742fb745634f1771f"
+    },
+    {
+      "path": "includes/class-mad4b-scp-mcp-adapter-dynamic-integrity.php",
+      "source": "7f7c2b85ba8e6297e94a06c89afcd53c8d3b7eb32d217625859316be11af5e8c",
+      "target": "7bd880db443e5ab642766d9982f3f2719cf4a6fdf8772419623de21b640e3027"
+    },
+    {
+      "path": "includes/class-mad4b-scp-mcp-catalog-budget.php",
+      "source": "f3b67946d550347e977f15f9aa9e5ffd3a305b4d89e4bde184ff9987ac1296e1",
+      "target": "34a9da564732614392c61324eba407e1b6a049de39c95d9fcfe59694dc6f0035"
+    },
+    {
+      "path": "includes/class-mad4b-scp-mcp-catalog-diagnostics.php",
+      "source": "8ca1c48a1e4135f9d60e18eecab2192b07cc80262d9df11c194d3958f3097d80",
+      "target": "805a457b3253aa993400371d0df7d43592f764b06d638668bd391d06318a73a9"
+    },
+    {
+      "path": "includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php",
+      "source": "7bc26c4064cdf13e204bd92fdab98d2be7edd4ed39cb1edc1b87078fe82c3607",
+      "target": "b7831c7e41328ed1c6155fb31d6f0f00e29f0f7e16c49180a43da6c549a25e48"
+    },
+    {
+      "path": "includes/class-mad4b-scp-mcp-protocol-profile.php",
+      "source": "586f03bc6e63f4ffc218386d8b31ef15f07c44506bec294ea119f3abb8a8d708",
+      "target": "9508275380e1ffdb5d5a469d7bca7d8eb38c605903581180011193a916303285"
+    },
+    {
+      "path": "includes/class-mad4b-scp-mcp-request-scope.php",
+      "source": "fc1f4c185945e515bc48d4ff2de761f2f831c74aa3d092b738c1be81fddbb4ee",
+      "target": "158b16e1585807bcd9dbf595f44e508cc2b34a5c6d835cfacd015de8f1ccbd56"
+    },
+    {
+      "path": "includes/class-mad4b-scp-mcp-runtime-recovery.php",
+      "source": "9d58475b9be87957c41da5ca8b6f65cb60bf40bfe8a356f2431a04371ee65ae6",
+      "target": "f2d0e77e1f0bbb8a6610e905f6314034ab74692fb00d791b0f469041275a0721"
+    },
+    {
+      "path": "includes/class-mad4b-scp-mutation-principal.php",
+      "source": "5effe9ed6934d272fd24dfc2300d42ee7bb1b201d974ca3289f2d53752a83162",
+      "target": "719e21aa9165d092cbed5bea531b9c338acb63f8253cb92db1b539f35dbd0f82"
+    },
+    {
+      "path": "includes/class-mad4b-scp-native-runtime-diagnostics.php",
+      "source": "367c9ee747a37916ca59271dcb318faef9ba1ccf767e077f53eaf0bfc277ae2f",
+      "target": "aca1eb0e9ccc227073daadbb0a463f8e8e54edba52e6e9536a73e80510d45fac"
+    },
+    {
+      "path": "includes/class-mad4b-scp-operational-integrity.php",
+      "source": "eb76d84dcb357121bc8f58bfa00bd67eb9379f633b6bb753ceb5f31e05a61649",
+      "target": "c392b6c73dc2807d7e40839f187fa4bda7a32ec8361e6eb0e0bff5320cf6b409"
+    },
+    {
+      "path": "includes/class-mad4b-scp-operator-control-center.php",
+      "source": "c2971f15e19e60314e98a066c7779661f1e7c0a78ad5380866b5b14f3824199d",
+      "target": "1ecbe6d633e11fef73ac541a8a3b47d44a4369dc33c2a62610a915c25f820d8b"
+    },
+    {
+      "path": "includes/class-mad4b-scp-operator-runner-profile.php",
+      "source": "9f02ff353a0bc59969c84492dfbbc062dfb5900dbe483cc1af839a0c1483f26d",
+      "target": "cfd09a148c96ac9db6e081d0888acddb1a459bc81abdc81b2d5dc2c6d38c3347"
+    },
+    {
+      "path": "includes/class-mad4b-scp-provider-mcp-path-review.php",
+      "source": "092888ec774f0e78f6b78f0eaa920a3134b460c3a4d91961334f6c04f647bf44",
+      "target": "a8a41d7f881afd06fb54d95bfcea6a0ec8931cb688686b6465373703d494073d"
+    },
+    {
+      "path": "includes/class-mad4b-scp-read-consistency.php",
+      "source": "cb266ca91341d8276a3609940e3d2b67efcb0ff78c2250462297470532bb7b52",
+      "target": "3a5b5d0f411eb03e69243b739c50998d42634b54a1de36203b46078967309ecc"
+    },
+    {
+      "path": "includes/class-mad4b-scp-readiness-workflow-options.php",
+      "source": "fd4884ad0ae33543561bb349cff677fbb7aa0cf031c7ae0e2d6f35324e3a675c",
+      "target": "3ab41e5e0ce2c6832c323fcad7b686f034e62f31b48ce9f54b4259889ec32b25"
+    },
+    {
+      "path": "includes/class-mad4b-scp-reconnect-hardening.php",
+      "source": "d17f55fcb5e384d6f73706392732c66d61281d2736b5c329f13e2529cfa30ad3",
+      "target": "7ed98d1effb73383b2f387f00b877cacfd3281be8dd5d99bd960c499f8c60cf7"
+    },
+    {
+      "path": "includes/class-mad4b-scp-remote-media-rights.php",
+      "source": "ab80f9d55ca2c6b96fb305023bf907a5d9da73dcb0f1abf7afe448b09b7d0a61",
+      "target": "c656a5da122a6844bea94a4a1444e65b7be4b392246fb0e867baaf83636d63e5"
+    },
+    {
+      "path": "includes/class-mad4b-scp-rest-compatibility.php",
+      "source": "aa02227719fadb3309628bcfdbbb7763cbe449f09a09e6d6b811f8b80b11f444",
+      "target": "9b94db4675766be85496c788baf04af5408cc8cc4d97d8c5b2c44b88105cd148"
+    },
+    {
+      "path": "includes/class-mad4b-scp-runtime-backend-registry.php",
+      "source": "6609e82251e9368f3bba85289405cac0f99666213dca10644ef45aec3bc8274c",
+      "target": "0d84af55730efdac90b6299782d3900e1aec2f5f1e9d18fa3c24995179dc19b8"
+    },
+    {
+      "path": "includes/class-mad4b-scp-runtime-components-admin-ui.php",
+      "source": "5a41a8732dde0501d0ed99b28e10c08d68a0a1934793124cc810afe87d840af7",
+      "target": "d2f6016cb3cbd397aff2f2a984676484d67f1f5c02c9c0a8dafc0a42e9a3f694"
+    },
+    {
+      "path": "includes/class-mad4b-scp-runtime-convergence.php",
+      "source": "4278691b927a41849babe623e1ff4a32c9bfdd35a8871f58f364595d69ab65e0",
+      "target": "c2d05a66a2d754f34fc72cb390471b7391f0dd422308ca06c0464fb3d40ba690"
+    },
+    {
+      "path": "includes/class-mad4b-scp-server-write-catalog.php",
+      "source": "3fae2d3ca06b62d16c16d57a88a176e325b85c41653a270e2b8bea8e2e683a14",
+      "target": "502631843f465da3fec7e16e3ab2a2afe07cf307d7a24381070d35e17ca94c55"
+    },
+    {
+      "path": "includes/class-mad4b-scp-servers.php",
+      "source": "e96849270c733c33b28f50d47cdbc912a90f47d5e267207210db3d9d8199ddfa",
+      "target": "ddd5f9cbd16b48ace6af539fac0165feb4be8907188e4c1ccc0660b0d1876786"
+    },
+    {
+      "path": "includes/class-mad4b-scp-site-lifecycle-rest.php",
+      "source": "0a15798fca4cb26390d5dd2b214bf7da39e9d0b7846bfed358831e4b22c5dd23",
+      "target": "046b4a2f23f05a942ad4fc838bfc8731449b2db401e4064e738d877028d4dbb3"
+    },
+    {
+      "path": "includes/class-mad4b-scp-site-profile.php",
+      "source": "f643847a8dbf590e48dda561f29a7eae36da66ce4f079c16f2fd34be22f2a175",
+      "target": "ae646c89a4bb6e123cbf42b85a93bce642804ad371a71a96c263ebcfd16dbf07"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skill-abilities.php",
+      "source": "f58ddf578579c0abd2a64e7867db0c4059fb1e10c866649a4ba2ea48fd2870ce",
+      "target": "6ce38e56739813c5fb716a2845833d6ed75e6134bf8f15426f5bcd94e96de71d"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skill-registry.php",
+      "source": "bbb97df08740a4f56ed03e0cb7a8b4fc6ae4c75157f26f0a3d85e7c37ef07f76",
+      "target": "f7856a25051538cfaeaf176b71b6310f2e73ddeca43c574f30735d6ce62944a3"
+    },
+    {
+      "path": "includes/class-mad4b-scp-skill-seeder.php",
+      "source": "f1edddaaf3ab81a5cd74a6a3be4946a23c32500752b8d3089d02514a7f8bb66a",
+      "target": "a2b40159fa858cdff9821ea6bad1b821a2ec03b0c75ffee721aa622ef0b4154f"
+    },
+    {
+      "path": "includes/class-mad4b-scp-staging-write-authority.php",
+      "source": "d8a054f3ef8aef7077566ef77efd22027dbf1635d621ba4eed23603c0d5b0812",
+      "target": "50aa9517b979f9a3a03ddde1b6c7d60d964961d878a3ecec0f2ded7dbc90b442"
+    },
+    {
+      "path": "includes/class-mad4b-scp-staging-write-candidate-binding.php",
+      "source": "c288b5e3a0cc9f447670ea52c4f3a983c94142b48cf732ccef5b2ab5e0347b78",
+      "target": "e820a0ff6e823d3605b53d522da0bbd984a979dd5748a991e1ef82a67c214c38"
+    },
+    {
+      "path": "includes/class-mad4b-scp-staging-write-grant-reconciliation.php",
+      "source": "170e6485105869e8aa9d8bdc188fe14cc80d66b7d40fc58f3ef0558619e6ce56",
+      "target": "fa0d4eae5912681f203177efceb4b3a2bd6e26345f2ef231d1920b7dec6e42d3"
+    },
+    {
+      "path": "includes/class-mad4b-scp-staging-write-owner-intent.php",
+      "source": "4d9ee650700bad85d3857fe3d30627057c5453d378215198b85a047a58dde929",
+      "target": "743a77012b9d2b9166c9d3b874f764c31fb5c239c206fe7c5d01baae0b0e8a9d"
+    },
+    {
+      "path": "includes/class-mad4b-scp-staging-write-planning-guard.php",
+      "source": "4b9ea0118c3f8ce89354dbe45e00da653e0e2be265ebe7abd9f2ac1403e46838",
+      "target": "1197922530790103ed65ab1c16a5981b712812f5b1abf123d74be3e4157563ec"
+    },
+    {
+      "path": "includes/class-mad4b-scp-transport-context.php",
+      "source": "e03f339b0b90aaeef0fceed73e14971b81cbaa6083220bc26f3c17cc48f1b1e2",
+      "target": "b5e113031d0ee6531a42eeb5af5055b214a105252524693ef1c22f843092af73"
+    },
+    {
+      "path": "includes/class-mad4b-scp-unified-agent-connection.php",
+      "source": "e68e1e600b28d9f3f4a120f865a8a1b9773ae2d472e7eaa396b018ba2df37145",
+      "target": "b5c5a2bb41e22976b4e1a9540a6d65dde70508d00ad4ae2347929a5de3349d72"
+    },
+    {
+      "path": "includes/class-mad4b-scp-unified-capability-gateway.php",
+      "source": "c581ee16ad85d47aaf98cbd693ae3ac225e0f5a08ee80ec246f7d336da9025f9",
+      "target": "17ab6e5b1a5968b44a7bc8aae3217a2ceb6b3c5b76ceb0cc796f97bc677afec3"
+    },
+    {
+      "path": "includes/class-mad4b-scp-wordpress-media-context.php",
+      "source": "2e8a2c97ce988750e67f6d0dcdb22b400da141d086b1e43b6179c1f535a80f95",
+      "target": "5bbe57ebdfe4d44e2ba08d37add254269afe3282cb75dbaf9d117cf456f9cd1e"
+    },
+    {
+      "path": "mad4b-site-control-plane.php",
+      "source": "96f7623e3fa66dff10f5ed03fd9faef4005d3cbce576350b4e39bc67c03dfc5f",
+      "target": "47934ce963e96f675f41c2cf9295cd5b84293752381990845c0110902c783963"
+    },
+    {
+      "path": "skill-seeds/wordpress-connection-diagnostics/SKILL.md",
+      "source": "21c81d1c1bd1f99364725057fe10a44189254a6fc68baaba799e01b39aa8755a",
+      "target": "66f4e9ae46bd7a774b0eaac89431a9514958cf9a82d41bbd9e95bd4a76776b27"
+    }
+  ],
+  "source_only": [
+    "config/mcp-provider-handshake-inheritance.json"
+  ],
+  "target_only": [],
+  "official_update_channel": "excluded_from_current_workflow",
+  "production_authorized": false,
+  "source_certified": false,
+  "mutation_performed": false
+}
