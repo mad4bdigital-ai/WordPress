@@ -1,0 +1,2 @@
+MAD4B_BROWSER_QA_ADMITTED job=manual
+{"contract": "mad4b.navigation.native-browser-baseline.v1", "width": 1366, "cached_comparison": false, "market_attested": false, "replay_authorized": false, "http": 200, "mobile_menu_expanded": null, "destination_expanded": true, "cards": 44, "visible_cards": 18, "visible_card_links": 18, "form6_present": true, "price_present": true, "native_baseline_pass": true, "page_errors": [], "asset_error_statuses": []}

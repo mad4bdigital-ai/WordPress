@@ -1,0 +1,30 @@
+<?php
+foreach(array_slice($argv,1) as $f)require $f;
+function check($x,$m){if(!$x)throw new RuntimeException($m);echo "PASS $m\n";}
+$c='MAD4B_Governor_Navigation_Card_Contract_V1';$d='MAD4B_Navigation_CSS_Dependency_V1';$a='MAD4B_Governor_Navigation_CSS_Adapter_V1';
+$ctx=['environment'=>'staging','anonymous'=>true,'native_navigation_scope'=>true,'original_governor_admitted'=>true,'market_attested'=>true,'route_kind'=>'tour','request_method'=>'GET','listing_id'=>67125,'taxonomy'=>'destinations','term_id'=>665,'site_uuid'=>'11111111-2222-3333-4444-555555555555','origin'=>'https://example.test/','language'=>'en','locale'=>'en_US','device'=>'mobile','country'=>'DE','currency'=>'USD','generation'=>'source:1','page_id'=>60623];
+foreach(['template_sha','term_dependency_sha','runtime_dependency_sha','market_policy_sha'] as $k)$ctx[$k]=hash('sha256',$k);
+$src=[];foreach([26212,67125,67124] as $id)$src[]=['handle'=>'elementor-post-'.$id,'body'=>'.elementor-'.$id.'{color:red}','media'=>'all','native_eligible'=>true];
+$runtime=hash('sha256','fixture');$other=hash('sha256','other assets');$i=$d::identity($src,$runtime);
+$ctx['asset_manifest_sha']=$d::bind($i,$other);$identity=$c::identity($ctx);
+$html='<div class="navigation-editor-card">'.str_repeat('Public term content ',5).'</div>';
+$r=['contract'=>$c::CONTRACT,'full_renderer_bytes_verified'=>true,'asset_parity_verified'=>true,'browser_parity_verified'=>true,'identity'=>$identity,'evidence_sha'=>hash('sha256','fixture only'),'html_sha'=>hash('sha256',$html),'expires_at'=>time()+120,'verified_page_ids'=>[60623,57562]];
+$p=['contract'=>'mad4b.render-query.public-fragments.v1','status'=>'active','environment'=>'staging','site_host'=>'example.test','ttl_seconds'=>30,'templates'=>[67125=>['navigation_card_only'=>true,'tour_only'=>true,'activation'=>'active','elementor_sha256'=>$ctx['template_sha'],'taxonomies'=>['destinations']]]];
+$key=$c::key($identity);$entry=['status'=>'approved','receipt'=>$r,'receipt_sha256'=>hash('sha256',json_encode($r,JSON_UNESCAPED_SLASHES))];
+$p['navigation_card_receipts'][$key]=$entry;
+$policy=function()use(&$p){return $p;};$snapshot=function()use(&$ctx,&$src,&$runtime,&$other){return ['context'=>$ctx,'css_sources'=>$src,'css_runtime_sha'=>$runtime,'other_assets_sha'=>$other];};
+$audit=fn($id,$cfg)=>true;$calls=0;$writes=0;$cache=[];$ttl=0;
+$native=function()use(&$calls,$html){$calls++;return $html;};
+$read=function($k,$g)use(&$cache){return $cache[$k]??null;};
+$write=function($k,$v,$g,$t)use(&$cache,&$writes,&$ttl){$cache[$k]=$v;$writes++;$ttl=$t;};
+$bundle=implode('',array_map(fn($s)=>"\n/* ".$s['handle']." */\n".$s['body']."\n",$src));
+$assets=function($r)use(&$bundle,&$other){return ['segment_bytes'=>$bundle,'other_assets_sha'=>$other];};
+$run=fn()=> $a::render($policy,$snapshot,$audit,$native,$read,$write,$assets);
+check($run()===$html&&$calls===1&&$writes===1&&$ttl<=30,'native output stored within original policy ceiling');
+$ctx['page_id']=57562;check($run()===$html&&$calls===1,'same original asset identity allows certified cross-route replay');
+$save=$src;$src[1]['body']=str_replace('red','tan',$src[1]['body']);$n=$calls;$w=$writes;
+check($run()===$html&&$calls===$n+1&&$writes===$w,'CSS change falls back without new receipt or write');$src=$save;
+$old=$bundle;$bundle.='unexpected';$n=$calls;check($run()===$html&&$calls===$n+1,'incorrect replayed segment falls back');$bundle=$old;
+$oldOther=$other;$other=hash('sha256','changed script');$n=$calls;$w=$writes;check($run()===$html&&$calls===$n+1&&$writes===$w,'non-segment asset change fails closed');$other=$oldOther;
+unset($p['navigation_card_receipts'][$key]);$n=$calls;$w=$writes;check($run()===$html&&$calls===$n+1&&$writes===$w,'revoked original manifest authority stays native');
+echo "ALL_CSS_ADAPTER_TESTS_PASS\n";
