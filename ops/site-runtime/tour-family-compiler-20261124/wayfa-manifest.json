@@ -1,0 +1,11 @@
+{
+  "contract": "mad4b.template-family-public-snapshot.v1",
+  "site_host": "wayfatours.com",
+  "environment": "production",
+  "status": "approved",
+  "family_document": 24784,
+  "widget_id": "6190bab",
+  "content_document": 48366,
+  "family_sha256": "b9844d2aac825ee8ddcf085768b396218c6ae596dbb60ed98587c853045e32f1",
+  "content_sha256": "491eb9ee7106f295745e99df11a5a5823adca6b37f055f34a07941e36f5daedd"
+}
