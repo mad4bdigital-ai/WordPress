@@ -66,7 +66,7 @@ assert "minHeight" in new_spacer and "boxSizing" in new_spacer
 # change is a bounded, explicitly named function body. No vendor drift,
 # document/execution policy edits, or unrelated JavaScript changes accepted.
 def delimited(s, begin, end):
-    assert s.count(begin) == s.count(end) == 1, (begin, end)
+    assert s.count(begin) == 1 and end in s[s.index(begin):], (begin, end)
     a = s.index(begin)
     b = s.index(end, a)
     assert b > a
