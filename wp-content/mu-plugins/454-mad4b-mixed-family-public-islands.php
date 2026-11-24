@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Mixed Elementor Family — Public Island Compiler
  * Description: Splits approved public Tour containers from live Rate/Form/booking siblings without modifying Elementor templates.
- * Version: 0.2.2
+ * Version: 0.2.3
  */
 defined('ABSPATH') || exit;
 
@@ -228,7 +228,25 @@ final class MAD4B_Mixed_Family_Public_Islands_V1 {
     }
     public static function render($node, callable $native):string {
         $root=self::qualify($node);
-        if(!$root)return $native();
+        if(!$root) {
+            if(class_exists('MAD4B_Auto_Family_Revision_V1',false)) {
+                $pending=MAD4B_Auto_Family_Revision_V1::pending_root($node);
+                if(is_array($pending)) {
+                    $start=hrtime(true);
+                    $jsBefore=wp_scripts()->queue;
+                    $cssBefore=wp_styles()->queue;
+                    $html=$native(); // Always display native during recert.
+                    $js=array_values(array_diff(wp_scripts()->queue,$jsBefore));
+                    $css=array_values(array_diff(wp_styles()->queue,$cssBefore));
+                    $verdict=MAD4B_Auto_Family_Revision_V1::witness($pending,$html,$js,$css);
+                    self::$activeReceiptRoot=(string)$pending['id'];
+                    self::receipt('NATIVE_'.($verdict['status']??'unverified'),
+                        (string)$pending['root_sha'],$start,strlen($html));
+                    return $html;
+                }
+            }
+            return $native();
+        }
         self::$activeReceiptRoot=(string)$root['id'];
         $key=self::fingerprint($root);
         if($key==='')return $native();
