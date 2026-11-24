@@ -1,0 +1,40 @@
+{
+    "contract": "mad4b.elementor-auto-public-family.v1",
+    "site_host": "tours.dev.mad4b.com",
+    "environment": "staging",
+    "status": "approved",
+    "families": [
+        {
+            "id": 24784,
+            "sha256": "654c8423fab10f7ab97f1d6f9d7b27eaec76a586f714ab0187b266e0cb53d44d"
+        },
+        {
+            "id": 45262,
+            "sha256": "6d570bf80ad6829126d205f40752957a2197efe83ff5ca2c21097da35c404fce"
+        },
+        {
+            "id": 25921,
+            "sha256": "d7a1be2ac6f1f250ce3603b0c131fdc5ef63c915c78d8c2d5a8b38e850e0cbb8"
+        },
+        {
+            "id": 24780,
+            "sha256": "fb0de1371865b14a175530237a74804e70300f5cc34afa2cfec2190f0e4585ed"
+        },
+        {
+            "id": 45149,
+            "sha256": "6a4d2987a822736ffedb3e2aec02eb599201765193af0d6c3ab60c30afe9ed3a"
+        },
+        {
+            "id": 53521,
+            "sha256": "591609a62ac7f6e96f2562a2ea7636ba37f1294973c41a6683c2dcda7b7323bc"
+        },
+        {
+            "id": 45152,
+            "sha256": "9a85dc1d0238c4983ce21f0e7ad3f9e1276a06e3ffcbfa4ec4194c726a69bedb"
+        },
+        {
+            "id": 14557,
+            "sha256": "400d1430637f44c2616500b52f7073be85675e1fd8c54705c0f905900804aac9"
+        }
+    ]
+}
