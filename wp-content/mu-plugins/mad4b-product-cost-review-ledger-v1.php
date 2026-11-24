@@ -239,6 +239,8 @@ final class MAD4B_Product_Cost_Review_Ledger_V1 {
                 'alerts'=>$work['alerts']??[],
                 'commercially_verified'=>$work['commercially_verified']??false];
         }
+        if(class_exists('MAD4B_Cost_Component_Rules_V1',false))
+            $details['dynamic_component_policy_preview']=MAD4B_Cost_Component_Rules_V1::preview($rows);
         $date=(string)($options['date']??'');
         $tier=(int)($options['tier_id']??0);
         $currency=(string)($options['currency']??'USD');
