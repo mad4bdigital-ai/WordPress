@@ -1,0 +1,42 @@
+{
+  "contract": "mad4b.native-release-review-evidence.v1",
+  "date": "2026-11-24",
+  "source": {
+    "origin": "https://tours.dev.mad4b.com",
+    "live_version": "0.4.0-rc.128",
+    "embedded_source_commit": "e18c8090ad217d467296bbfa327fc238799393e0"
+  },
+  "target": {
+    "origin": "https://wayfatours.com",
+    "live_version": "0.4.0-rc.128",
+    "embedded_source_commit": "3e6ce498b75390bc900c2c083f92891b8433b774",
+    "site_profile_authority_ready": true,
+    "write_enabled": true,
+    "exact_deployment_binding": true
+  },
+  "native_update_offer": {
+    "version": "0.4.0-rc.104",
+    "source_commit": "83cbe5ef992e3c99151891a0a55561a98139b948",
+    "release_verdict_success": true,
+    "eligible": false,
+    "relationship": "target_behind",
+    "blockers": [
+      "native_release_target_ancestor_or_older",
+      "signed_source_reconciliation_preflight_required"
+    ]
+  },
+  "native_admission": {
+    "preflight_ready": false,
+    "blockers": [
+      "source_not_selected"
+    ]
+  },
+  "developer_code_parity": {
+    "runtime": "4076bbf0297b7743bfa9d5d69d7d068d842033c78dccb79237bd6ed01bceb346",
+    "authority": "f98848537d910d509ea05edc4fd555fa2db1d00517efe9ad9f233820bd3dd5a4",
+    "workspace": "715971d6e6dd986767b68b785a31bebe118fb046a80347cd93615cab2d47f7e5"
+  },
+  "decision": "Do not apply older release. No live changes. Use native source admission and certified non-regressive release; scoped machine execution only if independently authorized.",
+  "production_deployment_performed": false,
+  "authorizing": false
+}
