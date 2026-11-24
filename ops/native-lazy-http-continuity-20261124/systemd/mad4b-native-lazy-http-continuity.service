@@ -1,0 +1,11 @@
+[Unit]
+Description=MAD4B independent public signed JetEngine HTTP continuity audit
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/mad4b-company-provisioning/runtime-source/native-lazy-http-continuity-20261124/run-http-continuity.py
+Nice=15
+TimeoutStartSec=300
+UMask=0077
