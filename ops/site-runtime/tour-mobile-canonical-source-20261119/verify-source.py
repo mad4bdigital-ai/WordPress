@@ -62,8 +62,59 @@ assert "containsFluentBooking" in new_spacer
 assert "getBoundingClientRect().height" in new_spacer
 assert "occupiedHeight" in new_spacer
 assert "minHeight" in new_spacer and "boxSizing" in new_spacer
-assert original_js.replace(old_spacer, new_spacer, 1) == successor_js, (
-    'only the hidden-sticky spacer creation may differ from upstream PR895'
+# Reconstruct the successor from the immutable upstream source. Each allowed
+# change is a bounded, explicitly named function body. No vendor drift,
+# document/execution policy edits, or unrelated JavaScript changes accepted.
+def delimited(s, begin, end):
+    assert s.count(begin) == 1 and end in s[s.index(begin):], (begin, end)
+    a = s.index(begin)
+    b = s.index(end, a)
+    assert b > a
+    return s[a:b]
+
+old_scroll = delimited(
+    original_js,
+    '\t\tvar onWindowScroll = function() {',
+    '\t\tvar onWindowResize = function() {'
+)
+new_scroll = delimited(
+    successor_js,
+    '\t\t// Coalesce repeated scroll events into one geometry read per paint.',
+    '\t\tvar onWindowResize = function() {'
+)
+assert 'scrollAnimationFrame' in new_scroll
+assert 'requestAnimationFrame' in new_scroll
+assert 'checkPosition();' in new_scroll
+old_resize_prefix = delimited(
+    original_js,
+    '\t\tvar onWindowResize = function() {',
+    '\t\t\tif ( ! isSticky ) {'
+)
+new_resize_prefix = delimited(
+    successor_js,
+    '\t\tvar onWindowResize = function() {',
+    '\t\t\tif ( ! isSticky ) {'
+)
+old_destroy_prefix = delimited(
+    original_js,
+    '\t\tthis.destroy = function() {',
+    '\t\t\tif ( isSticky ) {'
+)
+new_destroy_prefix = delimited(
+    successor_js,
+    '\t\tthis.destroy = function() {',
+    '\t\t\tif ( isSticky ) {'
+)
+for block in (new_resize_prefix, new_destroy_prefix):
+    assert 'cancelAnimationFrame( scrollAnimationFrame )' in block
+    assert 'scrollAnimationFrame = 0;' in block
+
+reconstructed = original_js.replace(old_spacer, new_spacer, 1)
+reconstructed = reconstructed.replace(old_scroll, new_scroll, 1)
+reconstructed = reconstructed.replace(old_resize_prefix, new_resize_prefix, 1)
+reconstructed = reconstructed.replace(old_destroy_prefix, new_destroy_prefix, 1)
+assert reconstructed == successor_js, (
+    'only the reviewed Form6 spacer and scroll-frame lifecycle may differ from PR895'
 )
 
 js_name = next(x for x in files if x.endswith('.js'))

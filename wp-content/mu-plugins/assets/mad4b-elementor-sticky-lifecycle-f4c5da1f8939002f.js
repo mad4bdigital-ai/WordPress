@@ -350,11 +350,26 @@ window.MAD4BStickyLifecycleGuard = { contract: 'mad4b.sticky.lifecycle.v1', reco
 			checkEffectsPoint( distanceFromTriggerPoint );
 		};
 
+		// Coalesce repeated scroll events into one geometry read per paint.
+		// Preserve checkPosition semantics, including original Sticky layout.
+		var scrollAnimationFrame = 0;
 		var onWindowScroll = function() {
-			checkPosition();
+			if ( scrollAnimationFrame ) {
+				return;
+			}
+
+			scrollAnimationFrame = window.requestAnimationFrame( function() {
+				scrollAnimationFrame = 0;
+				checkPosition();
+			} );
 		};
 
 		var onWindowResize = function() {
+			if ( scrollAnimationFrame ) {
+				window.cancelAnimationFrame( scrollAnimationFrame );
+				scrollAnimationFrame = 0;
+			}
+
 			if ( ! isSticky ) {
 				return;
 			}
@@ -378,6 +393,11 @@ window.MAD4BStickyLifecycleGuard = { contract: 'mad4b.sticky.lifecycle.v1', reco
 		};
 
 		this.destroy = function() {
+			// Reinitialization/teardown must not run a stale queued scroll check.
+			if ( scrollAnimationFrame ) {
+				window.cancelAnimationFrame( scrollAnimationFrame );
+				scrollAnimationFrame = 0;
+			}
 			if ( isSticky ) {
 				unstick();
 			}
