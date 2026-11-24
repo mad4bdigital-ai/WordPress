@@ -10,7 +10,7 @@
     "wp-content/mu-plugins/410-mad4b-tour-rate-lazy-footprint.php": "71c5dea784611f0ffad9b46f153e4eb46db0cd9483702b175552f6bc6478c361",
     "wp-content/mu-plugins/411-mad4b-direct-menu-link-contract.php": "bb35fb03576583de4e5c37c19118a0b70ca872eced98d52ccd6af169d8e1e501",
     "wp-content/mu-plugins/428-mad4b-mobile-bottom-action-nav-visibility.php": "c52cc71b411b9159dd59be6fbc55db18d8bffe20453fef88e55d4f27e32be1e7",
-    "wp-content/mu-plugins/assets/mad4b-elementor-sticky-lifecycle-bc8f3f18efcfa4a1.js": "bc8f3f18efcfa4a1022d1d2de6c030d7be1445318358a6607e48d9895199cf53"
+    "wp-content/mu-plugins/assets/mad4b-elementor-sticky-lifecycle-9ebb20e0bb022722.js": "9ebb20e0bb022722b5b10cf9bc7372edfcd80bd26671498f81208f67f127899d"
   },
   "upstream_original_sticky_asset": {
     "upstream_pr": 895,
@@ -18,7 +18,7 @@
     "original_path": "wp-content/mu-plugins/assets/mad4b-elementor-sticky-lifecycle-c77a2b2fbdc39daa.js",
     "archive_path": "ops/site-runtime/tour-mobile-canonical-source-20261119/archive/mad4b-elementor-sticky-lifecycle-c77a2b2fbdc39daa.js",
     "sha256": "c77a2b2fbdc39daac0c7a76b873433a192a500e5bd86638874f711e3fb071c61",
-    "current_successor_path": "wp-content/mu-plugins/assets/mad4b-elementor-sticky-lifecycle-bc8f3f18efcfa4a1.js",
-    "current_successor_sha256": "bc8f3f18efcfa4a1022d1d2de6c030d7be1445318358a6607e48d9895199cf53"
+    "current_successor_path": "wp-content/mu-plugins/assets/mad4b-elementor-sticky-lifecycle-9ebb20e0bb022722.js",
+    "current_successor_sha256": "9ebb20e0bb022722b5b10cf9bc7372edfcd80bd26671498f81208f67f127899d"
   }
 }
