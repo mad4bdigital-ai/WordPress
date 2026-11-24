@@ -1,0 +1,40 @@
+{
+    "contract": "mad4b.elementor-auto-public-family.v1",
+    "site_host": "wayfatours.com",
+    "environment": "production",
+    "status": "approved",
+    "families": [
+        {
+            "id": 24784,
+            "sha256": "b9844d2aac825ee8ddcf085768b396218c6ae596dbb60ed98587c853045e32f1"
+        },
+        {
+            "id": 45262,
+            "sha256": "c439ff273b36f11d5d850a3b89d378ebebad79a67c2b3d1bf9e7346cb7e7c928"
+        },
+        {
+            "id": 25921,
+            "sha256": "31e65644793bf0d5dad7e42bdf7aa6d13a297c3a8ee4d3b0b0f8a12bd7a1b06f"
+        },
+        {
+            "id": 24780,
+            "sha256": "ca2b99d5de62ea9f19f9976ef8ab1c036a00c889b5fc5b283526cacac9c0933a"
+        },
+        {
+            "id": 45149,
+            "sha256": "20816458639c8a72b48e67d9e3cc5360ee5b05383f9934b6f388ea7bb64347b0"
+        },
+        {
+            "id": 53521,
+            "sha256": "87dd5d03d233479be76600b3eb9d4b3bbe238b14b092b3824b7b667ba090955a"
+        },
+        {
+            "id": 45152,
+            "sha256": "9a85dc1d0238c4983ce21f0e7ad3f9e1276a06e3ffcbfa4ec4194c726a69bedb"
+        },
+        {
+            "id": 14557,
+            "sha256": "400d1430637f44c2616500b52f7073be85675e1fd8c54705c0f905900804aac9"
+        }
+    ]
+}

@@ -1,0 +1,86 @@
+{
+    "24784": {
+        "family": 24784,
+        "approved": 1,
+        "rejected": 26,
+        "reasons": {
+            "widget_nav-menu": 3,
+            "nested_conditions": 13,
+            "dynamic_field_meta_tour_highlights_content": 1,
+            "dynamic_tag_mad4b-ux-lookfeel-text": 1,
+            "widget_button": 3,
+            "widget_jet-dropbar": 1,
+            "dynamic_field_meta_faq_template": 1,
+            "widget_shortcode": 3
+        }
+    },
+    "45262": {
+        "family": 45262,
+        "approved": 2,
+        "rejected": 3,
+        "reasons": {
+            "nested_conditions": 3
+        }
+    },
+    "25921": {
+        "family": 25921,
+        "approved": 6,
+        "rejected": 15,
+        "reasons": {
+            "dynamic_tag_mad4b-ux-lookfeel-text": 15
+        }
+    },
+    "24780": {
+        "family": 24780,
+        "approved": 0,
+        "rejected": 16,
+        "reasons": {
+            "dynamic_field__": 4,
+            "dynamic_field_meta_": 1,
+            "nested_conditions": 5,
+            "widget_jet-listing-dynamic-link": 1,
+            "dynamic_tag_jet-post-custom-image": 5
+        }
+    },
+    "45149": {
+        "family": 45149,
+        "approved": 0,
+        "rejected": 13,
+        "reasons": {
+            "widget_jet-breadcrumbs": 1,
+            "widget_template": 7,
+            "widget_shortcode": 4,
+            "nested_conditions": 1
+        }
+    },
+    "53521": {
+        "family": 53521,
+        "approved": 0,
+        "rejected": 5,
+        "reasons": {
+            "nested_conditions": 1,
+            "dynamic_tag_jet-query-count": 3,
+            "widget_jet-engine-layout-switcher": 1
+        }
+    },
+    "45152": {
+        "family": 45152,
+        "approved": 0,
+        "rejected": 24,
+        "reasons": {
+            "nested_conditions": 6,
+            "widget_jet-smart-filters-active": 9,
+            "dynamic_tag_jet-query-count": 6,
+            "widget_button": 3
+        }
+    },
+    "14557": {
+        "family": 14557,
+        "approved": 0,
+        "rejected": 4,
+        "reasons": {
+            "dynamic_tag_jet-options-image": 3,
+            "widget_fluent-form-widget": 1
+        }
+    }
+}

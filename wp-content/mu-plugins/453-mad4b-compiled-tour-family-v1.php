@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Compiled Public Tour Family
  * Description: Exact-identity, page-specific public Elementor template snapshots with immutable family admission and native commerce.
- * Version: 0.2.1
+ * Version: 0.2.2
  */
 defined('ABSPATH') || exit;
 
@@ -56,8 +56,10 @@ final class MAD4B_Compiled_Tour_Family_V1 {
             ? 'canary' : 'off';
     }
 
-    public static function eligible(): bool {
-        if (!self::$tour || self::mode()==='off' || !self::config()
+    /** Public canonical Tour admission is independent of any one
+     * Elementor family hash. Each family validates its own revision. */
+    public static function public_route_eligible(): bool {
+        if (!self::$tour
             || is_admin() || wp_doing_ajax() || is_user_logged_in() || is_preview()
             || (defined('REST_REQUEST')&&REST_REQUEST)
             || (defined('WP_CLI')&&WP_CLI)
@@ -87,6 +89,12 @@ final class MAD4B_Compiled_Tour_Family_V1 {
             if ($key!=='wp-wpml_current_language'
                 || !is_string($value) || $value!==$lang)return false;
         if (function_exists('is_checkout') && (is_checkout()||is_cart()||is_account_page()))return false;
+        return true;
+    }
+
+    public static function eligible(): bool {
+        if(!self::public_route_eligible() || self::mode()==='off'
+            || !self::config())return false;
         $family=(int)self::config()['family_document'];
         $raw=get_post_meta($family,'_elementor_data',true);
         if (!is_string($raw) || !hash_equals((string)self::config()['family_sha256'],hash('sha256',$raw)))
