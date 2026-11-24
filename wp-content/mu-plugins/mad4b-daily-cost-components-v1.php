@@ -100,6 +100,27 @@ final class MAD4B_Daily_Cost_Components_V1 {
    elseif(in_array($v['component_type'],['accommodation','guide'],true))$state='native_provider_delegated';
    elseif($v['component_type']==='tickets'&&$v['source_type']!=='native'){
     $entrance=self::entrance($v);
+    if(class_exists('MAD4B_Entrance_Source_Rates_V1',false)){
+     $record=MAD4B_Entrance_Source_Rates_V1::current($v['source_ref']);
+     $day=$s['days'][$v['day_key']];
+     $date=MAD4B_Entrance_Source_Rates_V1::serviceDate((string)($ctx['date']??''),$day);
+     if(!empty($record['rows'])){
+      $entrance['rate_editor']=MAD4B_Entrance_Source_Rates_V1::url($v['source_ref']);
+      $entrance['rate_row_count']=count($record['rows']);
+      $entrance['dated_reference']=MAD4B_Entrance_Source_Rates_V1::resolve($record['rows'],$v['source_type'],$date??'', $ctx+['nationality'=>$options['nationality']??''],$v['source_row_key'],MAD4B_Generic_Cost_Composition_V1::fxSnapshot());
+      $entrance['status']=$entrance['dated_reference']['status'];
+      if(!$options){
+       $validReference=false;
+       foreach($record['rows'] as $rate){
+        if(!is_array($rate))continue;
+        $checked=MAD4B_Entrance_Source_Rates_V1::normalize($rate,$v['source_type']);
+        if(!is_wp_error($checked)&&$checked['review_status']==='reviewed_reference'&&$checked['coverage']==='admission_only'&&($v['source_row_key']===''||$checked['fee_key']===$v['source_row_key']))$validReference=true;
+       }
+       $entrance['status']=$validReference?'entrance_source_recorded':'entrance_cost_candidate_review_required';
+      }
+      if($v['quantity_source']!=='basis')$entrance['status']='entrance_quantity_policy_review_required';
+     }else $entrance['rate_editor']=MAD4B_Entrance_Source_Rates_V1::url($v['source_ref']);
+    }
     $state=$entrance['status'];
    }
    elseif(str_starts_with($v['component_type'],'registry:')&&$v['source_ref']){
@@ -119,7 +140,7 @@ final class MAD4B_Daily_Cost_Components_V1 {
      }
     }elseif(count($match)>1)$state='source_row_selection_required';
    }
-   if($v['requirement']==='conditional'&&$state==='reference_calculated')$state='condition_unresolved';
+   if($v['requirement']==='conditional'&&in_array($state,['reference_calculated','entrance_reference_calculated'],true))$state='condition_unresolved';
    $rows[]=$v+['state'=>$state,'reference_line'=>$line,'entrance_source'=>$entrance,'commercially_approved'=>false];
    $covered[$v['day_key']]=true;
   }
@@ -196,6 +217,7 @@ final class MAD4B_Daily_Cost_Components_V1 {
   echo '<button class="button button-primary" name="operation" value="save">Save component</button> ';
   if($row)echo '<button class="button" name="operation" value="remove">Remove component</button> <strong>'.esc_html($row['state']??'').'</strong>';
   if(!empty($row['entrance_source']))echo '<p><strong>Linked entrance source:</strong> '.esc_html($row['entrance_source']['label']).' — '.esc_html($row['entrance_source']['status']).' <a href="'.esc_url($row['entrance_source']['edit_url']).'">Original editor</a></p>';
+  if(!empty($row['entrance_source']['rate_editor']))echo '<p><a href="'.esc_url($row['entrance_source']['rate_editor']).'">Edit Entrance / Activity Internal Rates</a></p>';
   if(isset($row['entrance_source']['selling_reference']['starting_from']))echo '<p>Activity starting price reference: '.esc_html((string)$row['entrance_source']['selling_reference']['starting_from']).' (currency and dated selling eligibility not verified).</p>';
   echo '</form>';
  }
