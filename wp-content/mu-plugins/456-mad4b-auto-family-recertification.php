@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Elementor Family Revision Re-Certification
  * Description: Re-certifies public family hashes after a trusted Elementor save; changed public islands need two matching native witnesses.
- * Version: 0.1.2
+ * Version: 0.1.3
  */
 defined('ABSPATH') || exit;
 
@@ -83,7 +83,32 @@ final class MAD4B_Auto_Family_Revision_V1 {
         }
         return null;
     }
+    // All revision/witness mutations share the same option rows. A single
+    // site-local database lock prevents lost updates between different roots.
+    // Do not use expiring per-root locks for shared registry writes.
+    private static function registry_lock(): string {
+        global $wpdb;
+        if(!is_object($wpdb)||!isset($wpdb->options))return '';
+        $key='mad4b_family_registry_'.substr(hash('sha256',$wpdb->options.'|'.self::host()),0,32);
+        if((int)$wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s,1)',$key))!==1)return '';
+        foreach([self::STATE,self::PENDING,'mad4b_auto_public_family_v1',
+            'mad4b_mixed_family_public_islands_v1','mad4b_compiled_tour_family_v1'] as $name)
+            wp_cache_delete($name,'options');
+        wp_cache_delete('alloptions','options');
+        wp_cache_delete('notoptions','options');
+        return $key;
+    }
+    private static function registry_unlock(string $key): void {
+        global $wpdb;
+        if($key!=='')$wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)',$key));
+    }
     public static function enroll(): array {
+        if(!self::trusted())return ['status'=>'unauthorized'];
+        $lock=self::registry_lock();
+        if($lock==='')return ['status'=>'retry_lock'];
+        try{return self::enroll_locked();}finally{self::registry_unlock($lock);}
+    }
+    private static function enroll_locked(): array {
         if(!self::trusted() || !class_exists('MAD4B_Auto_Public_Family_V1',false))
             return ['status'=>'unauthorized'];
         $cfg=get_option('mad4b_auto_public_family_v1',[]);
@@ -130,10 +155,35 @@ final class MAD4B_Auto_Family_Revision_V1 {
     }
     public static function shutdown():void {
         if(!self::$dirty)return;
-        foreach(array_keys(self::$dirty) as $id)self::reconcile((int)$id);
+        foreach(array_keys(self::$dirty) as $id){
+            $result=self::reconcile((int)$id);
+            if(in_array(($result['status']??''),['retry_lock','changed_during_audit','superseded_by_newer_editor'],true))
+                self::queue_retry((int)$id,1);
+        }
         if(self::$receipts)
             @file_put_contents('/tmp/mad4b-auto-family-recert-20261124.jsonl',
                 wp_json_encode(self::$receipts).PHP_EOL, FILE_APPEND|LOCK_EX);
+    }
+    // Retry only a previously authorized, enrolled family revision. The
+    // event carries no editable content or new admission scope; reconcile
+    // re-reads the original published document and the approved registry.
+    private static function queue_retry(int $id,int $attempt):void {
+        if($id<1||$attempt<1||$attempt>5)return;
+        if(!wp_next_scheduled('mad4b_auto_family_revision_retry_v1',[$id,$attempt]))
+            wp_schedule_single_event(time()+60*$attempt,'mad4b_auto_family_revision_retry_v1',[$id,$attempt]);
+    }
+    public static function retry_saved_family(int $id,int $attempt):void {
+        if(!function_exists('wp_doing_cron')||!wp_doing_cron()||self::mode()!=='on'
+            ||$id<1||$attempt<1||$attempt>5||self::$busy)return;
+        $lock=self::registry_lock();
+        if($lock===''){self::queue_retry($id,$attempt+1);return;}
+        self::$busy=true;
+        try{
+            $result=self::reconcile_locked($id);
+        }finally{self::$busy=false;self::registry_unlock($lock);}
+        if(in_array(($result['status']??''),['retry_lock','changed_during_audit','superseded_by_newer_editor'],true))
+            self::queue_retry($id,$attempt+1);
+        self::record('RETRY',$id,(string)($result['status']??'unknown'));
     }
     private static function record(string $event,int $id,string $reason=''):void {
         self::$receipts[]=['event'=>$event,'family'=>$id,'reason'=>$reason,'utc'=>gmdate('c')];
@@ -141,6 +191,12 @@ final class MAD4B_Auto_Family_Revision_V1 {
     public static function reconcile(int $id):array {
         if(self::mode()==='off' || !self::trusted($id) || self::$busy)
             return ['status'=>'unauthorized_or_busy'];
+        $lock=self::registry_lock();
+        if($lock==='')return ['status'=>'retry_lock'];
+        self::$busy=true;
+        try{return self::reconcile_locked($id);}finally{self::$busy=false;self::registry_unlock($lock);}
+    }
+    private static function reconcile_locked(int $id): array {
         $state=self::read_state();
         $cfg=get_option('mad4b_auto_public_family_v1',[]);
         if(!$state || !is_array($cfg) || ($cfg['status']??'')!=='approved'
@@ -165,10 +221,8 @@ final class MAD4B_Auto_Family_Revision_V1 {
         if(!is_array($nodes))return ['status'=>'malformed_family'];
         $roots=self::candidate_roots($nodes);
         if(count($roots)>85)return ['status'=>'too_many_candidates'];
-        $lock='family_'.$id;
-        if(!wp_cache_add($lock,1,self::GROUP,25))return ['status'=>'retry_lock'];
-        self::$busy=true;
-        try {
+        // Registry snapshots were refreshed after obtaining the shared lock.
+        {
             // Compare directly to the authoritative options table under
             // the lock: an earlier admin request may have stale local
             // WP_Object_Cache values after another editor committed.
@@ -193,6 +247,7 @@ final class MAD4B_Auto_Family_Revision_V1 {
             }
             // Re-check after acquiring the lock. If a newer editor save
             // happened meanwhile, never sign an outdated family SHA.
+            wp_cache_delete($id,'post_meta');
             $check=get_post_meta($id,'_elementor_data',true);
             if(!is_string($check)||!hash_equals($fresh,hash('sha256',$check)))
                 return ['status'=>'changed_during_audit'];
@@ -200,8 +255,13 @@ final class MAD4B_Auto_Family_Revision_V1 {
             $newPending=[];
             $previous=(array)($state['families'][$id]['roots']??[]);
             foreach($roots as $rid=>$rsha) {
-                if(isset($previous[$rid]) && hash_equals((string)$previous[$rid],$rsha))
-                    continue; // already certified and exactly unchanged
+                $priorPending=$pending['roots'][$id.'|'.$rid]??null;
+                if(isset($previous[$rid]) && hash_equals((string)$previous[$rid],$rsha)
+                    && !is_array($priorPending))
+                    continue; // unchanged AND no outstanding native witness
+                // An unchanged but still pending root is never promoted by a
+                // second save. Bind it to the new family revision and restart
+                // the witnesses rather than borrowing evidence across revisions.
                 $newPending[$id.'|'.$rid]=['family'=>$id,'id'=>$rid,
                     'family_sha'=>$fresh,'root_sha'=>$rsha,
                     'stage'=>'native_witness','sample'=>null,'samples'=>0];
@@ -267,9 +327,6 @@ final class MAD4B_Auto_Family_Revision_V1 {
                 'pending_native_witness'=>count($newPending)];
             self::record('RECERTIFIED',$id,'pending='.count($newPending));
             return $result;
-        }finally{
-            self::$busy=false;
-            wp_cache_delete($lock,self::GROUP);
         }
     }
 
@@ -303,14 +360,21 @@ final class MAD4B_Auto_Family_Revision_V1 {
         if(isset(self::$witnessed_this_request[$once]))
             return ['status'=>'same_request_not_a_second_witness'];
         self::$witnessed_this_request[$once]=true;
-        if(!wp_cache_add('witness_'.$id.'_'.$rid,1,self::GROUP,20))
-            return ['status'=>'locked'];
+        $lock=self::registry_lock();
+        if($lock==='')return ['status'=>'locked'];
         try {
             $pending=self::read_pending();
             $key=$id.'|'.$rid;$live=$pending['roots'][$key]??null;
             if(!is_array($live)||($live['family_sha']??'')!==$entry['family_sha']
                 ||($live['root_sha']??'')!==$entry['root_sha'])
                 return ['status'=>'superseded'];
+            wp_cache_delete($id,'post_meta');
+            $raw=get_post_meta($id,'_elementor_data',true);
+            $tree=is_string($raw)?json_decode($raw,true):null;
+            $sub=is_array($tree)?self::root_node($tree,$rid):null;
+            if(!is_array($sub)||!hash_equals((string)$live['family_sha'],hash('sha256',$raw))
+                ||!hash_equals((string)$live['root_sha'],hash('sha256',(string)wp_json_encode($sub,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)))
+                ||!MAD4B_Auto_Public_Family_V1::analyze_node($sub)['eligible'])return ['status'=>'superseded'];
             sort($scripts);sort($styles);
             $digest=hash('sha256',$html.'|'.wp_json_encode([$scripts,$styles]));
             $scope=hash('sha256',wp_json_encode([
@@ -326,7 +390,8 @@ final class MAD4B_Auto_Family_Revision_V1 {
                 $live['sample']=['digest'=>$digest,'scope'=>$scope,'when'=>time()];
                 $live['samples']=1;
                 $pending['roots'][$key]=$live;
-                update_option(self::PENDING,$pending,false);
+                if(!update_option(self::PENDING,$pending,false)&&get_option(self::PENDING)!==$pending)
+                    return ['status'=>'pending_write_failed'];
                 return ['status'=>'first_native_witness','family'=>$id,'root'=>$rid];
             }
             unset($pending['roots'][$key]);
@@ -335,7 +400,7 @@ final class MAD4B_Auto_Family_Revision_V1 {
             self::record('TWO_NATIVE_WITNESSES',$id,$rid);
             return ['status'=>'approved_after_two_native_witnesses','family'=>$id,'root'=>$rid];
         }finally{
-            wp_cache_delete('witness_'.$id.'_'.$rid,self::GROUP);
+            self::registry_unlock($lock);
         }
     }
     public static function status():array {
@@ -350,3 +415,4 @@ foreach(['added_post_meta','updated_post_meta','deleted_post_meta'] as $hook)
 add_action('elementor/document/after_save',
     [MAD4B_Auto_Family_Revision_V1::class,'elementor_saved'],220,2);
 add_action('shutdown',[MAD4B_Auto_Family_Revision_V1::class,'shutdown'],9998);
+add_action('mad4b_auto_family_revision_retry_v1',[MAD4B_Auto_Family_Revision_V1::class,'retry_saved_family'],10,2);

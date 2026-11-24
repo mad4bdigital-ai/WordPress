@@ -6,6 +6,27 @@ $GLOBALS['m']=[];
 $GLOBALS['lock']=[];
 $GLOBALS['authorized']=true;
 function add_action(...$x){}
+$GLOBALS['cron']=false;$GLOBALS['events']=[];
+function wp_doing_cron(){return $GLOBALS['cron'];}
+function wp_next_scheduled($hook,$args=[]){return isset($GLOBALS['events'][$hook.'|'.json_encode($args)]);}
+function wp_schedule_single_event($at,$hook,$args=[]){$GLOBALS['events'][$hook.'|'.json_encode($args)]=$at;return true;}
+
+class TestWpdb {
+ public $options='wp_options';
+ public $busy=false;
+ public $held=false;
+ public function prepare($sql,...$args){return [$sql,$args];}
+ public function get_var($prepared){
+  [$sql,$args]=$prepared;
+  if(str_contains($sql,'GET_LOCK')){if($this->busy||$this->held)return 0;$this->held=true;return 1;}
+  if(str_contains($sql,'RELEASE_LOCK')){$this->held=false;return 1;}
+  if(str_contains($sql,'SELECT option_value'))return isset($GLOBALS['o'][$args[0]])?serialize($GLOBALS['o'][$args[0]]):null;
+  throw new RuntimeException('unknown query');
+ }
+}
+$GLOBALS['wpdb']=new TestWpdb();
+function maybe_unserialize($x){return unserialize($x);}
+
 function get_option($k,$d=false){return array_key_exists($k,$GLOBALS['o'])?$GLOBALS['o'][$k]:$d;}
 function update_option($k,$v,$autoload=false){$changed=!array_key_exists($k,$GLOBALS['o'])||$GLOBALS['o'][$k]!==$v;$GLOBALS['o'][$k]=$v;return $changed;}
 function home_url($path='/'){return 'https://example.test'.$path;}
@@ -80,9 +101,27 @@ $html='<div class="elementor-widget-container">'.str_repeat('Egypt excursions an
 $unsafe='<div class="elementor-widget-container">'.str_repeat('Egypt public content. ',12).' Price 150 USD</div>';
 ok($c::witness($pending,$unsafe,[],[])['status']==='native_unsafe','Selling price cannot be used as a native witness');
 ok($c::status()['pending_count']===1,'Unsafe candidate still pending');
+$GLOBALS['wpdb']->busy=true;
+ok($c::witness($pending,$html,[],[])['status']==='locked','Shared registry lock protects witness from concurrent save');
+$GLOBALS['wpdb']->busy=false;
+$ref=new ReflectionProperty('MAD4B_Auto_Family_Revision_V1','witnessed_this_request');
+$ref->setValue([]);
 $r=$c::witness($pending,$html,[],[]);
 ok($r['status']==='first_native_witness','First anonymous native rendering recorded');
 ok($c::status()['pending_count']===1,'First rendering is not sufficient');
+$nodes=json_decode($GLOBALS['m'][24784],true);
+$nodes[1]['settings']=['test_unrelated'=>'second-save'];
+$GLOBALS['m'][24784]=wp_json_encode($nodes,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+$second=$c::reconcile(24784);
+ok($second['status']==='recertified'&&$second['pending_native_witness']===1,'Second save cannot promote an unchanged pending root');
+$next=$GLOBALS['o']['mad4b_auto_family_pending_v1']['roots']['24784|abcdef0'];
+ok($next['sample']===null&&$next['family_sha']!==$pending['family_sha'],'Pending witness restarted on new family revision');
+$ref->setValue([]);
+ok($c::witness($pending,$html,[],[])['status']==='superseded','Old revision witness rejected');
+$pending=$next;
+$ref->setValue([]);
+ok($c::witness($pending,$html,[],[])['status']==='first_native_witness','New family revision needs first witness');
+
 $repeat=$c::witness($pending,$html,[],[]);
 ok($repeat['status']==='same_request_not_a_second_witness','Same request cannot count twice');
 $ref=new ReflectionProperty('MAD4B_Auto_Family_Revision_V1','witnessed_this_request');
@@ -90,6 +129,7 @@ $ref->setValue([]);
 $r=$c::witness($pending,$html,[],[]);
 ok($r['status']==='approved_after_two_native_witnesses','Second byte-and-assets-identical native result promotes root');
 ok($c::status()['pending_count']===0,'Promotion removes exact pending root');
+foreach(['policy'=>null,'registry'=>[],'stats'=>[]] as $prop=>$value)(new ReflectionProperty($a,$prop))->setValue($value); // new HTTP request
 ok(is_array($a::root_for(24784,'abcdef0')),'Approved root can now snapshot');
 $reverted=$c::reconcile(24784);
 ok($reverted['status']==='unchanged','No spurious recert when identical revision seen twice');
@@ -112,4 +152,22 @@ ok($GLOBALS['o']['mad4b_mixed_family_public_islands_v1']['roots'][0]['family_sha
 ok($GLOBALS['o']['mad4b_compiled_tour_family_v1']['family_sha256']===hash('sha256',$GLOBALS['m'][24784]),
  'Existing Related Destinations snapshot keeps parent certificate after unrelated edit');
 ok($GLOBALS['o']['mad4b_auto_public_family_v1']['families'][0]['sha256']!==$root0,'Unrelated edit updates family hash independently');
+$GLOBALS['wpdb']->busy=true;
+ok($c::reconcile(24784)['status']==='retry_lock','Save cannot enter occupied shared registry');
+$GLOBALS['wpdb']->busy=false;
+ok(!$GLOBALS['wpdb']->held,'Registry lock released after all operations');
+$nodes=json_decode($GLOBALS['m'][24784],true);
+$nodes[0]['elements'][0]['settings']['title']='Third revision';
+$GLOBALS['m'][24784]=wp_json_encode($nodes,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+$c::retry_saved_family(24784,1);
+ok($c::status()['pending_count']===0,'Ordinary request cannot trigger internal retry');
+$GLOBALS['cron']=true;
+$GLOBALS['wpdb']->busy=true;
+$c::retry_saved_family(24784,1);
+ok(wp_next_scheduled('mad4b_auto_family_revision_retry_v1',[24784,2]),'Busy cron retries bounded existing enrolled scope');
+$GLOBALS['wpdb']->busy=false;
+$c::retry_saved_family(24784,2);
+ok($c::status()['pending_count']===1,'Cron recovers trusted enrolled family revision without granting replay');
+$GLOBALS['cron']=false;
+
 echo 'ALL_AUTOMATIC_FAMILY_RECERT_TESTS_PASS'.PHP_EOL;
