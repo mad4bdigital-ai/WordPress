@@ -30,6 +30,42 @@ for name, expected in m['files'].items():
         assert bad not in text, (name, bad)
     files[path.name] = text
 
+# Preserve PR #895 immutable historical asset evidence while binding the
+# current content-addressed source to the narrowly reviewed hidden-branch edit.
+archive = m.get('upstream_original_sticky_asset') or {}
+assert archive.get('upstream_pr') == m['upstream_evidence_pr']
+assert archive.get('upstream_exact_head') == m['upstream_exact_head']
+original_path = str(archive.get('original_path') or '')
+archived_path = ROOT / str(archive.get('archive_path') or '')
+successor_path = str(archive.get('current_successor_path') or '')
+assert original_path and successor_path in m['files']
+assert not (ROOT / original_path).exists(), 'old asset would create an ambiguous loader glob'
+assert archived_path.is_file() and not archived_path.is_symlink(), 'immutable original missing'
+original_data = archived_path.read_bytes()
+assert hashlib.sha256(original_data).hexdigest() == archive.get('sha256')
+assert archive.get('sha256') == 'c77a2b2fbdc39daac0c7a76b873433a192a500e5bd86638874f711e3fb071c61'
+assert archive.get('current_successor_sha256') == m['files'][successor_path]
+original_js = original_data.decode('utf-8')
+successor_js = (ROOT / successor_path).read_text(encoding='utf-8')
+start_marker = 'var addSpacer = function() {'
+end_marker = 'var removeSpacer = function()'
+assert original_js.count(start_marker) == successor_js.count(start_marker) == 1
+assert original_js.count(end_marker) == successor_js.count(end_marker) == 1
+def spacer_block(s):
+    return s[s.index(start_marker):s.index(end_marker)]
+old_spacer, new_spacer = spacer_block(original_js), spacer_block(successor_js)
+assert '$element.clone()' in old_spacer and 'hiddenByBreakpoint' not in old_spacer
+assert 'hiddenByBreakpoint' in new_spacer
+assert '$element.clone( false, false ).empty()' in new_spacer
+assert '$element.clone()' in new_spacer, 'visible sticky branch must remain full clone'
+assert "containsFluentBooking" in new_spacer
+assert "getBoundingClientRect().height" in new_spacer
+assert "occupiedHeight" in new_spacer
+assert "minHeight" in new_spacer and "boxSizing" in new_spacer
+assert original_js.replace(old_spacer, new_spacer, 1) == successor_js, (
+    'only the hidden-sticky spacer creation may differ from upstream PR895'
+)
+
 js_name = next(x for x in files if x.endswith('.js'))
 assert re.search(r'[a-f0-9]{16}\.js$', js_name)
 assert hashlib.sha256(files[js_name].encode()).hexdigest()[:16] in js_name
@@ -113,4 +149,4 @@ for name, marker in (
     admin=subprocess.run(admin_args,capture_output=True,text=True,check=True,env=admenv)
     assert public.stdout.count(marker)>=1, name
     assert not admin.stdout, name
-print('CANONICAL_MOBILE_SOURCE_PASS: 5 source SHA, 4 PHP, 3 JS, 3 public/admin hook pairs')
+print('CANONICAL_MOBILE_SOURCE_PASS: 5 current source SHA, archived PR895 SHA, isolated sticky conditional, 4 PHP, 3 JS, 3 public/admin hook pairs')
