@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Compiled Public Tour Family
  * Description: Exact-identity, page-specific public Elementor template snapshots with immutable family admission and native commerce.
- * Version: 0.2.2
+ * Version: 0.2.3
  */
 defined('ABSPATH') || exit;
 
@@ -180,7 +180,22 @@ final class MAD4B_Compiled_Tour_Family_V1 {
                 hash('sha256',maybe_serialize(get_post_meta($id,'_elementor_css',true)))];
         }
         $encoded=wp_json_encode($deps,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
-        return is_string($encoded)?hash('sha256',$encoded):'';
+        if(!is_string($encoded))return '';
+        self::record_dependencies($family,$template,$listingIds,array_column($termRows,0));
+        return hash('sha256',$encoded);
+    }
+
+    // The same verified input edges apply to a replay and a native build.
+    // Page_Dependency_Cache remains the authority and marks page coverage partial.
+    private static function record_dependencies(int $family,int $template,array $listings,array $terms):void {
+        if(!class_exists('MAD4B_Page_Dependency_Cache',false))return;
+        MAD4B_Page_Dependency_Cache::depend('post:'.self::$tour);
+        foreach([$family,$template] as $id)MAD4B_Page_Dependency_Cache::depend('template:'.$id);
+        foreach($listings as $id){
+            MAD4B_Page_Dependency_Cache::depend('template:'.(int)$id);
+            MAD4B_Page_Dependency_Cache::depend('listing:'.(int)$id);
+        }
+        foreach($terms as $id)MAD4B_Page_Dependency_Cache::depend('term:destinations:'.(int)$id);
     }
 
     public static function eligible_widget($widget,$templateId): bool {
@@ -243,11 +258,6 @@ final class MAD4B_Compiled_Tour_Family_V1 {
             'styles'=>$newCSS,'scripts'=>$newJS];
         $stored=wp_cache_set('fragment_'.$key,$entry,self::GROUP,$ttl);
         self::receipt($stored?'MISS_STORED':'MISS_WRITE_FAILED',$key,$started,strlen($html));
-        if(class_exists('MAD4B_Page_Dependency_Cache',false)) {
-            MAD4B_Page_Dependency_Cache::depend('template:'.(int)self::config()['family_document']);
-            MAD4B_Page_Dependency_Cache::depend('template:'.$templateId);
-            MAD4B_Page_Dependency_Cache::depend('post:'.self::$tour);
-        }
         return $html;
     }
 
