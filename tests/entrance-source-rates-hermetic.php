@@ -34,4 +34,24 @@ ck($f([$r],$ctx,'activity')['lines'][0]['price_role']==='internal_transfer_cost'
 ck(!$f([$r])['commercially_approved'],'not authorization');
 ck($c::serviceDate('2027-02-01',['number'=>'3'])==='2027-02-03','actual day');
 ck(is_wp_error($c::normalize(array_replace($r,['evidence_ref'=>'']),'activity')),'evidence needed');
+$egypt=array_replace($r,['fee_key'=>'egypt','amount'=>'5','market_scope'=>'EG']);
+$student=array_replace($r,['fee_key'=>'student','amount'=>'10','visitor_category'=>'student','age_max'=>'24','market_scope'=>'US']);
+$mixed=array_replace($ctx,['entrance_cohorts'=>"EG,adult,35,1,no\nUS,student,20,1,yes"]);
+ck($f([$r,$egypt,$student],$mixed)['reference_total_minor']===1500,'mixed nationality adult and student');
+ck($f([$r,$egypt,$student],array_replace($mixed,['entrance_cohorts'=>"EG,adult,35,1,no\nUS,student,25,1,yes"]))['status']==='entrance_no_eligible_rate','student age limit');
+ck($f([$r,$egypt,$student],array_replace($mixed,['entrance_cohorts'=>"EG,adult,35,1,no\nUS,student,20,1,no"]))['status']==='entrance_cohort_invalid','student ID required');
+ck($f([$r,$egypt],array_replace($mixed,['entrance_cohorts'=>'EG,adult,35,1,no']))['status']==='entrance_cohort_party_mismatch','party count checked');
+ck($f([$r,$egypt,$g],$mixed)['status']==='entrance_mixed_group_basis_review_required','group charged neither per cohort nor silently');
+$freeChild=array_replace($r,['fee_key'=>'under6','visitor_category'=>'child','age_max'=>'5','amount'=>'0']);
+$ctxChild=array_replace($ctx,['children'=>1,'entrance_cohorts'=>"US,adult,30,2,no\nUS,child,5,1,no"]);
+ck($f([$r,$freeChild],$ctxChild)['reference_total_minor']===4000,'under six explicit zero');
+ck($f([$r,$freeChild],array_replace($ctxChild,['entrance_cohorts'=>"US,adult,30,2,no\nUS,child,6,1,no"]))['status']==='entrance_no_eligible_rate','age boundary');
+ck(is_wp_error($c::normalize(array_replace($student,['age_max'=>'']),'attraction')),'student age rule required');
 echo "PASS $n/$n dated entrance and internal rates\n";
+require __DIR__.'/../wp-content/mu-plugins/mad4b-entrance-tariff-catalog-v1.php';
+foreach(MAD4B_Entrance_Tariff_Catalog_V1::records() as $key=>$record){
+ $rows=MAD4B_Entrance_Tariff_Catalog_V1::rows($key);
+ ck(count($rows)===4,'four tariff rows '.$key);
+ foreach($rows as $row)ck(!is_wp_error($c::normalize($row,'attraction'))&&$row['review_status']==='draft'&&$row['valid_from']===$row['valid_to'],'observed not future qualified');
+}
+echo "PASS $n/$n including official tariff catalog\n";
