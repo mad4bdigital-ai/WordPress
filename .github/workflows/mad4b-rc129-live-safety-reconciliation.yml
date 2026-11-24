@@ -15,6 +15,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php'
       - 'ops/rc129-live-safety-reconciliation-20261123/**'
       - 'ops/release-source-host-v1/**'
+      - 'tests/test_central_release_issuer_anchor_source.py'
       - '.github/workflows/mad4b-rc129-live-safety-reconciliation.yml'
   workflow_dispatch:
 
@@ -54,6 +55,8 @@ jobs:
           # Exact, no-network, root-owned filesystem fixtures. The test must
           # never sign an actual package or load live WordPress state.
           sudo -n python3 ops/release-source-host-v1/tests/test_postcommit_manifest.py
+      - name: Ensure pinned central issuer RSA public key is unchanged from both installed sites
+        run: python3 tests/test_central_release_issuer_anchor_source.py
       - name: Guard live-shared public singular document kernel (OFF by default)
         shell: bash
         run: |
