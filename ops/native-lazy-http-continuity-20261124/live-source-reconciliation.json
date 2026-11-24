@@ -1,0 +1,120 @@
+{
+  "contract": "mad4b.native-layout-http.source-reconciliation.v1",
+  "date": "2026-11-24",
+  "scope": "source provenance only, not signed release authorization",
+  "release_approved": false,
+  "production_deployment_authorized": false,
+  "historical_overlay_policy": "preserve original immutable November 16/17 evidence; current shared source matches both live sites",
+  "files": [
+    {
+      "scope": "shared-source",
+      "source_path": "wp-content/mu-plugins/436-mad4b-scoped-layout-epoch-renewal-v1.php",
+      "sha256": "4f7cea7fff8c29d15389630f9f852a5aa8c60b778e55dd8379b9d6e684e713db"
+    },
+    {
+      "scope": "shared-wayfa",
+      "source_path": "wp-content/mu-plugins/436-mad4b-scoped-layout-epoch-renewal-v1.php",
+      "sha256": "4f7cea7fff8c29d15389630f9f852a5aa8c60b778e55dd8379b9d6e684e713db"
+    },
+    {
+      "scope": "source-governor",
+      "source_path": "wp-content/mu-plugins/mad4b-render-query-governor.php",
+      "sha256": "38e21107704fd8090ed235d10df190cc8b944f29a362d96d3433cbb825808ff0"
+    },
+    {
+      "scope": "tenant-governor",
+      "source_path": "ops/tenants/wayfatours/mu-plugins/mad4b-render-query-governor.php",
+      "sha256": "d0417e76a9d3cecdcb66da75bd432a2c7e36c6ee0e43cfb1947c7f8a4c2c6136"
+    },
+    {
+      "scope": "source-lazy",
+      "source_path": "wp-content/mu-plugins/mad4b-secondary-listing-lazy.php",
+      "sha256": "a14c09227888d9854593e16841e358ad9969a121d214a7d95e9793f01e49a547"
+    },
+    {
+      "scope": "wayfa-lazy",
+      "source_path": "wp-content/mu-plugins/mad4b-secondary-listing-lazy.php",
+      "sha256": "a14c09227888d9854593e16841e358ad9969a121d214a7d95e9793f01e49a547"
+    },
+    {
+      "scope": "http-worker",
+      "source_path": "ops/native-lazy-http-continuity-20261124/discover-public-listings.php",
+      "sha256": "b81056fd6ea0b723b00c6edd6712160085fa1606cff6e5e972bc18140ea4361a"
+    },
+    {
+      "scope": "http-worker",
+      "source_path": "ops/native-lazy-http-continuity-20261124/lightweight_parity_import.py",
+      "sha256": "6d9a541cbe13d4e2955033ec03bd756c4589b3ebe744891469abd2c5094a3a98"
+    },
+    {
+      "scope": "http-worker",
+      "source_path": "ops/native-lazy-http-continuity-20261124/observe-family.php",
+      "sha256": "69e0af10c4c9c8cc2842c15f69eec591baa153d47f3e827536b1f15ba2d7a7cb"
+    },
+    {
+      "scope": "http-worker",
+      "source_path": "ops/native-lazy-http-continuity-20261124/public-ssr-parity.py",
+      "sha256": "eb2444ffab5e8a33bc12d3ebcaa9e12834dcc7e74cefda97b388e35b172f52d1"
+    },
+    {
+      "scope": "http-worker",
+      "source_path": "ops/native-lazy-http-continuity-20261124/register-http-observation.php",
+      "sha256": "4a7cde49ab0a97cc9faedb8015a820976f14bd1c470861a0726fc95f7ecdcb6f"
+    },
+    {
+      "scope": "http-worker",
+      "source_path": "ops/native-lazy-http-continuity-20261124/run-http-continuity.py",
+      "sha256": "5c9163ba964862b7e40caa3634b4d73836d7dd0dbd4bf35e7bb879ee954c7077"
+    },
+    {
+      "scope": "http-worker",
+      "source_path": "ops/native-lazy-http-continuity-20261124/test-http-continuity.py",
+      "sha256": "7d1343fa61c58d1dde7b500bed35f98a8b0b4277131ef97ae79b09e0d556009c"
+    },
+    {
+      "scope": "original-worker",
+      "source_path": "ops/native-lazy-auto-coverage-20261116/run-auto-coverage-admission.sh",
+      "sha256": "cb3c16cabd7700d4b5b5c589a98943315bb0744125144109aee10467823ce937"
+    },
+    {
+      "scope": "original-worker",
+      "source_path": "ops/native-lazy-auto-coverage-20261116/run-auto-coverage-discovery.sh",
+      "sha256": "7de1f991fb9c3a97f1c14d227eda63c2879578793b08b30e404345a6ee98078a"
+    },
+    {
+      "scope": "original-worker",
+      "source_path": "ops/native-lazy-auto-coverage-20261116/issue-browser-certified-cohort.php",
+      "sha256": "34ea4bf415b8f42994d4f68464ac38ce123cfc0c6e6e6a520cb0e31e8df08d6e"
+    },
+    {
+      "scope": "systemd",
+      "source_path": "ops/native-lazy-http-continuity-20261124/systemd/mad4b-native-lazy-http-continuity.service",
+      "sha256": "e445d8894f0de08b5bd9db090785e44ca3c9b92952c5f48bc3ef703f37b7aa95"
+    },
+    {
+      "scope": "systemd",
+      "source_path": "ops/native-lazy-http-continuity-20261124/systemd/mad4b-native-lazy-http-continuity.timer",
+      "sha256": "d18be97e2fe61c436f19d452539e9773a6a98188dd53310f5552461e9993d7bd"
+    },
+    {
+      "scope": "systemd-dropin",
+      "source_path": "ops/native-lazy-auto-coverage-20261116/systemd/mad4b-native-lazy-auto-coverage-admission.service.d/40-stable-admission-source.conf",
+      "sha256": "ee94e998b1129f612334cce603161d2c344ecd34b5702ccd71bdc70ba01de2a3"
+    },
+    {
+      "scope": "systemd-dropin",
+      "source_path": "ops/native-lazy-auto-coverage-20261116/systemd/mad4b-native-lazy-auto-coverage-discovery.service.d/40-stable-discovery-source.conf",
+      "sha256": "c6ace066f500b1c9da9936163252ae9d368341c351d4b169485dec27ee757816"
+    },
+    {
+      "scope": "systemd-dropin",
+      "source_path": "ops/native-lazy-auto-coverage-20261116/systemd/mad4b-native-lazy-auto-coverage-discovery.service.d/50-stale-inventory-retry.conf",
+      "sha256": "1c05b427b517e041e00c5b84a59fba01e1fd243e3a7c75435fcf1fef45845be5"
+    },
+    {
+      "scope": "systemd-dropin",
+      "source_path": "ops/native-lazy-auto-coverage-20261116/systemd/mad4b-native-lazy-auto-coverage-discovery.timer.d/50-stale-inventory-retry.conf",
+      "sha256": "0f3647d2290b5abc9cd5c9e53b24a3f8842d99e35c06636d13ecdc934c946ef9"
+    }
+  ]
+}
