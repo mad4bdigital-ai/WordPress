@@ -311,6 +311,9 @@ final class MAD4B_Product_Cost_Review_Ledger_V1 {
                     'error'=>$lab->get_error_code()];
             }
         }
+        if(class_exists('MAD4B_Generic_Cost_Composition_V1',false))
+            $details['generic_cost_composition']=MAD4B_Generic_Cost_Composition_V1::inspect(
+                $rows,$options,(array)($details['dated_indicative_stage_composition']??[]));
         $profit=class_exists('MAD4B_Company_Global_Profit_V1',false)
             ?MAD4B_Company_Global_Profit_V1::current():null;
         $policy=is_wp_error($profit)?['error'=>$profit->get_error_code()]:[
@@ -420,12 +423,18 @@ final class MAD4B_Product_Cost_Review_Ledger_V1 {
             'adults'=>max(1,min(30,absint($_GET['adults']??2))),
             'children'=>min(30,absint($_GET['children']??0)),
             'infants'=>min(20,absint($_GET['infants']??0)),
+            'nights'=>min(365,absint($_GET['nights']??0)),
+            'days'=>min(365,absint($_GET['days']??0)),
+            'vehicles'=>min(60,absint($_GET['vehicles']??0)),
+            'guides'=>min(30,absint($_GET['guides']??0)),
+            'cabins'=>min(60,absint($_GET['cabins']??0)),
+            'guide_language_id'=>absint($_GET['guide_language_id']??0),
         ];
     }
     private static function dateForm(int $id,array $options):void {
-        if(get_post_type($id)!=='tours-and-activities')return;
-        echo '<h2>Dated Package Cost Review</h2>';
-        echo '<p>Enter actual departure and traveler details to request the <strong>original</strong> Pricing Lab and native supplier-admission readbacks. This does not make a Rate sellable.</p>';
+        $tour=get_post_type($id)==='tours-and-activities';
+        echo '<h2>Cost Composition Context</h2>';
+        echo '<p>Set the calculation context. Nights/days/vehicles/cabins/guides must be explicitly entered for the applicable mapped billing basis. Native package stages use their original quantities. This does not make a Rate sellable.</p>';
         echo '<form method="get"><input type="hidden" name="page" value="'.esc_attr(self::PAGE).'">';
         echo '<input type="hidden" name="product_id" value="'.esc_attr((string)$id).'">';
         echo '<label>Travel date <input type="date" name="date" value="'.esc_attr($options['date']).'"></label> ';
@@ -448,7 +457,19 @@ final class MAD4B_Product_Cost_Review_Ledger_V1 {
                 ($key==='rooms'||$key==='adults'?'1':'0').'" max="30" name="'.esc_attr($key).
                 '" style="width:65px" value="'.esc_attr((string)$options[$key]).'"></label> ';
         }
-        echo '<button class="button button-secondary">Verify dated sources</button></form>';
+        echo '<p>';
+        foreach(['nights'=>'Nights','days'=>'Service days','vehicles'=>'Vehicles','guides'=>'Guides','cabins'=>'Cabins'] as $key=>$name)
+            echo '<label>'.esc_html($name).' <input type="number" min="0" max="'.(in_array($key,['nights','days'],true)?365:60).'" name="'.esc_attr($key).'" style="width:65px" value="'.esc_attr((string)($options[$key]?:'')).'"></label> ';
+        echo '</p>';
+        if($tour){
+            $langs=wp_get_object_terms($id,'guide-languages');
+            echo '<p><label>Guide language <select name="guide_language_id"><option value="0">Choose explicitly</option>';
+            foreach(is_wp_error($langs)?[]:(array)$langs as $lang)
+                if(current_user_can('edit_term',(int)$lang->term_id))
+                    echo '<option value="'.esc_attr((string)$lang->term_id).'"'.selected((int)$lang->term_id,(int)$options['guide_language_id'],false).'>'.esc_html($lang->name).'</option>';
+            echo '</select></label></p>';
+        }
+        echo '<button class="button button-secondary">Calculate cost references</button></form>';
     }
     private static function renderIndex():void {
         $type=sanitize_key((string)($_GET['product_type']??''));
@@ -512,6 +533,23 @@ final class MAD4B_Product_Cost_Review_Ledger_V1 {
             echo '<a class="button" href="'.esc_url($data['links']['accommodation_pricing']).'">Property &amp; Unit Pricing</a> ';
         echo '</p>';
         self::dateForm($id,$options);
+        $composition=$data['original_readbacks']['generic_cost_composition']??null;
+        if(is_array($composition)){
+            echo '<h2>Cost Composition — reference only</h2><p>Native and dynamic registry scopes remain separate until source coverage and deduplication are approved. No commercial Rate or payment is authorized.</p>';
+            foreach(['native_composition'=>'Native package components','registry_composition'=>'Dynamic mapped components'] as $key=>$label){
+                $scope=$composition[$key]??null;if(!is_array($scope))continue;
+                echo '<h3>'.esc_html($label).'</h3><table class="widefat striped"><thead><tr><th>Line</th><th>Unit cost</th><th>Quantity</th><th>Converted cost</th></tr></thead><tbody>';
+                foreach((array)($scope['lines']??[]) as $line)
+                    echo '<tr><td>'.esc_html($line['line_key']).'</td><td>'.esc_html((string)$line['unit_amount'].' '.$line['source_currency']).'</td><td>'.esc_html((string)$line['quantity']).'</td><td>'.esc_html(is_int($line['target_total_minor'])?number_format($line['target_total_minor']/100,2).' '.$line['target_currency']:'Missing FX / cost').'</td></tr>';
+                echo '</tbody></table>';
+                $subtotal=$scope['converted_reference_subtotal_minor']??null;
+                $margin=$scope['profit_preview']['indicative_selling_price_minor']??null;
+                echo '<p><strong>Calculated partial cost:</strong> '.esc_html(is_int($subtotal)?number_format($subtotal/100,2).' '.$composition['context']['currency']:'Not calculated').'</p>';
+                if(is_int($margin))echo '<p><strong>Illustrative margin applied once (partial scope only):</strong> '.esc_html(number_format($margin/100,2).' '.$composition['context']['currency']).'</p>';
+                echo '<p><strong>Outstanding:</strong> '.esc_html(implode(' · ',(array)($scope['blockers']??[]))).'</p>';
+            }
+            echo '<p><strong>Commercial total / approved Rate:</strong> Not available until independently verified complete costs.</p>';
+        }
         echo '<h2>Cost Source &amp; Receipt Register</h2>';
         if(class_exists('MAD4B_Cost_Source_Registry_V1',false)&&MAD4B_Cost_Source_Registry_V1::manageable())
             echo '<p><a class="button" href="'.esc_url(admin_url('admin.php?page=mad4b-cost-source-registry')).'">Configure dynamic cost sources</a></p>';
@@ -549,7 +587,7 @@ final class MAD4B_Product_Cost_Review_Ledger_V1 {
         echo '<input type="hidden" name="action" value="mad4b_product_cost_review_record_v1">';
         echo '<input type="hidden" name="product_id" value="'.esc_attr((string)$id).'">';
         echo '<input type="hidden" name="expected_fingerprint" value="'.esc_attr($data['source_fingerprint']).'">';
-        foreach(['date','tier_id','currency','rooms','adults','children','infants'] as $key)
+        foreach(['date','tier_id','currency','rooms','adults','children','infants','nights','days','vehicles','guides','cabins','guide_language_id'] as $key)
             echo '<input type="hidden" name="context_'.$key.'" value="'.esc_attr((string)$options[$key]).'">';
         wp_nonce_field('mad4b_product_cost_review_'.$id,'review_nonce');
         echo '<label for="mad4b-cost-review-note">Reviewer note (max 500 characters)</label><p>';
@@ -590,7 +628,7 @@ final class MAD4B_Product_Cost_Review_Ledger_V1 {
         if(!$id||!self::allowed($id))wp_die('Cost review write is not authorized.','Access denied',['response'=>403]);
         check_admin_referer('mad4b_product_cost_review_'.$id,'review_nonce');
         $o=[];
-        foreach(['date','tier_id','currency','rooms','adults','children','infants'] as $key)
+        foreach(['date','tier_id','currency','rooms','adults','children','infants','nights','days','vehicles','guides','cabins','guide_language_id'] as $key)
             $o[$key]=sanitize_text_field((string)wp_unslash($_POST['context_'.$key]??''));
         $expected=sanitize_text_field((string)wp_unslash($_POST['expected_fingerprint']??''));
         if(!preg_match('/^[a-f0-9]{64}$/D',$expected))wp_die('Invalid review source digest.','Invalid request',['response'=>400]);
