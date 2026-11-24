@@ -85,12 +85,45 @@ class TourHighlightsReviewedSource(unittest.TestCase):
             self.assertIs(matches[0]['production_authorized'],False)
             self.assertTrue(matches[0]['live_evidence_required'])
 
+    def remove_exact_reviewed_public_kernel_successor(self, actual):
+        """Peel only the byte-certified, already-live public kernel source hook.
+
+        The frozen PR813/PR814 certificate remains immutable. The new block
+        is independently approved for CI parity only, never release authority.
+        """
+        path=ROOT/'docs/release-coverage/rc129-live-public-document-kernel-additive-bootstrap-20261124.json'
+        proof=json.loads(path.read_text())
+        self.assertEqual(proof['contract'],
+                         'mad4b.rc129.live-public-document-kernel-additive-bootstrap-source.v1')
+        self.assertEqual(proof['source_path'],MAIN)
+        for field,value in (('previous_historical_certificate_unchanged',True),
+                            ('new_write_capability',False),('production_authorized',False),
+                            ('original_host_receipt_issued',False),('live_evidence_required',True)):
+            self.assertIs(proof[field],value)
+        self.assertEqual((len(actual),hashlib.sha256(actual).hexdigest()),
+                         (proof['current_exact_source_bytes'],proof['current_exact_source_sha256']))
+        previous=proof['anchor_before'].encode()
+        after=proof['anchor_after'].encode()
+        self.assertEqual(actual.count(previous),1)
+        self.assertEqual(actual.count(after),1)
+        begin=actual.index(previous)+len(previous)
+        finish=actual.index(after,begin)
+        block=actual[begin:finish]
+        self.assertEqual((len(block),hashlib.sha256(block).hexdigest()),
+                         (proof['added_block_bytes'],proof['added_block_sha256']))
+        self.assertEqual(block.count(b'MAD4B_SCP_Public_Document_Kernel::try_boot()'),1)
+        old=actual[:begin]+actual[finish:]
+        self.assertEqual((len(old),hashlib.sha256(old).hexdigest()),
+                         (proof['previous_exact_source_bytes'],proof['previous_exact_source_sha256']))
+        return old
+
     def reviewed_historical_main(self, actual):
         # PR813 added three small *independent* early privacy/reconciliation
         # hooks after the PR808 Tour Highlights overlay. Remove only these
         # exact SHA-bound additions before checking the historical certificate.
         meta=json.loads((ROOT/'docs/release-coverage/pr814-pr813-destination-preview-additive-20261114.json').read_text())['original_plugin_entry']
         self.assertEqual(meta['path'],MAIN)
+        actual=self.remove_exact_reviewed_public_kernel_successor(actual)
         self.assertEqual((len(actual),hashlib.sha256(actual).hexdigest()),
                          (meta['current_bytes'],meta['current_sha256']))
         lines=actual.splitlines(True)
@@ -103,6 +136,18 @@ class TourHighlightsReviewedSource(unittest.TestCase):
         self.assertEqual((len(historic),hashlib.sha256(historic).hexdigest()),
                          (meta['historical_bytes'],meta['historical_sha256']))
         return historic
+
+    def test_new_kernel_addition_is_exact_and_fails_on_mutation(self):
+        source=(ROOT/MAIN).read_bytes()
+        restored=self.remove_exact_reviewed_public_kernel_successor(source)
+        self.assertEqual(hashlib.sha256(restored).hexdigest(),
+                         '87007b03164b4de741920384431f22950870f9ff395654cbf28816ac1a5b6ef3')
+        for changed in (source+b'\n',
+                        source.replace(b'Public_Document_Kernel::try_boot()',
+                                       b'Public_Document_Kernel::allow_all()',1),
+                        source.replace(b'foreign_admin_ajax',b'unguarded_ajax',1)):
+            with self.assertRaises(AssertionError):
+                self.remove_exact_reviewed_public_kernel_successor(changed)
 
     def test_exact_old_bootstrap_reconstructed_with_only_three_new_lines(self):
         candidate=self.reviewed_historical_main((ROOT/MAIN).read_bytes())

@@ -1,0 +1,25 @@
+{
+  "contract": "mad4b.rc129.live-public-document-kernel-additive-bootstrap-source.v1",
+  "source_path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+  "previous_exact_source_bytes": 67907,
+  "previous_exact_source_sha256": "87007b03164b4de741920384431f22950870f9ff395654cbf28816ac1a5b6ef3",
+  "current_exact_source_bytes": 68280,
+  "current_exact_source_sha256": "ff793c17e6271e230af30d3ca36efaf3e77160d322a90711dc36d026d0e541a4",
+  "anchor_before": "unset( $mad4b_scp_early_zero_touch_reason );\n\n",
+  "anchor_after": "require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-route-registry.php';",
+  "added_block_bytes": 373,
+  "added_block_sha256": "2be369dc6061ccccd7fab1b4ff6574cc720905a5386ee883e5337db0343ca4e4",
+  "block_is_single_additive_entrypoint": true,
+  "previous_historical_certificate_unchanged": true,
+  "live_module_sha256": "b50a4c6e49c052bea0f2230604a47d3d732f195b94823e6fea7c32e20275528c",
+  "live_manifest_sha256": "746d8d9b6eed46ca674c5c1b89edea1cd3a65914d5ce45d453e8815174b6db55",
+  "new_write_capability": false,
+  "production_authorized": false,
+  "original_host_receipt_issued": false,
+  "live_evidence_required": true,
+  "regression_tests": [
+    "tests/test_tour_highlights_source_delta.py",
+    "wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-live-parity-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/public-document-kernel-source-contract.py"
+  ]
+}
