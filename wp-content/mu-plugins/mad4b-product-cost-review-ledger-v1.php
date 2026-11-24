@@ -314,6 +314,10 @@ final class MAD4B_Product_Cost_Review_Ledger_V1 {
         if(class_exists('MAD4B_Generic_Cost_Composition_V1',false))
             $details['generic_cost_composition']=MAD4B_Generic_Cost_Composition_V1::inspect(
                 $rows,$options,(array)($details['dated_indicative_stage_composition']??[]));
+        if($post->post_type==='tours-and-activities'&&class_exists('MAD4B_Daily_Cost_Components_V1',false)){
+            $daily=MAD4B_Daily_Cost_Components_V1::inspect($id,$options);
+            $details['daily_cost_components']=is_wp_error($daily)?['error'=>$daily->get_error_code()]:$daily;
+        }
         $profit=class_exists('MAD4B_Company_Global_Profit_V1',false)
             ?MAD4B_Company_Global_Profit_V1::current():null;
         $policy=is_wp_error($profit)?['error'=>$profit->get_error_code()]:[
