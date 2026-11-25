@@ -72,6 +72,7 @@ jobs:
           node tools/browser-acceptance/test-plan-boundary.mjs
           php wp-content/plugins/dynamic-filter-seo-bridge/tests/neutral-jetengine-macro-alias-smoke.php
           php wp-content/plugins/dynamic-filter-seo-bridge/tests/neutral-option-mirror-smoke.php
+          php wp-content/plugins/dynamic-filter-seo-bridge/tests/shared-uninstall-retention-smoke.php
           php wp-content/plugins/dynamic-filter-seo-bridge/tests/neutral-media-persistence-smoke.php
           php wp-content/plugins/dynamic-filter-seo-bridge/tests/native-evidence-provider-smoke.php
           php wp-content/plugins/dynamic-filter-seo-bridge/tests/editorial-title-smoke.php

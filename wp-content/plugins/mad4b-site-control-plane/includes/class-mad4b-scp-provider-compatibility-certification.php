@@ -63,7 +63,7 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		self::register_read_ability( 'mad4b/provider-compatibility-inventory', 'Provider Compatibility Inventory', array( __CLASS__, 'inventory' ) );
 		self::register_read_ability( 'mad4b/provider-capability-certification', 'Provider Capability Certification', array( __CLASS__, 'capability_certification' ), self::selector_schema( false ) );
 		self::register_read_ability( 'mad4b/provider-behavioral-evidence-status', 'Provider Behavioral Evidence Status', array( __CLASS__, 'behavioral_evidence_status' ), self::selector_schema( true ) );
-		self::register_read_ability( 'mad4b/provider-recertification-plan', 'Provider Recertification Plan', array( __CLASS__, 'recertification_plan' ), self::selector_schema( true, true ) );
+		self::register_read_ability( 'mad4b/provider-recertification-plan', 'Provider Recertification Plan', array( __CLASS__, 'recertification_plan' ), self::selector_schema( true ) );
 		self::register_read_ability( 'mad4b/provider-mcp-mount-plan', 'Provider MCP Mount Plan', array( __CLASS__, 'mcp_mount_plan' ) );
 	}
 
@@ -87,7 +87,7 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		wp_register_ability( $name, $args );
 	}
 
-	private static function selector_schema( $provider_required, $review_binding = false ) {
+	private static function selector_schema( $provider_required ) {
 		$schema = array(
 			'type' => 'object',
 			'properties' => array(
@@ -98,7 +98,6 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			'additionalProperties' => false,
 		);
 		if ( $provider_required ) $schema['required'] = array( 'provider_id' );
-        if ($review_binding) $schema['properties']['expected_descriptor_sha256']=array('type'=>'string','pattern'=>'^[a-f0-9]{64}$');
 		return $schema;
 	}
 
@@ -312,48 +311,21 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		);
 	}
 
-    /** A graph review is an advisory selector, never a current capability receipt. */
-    private static function review_descriptor_matches($provider,$ability,$expected) {
-        if(!is_string($ability)||$ability===''||!is_string($expected)||!preg_match('/^[a-f0-9]{64}$/D',$expected)||!class_exists('MAD4B_SCP_Capability_Descriptor_Registry',false))return false;
-        $row=MAD4B_SCP_Capability_Descriptor_Registry::describe($ability);
-        return is_array($row)&&($row['ability_name']??null)===$ability&&($row['execution_provider']??null)===$provider&&is_string($row['descriptor_sha256']??null)&&hash_equals($expected,$row['descriptor_sha256']);
-    }
-
 	public static function recertification_plan( $input = array() ) {
 		$input = is_array( $input ) ? $input : array();
 		$provider = isset( $input['provider_id'] ) ? sanitize_key( (string) $input['provider_id'] ) : '';
 		if ( '' === $provider ) return self::blocked_selector( 'provider_id_required' );
 		if ( ! self::supports_provider( $provider ) ) return self::blocked_selector( 'provider_not_cataloged', $provider );
-        $review_bound=array_key_exists('expected_descriptor_sha256',$input);
-        if($review_bound&&(($input['provider_id']??null)!==$provider||!self::review_descriptor_matches($provider,$input['ability']??null,$input['expected_descriptor_sha256'])))return self::blocked_selector('qualification_review_descriptor_changed_or_unverified',$provider);
 		$assessment = self::assess_provider( $provider, self::adapter_for_provider( $provider ) );
-        // The public selector already accepts capability_id and ability. Apply both
-        // to the original assessment, not an unrelated provider-wide work plan.
-        $capability_selector = $input['capability_id'] ?? '';
-        $ability_selector = $input['ability'] ?? '';
-        if (!is_string($capability_selector) || !is_string($ability_selector))
-            return self::blocked_selector('invalid_exact_selector',$provider);
-        $scoped = $capability_selector !== '' || $ability_selector !== '';
-        $selected = array();
-        foreach ((array)($assessment['capabilities'] ?? array()) as $id=>$capability) {
-            if ($capability_selector !== '' && $id !== $capability_selector) continue;
-            if ($ability_selector !== '' && !in_array($ability_selector,(array)($capability['abilities']??array()),true)) continue;
-            $selected[$id]=$capability;
-        }
-        if ($scoped && !$selected) return self::blocked_selector('exact_capability_selector_not_found',$provider);
-        if ($review_bound&&count($selected)!==1) return self::blocked_selector('qualification_review_capability_ambiguous',$provider);
-        $reused=array();$unmounted=false;$selected_read_compatible=false;$selected_not_ready=false;
 		$steps = array();
 		$owner_review = false;
 		$quarantined = false;
 		$behavioral_recertified = false;
-		foreach ( $selected as $id => $capability ) {
+		foreach ( (array) ( $assessment['capabilities'] ?? array() ) as $id => $capability ) {
 			$level = isset( $capability['certification_level'] ) ? (string) $capability['certification_level'] : self::LEVEL_UNKNOWN;
 			$risk = isset( $capability['risk'] ) ? (string) $capability['risk'] : 'unknown';
 			$activation_stage = isset( $capability['activation_stage'] ) ? (string) $capability['activation_stage'] : self::ACTIVATION_SHADOW;
 			$surface_exposed = ! empty( $capability['surface_exposed'] );
-            if ($ability_selector !== '') $surface_exposed = $surface_exposed && in_array($ability_selector,(array)($capability['mounted_abilities']??array()),true);
-            if (!$surface_exposed) $unmounted=true;
 			if ( ! $surface_exposed ) {
 				$steps[] = array(
 					'capability_id' => $id,
@@ -379,21 +351,11 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 				$owner_review = true;
 				continue;
 			}
-            if ('read' === $risk && !in_array($level,array(self::LEVEL_READ,self::LEVEL_FULL),true)) $selected_not_ready=true;
-            if ('read' === $risk && self::LEVEL_READ === $level) $selected_read_compatible=true;
 			if ( 'read' === $risk && self::LEVEL_READ === $level ) {
 				$steps[] = array( 'capability_id' => $id, 'action' => 'record_compatible_read_candidate', 'risk' => $risk, 'activation_stage' => $activation_stage );
 				continue;
 			}
 			if ( 'behavioral_receipt' === (string) ( $capability['certification_source'] ?? '' ) && ! empty( $capability['write_eligible'] ) ) $behavioral_recertified = true;
-            // Reuse only the certification engine's current eligible result. It
-            // already validates artifact, contract, receipt expiry and activation.
-            if ('read' !== $risk && ($capability['write_eligible']??false)===true) {
-                $reused[$id]=array('certification_source'=>$capability['certification_source']??'',
-                    'capability_contract_digest'=>$capability['capability_contract_digest']??'',
-                    'behavioral_evidence_state'=>$capability['behavioral_evidence']['state']??'not_applicable',
-                    'repeat_probe_required'=>false,'authorizing'=>false);
-            }
 			if ( 'high_risk_write' === $risk && self::ACTIVATION_ACTIVE !== $activation_stage ) {
 				$action = self::ACTIVATION_CANARY === $activation_stage ? 'owner_governed_canary_execution_required' : 'run_behavioral_probe_then_owner_authorize_canary';
 				$steps[] = array( 'capability_id' => $id, 'action' => $action, 'risk' => $risk, 'activation_stage' => $activation_stage, 'canary_eligible' => ! empty( $capability['canary_eligible'] ) );
@@ -406,14 +368,6 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			}
 		}
 		$classification = $quarantined ? 'QUARANTINED' : ( $owner_review ? 'OWNER_REVIEW_REQUIRED' : ( $behavioral_recertified ? 'BEHAVIORALLY_RECERTIFIED' : ( 'certified' === (string) ( $assessment['compatibility_state'] ?? '' ) ? 'CERTIFIED' : 'AUTO_CERTIFIABLE_READ_COMPATIBILITY' ) ) );
-        if ($scoped && !$quarantined && !$owner_review) {
-            if ($unmounted) $classification='EXACT_CAPABILITY_UNMOUNTED';
-            elseif ($selected_not_ready) $classification='EXACT_CAPABILITY_NOT_READY';
-            elseif ($behavioral_recertified) $classification='BEHAVIORALLY_RECERTIFIED';
-            elseif ($selected_read_compatible) $classification='AUTO_CERTIFIABLE_READ_COMPATIBILITY';
-            else $classification='CERTIFIED';
-        }
-        if($review_bound&&!self::review_descriptor_matches($provider,$ability_selector,$input['expected_descriptor_sha256']))return self::blocked_selector('qualification_review_descriptor_changed_or_unverified',$provider);
 		return array(
 			'contract' => 'mad4b.provider-recertification-plan.v1',
 			'provider_id' => $provider,
@@ -422,13 +376,6 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			'artifact_fingerprint' => isset( $assessment['artifact']['runtime_artifact_fingerprint'] ) ? $assessment['artifact']['runtime_artifact_fingerprint'] : '',
 			'structural_fingerprint' => isset( $assessment['structural_fingerprint'] ) ? $assessment['structural_fingerprint'] : '',
 			'steps' => $steps,
-            'selection_scope'=>$scoped?'exact_capability':'provider',
-            'selected_capability_ids'=>array_keys($selected),
-            'selected_ability'=>$ability_selector,
-            'review_descriptor_binding_verified'=>$review_bound,
-            'review_descriptor_sha256'=>$review_bound?$input['expected_descriptor_sha256']:'',
-            'reused_current_certification'=>$reused,
-            'reused_count'=>count($reused),
 			'owner_review_required' => $owner_review,
 			'orchestration' => array(
 				'contract' => 'mad4b.provider-recertification-orchestration.v1',
@@ -603,26 +550,9 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 
 		$catalog = self::catalog();
 		$declaration = isset( $catalog['providers'][ $provider ] ) && is_array( $catalog['providers'][ $provider ] ) ? $catalog['providers'][ $provider ] : array();
-		$available = false;
-		if ( is_object( $adapter ) && ! is_wp_error( $adapter )
-			&& method_exists( $adapter, 'is_available' ) ) {
-			try {
-				$available = true === $adapter->is_available();
-			} catch ( \Throwable $error ) {
-				$available = false;
-			}
-		}
-		$runtime = array( 'status' => 'certification_authority_unavailable',
-			'runtime_contract_ok' => false );
-		if ( class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) {
-			try {
-				$observed = MAD4B_SCP_Provider_Contracts::runtime_status( $provider, $available );
-				if ( is_array( $observed ) ) $runtime = $observed;
-			} catch ( \Throwable $error ) {
-				// Unknown runtime contract is never a valid source certificate.
-			}
-		}
-		$exact_certified = ( $runtime['runtime_contract_ok'] ?? null ) === true;
+		$available = is_object( $adapter ) && method_exists( $adapter, 'is_available' ) ? (bool) $adapter->is_available() : false;
+		$runtime = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::runtime_status( $provider, $available ) : array( 'status' => 'certification_authority_unavailable', 'runtime_contract_ok' => false );
+		$exact_certified = ! empty( $runtime['runtime_contract_ok'] );
 		$artifact = self::artifact_evidence( $provider, $runtime, $adapter );
 		$artifact_fingerprint = isset( $artifact['runtime_artifact_fingerprint'] ) ? (string) $artifact['runtime_artifact_fingerprint'] : '';
 		$artifact_authority_bound = ! empty( $artifact['artifact_authority_bound'] );
@@ -885,15 +815,6 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		$integrity = isset( $runtime['runtime_integrity'] ) && is_array( $runtime['runtime_integrity'] ) ? $runtime['runtime_integrity'] : array();
 		$adapter_reported_version = is_object( $adapter ) && method_exists( $adapter, 'runtime_version' ) ? trim( (string) $adapter->runtime_version() ) : '';
 		$runtime_installed_version = isset( $runtime['installed_version'] ) ? trim( (string) $runtime['installed_version'] ) : '';
-        $catalog=self::catalog();
-        $declaration=isset($catalog['providers'][$provider]) && is_array($catalog['providers'][$provider])
-            ?$catalog['providers'][$provider]:array();
-        $installed_observation=class_exists('MAD4B_SCP_Provider_Installed_Artifact')
-            ?MAD4B_SCP_Provider_Installed_Artifact::observe($provider,$declaration,$adapter,$contract)
-            :array('bound'=>false);
-        // Installed identity is only evidence, never repository certification or write permission.
-        if(''===$runtime_installed_version && !empty($installed_observation['bound']))
-            $runtime_installed_version=(string)$installed_observation['installed_version'];
 		// In-tree Google Drive Context has no separate plugin header or
 		// repository-certified external ZIP. Evaluate its exact build-bound
 		// first-party evidence instead of treating it as a missing vendor plugin.
@@ -902,7 +823,6 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		$first_party = self::first_party_context_evidence( $provider, $adapter );
 		$artifact_authority_bound = ( ! empty( $contract ) && ( '' !== $runtime_installed_version || ! empty( $runtime['components'] ) ) )
 			|| ! empty( $first_party['bound'] );
-            $artifact_authority_bound=$artifact_authority_bound || !empty($installed_observation['bound']);
 		$component_artifacts = array();
 		if ( ! empty( $contract['components'] ) && is_array( $contract['components'] ) ) {
 			foreach ( $contract['components'] as $key => $component ) {
@@ -930,7 +850,6 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			'adapter_reported_version' => $adapter_reported_version,
 			'artifact_authority_bound' => $artifact_authority_bound,
 			'first_party_context' => $first_party,
-            'installed_observation'=>$installed_observation,
 			'plugin_file' => isset( $contract['plugin_file'] ) ? (string) $contract['plugin_file'] : '',
 			'components' => $component_artifacts,
 			'certification_authority' => isset( $runtime['certification_authority'] ) ? (string) $runtime['certification_authority'] : '',
@@ -944,9 +863,6 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			'artifact_authority_bound' => $artifact_authority_bound,
 			'artifact_authority_state' => $artifact_authority_bound ? 'bound' : 'missing',
 			'first_party_context_evidence' => $first_party,
-            'installed_artifact_observation'=>$installed_observation,
-            'runtime_identity_source'=>!empty($installed_observation['bound']) ? 'exact_active_wordpress_plugin' : 'original_certified_runtime',
-            'exact_repository_certified'=>!empty($runtime['runtime_contract_ok']),
 			'certified_versions' => array_values( (array) ( $runtime['certified_versions'] ?? array() ) ),
 			'certification_authority' => isset( $runtime['certification_authority'] ) ? (string) $runtime['certification_authority'] : 'repository_baseline',
 			'plugin_file' => isset( $contract['plugin_file'] ) ? (string) $contract['plugin_file'] : '',
@@ -974,19 +890,11 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			|| ! defined( 'MAD4B_SCP_DIR' ) ) return $denied;
 		try { $status = $adapter->context_provider_contract_status(); }
 		catch ( Throwable $error ) { return $denied; }
-		if ( ! is_array( $status ) || ( $status['ready'] ?? null ) !== true
-			|| ( $status['first_party'] ?? null ) !== true
-			|| ( $status['contract'] ?? null ) !== 'mad4b.google-drive-context-provider.v1'
-			|| ( $status['provider'] ?? null ) !== 'google_drive_context'
-			|| ! is_string( $status['control_plane_build_fingerprint'] ?? null ) ) return $denied;
-		try {
-			$observed = MAD4B_SCP_External_Handshake_Evidence::build_fingerprint();
-		} catch ( \Throwable $error ) {
-			return $denied;
-		}
-		if ( ! is_string( $observed ) ) return $denied;
-		$build = strtolower( trim( $status['control_plane_build_fingerprint'] ) );
-		$observed_build = strtolower( trim( $observed ) );
+		if ( ! is_array( $status ) || empty( $status['ready'] ) || empty( $status['first_party'] )
+			|| 'mad4b.google-drive-context-provider.v1' !== (string) ( $status['contract'] ?? '' )
+			|| 'google_drive_context' !== (string) ( $status['provider'] ?? '' ) ) return $denied;
+		$build = strtolower( trim( (string) ( $status['control_plane_build_fingerprint'] ?? '' ) ) );
+		$observed_build = strtolower( trim( (string) MAD4B_SCP_External_Handshake_Evidence::build_fingerprint() ) );
 		if ( ! preg_match( '/^[a-f0-9]{64}$/D', $build )
 			|| ! hash_equals( $build, $observed_build ) ) {
 			$denied['state'] = 'first_party_build_identity_drift';
@@ -994,7 +902,6 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		}
 		$expected_files = array(
 			'includes/adapters/class-mad4b-scp-context-adapter.php',
-			'includes/adapters/class-mad4b-scp-context-asset-read-model.php',
 			'includes/class-mad4b-scp-brand-context-builder.php',
 			'includes/class-mad4b-scp-context-authority.php',
 			'includes/class-mad4b-scp-context-preflight.php',
@@ -1020,8 +927,7 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			$denied['state'] = 'first_party_rollback_contract_drift';
 			return $denied;
 		}
-		if ( ! is_string( $status['artifact_fingerprint'] ?? null ) ) return $denied;
-		$fingerprint = $status['artifact_fingerprint'];
+		$fingerprint = (string) ( $status['artifact_fingerprint'] ?? '' );
 		if ( ! preg_match( '/^[a-f0-9]{64}$/D', $fingerprint ) ) return $denied;
 		return array(
 			'bound' => true,

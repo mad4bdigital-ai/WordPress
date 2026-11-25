@@ -124,6 +124,7 @@ def inspect_bundled_read_consumers(entry, sources, registry, capability_policy, 
                      "runtime_admission_verified": False, "authorizing": False})
     ids = {row["provider_id"] for row in rows}
     return {"scope": "entrypoint_static_declarations", "consumers": rows,
+            "unmounted_source_declarations": sorted(set(sources) - set(includes)),
             "shared_provider_identity": sorted(i for i in ids if sum(row["provider_id"] == i for row in rows) > 1),
             "runtime_admission_verified": False, "authorizing": False}
 
