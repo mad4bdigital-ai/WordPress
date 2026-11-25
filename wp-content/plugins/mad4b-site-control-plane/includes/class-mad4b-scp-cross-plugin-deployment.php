@@ -285,6 +285,7 @@ final class MAD4B_SCP_Cross_Plugin_Deployment {
                 'provider_id' => $row['provider_id'],
                 'environments' => (array) ( $row['environments'] ?? array() ),
                 'review_state' => (string) ( $row['review_state'] ?? 'needs_review' ),
+                'replacement_source_id' => (string) ( $row['replacement_source_id'] ?? '' ),
                 'package_certification' => (string) ( $row['package_certification'] ?? 'pending' ),
                 'installed' => $current['installed'], 'installed_version' => $current['version'],
                 'active' => $current['active'],
