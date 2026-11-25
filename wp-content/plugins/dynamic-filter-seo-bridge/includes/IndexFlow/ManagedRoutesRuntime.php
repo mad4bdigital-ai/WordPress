@@ -154,7 +154,7 @@ final class ManagedRoutesRuntime {
     }
     public function enqueue(): void {
         $plan = $this->browserPlan(); if (!$plan) return;
-        wp_enqueue_script('indexflow-managed-routes', plugins_url('assets/js/indexflow-managed-routes.js', DFSB_MAIN_FILE), array(), DFSB_ASSET_VERSION, true);
+        wp_enqueue_script('indexflow-managed-routes', plugins_url('assets/js/indexflow-managed-routes.js', DFSB_MAIN_FILE), array(), \DynamicFilterSEOBridge\Runtime\AssetVersion::forPath('assets/js/indexflow-managed-routes.js'), true);
         wp_add_inline_script('indexflow-managed-routes', 'window.IndexFlowManagedRoutes=' . wp_json_encode($plan, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';', 'before');
     }
 }

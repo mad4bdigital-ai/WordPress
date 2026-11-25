@@ -219,7 +219,9 @@ final class BootGuard {
         $stateHold = ! empty( $state['hold'] );
         $faulted = ! empty( $state['faulted'] );
         $forced = defined( 'DFSB_FORCE_FULL_BOOT' ) && DFSB_FORCE_FULL_BOOT;
-        $effectiveHold = $forced ? false : ( ! $buildMatches || $stateHold || $faulted );
+        // Report the same authority gate as shouldHold(), even after revocation.
+        $release = self::releaseReadiness();
+        $effectiveHold = empty($release['ready']) || (!$forced && (!$buildMatches || $stateHold || $faulted));
         $reason = sanitize_key( (string) ( $state['reason'] ?? '' ) );
         return array(
             'contract' => 'etg.dfsb.safe-boot-status.v1',
@@ -232,6 +234,8 @@ final class BootGuard {
             'build_matches' => $buildMatches,
             'state_hold' => $stateHold,
             'effective_hold' => $effectiveHold,
+            'release_ready' => !empty($release['ready']),
+            'release_reason' => (string)($release['reason'] ?? 'unverified'),
             'faulted' => $faulted,
             'force_full_boot' => $forced,
             'monitoring' => self::$monitoring,

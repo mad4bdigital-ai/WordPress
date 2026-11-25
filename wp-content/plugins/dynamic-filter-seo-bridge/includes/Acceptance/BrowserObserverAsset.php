@@ -37,7 +37,7 @@ final class BrowserObserverAsset {
     public static function describe(): array {
         $base = defined('DFSB_DIR') ? (string)DFSB_DIR : '';
         $file = '' !== $base ? $base . self::RELATIVE_PATH : '';
-        $pluginFile = '' !== $base ? $base . 'etg-dynamic-filter-seo-bridge.php' : '';
+        $pluginFile = defined('DFSB_MAIN_FILE') ? (string)DFSB_MAIN_FILE : ('' !== $base ? $base . 'dynamic-filter-seo-bridge.php' : '');
         $identity = class_exists('DynamicFilterSEOBridge\\Diagnostics\\BuildIdentity')
             ? \DynamicFilterSEOBridge\Diagnostics\BuildIdentity::collect()
             : array('valid'=>false);

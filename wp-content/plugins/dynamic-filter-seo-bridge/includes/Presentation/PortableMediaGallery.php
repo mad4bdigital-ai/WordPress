@@ -60,8 +60,8 @@ final class PortableMediaGallery {
      * metadata. No implicit mutation and no hardcoded attachment identifiers.
      */
     public static function fromConfiguredMeta($element,array $settings): array {
-        $key=sanitize_key((string)($settings['dfsb_background_gallery_meta_key']??'dfsb_background_gallery'));
-        if(!preg_match('/^[a-z_][a-z0-9_]{1,79}$/',$key))return array();
+        $key=\DynamicFilterSEOBridge\Identifiers\FieldKey::normalize($settings['dfsb_background_gallery_meta_key']??'dfsb_background_gallery');
+        if($key==='')return array();
         $scope=(string)($settings['dfsb_background_gallery_meta_scope']??'term_then_template');
         if(!in_array($scope,array('term_then_template','template','term'),true))$scope='term_then_template';
         $mode=(string)($settings['dfsb_background_gallery_media_policy']??'mixed');
@@ -87,6 +87,41 @@ final class PortableMediaGallery {
         $postId=is_object($document)&&method_exists($document,'get_main_id')?(int)$document->get_main_id():0;
         if($postId<=0 || get_post_type($postId)!=='elementor_library')return array();
         return self::attachmentItems(get_post_meta($postId,$key,true),$mediaPolicy);
+    }
+
+    /** Server-rendered template settings only; not a browser-supplied field lookup. */
+    public static function fromSelectedTerms(array $context,array $settings,int $limit=8):array {
+        $taxonomy=sanitize_key((string)($settings['dfsb_background_gallery_meta_taxonomy']??'destinations'));
+        $key=\DynamicFilterSEOBridge\Identifiers\FieldKey::normalize($settings['dfsb_background_gallery_meta_key']??'dfsb_background_gallery');
+        $scope=(string)($settings['dfsb_background_gallery_meta_scope']??'term_then_template');
+        $mode=(string)($settings['dfsb_background_gallery_media_policy']??'mixed');
+        if(!in_array($scope,array('term','term_then_template'),true)||!in_array($mode,array('mixed','local_only','shared_only'),true)||$key===''||!taxonomy_exists($taxonomy))return array();
+        $rule=$context['profile']['taxonomy_rules'][$taxonomy]??null;
+        if(!is_array($rule))return array();
+        $role=sanitize_key((string)($context['taxonomy_roles'][$taxonomy]??$rule['role']??$taxonomy));
+        $selected=(array)($context['term_sets'][$role]??array());
+        $limit=max(1,min(30,$limit));$buckets=array();$seenTerms=array();
+        foreach(array_slice($selected,0,20) as $record){
+            if(!is_array($record)||($record['taxonomy']??'')!==$taxonomy)continue;
+            $id=(int)($record['term_id']??0);if($id<=0||isset($seenTerms[$id]))continue;
+            $term=get_term($id,$taxonomy);
+            if(!$term instanceof \WP_Term||$term->taxonomy!==$taxonomy||(string)$term->slug!==(string)($record['slug']??''))continue;
+            $seenTerms[$id]=true;
+            $items=self::attachmentItems(get_term_meta($id,$key,true),array('mode'=>$mode));
+            if($items)$buckets[]=array_slice($items,0,$limit);
+        }
+        $out=array();$seen=array();
+        for($offset=0;$offset<$limit&&count($out)<$limit;$offset++){
+            $hasCandidate=false;
+            foreach($buckets as $bucket){
+                if(!isset($bucket[$offset]))continue;
+                $hasCandidate=true;$item=$bucket[$offset];$identity=$item['source']==='local'?'local:'.$item['id']:'shared:'.$item['path'];
+                if(isset($seen[$identity]))continue;
+                $seen[$identity]=true;$out[]=$item;if(count($out)>=$limit)break;
+            }
+            if(!$hasCandidate)break;
+        }
+        return $out;
     }
 
     public static function activeTerm(string $taxonomy) {
@@ -246,6 +281,19 @@ final class PortableMediaGallery {
             $result[]=implode(',',$parts);
         }
         return $modified ? ($single?($result[0]??''):$result) : $override;
+    }
+
+    /** Same portable attachment and verified dimensions for initial render and AJAX. */
+    public static function attachmentItem(int $id): ?array {
+        if($id<=0)return null;
+        $url=self::attachmentUrl($id);
+        if($url==='')return null;
+        $health=MediaAssetValidator::inspect($id);
+        if(empty($health['valid']))return null;
+        $width=max(0,(int)($health['width']??0));$height=max(0,(int)($health['height']??0));
+        return array('id'=>$id,'url'=>$url,'source'=>'local','width'=>$width,'height'=>$height,
+            'aspect_ratio'=>$width>0&&$height>0?round($width/$height,4):0.0,
+            'dimensions_source'=>$width>0&&$height>0?(string)($health['dimensions_source']??'unknown'):'unknown');
     }
 
     public static function attachmentUrl(int $id): string {

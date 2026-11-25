@@ -21,7 +21,7 @@ def main():
     actual = git(repo, 'rev-parse', 'HEAD')
     if not re.fullmatch('[a-f0-9]{40}', args.expected_source_sha) or actual != args.expected_source_sha:
         raise RuntimeError('exact reviewed source SHA mismatch')
-    if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+-alpha\.[0-9]+-rc\.[0-9]+', args.expected_version):
+    if not re.fullmatch(r'(?:(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)|[0-9]+\.[0-9]+\.[0-9]+-alpha\.[0-9]+-rc\.[0-9]+)', args.expected_version):
         raise RuntimeError('release-review version is invalid or locally held')
     header = (repo/'wp-content/plugins/dynamic-filter-seo-bridge/dynamic-filter-seo-bridge.php').read_text()
     if f' * Version: {args.expected_version}\n' not in header:

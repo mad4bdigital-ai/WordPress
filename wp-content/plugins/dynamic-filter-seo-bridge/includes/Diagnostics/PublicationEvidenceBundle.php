@@ -5,6 +5,7 @@ use DynamicFilterSEOBridge\Config\Configuration;
 use DynamicFilterSEOBridge\Config\ProfileRegistry;
 use DynamicFilterSEOBridge\Runtime\Readiness;
 use DynamicFilterSEOBridge\SEO\PublicationRegistry;
+use DynamicFilterSEOBridge\Presentation\AjaxPresentationEndpoint;
 
 final class PublicationEvidenceBundle {
 	private $config; private $profiles; private $readiness; private $inventory; private $publication;
@@ -19,7 +20,8 @@ final class PublicationEvidenceBundle {
 			'edge_attestation_present'=>$edgeVerified,
 			'built_in_cross_request_limit'=>$ajaxPersistentCache,
 			'external_evidence_required'=>!$ajaxPersistentCache,
-			'endpoint'=>'/wp-json/etg-dfsb/v1/ajax-presentation',
+			'endpoint'=>'/wp-json/'.AjaxPresentationEndpoint::legacyRestPath(),
+			'canonical_endpoint'=>'/wp-json/'.AjaxPresentationEndpoint::restPath(),
 			'authorizing'=>false,
 		);
 		if($this->config->enabled()){$activationBlockers[]='global_bridge_on_during_dark_validation_evidence';}

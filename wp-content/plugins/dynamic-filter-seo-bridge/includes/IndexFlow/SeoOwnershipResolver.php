@@ -8,7 +8,7 @@ final class SeoOwnershipResolver {
         $managed = 'published' === ($route['status'] ?? '') && !empty($route['identity']);
         if (!$managed) return array('managed' => false, 'owner' => 'native', 'ready' => false, 'authorizing' => false, 'reasons' => array('unmanaged_route'));
         $owner = $route['seo_owner'] ?? '';
-        // Reuse the common ETG ownership reducer introduced on this same branch;
+        // Reuse the common DFSB ownership reducer introduced on this same branch;
         // add only managed-route scope, active-hook and hreflang requirements.
         $evidence = $observed;
         $evidence['jsf_seo_rule'] = true === ($observed['jsf_rule_matched'] ?? null) ? 'matched'

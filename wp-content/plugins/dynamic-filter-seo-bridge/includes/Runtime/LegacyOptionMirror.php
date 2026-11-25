@@ -25,6 +25,34 @@ final class LegacyOptionMirror {
         $new = get_option(self::MAP[$legacy], null);
         return ($new !== null && $new === $old) ? $new : $old;
     }
+    /** Neutral logical read name, resolved through the existing source policy. */
+    public static function readNeutral(string $neutral, $fallback = array()) {
+        $legacy = array_search($neutral, self::MAP, true);
+        return $legacy === false ? $fallback : self::read($legacy, $fallback);
+    }
+    /** Observe storage parity without exposing values or granting cutover. */
+    public static function observe(): array {
+        $rows = array();
+        $counts = array();
+        foreach (self::MAP as $legacy => $neutral) {
+            $state = 'unavailable';
+            if (function_exists('get_option')) {
+                $missing = new \stdClass();
+                $old = get_option($legacy, $missing);
+                $new = get_option($neutral, $missing);
+                if ($old === $missing && $new === $missing) $state = 'both_absent';
+                elseif (($old !== $missing && !is_array($old)) || ($new !== $missing && !is_array($new))) $state = 'invalid_value_type';
+                elseif ($old === $missing) $state = 'neutral_only';
+                elseif ($new === $missing) $state = 'legacy_only';
+                else $state = $old === $new ? 'equal' : 'conflict';
+            }
+            $rows[] = array('neutral_option' => $neutral, 'state' => $state);
+            $counts[$state] = ($counts[$state] ?? 0) + 1;
+        }
+        return array('contract' => 'dfsb.option-mirror-observation.v1', 'read_only' => true,
+            'authorizing' => false, 'cutover_authorized' => false, 'authority' => 'legacy',
+            'rows' => $rows, 'counts' => $counts);
+    }
     public static function register(): void {
         add_action('updated_option', array(__CLASS__, 'updated'), 20, 3);
         add_action('added_option', array(__CLASS__, 'added'), 20, 2);

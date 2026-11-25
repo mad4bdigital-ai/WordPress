@@ -11,6 +11,11 @@ on:
       - 'tests/dfsb-owner-command-dispatch-contract.py'
       - 'tests/dfsb-release-review-workflow-contract.py'
       - 'tests/dfsb-release-boot-authority.php'
+      - 'tests/dfsb-neutral-read-service-contract.php'
+      - 'tests/dfsb-neutral-brand-surface-contract.py'
+      - 'tests/dfsb-read-adapter-original-hermetic.php'
+      - 'ops/provider-source-transition/**'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dfsb-adapter.php'
   workflow_dispatch:
 
 permissions:
@@ -48,6 +53,55 @@ jobs:
           set -euo pipefail
           find wp-content/plugins/dynamic-filter-seo-bridge -type f -name '*.php' -print0 | sort -z | xargs -0 -n1 php -l
           php -l tools/dfsb-neutral/verify_candidate.php
+      - name: Verify standalone neutral semantic acceptance
+        run: php wp-content/plugins/dynamic-filter-seo-bridge/tests/live-acceptance-provider-smoke.php
+      - name: Verify standalone neutral read service contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          php tests/dfsb-neutral-read-service-contract.php
+          python3 tests/dfsb-neutral-brand-surface-contract.py
+          python3 wp-content/plugins/dynamic-filter-seo-bridge/tests/neutral-admin-action-contract.py
+          python3 wp-content/plugins/dynamic-filter-seo-bridge/tests/neutral-settings-sitemap-contract.py
+          php wp-content/plugins/dynamic-filter-seo-bridge/tests/neutral-sitemap-continuity-smoke.php
+          php wp-content/plugins/dynamic-filter-seo-bridge/tests/neutral-rest-route-smoke.php
+          php wp-content/plugins/dynamic-filter-seo-bridge/tests/neutral-browser-route-smoke.php
+          php wp-content/plugins/dynamic-filter-seo-bridge/tests/neutral-browser-freshness-smoke.php
+          node tools/browser-acceptance/test-mcp-bridge.mjs
+          node wp-content/plugins/dynamic-filter-seo-bridge/tests/neutral-browser-observer-route.test.js
+          node tools/browser-acceptance/test-plan-boundary.mjs
+          php wp-content/plugins/dynamic-filter-seo-bridge/tests/neutral-jetengine-macro-alias-smoke.php
+          php wp-content/plugins/dynamic-filter-seo-bridge/tests/neutral-option-mirror-smoke.php
+          php wp-content/plugins/dynamic-filter-seo-bridge/tests/neutral-media-persistence-smoke.php
+          php wp-content/plugins/dynamic-filter-seo-bridge/tests/native-evidence-provider-smoke.php
+          php wp-content/plugins/dynamic-filter-seo-bridge/tests/editorial-title-smoke.php
+          php wp-content/plugins/dynamic-filter-seo-bridge/tests/bootstrap-presentation-assets-smoke.php
+          php wp-content/plugins/dynamic-filter-seo-bridge/tests/public-catalog-cache-smoke.php
+          php wp-content/plugins/dynamic-filter-seo-bridge/tests/asset-version-smoke.php
+          php wp-content/plugins/dynamic-filter-seo-bridge/tests/configured-term-gallery-smoke.php
+          php wp-content/plugins/dynamic-filter-seo-bridge/tests/registered-gallery-slot-smoke.php
+          php wp-content/plugins/dynamic-filter-seo-bridge/tests/editorial-term-cards-smoke.php
+          php wp-content/plugins/dynamic-filter-seo-bridge/tests/native-evidence-abilities-smoke.php
+          php wp-content/plugins/dynamic-filter-seo-bridge/tests/result-count-observability-smoke.php
+          php wp-content/plugins/dynamic-filter-seo-bridge/tests/build-identity-smoke.php
+          for test in profile-blueprint-smoke.php runtime-inventory-smoke.php runtime-inventory-availability-smoke.php alpha12-inventory-control-smoke.php inventory-reconciliation-smoke.php indexflow-configuration-smoke.php content-slot-persistence-smoke.php; do
+            php "wp-content/plugins/dynamic-filter-seo-bridge/tests/$test"
+          done
+      - name: Verify neutral background and event compatibility
+        run: node wp-content/plugins/dynamic-filter-seo-bridge/tests/neutral-background-events.test.js
+      - name: Verify native hydration and editorial lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          node wp-content/plugins/dynamic-filter-seo-bridge/tests/native-hydration-coalescing.test.js
+          node wp-content/plugins/dynamic-filter-seo-bridge/tests/native-direct-link-operators.test.js
+          node wp-content/plugins/dynamic-filter-seo-bridge/tests/native-rebind.test.js
+          node wp-content/plugins/dynamic-filter-seo-bridge/tests/native-composite-rebind-observation.test.js
+          node wp-content/plugins/dynamic-filter-seo-bridge/tests/neutral-gallery-state.test.js
+          node wp-content/plugins/dynamic-filter-seo-bridge/tests/editorial-lifecycle.test.js
+          node wp-content/plugins/dynamic-filter-seo-bridge/tests/editorial-card-dedup.test.js
+          node wp-content/plugins/dynamic-filter-seo-bridge/tests/ajax-request-lifecycle.test.js
+          node wp-content/plugins/dynamic-filter-seo-bridge/tests/wpml-language-switch-early.test.js
       - name: Build two byte-identical unsigned review packages from exact HEAD
         shell: bash
         run: |
@@ -86,6 +140,14 @@ jobs:
             echo '::error::Tampered package was incorrectly accepted'
             exit 1
           fi
+      - name: Bind capability review to the exact unsigned package
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/dfsb-candidate"
+          php tests/dfsb-read-adapter-original-hermetic.php > "$out/qualification-fixture.log"
+          python3 ops/provider-source-transition/audit_consumer_readiness.py > "$out/consumer-readiness.json"
+          python3 ops/provider-source-transition/bind_qualification_review.py --build "$out/build.json" --package "$out/candidate.zip" --fixture "$out/qualification-fixture.log" --audit "$out/consumer-readiness.json" > "$out/qualification-review.json"
       - name: Upload unsigned review package (not deployable)
         uses: actions/upload-artifact@v4
         with:
@@ -93,4 +155,7 @@ jobs:
           path: |
             ${{ runner.temp }}/dfsb-candidate/candidate.zip
             ${{ runner.temp }}/dfsb-candidate/build.json
+            ${{ runner.temp }}/dfsb-candidate/qualification-review.json
+            ${{ runner.temp }}/dfsb-candidate/qualification-fixture.log
+            ${{ runner.temp }}/dfsb-candidate/consumer-readiness.json
           retention-days: 14

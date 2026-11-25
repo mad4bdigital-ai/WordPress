@@ -37,6 +37,7 @@ final class ContentSlotRegistry {
             'hero_image'=>array('id'=>'hero_image','label'=>'Hero Image','enabled'=>true,'type'=>'image','template'=>'{{resolved}}','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>0,'media_mode'=>'priority'),
             'hero_gallery'=>array('id'=>'hero_gallery','label'=>'Hero Gallery','enabled'=>true,'type'=>'gallery','template'=>'{{resolved}}','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>0,'media_mode'=>'combined'),
             'results_summary'=>array('id'=>'results_summary','label'=>'Results Summary','enabled'=>true,'type'=>'text','template'=>'{{result_summary}}','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>300),
+            'editorial_cards'=>array('id'=>'editorial_cards','label'=>'Selected Term Cards','enabled'=>true,'type'=>'html','template'=>'{{editorial_cards}}','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>0),
         );
         if($this->legacyCompatibility){
             $definitions['location_section']=array('id'=>'location_section','label'=>'Location Section','enabled'=>true,'type'=>'html','template'=>'<section class="etg-filter-term-section etg-filter-term-section--location"><h2>{{term:location:name}}</h2><div>{{term:location:description}}</div></section>','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>8000);
@@ -46,14 +47,17 @@ final class ContentSlotRegistry {
         $out=array();foreach($definitions as$id=>$slot){$n=$this->normalize($slot,$id);$n['origin']='built_in';$out[$id]=$n;}return$out;
     }
 
-    public function all():array{$out=$this->defaults();foreach($this->stored()as$id=>$slot){$n=$this->normalize($slot,(string)$id);if(''===$n['id']){continue;}$n['origin']=isset($out[$n['id']])?'override':'custom';$out[$n['id']]=$n;}ksort($out,SORT_STRING);return array_slice($out,0,self::MAX_SLOTS,true);}
+    public function all():array{$out=$this->defaults();$stored=$this->stored();foreach($stored as$id=>$slot){$n=$this->normalize($slot,(string)$id);if(''===$n['id']){continue;}$n['origin']=isset($out[$n['id']])?'override':'custom';$out[$n['id']]=$n;}
+        // An additive built-in must not displace any existing slot at capacity.
+        if(count($out)>self::MAX_SLOTS&&!isset($stored['editorial_cards'])){unset($out['editorial_cards']);}
+        ksort($out,SORT_STRING);return array_slice($out,0,self::MAX_SLOTS,true);}
     public function get(string$id):array{$id=sanitize_key($id);$virtual=$this->backgroundSlot($id);if($virtual){return$virtual;}$slots=$this->all();return isset($slots[$id])?(array)$slots[$id]:array();}
     public function isDefault(string$id):bool{$id=sanitize_key($id);return isset($this->defaults()[$id]);}
 
     private function backgroundSlot(string$id):array{
         if(!preg_match('/\Aetg_background_(image|gallery)_([a-z0-9_-]+)\z/',$id,$match)){return array();}
         $type=(string)$match[1];$mode=sanitize_key((string)$match[2]);$modes=self::mediaModes();if(!isset($modes[$mode])){return array();}
-        $slot=$this->normalize(array('id'=>$id,'label'=>'ETG Container Background — '.$modes[$mode],'enabled'=>true,'type'=>$type,'template'=>'{{resolved}}','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>0,'media_mode'=>$mode),$id);
+        $slot=$this->normalize(array('id'=>$id,'label'=>'DFSB Container Background — '.$modes[$mode],'enabled'=>true,'type'=>$type,'template'=>'{{resolved}}','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>0,'media_mode'=>$mode),$id);
         $slot['origin']='virtual';$slot['internal']=true;return$slot;
     }
 
@@ -106,7 +110,26 @@ final class ContentSlotRegistry {
         $fingerprint=preg_replace('/[^a-f0-9]/','',strtolower((string)($slot['source_inventory_fingerprint']??'')));if(!is_string($fingerprint)||64!==strlen($fingerprint)){$fingerprint='';}
         $sources=$this->sources($slot['sources']??array());$chain=$this->chain($slot['fallback_chain']??array(),array_keys($sources));
         $defaultMediaMode='image'==$type?'priority':'combined';$mediaMode=sanitize_key((string)($slot['media_mode']??$defaultMediaMode));if(!isset(self::mediaModes()[$mediaMode])){$mediaMode=$defaultMediaMode;}
-        return array('contract'=>self::CONTRACT,'id'=>$id,'label'=>sanitize_text_field((string)($slot['label']??$id)),'enabled'=>$enabled,'type'=>$type,'template'=>$template,'fallback'=>$fallback,'prefix'=>$prefix,'suffix'=>$suffix,'max_length'=>$max,'media_mode'=>$mediaMode,'sources'=>$sources,'fallback_chain'=>$chain,'source_inventory_fingerprint'=>$fingerprint,'authorizing'=>false,'profile_mutation'=>false);
+        $termGallery=$type==='gallery'&&is_array($slot['term_gallery']??null)?self::termGalleryDefinition($slot['term_gallery']):array();
+        if($type==='gallery'&&array_key_exists('term_gallery',$slot)&&!$termGallery){$enabled=false;}
+        return ($termGallery?array('term_gallery'=>$termGallery):array())+array('contract'=>self::CONTRACT,'id'=>$id,'label'=>sanitize_text_field((string)($slot['label']??$id)),'enabled'=>$enabled,'type'=>$type,'template'=>$template,'fallback'=>$fallback,'prefix'=>$prefix,'suffix'=>$suffix,'max_length'=>$max,'media_mode'=>$mediaMode,'sources'=>$sources,'fallback_chain'=>$chain,'source_inventory_fingerprint'=>$fingerprint,'authorizing'=>false,'profile_mutation'=>false);
+    }
+
+    public static function termGalleryDefinition(array $settings):array {
+        $taxonomy=$settings['dfsb_background_gallery_meta_taxonomy']??'';
+        $field=$settings['dfsb_background_gallery_meta_key']??'';
+        $policy=$settings['dfsb_background_gallery_media_policy']??'mixed';
+        if(!is_string($taxonomy)||!preg_match('/^[a-z][a-z0-9_-]{0,31}$/D',$taxonomy)||!is_string($field)||!preg_match('/^[A-Za-z0-9_.-]{1,120}$/D',$field)||!in_array($policy,array('mixed','local_only','shared_only'),true))return array();
+        return array('dfsb_background_gallery_meta_taxonomy'=>$taxonomy,'dfsb_background_gallery_meta_key'=>$field,'dfsb_background_gallery_media_policy'=>$policy,'dfsb_background_gallery_meta_scope'=>'term');
+    }
+    public function matchingTermGallerySlot(array $settings):string {
+        // The term slot resolves only selected terms. The rendered template retains its own fallback.
+        if(!in_array($settings['dfsb_background_gallery_meta_scope']??'term_then_template',array('term','term_then_template'),true))return '';
+        $definition=self::termGalleryDefinition($settings);if(!$definition)return '';
+        $matches=array();foreach($this->all() as $id=>$slot){
+            if(!empty($slot['enabled'])&&($slot['type']??'')==='gallery'&&($slot['term_gallery']??array())===$definition)$matches[]=$id;
+        }
+        return count($matches)===1?$matches[0]:'';
     }
 
     private function sources($value):array{
@@ -117,7 +140,7 @@ final class ContentSlotRegistry {
         if(is_string($value)){$value=preg_split('/[\r\n,|]+/',$value);}
         $allowed=array_fill_keys($aliases,true);$out=array();foreach((array)$value as$alias){$alias=sanitize_key((string)$alias);if(''!==$alias&&isset($allowed[$alias])&&!in_array($alias,$out,true)){$out[]=$alias;}}if(!$out){$out=$aliases;}return array_slice($out,0,self::MAX_SOURCES);
     }
-    private function stored():array{$raw=function_exists('get_option')?\DynamicFilterSEOBridge\Runtime\LegacyOptionMirror::read(self::OPTION_NAME,array()):array();if(is_string($raw)){$decoded=json_decode($raw,true);$raw=is_array($decoded)?$decoded:array();}$out=array();foreach(array_slice((array)$raw,0,self::MAX_SLOTS,true)as$key=>$slot){if(!is_array($slot)){continue;}$n=$this->normalize($slot,(string)$key);if(''!==$n['id']){$out[$n['id']]=$n;}}ksort($out,SORT_STRING);return$out;}
+    private function stored():array{$raw=function_exists('get_option')?\DynamicFilterSEOBridge\Runtime\LegacyOptionMirror::readNeutral(self::NEUTRAL_OPTION_NAME,array()):array();if(is_string($raw)){$decoded=json_decode($raw,true);$raw=is_array($decoded)?$decoded:array();}$out=array();foreach(array_slice((array)$raw,0,self::MAX_SLOTS,true)as$key=>$slot){if(!is_array($slot)){continue;}$n=$this->normalize($slot,(string)$key);if(''!==$n['id']){$out[$n['id']]=$n;}}ksort($out,SORT_STRING);return$out;}
     private function truthy($value):bool{if(is_string($value)){return in_array(strtolower(trim($value)),array('1','true','yes','on'),true);}return(bool)$value;}
     private function boundedText($value,int$max,bool$html):string{$value=is_scalar($value)?(string)$value:'';if($html&&function_exists('wp_kses_post')){$value=wp_kses_post($value);}if(strlen($value)>$max){$value=substr($value,0,$max);}return$value;}
 }

@@ -190,7 +190,7 @@ final class Shortcodes {
         $loading = in_array((string) $atts['loading'], array('lazy','eager'), true) ? (string) $atts['loading'] : 'lazy';
         $html = '<img class="' . esc_attr($class) . '" alt="' . esc_attr($alt) . '" loading="' . esc_attr($loading) . '"';
         if ('' !== $url) { $html .= ' src="' . esc_url($url) . '"'; }
-        if ($attachmentId) { $html .= ' data-etg-dfsb-attachment-id="' . esc_attr((string) $attachmentId) . '"'; }
+        if ($attachmentId) { $html .= ' data-dfsb-attachment-id="' . esc_attr((string) $attachmentId) . '" data-etg-dfsb-attachment-id="' . esc_attr((string) $attachmentId) . '"'; }
         if ($this->truthy($atts['live'])) { $html .= $this->mediaBindingAttributes($id, 'src', (string) $atts['group']); }
         return $html . '>';
     }
@@ -220,7 +220,7 @@ final class Shortcodes {
         if (!is_string($json)) { $json = '[]'; }
         $class = $this->classList((string) $atts['class'], 'etg-dfsb-dynamic-gallery');
         $binding = $this->truthy($atts['live']) ? $this->mediaBindingAttributes($id, 'gallery', (string) $atts['group']) : '';
-        return '<div class="' . esc_attr($class) . '" data-etg-dfsb-gallery="' . esc_attr($json) . '"' . $binding . '></div>';
+        return '<div class="' . esc_attr($class) . '" data-dfsb-gallery="' . esc_attr($json) . '" data-etg-dfsb-gallery="' . esc_attr($json) . '"' . $binding . '></div>';
     }
 
     private function liveWrap(string $kind, string $id, string $rendered, string $group = ''): string {

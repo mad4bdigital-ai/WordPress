@@ -4,11 +4,11 @@ namespace DynamicFilterSEOBridge\Integration;
 use DynamicFilterSEOBridge\Diagnostics\EvidenceProvider;
 
 /**
- * WordPress Abilities API export for the bounded ETG evidence provider.
+ * WordPress Abilities API export for the bounded DFSB evidence provider.
  *
  * WordPress/Core/MCP own discovery, authentication and transport. This bridge
  * only makes the existing provider callable through a governed, read-only
- * public ability surface; it does not duplicate ETG diagnostic semantics.
+ * public ability surface; it does not duplicate DFSB diagnostic semantics.
  */
 final class EvidenceAbilities {
     const CATEGORY = 'etg-dfsb-diagnostics';
@@ -37,8 +37,8 @@ final class EvidenceAbilities {
         wp_register_ability_category(
             self::CATEGORY,
             array(
-                'label' => 'ETG DFSB Diagnostics',
-                'description' => 'Read-only bounded diagnostic evidence for ETG Dynamic Filter SEO Bridge.',
+                'label' => 'DFSB Diagnostics',
+                'description' => 'Read-only bounded diagnostic evidence for Dynamic Filter SEO Bridge.',
             )
         );
     }
@@ -50,8 +50,8 @@ final class EvidenceAbilities {
             wp_register_ability(
                 self::DESCRIPTOR_ABILITY,
                 array(
-                    'label' => 'ETG Evidence Provider',
-                    'description' => 'Returns the versioned, read-only ETG evidence provider descriptor and bounded section contract.',
+                    'label' => 'DFSB Evidence Provider',
+                    'description' => 'Returns the versioned, read-only DFSB evidence provider descriptor and bounded section contract.',
                     'category' => self::CATEGORY,
                     'output_schema' => $this->objectOutputSchema(),
                     'execute_callback' => array( $this, 'executeDescriptor' ),
@@ -65,8 +65,8 @@ final class EvidenceAbilities {
             wp_register_ability(
                 self::QUERY_ABILITY,
                 array(
-                    'label' => 'Query ETG Evidence',
-                    'description' => 'Queries one bounded ETG diagnostic evidence section. The ETG EvidenceProvider remains the canonical source of validation and semantics.',
+                    'label' => 'Query DFSB Evidence',
+                    'description' => 'Queries one bounded DFSB diagnostic evidence section. The DFSB EvidenceProvider remains the canonical source of validation and semantics.',
                     'category' => self::CATEGORY,
                     'input_schema' => array(
                         'type' => 'object',
@@ -108,17 +108,18 @@ final class EvidenceAbilities {
         ));
     }
     public function registerNeutralAbilities(): void {
-        if (!function_exists('wp_get_ability') || !function_exists('wp_register_ability')) return;
+        if (!function_exists('wp_has_ability') || !function_exists('wp_get_ability') || !function_exists('wp_register_ability')) return;
         foreach (array(
             'etg-dfsb/evidence-provider'=>'dfsb/evidence-provider',
             'etg-dfsb/evidence-query'=>'dfsb/evidence-query',
         ) as $legacy=>$neutral) {
-            if (wp_has_ability($neutral)) continue;
+            if (wp_has_ability($neutral) || !wp_has_ability($legacy)) continue;
             $source=wp_get_ability($legacy);
             if (!is_object($source)) continue;
             $metadata=$source->get_meta();
             $annotations=(array)($metadata['annotations']??array());
             if (($annotations['readonly']??null)!==true || ($annotations['destructive']??null)!==false) continue;
+            if (($metadata['canonical_contract']??null)!=='dfsb.evidence-provider.v1' || ($metadata['etg_contract']??null)!==EvidenceProvider::CONTRACT || ($metadata['authorizing']??null)!==false || ($metadata['profile_mutation']??null)!==false) continue;
             $args=array(
                 'label'=>'Dynamic Filter SEO Bridge '.($neutral==='dfsb/evidence-query'?'Evidence Query':'Evidence Provider'),
                 'description'=>'Bounded read-only diagnostic evidence.',

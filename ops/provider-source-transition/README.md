@@ -63,3 +63,9 @@ This is a test artifact contract, not a live observation. On the currently conne
 ## Reconciliation with current master
 
 Before merging this PR, merge the exact current protected `master` into its branch **without rebasing or force-pushing** so source-based tests inspect the real merged DFSB version, not an outdated PR base. Keep a successful exact-HEAD CI run and fresh owner attestation before merging. The selector itself is always read-only. A later release must separately certify a reviewed exact build artifact, deploy to a named Site UUID, and compare live read fingerprints.
+
+The current consumer audit also distinguishes the two read-adapter declarations included by the Control Plane entrypoint, their exact class/hook review status, shared provider identity, declared operation names, version pins and existing capability-policy coverage. This is static source evidence only, not proof of mounting or execution; no registry or release pin is changed.
+
+For DFSB capability classification review, run `php tests/dfsb-read-adapter-original-hermetic.php`. Its isolated fixture compares original and neutral registered method, schema and permission descriptors, then submits a proposed read-only overlay to the existing `runtime_candidate_graph` method. The resulting proposal is not a reviewed policy, production catalog, package certificate, or permission to run a probe. Native evidence names remain individually classified and are not synthesized as aliases.
+
+The unsigned DFSB source CI also produces a review-only qualification record from the original fixture and consumer audit, bound to the exact source HEAD, package SHA256, adapter source SHA256 and sorted fixture descriptor SHA256. These are local source observations, not runtime descriptor generations, signed receipts or certification.

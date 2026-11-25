@@ -19,5 +19,19 @@
       "mutation_policy": "deny",
       "first_party_runtime_write_authority": "separate_owner_signed_execution_contract_required"
     }
-  ]
+  ],
+  "central_authority": {
+    "origin": "https://tours.dev.mad4b.com",
+    "scope": "mad4b-central:staging",
+    "identity_basis": "verified_original_registrar",
+    "code_sources": [
+      "live",
+      "local_git",
+      "github"
+    ],
+    "source_change_reenrollment": false,
+    "source_change_grant_revocation": false,
+    "source_change_grant_creation": false,
+    "bootstrap_independent_of_release": true
+  }
 }

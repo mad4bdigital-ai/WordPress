@@ -30,8 +30,9 @@ final class MediaLabPage {
     public function addKey():void{
         if(!current_user_can('manage_options')){wp_die('Forbidden','Forbidden',array('response'=>403));}AdminUi::checkActionNonce('etg_dfsb_add_media_key');
         $taxonomy=sanitize_key((string)($_POST['taxonomy']??''));$kind=sanitize_key((string)($_POST['kind']??''));$key=isset($_POST['media_key'])?wp_unslash((string)$_POST['media_key']):'';
-        if($taxonomy&&in_array($kind,array('image','gallery'),true)&&''!==trim($key)){$settings=$this->registry->all();$current=(array)($settings['taxonomies'][$taxonomy][$kind]??array());$current[]=$key;if(!isset($settings['taxonomies'][$taxonomy])){$settings['taxonomies'][$taxonomy]=array('image'=>array(),'gallery'=>array());}$settings['taxonomies'][$taxonomy][$kind]=$current;$this->registry->save($settings);}
-        wp_safe_redirect(AdminUi::pageUrl(self::SLUG,array('tab'=>'discovery','taxonomy'=>$taxonomy,'scan'=>'1','added'=>$kind)));exit;
+        if($taxonomy&&in_array($kind,array('image','gallery'),true)&&''!==trim($key)){$settings=$this->registry->all();$current=(array)($settings['taxonomies'][$taxonomy][$kind]??array());$current[]=$key;if(!isset($settings['taxonomies'][$taxonomy])){$settings['taxonomies'][$taxonomy]=array('image'=>array(),'gallery'=>array());}$settings['taxonomies'][$taxonomy][$kind]=$current;$result=$this->registry->save($settings);}
+        $notice=!empty($result['saved'])?array('added'=>$kind):array('saved'=>'0');
+        wp_safe_redirect(AdminUi::pageUrl(self::SLUG,array_merge(array('tab'=>'discovery','taxonomy'=>$taxonomy,'scan'=>'1'),$notice)));exit;
     }
 
     public function render():void{
@@ -61,7 +62,7 @@ final class MediaLabPage {
         $specific=(array)($settings['taxonomies'][$taxonomy]??array('image'=>array(),'gallery'=>array()));$scan=!empty($_GET['scan'])?$this->inspector->scanTaxonomy($taxonomy,15):array();
         echo '<section class="etg-panel"><div class="etg-panel__head"><div><h2>Media Discovery Mapping</h2><p class="description">Keys are exact/case-sensitive. Taxonomy-specific keys run before global defaults; profile field_map remains an additional compatibility layer.</p></div></div><div class="etg-panel__body">';
         echo '<form method="get" class="etg-actions"><input type="hidden" name="page" value="'.esc_attr(self::SLUG).'"><input type="hidden" name="tab" value="discovery"><select name="taxonomy">';foreach($taxonomies as$slug=>$label){echo '<option value="'.esc_attr($slug).'" '.selected($taxonomy,$slug,false).'>'.esc_html($label).'</option>';}echo '</select><input type="hidden" name="scan" value="1"><button class="button">Scan Taxonomy Media</button></form><hr/>';
-        echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="etg_dfsb_save_media_discovery"><input type="hidden" name="taxonomy" value="'.esc_attr($taxonomy).'">';wp_nonce_field('dfsb_save_media_discovery');
+        echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="dfsb_save_media_discovery"><input type="hidden" name="taxonomy" value="'.esc_attr($taxonomy).'">';wp_nonce_field('dfsb_save_media_discovery');
         echo '<div class="etg-overview-grid"><article class="etg-overview-card"><h3>Global Image Keys</h3><textarea class="large-text code" rows="7" name="global_image_keys">'.esc_textarea(implode("\n",(array)$settings['image'])).'</textarea><p>First matching field with media wins for primary image discovery.</p></article>';
         echo '<article class="etg-overview-card"><h3>Global Gallery Keys</h3><textarea class="large-text code" rows="7" name="global_gallery_keys">'.esc_textarea(implode("\n",(array)$settings['gallery'])).'</textarea><p>All matching fields are combined, deduplicated and bounded.</p></article>';
         echo '<article class="etg-overview-card"><h3>'.esc_html($taxonomy).' Image Keys</h3><textarea id="etg-taxonomy-image-keys" class="large-text code" rows="7" name="taxonomy_image_keys">'.esc_textarea(implode("\n",(array)($specific['image']??array()))).'</textarea><p>Runs before global Image Keys for this taxonomy only.</p></article>';
@@ -100,7 +101,7 @@ final class MediaLabPage {
     }
 
     private function addKeyForm(string$taxonomy,string$key,string$kind,string$label):string{
-        $action=esc_url(admin_url('admin-post.php'));$nonce=wp_create_nonce('dfsb_add_media_key');return '<form method="post" action="'.$action.'" style="display:inline"><input type="hidden" name="action" value="etg_dfsb_add_media_key"><input type="hidden" name="_wpnonce" value="'.esc_attr($nonce).'"><input type="hidden" name="taxonomy" value="'.esc_attr($taxonomy).'"><input type="hidden" name="media_key" value="'.esc_attr($key).'"><input type="hidden" name="kind" value="'.esc_attr($kind).'"><button class="button button-small" type="submit">'.esc_html($label).'</button></form>';
+        $action=esc_url(admin_url('admin-post.php'));$nonce=wp_create_nonce('dfsb_add_media_key');return '<form method="post" action="'.$action.'" style="display:inline"><input type="hidden" name="action" value="dfsb_add_media_key"><input type="hidden" name="_wpnonce" value="'.esc_attr($nonce).'"><input type="hidden" name="taxonomy" value="'.esc_attr($taxonomy).'"><input type="hidden" name="media_key" value="'.esc_attr($key).'"><input type="hidden" name="kind" value="'.esc_attr($kind).'"><button class="button button-small" type="submit">'.esc_html($label).'</button></form>';
     }
 
     private function modes():array{return array(

@@ -17,7 +17,7 @@ final class ArchiveHeroPreset {
     public function register(): void {
         add_action('elementor/frontend/container/before_render', array($this, 'beforeRender'), 5, 1);
         // Elementor can pre-warm parsed_active_settings before before_render.
-        // Invalidate that cache only for ETG archive marker/kill-switch Containers
+        // Invalidate that cache only for DFSB archive marker/kill-switch Containers
         // after our in-memory normalization and before ContainerDynamicBackground.
         add_action('elementor/frontend/container/before_render', array($this, 'invalidateDisplayCache'), 8, 1);
     }
@@ -27,7 +27,7 @@ final class ArchiveHeroPreset {
         $raw = self::rawSettings($element);
         $normalized = self::normalizeForRender($element, $raw);
 
-        // Apply the normalized ETG controls to Base_Object settings. The priority-8
+        // Apply the normalized DFSB controls to Base_Object settings. The priority-8
         // cache invalidation below forces Elementor to rebuild display settings from
         // these values before ContainerDynamicBackground runs at priority 10.
         foreach ($normalized as $key => $value) {
@@ -76,7 +76,7 @@ final class ArchiveHeroPreset {
     public static function normalizeForRender($element, array $display): array {
         $raw = self::rawSettings($element);
 
-        // Persisted scalar ETG controls are the authority. Do not copy dynamic
+        // Persisted scalar DFSB controls are the authority. Do not copy dynamic
         // image/gallery controls here because get_settings_for_display() is the
         // layer that resolves their Dynamic Tags.
         $authoritativeKeys = array(

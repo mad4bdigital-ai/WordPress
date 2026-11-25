@@ -4,6 +4,9 @@
     // Expand phase: new consumers subscribe to dfsb/*; old saved scripts still
     // receive exactly one etg-dfsb/* event with the same payload.
     function emitDFSBEvent(name, detail) {
+        if (name.indexOf('dfsb/ajax-presentation-') === 0 && detail) {
+            detail = Object.assign({}, detail, { editorial_auto_group: autoGroupKey() });
+        }
         document.dispatchEvent(new CustomEvent(name, { detail: detail }));
         if (name.indexOf('dfsb/') === 0) {
             document.dispatchEvent(new CustomEvent('etg-' + name, { detail: detail }));
@@ -11,8 +14,68 @@
     }
     if (!cfg.endpoint) { return; }
 
+    // Native JSF checkboxes already support data-relational-operator="AND".
+    // On a direct URL with an explicit, valid operator, provide that native
+    // configuration BEFORE JSF creates filter instances. This is a DOM input
+    // option, not an overwrite of JSF's currentQuery, signed AJAX or counts.
+    function configureNativeDirectLinkOperators() {
+        var state = prettyPathState();
+        if (!state.valid || !state.group || !state.query) { return; }
+        var supported = Array.isArray(cfg.supportedJsfVersions) ? cfg.supportedJsfVersions.map(String) : [];
+        if (supported.indexOf(String(cfg.jsfVersion || '')) === -1) { return; }
+        var separator = state.group.indexOf('/');
+        if (separator <= 0) { return; }
+        var provider = state.group.slice(0, separator);
+        var queryId = state.group.slice(separator + 1);
+        Object.keys(state.query).forEach(function (key) {
+            if (key.indexOf('_tax_query_') !== 0) { return; }
+            var data = state.query[key];
+            // Local Staging parser historically supplied comma-separated strings;
+            // the canonical #733 parser supplies arrays for explicit operators.
+            // Accept both validated forms without assigning native currentQuery.
+            var parts = Array.isArray(data) ? data.map(String) :
+                (typeof data === 'string' ? data.split(',').map(function (v) { return v.trim(); }) : []);
+            if (parts.length < 3 || parts.length > 21) { return; }
+            var op = parts[parts.length - 1];
+            if (op !== 'operator_AND' && op !== 'operator_IN') { return; }
+            var selected = parts.slice(0, -1);
+            if (selected.length < 2 ||
+                selected.some(function (v) { return !/^[A-Za-z0-9_-]{1,100}$/.test(v) || /^operator_/i.test(v); }) ||
+                selected.filter(function (v, i) { return selected.indexOf(v) === i; }).length !== selected.length) { return; }
+            var taxonomy = key.slice('_tax_query_'.length);
+            Array.prototype.forEach.call(document.querySelectorAll('.jet-checkboxes-list[data-smart-filter="checkboxes"][data-query-type="tax_query"]'), function (el) {
+                if (el.getAttribute('data-query-var') !== taxonomy || el.getAttribute('data-content-provider') !== provider || el.getAttribute('data-query-id') !== queryId) { return; }
+                var options = Array.prototype.map.call(el.querySelectorAll('input[data-url-value]'), function (input) {
+                    return String(input.getAttribute('data-url-value') || '');
+                });
+                if (!selected.every(function (slug) { return options.indexOf(slug) !== -1; })) { return; }
+                // Native checkbox processData appends operator_AND only when
+                // two or more actual inputs are selected; allow it to do so.
+                if (op === 'operator_AND') { el.setAttribute('data-relational-operator', 'AND'); }
+                else { el.removeAttribute('data-relational-operator'); }
+            });
+        });
+    }
+    document.addEventListener('jet-smart-filters/before-init', configureNativeDirectLinkOperators, { capture: true, once: true });
+
     var timers = {}, sequences = {}, controllers = {}, activeKeys = {}, eventSeenKeys = {}, initialSemanticKeys = {};
+    var nativePending = Object.create(null), prepared = Object.create(null);
     var initialized = false, runtimeBlockedSignature = '';
+    var userFilterGesture = false;
+    // JSF can dispatch filter/apply and start-loading while hydrating a direct
+    // URL, without ever dispatching updated. Distinguish user interactions
+    // from initial runtime activation using trusted native DOM gestures.
+    function trackUserFilterGesture(event) {
+        if (!event.isTrusted || !event.target || typeof event.target.closest !== 'function') { return; }
+        if (event.target.closest('[class*="jet-smart-filters"],[class*="jet-remove-filter"],[class*="jet-filters"]')) {
+            userFilterGesture = true;
+        }
+    }
+    document.addEventListener('click', trackUserFilterGesture, true);
+    document.addEventListener('pointerdown', trackUserFilterGesture, true);
+    document.addEventListener('keydown', trackUserFilterGesture, true);
+    // A deep-linked JSF hydration may emit browser-trusted change events
+    // without any user action. Do not use change alone as interaction proof.
     var initialValues = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
     var boundGroups = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
     var groupRetryState = { pathGroup: '', attempts: 0, timer: null };
@@ -46,6 +109,8 @@
         var signature = report.version + '|' + report.reasons.join(',');
         if (signature === runtimeBlockedSignature) { return; }
         runtimeBlockedSignature = signature;
+        Object.keys(sequences).forEach(invalidatePresentationRequest);
+        Object.keys(nativePending).forEach(discardNativePending);
         Object.keys(activeKeys).forEach(function (key) { clearTransient('jsf_runtime_contract_unavailable', key); });
         emitDFSBEvent('dfsb/ajax-presentation-blocked', { reason: 'jsf_runtime_contract_unavailable', jsf_version: report.version, supported_jsf_versions: report.supported_versions, blocking_reasons: report.reasons });
     }
@@ -143,13 +208,43 @@
         return currentQuery;
     }
 
+    // The historic value wins on conflicting cached markup. Both names are
+    // updated together and reset from the same initial snapshot.
+    function readGalleryAttribute(el) {
+        return readPresentationAttribute(el, 'gallery');
+    }
+    function writeGalleryAttribute(el, value) {
+        writePresentationAttribute(el, 'gallery', value);
+    }
+    function readPresentationAttribute(el, key) {
+        var legacy = 'data-etg-dfsb-' + key;
+        return el.hasAttribute(legacy) ? el.getAttribute(legacy) : el.getAttribute('data-dfsb-' + key);
+    }
+    function writePresentationAttribute(el, key, value) {
+        ['data-dfsb-' + key, 'data-etg-dfsb-' + key].forEach(function (name) {
+            if (value === null) { el.removeAttribute(name); }
+            else { el.setAttribute(name, value); }
+        });
+    }
+    function isBackgroundContainer(el) {
+        return readPresentationAttribute(el, 'background-source') !== null;
+    }
+    function templateGallery(el) {
+        var raw = readPresentationAttribute(el, 'background-template-gallery');
+        if (raw === null) return null;
+        try { var items = JSON.parse(raw); return Array.isArray(items) ? items : []; } catch (error) { return []; }
+    }
     function remember(el) {
         if (!initialValues || initialValues.has(el)) { return; }
-        initialValues.set(el, { html: el.innerHTML, text: el.textContent, href: el.hasAttribute('href') ? el.getAttribute('href') : null, src: el.hasAttribute('src') ? el.getAttribute('src') : null, srcset: el.hasAttribute('srcset') ? el.getAttribute('srcset') : null, gallery: el.hasAttribute('data-etg-dfsb-gallery') ? el.getAttribute('data-etg-dfsb-gallery') : null, backgroundImage: el.style && typeof el.style.backgroundImage !== 'undefined' ? el.style.backgroundImage : null });
+        initialValues.set(el, { html: isBackgroundContainer(el) ? null : el.innerHTML, text: isBackgroundContainer(el) ? null : el.textContent, href: el.hasAttribute('href') ? el.getAttribute('href') : null, src: el.hasAttribute('src') ? el.getAttribute('src') : null, srcset: el.hasAttribute('srcset') ? el.getAttribute('srcset') : null, gallery: readGalleryAttribute(el), attachmentId: readPresentationAttribute(el, 'attachment-id'), backgroundImage: el.style && typeof el.style.backgroundImage !== 'undefined' ? el.style.backgroundImage : null });
     }
     function restoreAttribute(el, name) { if (!initialValues) { return; } var original = initialValues.get(el); if (!original) { return; } var value = original[name]; if (value === null || typeof value === 'undefined') { el.removeAttribute(name); } else { el.setAttribute(name, value); } }
-    function syncSectionVisibility(el) { if (!el || typeof el.closest !== 'function') { return; } var section = el.closest('[data-etg-dfsb-live-section]'); if (!section) { return; } var text = (section.textContent || '').replace(/\s+/g, ' ').trim(); if (text) { section.removeAttribute('hidden'); } else { section.setAttribute('hidden', 'hidden'); } }
-    function restoreElement(el) { if (!initialValues) { return; } var original = initialValues.get(el); if (!original) { return; } el.innerHTML = original.html; restoreAttribute(el, 'href'); restoreAttribute(el, 'src'); restoreAttribute(el, 'srcset'); restoreAttribute(el, 'data-etg-dfsb-gallery'); if (el.style && original.backgroundImage !== null) { el.style.backgroundImage = original.backgroundImage; } el.removeAttribute('data-etg-dfsb-live-content'); el.removeAttribute('data-etg-dfsb-live-html'); if (boundGroups) { boundGroups.delete(el); } syncSectionVisibility(el); }
+    function syncSectionVisibility(el) { if (!el || typeof el.closest !== 'function') { return; } var section = el.closest('[data-dfsb-live-section],[data-etg-dfsb-live-section]'); if (!section) { return; } var text = (section.textContent || '').replace(/\s+/g, ' ').trim(); if (text) { section.removeAttribute('hidden'); } else { section.setAttribute('hidden', 'hidden'); } }
+    function restoreElement(el) { if (!initialValues) { return; } var original = initialValues.get(el); if (!original) { return; } if (original.html !== null) { el.innerHTML = original.html; } restoreAttribute(el, 'href'); restoreAttribute(el, 'src'); restoreAttribute(el, 'srcset'); var template = templateGallery(el); var restoredGallery = template === null ? original.gallery : JSON.stringify(template); writeGalleryAttribute(el, restoredGallery); writePresentationAttribute(el, 'attachment-id', original.attachmentId); if (el.style && original.backgroundImage !== null) { el.style.backgroundImage = original.backgroundImage; } writePresentationAttribute(el, 'live-content', null); writePresentationAttribute(el, 'live-html', null); if (boundGroups) { boundGroups.delete(el); } if (isBackgroundContainer(el)) {
+        el.removeAttribute('data-dfsb-media-last-applied');
+        var gallery = []; try { gallery = JSON.parse(restoredGallery || '[]'); } catch (error) { gallery = []; }
+        emitDFSBEvent('dfsb/media-updated', { source: 'archive_fallback', target: 'gallery', gallery: Array.isArray(gallery) ? gallery : [], element: el, slot: readPresentationAttribute(el, 'media-slot') || '' });
+    } else { syncSectionVisibility(el); } }
     function elementGroup(el) { var own = (el.getAttribute('data-etg-dfsb-group') || '').trim(); if (own) { return own; } if (typeof el.closest === 'function') { var parent = el.closest('[data-etg-dfsb-group]'); if (parent) { return (parent.getAttribute('data-etg-dfsb-group') || '').trim(); } } return 'auto'; }
     function elementsFor(selector, key) { var auto = autoGroupKey(); return Array.prototype.filter.call(document.querySelectorAll(selector), function (el) { var group = elementGroup(el); if (!group || group === 'auto') { return !!auto && auto === key; } return group === key; }); }
 
@@ -157,7 +252,7 @@
     // the historic value is absent. Existing Elementor templates stay intact.
     function normalizeNeutralBindings() {
         var props = ['token','slot','media-slot','group','target','media-target',
-            'fallback','gallery','attachment-id','live-content','live-html'];
+            'fallback'];
         props.forEach(function (prop) {
             var modern = 'data-dfsb-' + prop, legacy = 'data-etg-dfsb-' + prop;
             document.querySelectorAll('[' + modern + ']').forEach(function (element) {
@@ -200,22 +295,33 @@
         // content slot is unavailable; a temporary AJAX miss is not deletion.
         if (el.getAttribute('data-etg-dfsb-background-source') === 'meta_field') { return; }
         remember(el);
+        if (readPresentationAttribute(el, 'background-source') === 'registered_slot') {
+            remember(el);
+            var fallback = []; try { fallback = JSON.parse(readPresentationAttribute(el, 'background-fallback') || '[]'); } catch (error) { fallback = []; }
+            if (!Array.isArray(fallback)) { fallback = []; }
+            var template = templateGallery(el);
+            if (template !== null) { fallback = template; }
+            writeGalleryAttribute(el, JSON.stringify(fallback));
+            if (boundGroups) { boundGroups.delete(el); }
+            emitDFSBEvent('dfsb/media-updated', { group: key, target: 'gallery', gallery: fallback, element: el });
+            return;
+        }
         var mediaSlot = (el.getAttribute('data-etg-dfsb-media-slot') || '').trim().toLowerCase();
         if (mediaSlot) {
             var mediaTarget = (el.getAttribute('data-etg-dfsb-media-target') || 'auto').trim().toLowerCase();
             if (mediaTarget === 'auto') { mediaTarget = String(el.tagName || '').toLowerCase() === 'img' ? 'src' : 'background'; }
-            if (mediaTarget === 'src') { el.removeAttribute('src'); el.removeAttribute('srcset'); el.removeAttribute('data-etg-dfsb-attachment-id'); }
+            if (mediaTarget === 'src') { el.removeAttribute('src'); el.removeAttribute('srcset'); writePresentationAttribute(el, 'attachment-id', null); }
             else if (mediaTarget === 'background') { if (el.style) { el.style.backgroundImage = ''; } }
-            else if (mediaTarget === 'gallery') { el.setAttribute('data-etg-dfsb-gallery', '[]'); }
+            else if (mediaTarget === 'gallery') { writeGalleryAttribute(el, '[]'); }
             emitDFSBEvent('dfsb/media-updated', { group: key, slot: mediaSlot, target: mediaTarget, image: { id: 0, url: '' }, gallery: [], element: el });
         } else {
             var target = (el.getAttribute('data-etg-dfsb-target') || '').trim().toLowerCase();
             if (target === 'href') { el.removeAttribute('href'); }
-            else if (target === 'src') { el.removeAttribute('src'); el.removeAttribute('srcset'); }
+            else if (target === 'src') { el.removeAttribute('src'); el.removeAttribute('srcset'); writePresentationAttribute(el, 'attachment-id', null); }
             else { el.innerHTML = ''; }
         }
-        el.removeAttribute('data-etg-dfsb-live-content');
-        el.removeAttribute('data-etg-dfsb-live-html');
+        writePresentationAttribute(el, 'live-content', null);
+        writePresentationAttribute(el, 'live-html', null);
         if (boundGroups) { boundGroups.delete(el); }
         syncSectionVisibility(el);
     }
@@ -234,9 +340,9 @@
     function applyValue(el, item) {
         if (!item) { return; } var type = item.type || 'text', value = item.value == null ? '' : String(item.value); var target = (el.getAttribute('data-etg-dfsb-target') || '').trim().toLowerCase();
         if (target === 'href') { if (type === 'url' && value) { el.setAttribute('href', value); } else { restoreAttribute(el, 'href'); } return; }
-        if (target === 'src') { var imageUrl = item.image && item.image.url ? String(item.image.url) : (type === 'url' ? value : ''); if (imageUrl) { el.setAttribute('src', imageUrl); el.removeAttribute('srcset'); } else { restoreAttribute(el, 'src'); restoreAttribute(el, 'srcset'); } return; }
+        if (target === 'src') { var imageUrl = item.image && item.image.url ? String(item.image.url) : (type === 'url' ? value : ''); if (imageUrl) { el.setAttribute('src', imageUrl); el.removeAttribute('srcset'); writePresentationAttribute(el, 'attachment-id', item.image && item.image.id ? String(item.image.id) : null); } else { restoreAttribute(el, 'src'); restoreAttribute(el, 'srcset'); var initial = initialValues && initialValues.get(el); writePresentationAttribute(el, 'attachment-id', initial ? initial.attachmentId : null); } return; }
         if (!value) { var fallback = (el.getAttribute('data-etg-dfsb-fallback') || '').trim(); if (fallback) { value = fallback; type = 'text'; } }
-        if (type === 'html') { el.innerHTML = value; el.setAttribute('data-etg-dfsb-live-html', '1'); } else { el.textContent = value; el.setAttribute('data-etg-dfsb-live-content', '1'); } syncSectionVisibility(el);
+        if (type === 'html') { el.innerHTML = value; writePresentationAttribute(el, 'live-content', null); writePresentationAttribute(el, 'live-html', '1'); } else { el.textContent = value; writePresentationAttribute(el, 'live-html', null); writePresentationAttribute(el, 'live-content', '1'); } syncSectionVisibility(el);
     }
 
     function applyMedia(el, item, slot, key) {
@@ -250,9 +356,9 @@
         if (!image && gallery.length) { image = gallery[0]; }
         var url = image && image.url ? String(image.url) : '';
         if (target === 'auto') { target = String(el.tagName || '').toLowerCase() === 'img' ? 'src' : 'background'; }
-        if (target === 'src') { if (url) { el.setAttribute('src', url); el.removeAttribute('srcset'); if (image.id) { el.setAttribute('data-etg-dfsb-attachment-id', String(image.id)); } } else { restoreAttribute(el, 'src'); restoreAttribute(el, 'srcset'); } }
+        if (target === 'src') { if (url) { el.setAttribute('src', url); el.removeAttribute('srcset'); writePresentationAttribute(el, 'attachment-id', image && image.id ? String(image.id) : null); } else { restoreAttribute(el, 'src'); restoreAttribute(el, 'srcset'); var initial = initialValues && initialValues.get(el); writePresentationAttribute(el, 'attachment-id', initial ? initial.attachmentId : null); } }
         else if (target === 'background') { if (el.style) { el.style.backgroundImage = url ? 'url("' + url.replace(/"/g, '%22') + '")' : ''; } }
-        else if (target === 'gallery') { var json = JSON.stringify(gallery); el.setAttribute('data-etg-dfsb-gallery', json); }
+        else if (target === 'gallery') { var template = templateGallery(el); if (!gallery.length && template !== null) { gallery = template; } var json = JSON.stringify(gallery); writeGalleryAttribute(el, json); }
         if (boundGroups) { boundGroups.set(el, key); }
         emitDFSBEvent('dfsb/media-updated', { group: key, slot: slot, target: target, image: image || { id: 0, url: '' }, gallery: gallery, element: el });
     }
@@ -276,46 +382,167 @@
     }
 
     function readHttpResponse(response) { return response.text().then(function (text) { var data = null, invalidJson = false; if (text) { try { data = JSON.parse(text); } catch (error) { invalidJson = true; } } return { ok: response.ok, status: response.status, data: data, invalidJson: invalidJson }; }); }
+    function invalidatePresentationRequest(key) {
+        sequences[key] = (sequences[key] || 0) + 1;
+        delete prepared[key];
+        if (controllers[key]) { controllers[key].abort(); delete controllers[key]; }
+        if (timers[key]) { window.clearTimeout(timers[key]); delete timers[key]; }
+    }
+    function presentationPayload(provider, queryId, query, b) {
+        var path = window.location.pathname || '/';
+        return JSON.stringify({ provider: String(provider || ''), query_id: String(queryId || ''), request_path: path, archive_path: baseArchivePath(path), current_query: query, tokens: b.tokens, slots: b.slots });
+    }
+    function finishPresentation(result, key) {
+        if (result.failure) { blockFailClosed(result.failure, key, result.detail || {}); return; }
+        if (!result.ok) { blockFailClosed('http_error', key, { http_status: result.status }); return; }
+        if (result.invalidJson || !result.data) { blockFailClosed('invalid_response', key, { http_status: result.status }); return; }
+        applyResponse(result.data, key);
+    }
+    function settlePresentation(result, key, requestId) {
+        if (requestId !== sequences[key]) return;
+        var early = prepared[key];
+        if (early && early.requestId === requestId && !early.committed) { early.result = result; return; }
+        delete prepared[key];
+        finishPresentation(result, key);
+    }
+    function discardNativePending(key) {
+        var state = nativePending[key];
+        if (state && state.deadline) window.clearTimeout(state.deadline);
+        delete nativePending[key];
+    }
+    function nativeStart(provider, queryId) {
+        var key = groupKey(provider, queryId), group = window.JetSmartFilters.filterGroups[key];
+        if (!group || !jsfRuntimeContract().ready) return;
+        // Preserve the certified direct-link initialization path.
+        if (initialSemanticKeys[key] && !userFilterGesture && !eventSeenKeys[key]) return;
+        var state = nativePending[key];
+        invalidatePresentationRequest(key);
+        if (state) { state.depth++; state.ambiguous = true; state.updated = false; return; }
+        eventSeenKeys[key] = true;
+        state = { depth: 1, ambiguous: false, updated: false };
+        nativePending[key] = state;
+        state.deadline = window.setTimeout(function () {
+            if (nativePending[key] !== state) return;
+            discardNativePending(key);
+            if (!state.updated || state.ambiguous) {
+                invalidatePresentationRequest(key);
+                emitDFSBEvent('dfsb/ajax-presentation-blocked', { reason: 'native_jsf_lifecycle_timeout', group: key });
+            }
+        }, requestTimeoutMs * 2);
+        schedule(provider, queryId);
+    }
+    function nativeUpdated(provider, queryId) {
+        var key = groupKey(provider, queryId), state = nativePending[key];
+        eventSeenKeys[key] = true;
+        if (state && state.ambiguous) { state.updated = true; return; }
+        if (state) state.updated = true;
+        var resolved = syncAutoBindings(), early = prepared[key], group = window.JetSmartFilters.filterGroups[key];
+        if (early && group && jsfRuntimeContract().ready && early.body === presentationPayload(provider, queryId, effectiveCurrentQuery(key, group), bindings(key))) {
+            early.committed = true;
+            if (early.result) { delete prepared[key]; finishPresentation(early.result, key); }
+        } else {
+            invalidatePresentationRequest(key);
+            schedule(provider, queryId);
+        }
+        if (resolved && resolved !== key) scheduleKey(resolved);
+    }
+    function nativeEnd(provider, queryId) {
+        var key = groupKey(provider, queryId), state = nativePending[key];
+        if (!state) return;
+        if (--state.depth > 0) { state.updated = false; return; }
+        discardNativePending(key);
+        if (!state.updated) {
+            invalidatePresentationRequest(key);
+            emitDFSBEvent('dfsb/ajax-presentation-blocked', { reason: 'native_jsf_update_missing', group: key });
+        } else if (state.ambiguous) { invalidatePresentationRequest(key); syncAutoBindings(); schedule(provider, queryId); }
+    }
     function send(provider, queryId) {
         var contract = jsfRuntimeContract(); if (!contract.ready) { emitRuntimeContractBlocked(contract); return; } runtimeBlockedSignature = '';
         var jsf = window.JetSmartFilters, key = groupKey(provider, queryId), group = jsf.filterGroups[key]; if (!group) { return; }
+        var state = nativePending[key];
+        if (state && state.ambiguous) return;
         var currentQuery = effectiveCurrentQuery(key, group);
         if (!queryHasSemanticFilters(currentQuery)) {
+            if (state && !state.updated) { invalidatePresentationRequest(key); return; }
             if (initialSemanticKeys[key]) { clearTransient('filters_cleared', key); } else { restoreInitial('filters_cleared', key); }
+            // Invalidate the request even in browsers without AbortController.
+            sequences[key] = (sequences[key] || 0) + 1;
             if (controllers[key]) { controllers[key].abort(); delete controllers[key]; }
             var resolvedAfterClear = syncAutoBindings(); if (resolvedAfterClear && resolvedAfterClear !== key) { scheduleKey(resolvedAfterClear); }
             return;
         }
-        var b = bindings(key); if (!b.tokens.length && !b.slots.length) { emitAutoGroupStatus(); return; }
+        var b = bindings(key); if (!b.tokens.length && !b.slots.length) { invalidatePresentationRequest(key); emitAutoGroupStatus(); return; }
         sequences[key] = (sequences[key] || 0) + 1; var requestId = sequences[key]; if (controllers[key]) { controllers[key].abort(); } controllers[key] = typeof AbortController !== 'undefined' ? new AbortController() : null;
-        var requestPath = window.location.pathname || '/';
-        var options = { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: String(provider || ''), query_id: String(queryId || ''), request_path: requestPath, archive_path: baseArchivePath(requestPath), current_query: currentQuery, tokens: b.tokens, slots: b.slots }) };
-        if (controllers[key]) { options.signal = controllers[key].signal; }
-        var timedOut = false, timeoutId = null, transport = fetch(cfg.endpoint, options).then(readHttpResponse);
-        var deadline = new Promise(function (resolve, reject) { timeoutId = window.setTimeout(function () { timedOut = true; if (controllers[key]) { controllers[key].abort(); } var error = new Error('Dynamic Filter SEO Bridge AJAX presentation timeout'); error.name = 'DFSBTimeoutError'; reject(error); }, requestTimeoutMs); });
+        var body = presentationPayload(provider, queryId, currentQuery, b);
+        if (state && !state.updated) prepared[key] = { requestId: requestId, body: body, committed: false, result: null };
+        else delete prepared[key];
+        var options = { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: body };
+        var controller = controllers[key];
+        if (controller) { options.signal = controller.signal; }
+        emitDFSBEvent('dfsb/ajax-presentation-start', { group: key, request_id: requestId });
+        var timedOut = false, timeoutId = null, transport = Promise.resolve().then(function () { return fetch(cfg.endpoint, options); }).then(readHttpResponse);
+        var deadline = new Promise(function (resolve, reject) { timeoutId = window.setTimeout(function () { timedOut = true; if (controller) { controller.abort(); } var error = new Error('Dynamic Filter SEO Bridge AJAX presentation timeout'); error.name = 'DFSBTimeoutError'; reject(error); }, requestTimeoutMs); });
         Promise.race([transport, deadline]).then(function (result) {
             if (requestId !== sequences[key]) { return; }
-            if (!result.ok) { blockFailClosed('http_error', key, { reason: 'http_error', http_status: result.status }); return; }
-            if (result.invalidJson || !result.data) { blockFailClosed('invalid_response', key, { http_status: result.status }); return; }
-            applyResponse(result.data, key);
+            settlePresentation(result, key, requestId);
         }).catch(function (error) {
             if (requestId !== sequences[key]) { return; }
-            if (timedOut || (error && error.name === 'DFSBTimeoutError')) { blockFailClosed('timeout', key, { reason: 'timeout', timeout_ms: requestTimeoutMs }); return; }
+            if (timedOut || (error && error.name === 'DFSBTimeoutError')) { settlePresentation({failure:'timeout',detail:{timeout_ms:requestTimeoutMs}}, key, requestId); return; }
             if (error && error.name === 'AbortError') { return; }
-            blockFailClosed('transport_error', key);
+            settlePresentation({failure:'transport_error'}, key, requestId);
         }).then(function () { if (timeoutId) { window.clearTimeout(timeoutId); } if (requestId === sequences[key]) { delete controllers[key]; } });
     }
 
     function schedule(provider, queryId) { var key = groupKey(provider, queryId); if (timers[key]) { window.clearTimeout(timers[key]); } timers[key] = window.setTimeout(function () { delete timers[key]; send(provider, queryId); }, 25); }
     function scheduleKey(key) { var parts = String(key || '').split('/'); if (parts.length < 2) { return; } schedule(parts[0], parts.slice(1).join('/')); }
+    // Native JSF may hydrate a multi-term deep link one checkbox at a time.
+    // Coalesce only that initial burst (never normal user filtering) so a
+    // partial taxonomy state does not launch a redundant Listing render.
+    // Keep every native query value, operator, callback and render authority.
+    function coalesceNativeDirectLinkHydration(jsf, pathState) {
+        if (!pathState.valid || !pathState.group || userFilterGesture) { return; }
+        var terms = pathState.query || {};
+        var hasMultipleTerms = Object.keys(terms).some(function (key) {
+            if (key.indexOf('_tax_query_') !== 0 || typeof terms[key] !== 'string') { return false; }
+            return terms[key].split(',').filter(function (part) { return part && !/^operator_(?:AND|IN)$/.test(part); }).length > 1;
+        });
+        if (!hasMultipleTerms) { return; }
+        var group = jsf.filterGroups && jsf.filterGroups[pathState.group];
+        if (!group || typeof group.ajaxRequest !== 'function' || group.__dfsbHydrationCoalescing) { return; }
+        var original = group.ajaxRequest, scheduled = null, latestArgs = null, finished = false;
+        var hardDeadline = null;
+        function flush() {
+            if (finished) { return; }
+            finished = true;
+            if (scheduled !== null) { window.clearTimeout(scheduled); scheduled = null; }
+            if (hardDeadline !== null) { window.clearTimeout(hardDeadline); hardDeadline = null; }
+            if (group.ajaxRequest === wrapped) { group.ajaxRequest = original; }
+            delete group.__dfsbHydrationCoalescing;
+            if (latestArgs) { var args = latestArgs; latestArgs = null; original.apply(group, args); }
+        }
+        function wrapped() {
+            latestArgs = Array.prototype.slice.call(arguments);
+            if (userFilterGesture) { flush(); return; }
+            if (scheduled !== null) { window.clearTimeout(scheduled); }
+            scheduled = window.setTimeout(flush, 200);
+        }
+        group.__dfsbHydrationCoalescing = true;
+        group.ajaxRequest = wrapped;
+        // Bounded release even if native initialization never settles.
+        hardDeadline = window.setTimeout(flush, 1500);
+    }
+
     function init() {
         normalizeNeutralBindings();
         if (initialized) { return; } var contract = jsfRuntimeContract(); if (!contract.ready) { emitRuntimeContractBlocked(contract); return; } runtimeBlockedSignature = '';
         var jsf = window.JetSmartFilters; initialized = true;
         var pathState = prettyPathState();
+        coalesceNativeDirectLinkHydration(jsf, pathState);
         if (pathState.valid && pathState.group && queryHasSemanticFilters(pathState.query)) { initialSemanticKeys[pathState.group] = true; }
         groupKeys().forEach(function (key) { var group = jsf.filterGroups[key]; if (group && queryHasSemanticFilters(group.currentQuery)) { initialSemanticKeys[key] = true; } });
-        jsf.events.subscribe('ajaxFilters/updated', function (provider, queryId) { var key = groupKey(provider, queryId); eventSeenKeys[key] = true; var resolved = syncAutoBindings(); schedule(provider, queryId); if (resolved && resolved !== key) { scheduleKey(resolved); } });
+        jsf.events.subscribe('ajaxFilters/start-loading', nativeStart);
+        jsf.events.subscribe('ajaxFilters/updated', nativeUpdated);
+        jsf.events.subscribe('ajaxFilters/end-loading', nativeEnd);
         if (pathState.valid && pathState.group && groupKeys().indexOf(pathState.group) !== -1 && queryHasSemanticFilters(pathState.query)) { scheduleKey(pathState.group); }
         groupKeys().forEach(function (key) { var parts = key.split('/'), group = jsf.filterGroups[key]; if (parts.length >= 2 && group && queryHasSemanticFilters(group.currentQuery)) { schedule(parts[0], parts.slice(1).join('/')); } });
         syncAutoBindings();

@@ -18,7 +18,7 @@ WORKFLOW = "dfsb-release-review-attestation.yml"
 PLUGIN_HEADER = "wp-content/plugins/dynamic-filter-seo-bridge/dynamic-filter-seo-bridge.php"
 COMMAND = re.compile(
     r"/run-dfsb-release-review ([a-f0-9]{40}) ([1-9][0-9]*) "
-    r"([0-9]+\.[0-9]+\.[0-9]+-alpha\.[0-9]+-rc\.[0-9]+)\Z"
+    r"((?:(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)|[0-9]+\.[0-9]+\.[0-9]+-alpha\.[0-9]+-rc\.[0-9]+))\Z"
 )
 
 

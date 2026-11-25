@@ -9,7 +9,7 @@ use DynamicFilterSEOBridge\Identifiers\QueryId;
  * Bounded, non-authorizing evidence adapter for central diagnostic transports.
  *
  * This class deliberately owns no transport, authentication, REST route, MCP
- * ability, approval, or mutation surface. It projects the canonical ETG runtime
+ * ability, approval, or mutation surface. It projects the canonical DFSB runtime
  * inventory/reconciliation into small versioned responses that a central
  * transport can page, export, or materialize safely.
  */

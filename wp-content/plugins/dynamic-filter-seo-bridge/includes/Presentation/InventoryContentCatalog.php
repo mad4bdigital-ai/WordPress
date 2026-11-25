@@ -19,6 +19,7 @@ final class InventoryContentCatalog {
         $inventory=(array)($snapshot['inventory']??array());$tokens=array();$groups=array();
         $this->token($tokens,'title','Filter Title','text','composed');
         $this->token($tokens,'intro','Filter Intro','html','composed');
+        $this->token($tokens,'editorial_cards','Selected Term Cards','html','composed');
         $this->token($tokens,'keyword','Focus Keyword','text','composed');
         $this->token($tokens,'result_count','Result Count','text','runtime');
         $this->token($tokens,'result_summary','Result Summary','text','runtime');
@@ -49,7 +50,7 @@ final class InventoryContentCatalog {
         $fields=array('name'=>'Term Name','slug'=>'Term Slug','description'=>'Description','short_description'=>'Short Description','seo_title'=>'SEO Title','meta_description'=>'Meta Description','focus_keyword'=>'Focus Keyword','image_id'=>'Image ID','image_url'=>'Image URL','count'=>'Term Count','location_level'=>'Location Level');
         foreach($roleTaxonomies as $role=>$taxonomyMap){
             foreach($fields as $field=>$label){$type=in_array($field,array('description','short_description'),true)?'html':('image_url'===$field?'url':'text');$this->token($tokens,'term:'.$role.':'.$field,ucwords(str_replace('_',' ',$role)).' — '.$label,$type,'term');}
-            foreach(array('ids'=>'Selected IDs','names'=>'Selected Names','slugs'=>'Selected Slugs','count'=>'Selected Count','descriptions'=>'Selected Descriptions','short_descriptions'=>'Selected Short Descriptions') as $field=>$label){$type=in_array($field,array('descriptions','short_descriptions'),true)?'html':'text';$this->token($tokens,'terms:'.$role.':'.$field,ucwords(str_replace('_',' ',$role)).' — '.$label,$type,'ajax-term-set');}
+            foreach(array('ids'=>'Selected IDs','names'=>'Selected Names','slugs'=>'Selected Slugs','count'=>'Selected Count','descriptions'=>'Selected Descriptions','short_descriptions'=>'Selected Short Descriptions','sections'=>'Selected Term Cards') as $field=>$label){$type=in_array($field,array('descriptions','short_descriptions','sections'),true)?'html':'text';$this->token($tokens,'terms:'.$role.':'.$field,ucwords(str_replace('_',' ',$role)).' — '.$label,$type,'ajax-term-set');}
             foreach(array_keys($taxonomyMap) as $taxonomy){foreach($this->metaKeys($taxonomy) as $key){$this->token($tokens,'termmeta:'.$role.':'.$key,ucwords(str_replace('_',' ',$role)).' Meta — '.$key,'text','term-meta',array('field_key'=>$key));}}
         }
         $topology=(array)($inventory['elementor_topology']??array());

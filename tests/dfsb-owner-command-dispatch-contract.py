@@ -68,6 +68,18 @@ def verify():
               event(login="attacker"),event(sender="attacker"),event(action="edited"),
               event(number=999),event(is_pr=False),event(id=0)):
         denied(e)
+    # Numeric identity still requires the exact merged header and owner comment.
+    numeric="0.4.16"; body=BODY.replace(VERSION,numeric)
+    denied(event(body=body))
+    r=records()
+    key=next(k for k in r if "/contents/" in k)
+    r[key]["content"]=base64.b64encode(f"<?php\n/**\n * Version: {numeric}\n */\n".encode()).decode()
+    key=next(k for k in r if "/comments?" in k)
+    r[key][-1]["body"]=body
+    result,posted=execute(event(body=body),r)
+    assert result["source_version"]==numeric and len(posted)==1 and not result["production_authorized"]
+    for version in ("0.4.16-local","0.4.16-dev","0.04.16","0.4.16+build"):
+        denied(event(body=BODY.replace(VERSION,version)))
     denied(kind="commit_comment");denied(repo="another/repo")
     for key,modify in [
         ("pulls",lambda d:d.update({"merged":False})),

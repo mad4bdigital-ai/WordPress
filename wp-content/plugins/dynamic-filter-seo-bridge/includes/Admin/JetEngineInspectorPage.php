@@ -111,14 +111,14 @@ final class JetEngineInspectorPage {
         ?>
         <div class="etg-safety-strip"><span class="dashicons dashicons-database-view"></span><p><strong>Current listing context:</strong> <?php echo !empty($listing['available']) ? 'available' : 'not active in this admin request'; ?>. follows JetEngine current-object context rather than replacing its renderer.</p></div>
         <section class="etg-panel"><div class="etg-panel__head"><div><h2>JetEngine Context & Recipes</h2></div></div><div class="etg-panel__body"><table class="widefat striped"><tbody>
-            <tr><th>Query Builder — selected term</th><td><code>%etg_filter_term_id|location%</code></td></tr>
-            <tr><th>Query Builder — multi-select IDs</th><td><code>%etg_filter_term_ids|location|,%</code></td></tr>
-            <tr><th>Query Builder — multi-select slugs</th><td><code>%etg_filter_term_slugs|location|,%</code></td></tr>
-            <tr><th>Query Builder — term meta</th><td><code>%etg_filter_term_meta|location|HeroImage%</code></td></tr>
-            <tr><th>Query Builder — multi-term meta</th><td><code>%etg_filter_term_meta_values|location|RegionCode|,%</code></td></tr>
+            <tr><th>Query Builder — selected term</th><td><code>%dfsb_filter_term_id|location%</code></td></tr>
+            <tr><th>Query Builder — multi-select IDs</th><td><code>%dfsb_filter_term_ids|location|,%</code></td></tr>
+            <tr><th>Query Builder — multi-select slugs</th><td><code>%dfsb_filter_term_slugs|location|,%</code></td></tr>
+            <tr><th>Query Builder — term meta</th><td><code>%dfsb_filter_term_meta|location|HeroImage%</code></td></tr>
+            <tr><th>Query Builder — multi-term meta</th><td><code>%dfsb_filter_term_meta_values|location|RegionCode|,%</code></td></tr>
             <tr><th>Listing / Component context</th><td>Select <code>Filter Context (presentation only)</code>.</td></tr>
             <tr><th>Dynamic Repeater rows</th><td><code><?php echo esc_html(ListingIntegration::repeaterMarker('slot_id', 'source_alias')); ?></code></td></tr>
-            <tr><th>Slot rows JSON macro</th><td><code>%etg_slot_rows|slot_id|source_alias%</code></td></tr>
+            <tr><th>Slot rows JSON macro</th><td><code>%dfsb_slot_rows|slot_id|source_alias%</code></td></tr>
             <tr><th>Slider / Carousel</th><td>Use a Query Builder source in native Listing Grid/Carousel, or output a Slot as <code>gallery</code> and bind <strong>Content Slot Gallery</strong>.</td></tr>
         </tbody></table></div></section>
         <?php

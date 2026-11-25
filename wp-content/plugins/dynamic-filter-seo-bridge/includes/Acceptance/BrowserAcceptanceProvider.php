@@ -1,6 +1,8 @@
 <?php
 namespace DynamicFilterSEOBridge\Acceptance;
 
+use DynamicFilterSEOBridge\Presentation\AjaxPresentationEndpoint;
+
 final class BrowserAcceptanceProvider {
     const CONTRACT = 'etg.dfsb.browser-acceptance-provider.v2';
     const PROVIDER_ID = 'etg-dfsb';
@@ -100,8 +102,8 @@ final class BrowserAcceptanceProvider {
                 'browser.performance_baseline',
                 'browser.async_digest_snapshot',
             ),
-            'required_events'=>array('ajaxFilters/updated','etg-dfsb/ajax-presentation-updated','etg-dfsb/ajax-presentation-reset'),
-            'required_network'=>array('POST /wp-json/etg-dfsb/v1/ajax-presentation'),
+            'required_events'=>array('ajaxFilters/updated','dfsb/ajax-presentation-updated','dfsb/ajax-presentation-reset'),
+            'required_network'=>array('POST /wp-json/'.AjaxPresentationEndpoint::restPath()),
             'required_head_state'=>array('canonical','robots','hreflang','rank_math'),
             'observer_snapshot'=>array('default'=>'snapshot','full_digest'=>'snapshotAsync','max_digest_ids'=>self::MAX_DIGEST_IDS),
         );
@@ -125,6 +127,12 @@ final class BrowserAcceptanceProvider {
         $origin = $this->origin();
         if ('' === $origin) return $this->blockedPlan($profileId, array('origin_unavailable'));
 
+        // Bind the canonical plugin's own reviewed observer asset to the signed plan.
+        $asset = BrowserObserverAsset::describe();
+        if (($asset['available'] ?? false) !== true || ($asset['build_identity']['git_sha'] ?? '') !== $identity['git_sha']
+            || ($asset['build_identity']['tree_sha'] ?? '') !== $identity['tree_sha']) {
+            return $this->blockedPlan($profileId, array('canonical_observer_asset_unverified'));
+        }
         $cases = array();
         foreach ((array)($semantic['cases'] ?? array()) as $case) {
             if (count($cases) >= self::MAX_CASES) break;
@@ -179,8 +187,9 @@ final class BrowserAcceptanceProvider {
                 'arbitrary_url_input'=>false,
                 'arbitrary_javascript_input'=>false,
                 'observer_contract'=>self::OBSERVER_CONTRACT,
+                'observer_asset'=>array('layout'=>'dynamic-filter-seo-bridge','sha256'=>$asset['sha256'],'bytes'=>$asset['bytes']),
                 'evidence_contract'=>self::EVIDENCE_CONTRACT,
-                'ajax_endpoint_path'=>'/wp-json/etg-dfsb/v1/ajax-presentation',
+                'ajax_endpoint_path'=>'/wp-json/'.AjaxPresentationEndpoint::restPath(),
                 'max_evidence_bytes'=>self::MAX_EVIDENCE_BYTES,
             ),
         );
@@ -462,7 +471,7 @@ final class BrowserAcceptanceProvider {
     private function normalizeOrigin(string $origin):string{$origin=trim($origin);if(''===$origin)return'';return rtrim($origin,'/').'/';}
     private function caseArchivePath(array $semanticPlan,array $case):string{if(isset($case['archive_path']))return(string)$case['archive_path'];foreach((array)($semanticPlan['cases']??array())as$candidate){if((string)($candidate['case_id']??'')===(string)($case['case_id']??'')&&isset($candidate['archive_path']))return(string)$candidate['archive_path'];}return'/';}
     private function normalizeIds(array $ids,int $limit):array{$out=array();foreach(array_slice($ids,0,$limit)as$id){$id=(int)$id;if($id>0&&!in_array($id,$out,true))$out[]=$id;}return$out;}
-    private function endpointMatches(string $endpoint):bool{$endpoint=trim($endpoint);if(''===$endpoint)return false;$path=parse_url($endpoint,PHP_URL_PATH);if(!is_string($path)||''===$path)$path=$endpoint;return'/wp-json/etg-dfsb/v1/ajax-presentation'===rtrim($path,'/');}
+    private function endpointMatches(string $endpoint):bool{$endpoint=trim($endpoint);if(''===$endpoint)return false;$path=parse_url($endpoint,PHP_URL_PATH);if(!is_string($path)||''===$path)$path=$endpoint;return '/wp-json/'.AjaxPresentationEndpoint::restPath()===rtrim($path,'/');}
     private function authority():array{return array('authorizing'=>false,'persistent_mutation'=>false,'profile_mutation'=>false,'seo_publication'=>false,'production_activation'=>false,'browser_state_transient_only'=>true);}
     private function supportedExecutionModes():array{return array('external_browser_agent','local_interactive_browser','self_hosted_browser_agent','managed_browser_agent');}
     private function validDigest(string $digest):bool{return 1===preg_match('/^[a-f0-9]{64}$/',$digest);}

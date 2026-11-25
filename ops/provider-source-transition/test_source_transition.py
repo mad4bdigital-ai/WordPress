@@ -79,6 +79,27 @@ class SourceTransitionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             indexes(self.policy, missing)
 
+    def test_central_authority_continuity(self):
+        for mode, source in (("new_site", None), ("existing_site", "etg-dynamic-filter-seo-bridge")):
+            report = plan(self.policy, self.catalog, "dynamic-filter-seo-bridge", mode, source)
+            authority = report["central_authority_policy"]
+            self.assertEqual(authority["origin"], "https://tours.dev.mad4b.com")
+            self.assertEqual(authority["code_sources"], ["live", "local_git", "github"])
+            self.assertFalse(authority["source_change_reenrollment"])
+            self.assertFalse(authority["source_change_grant_revocation"])
+            self.assertFalse(authority["source_change_grant_creation"])
+            self.assertFalse(report["authority_registration_verified_by_source_plan"])
+            self.assertFalse(report["execution_allowed"])
+
+    def test_central_authority_substitution_rejected(self):
+        for key, value in (("origin", "https://other.invalid"), ("scope", "other:production"),
+                           ("source_change_grant_creation", True), ("source_change_reenrollment", True),
+                           ("source_change_grant_revocation", True), ("bootstrap_independent_of_release", False)):
+            unsafe = copy.deepcopy(self.policy)
+            unsafe["central_authority"][key] = value
+            with self.assertRaises(ValueError):
+                indexes(unsafe, self.catalog)
+
     def test_policy_cannot_grant_execution(self):
         unsafe = copy.deepcopy(self.policy)
         unsafe["execution_authority"] = "inherit_legacy"

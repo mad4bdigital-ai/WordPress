@@ -4,7 +4,7 @@ import re
 import unittest
 from audit_consumer_readiness import (
     NEUTRAL_ENTRY, READ_ADAPTER, WRITE_ADAPTER, REGISTRY, SKILLS, MIRROR, SOURCES,
-    audit, current,
+    audit, current, inspect_bundled_read_consumers,
 )
 
 
@@ -59,6 +59,21 @@ class ConsumerReadinessTests(unittest.TestCase):
         self.assertIn("etg-dfsb/slot-apply", result["legacy_write_abilities"])
         self.assertIn("etg-dfsb/profile-apply", result["legacy_write_abilities"])
         self.assertFalse(result["new_write_authority"])
+
+    def test_actual_entrypoint_consumers_are_distinct_exact_classes(self):
+        report = current()["bundled_read_consumers"]
+        rows = {row["class"]: row for row in report["consumers"]}
+        self.assertEqual(set(rows), {"MAD4B_SCP_ETG_DFSB_Adapter", "MAD4B_SCP_DFSB_Adapter"})
+        self.assertTrue(rows["MAD4B_SCP_ETG_DFSB_Adapter"]["exact_class_reviewed"])
+        self.assertIn("dfsb/status", rows["MAD4B_SCP_DFSB_Adapter"]["declared_identifiers"])
+        self.assertEqual(report["shared_provider_identity"], ["etg-dfsb"])
+        self.assertFalse(report["runtime_admission_verified"])
+        self.assertTrue(all(not row["authorizing"] for row in rows.values()))
+
+    def test_unloaded_declaration_is_not_entrypoint_consumer(self):
+        report = inspect_bundled_read_consumers("", {"unused.php": "not a class"}, {}, {}, "0.4.16")
+        self.assertEqual(report["consumers"], [])
+        self.assertFalse(report["authorizing"])
 
     def test_alias_removed_still_no_authority(self):
         content = self.sources["neutral"].replace(
