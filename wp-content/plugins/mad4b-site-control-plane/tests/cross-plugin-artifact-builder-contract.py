@@ -37,6 +37,7 @@ with tempfile.TemporaryDirectory(prefix="cross-plugin-ci-") as scratch:
     fixture_manifest = tmp / "sources.json"
     data = json.loads(MANIFEST.read_text(encoding="utf-8"))
     entry = next(x for x in data["sources"] if x["id"] == "etg-dynamic-filter-seo-bridge")
+    entry["review_state"] = "source_reviewed_artifact_pending"
     entry["candidate_source_commit_sha"] = sha
     entry["candidate_artifact_version"] = "0.4.0-alpha.13"
     fixture_manifest.write_text(json.dumps(data), encoding="utf-8")
