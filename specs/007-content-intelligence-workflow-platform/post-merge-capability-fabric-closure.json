@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.capability-fabric-post-merge-closure.v1",
   "phase": 37,
-  "baseline_merge_commit": "c5c81cd0e23ed6ab63763521f29f4f8469d6df90",
+  "baseline_merge_commit": "5b4f38895bf03ead4525e542d553d7e9ff5e39dd",
   "production_authorized": false,
   "breakglass_widened": false,
   "generic_shell_authorized": false,
@@ -936,8 +936,8 @@
   "traceability_family": "CAPFAB",
   "baseline_source_review": {
     "previous_commit": "3785892316d3c395ad144500fdecc6836ed2c176",
-    "reconciled_repository_parent": "c5c81cd0e23ed6ab63763521f29f4f8469d6df90",
-    "scope": "PR #1094 bounded source-only technical impact review; 951 inherited paths inventoried, 44 Control Plane paths identified; exact-head targeted hermetic regressions passed. See baseline-review-20261126-dfsb.md. Independent owner attestation, live staging parity, package recapture and production authorization remain pending.",
+    "reconciled_repository_parent": "5b4f38895bf03ead4525e542d553d7e9ff5e39dd",
+    "scope": "PR #1094 bounded source-only technical impact review; 951 inherited paths inventoried, 44 Control Plane paths identified; exact-head targeted hermetic regressions passed. See baseline-review-20261126-dfsb.md. Independent owner attestation, live staging parity, package recapture and production authorization remain pending. Subsequent root-only PR #1095 merged two CI workflows under separate exact-head owner attestation and successful CI.",
     "authorizing": false
   }
 }

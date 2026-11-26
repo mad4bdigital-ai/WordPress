@@ -43,7 +43,7 @@ certify a working external MCP session. Write remains unverified/unready.
 ## Baseline
 
 - target branch: `master`
-- reviewed repository parent: `c5c81cd0e23ed6ab63763521f29f4f8469d6df90` (bounded source-only technical review for PR #1094; previous parent `3785892316d3c395ad144500fdecc6836ed2c176` and original evidence retained in `baseline-review-20261029.md`. See `baseline-review-20261126-dfsb.md`. Independent exact-head owner attestation, package recapture, provider certification and live acceptance remain required.)
+- reviewed repository parent: `5b4f38895bf03ead4525e542d553d7e9ff5e39dd` (bounded source-only technical review for PR #1094; previous parent `3785892316d3c395ad144500fdecc6836ed2c176` and original evidence retained in `baseline-review-20261029.md`. See `baseline-review-20261126-dfsb.md`. Independent exact-head owner attestation, package recapture, provider certification and live acceptance remain required.)
 - Control Plane line: `0.4.0-rc.59`
 - MCP Adapter line: `0.6.1`
 - Production authorization: false

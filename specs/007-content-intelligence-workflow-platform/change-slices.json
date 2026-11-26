@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.change-slices.v2",
   "authorizing": false,
-  "reviewed_base_sha": "c5c81cd0e23ed6ab63763521f29f4f8469d6df90",
+  "reviewed_base_sha": "5b4f38895bf03ead4525e542d553d7e9ff5e39dd",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 140,
-  "changed_paths_sha256": "0af3abe46b967a9de4ff8766f9351582f4dc6f88675aadfae8ddef4bb551d9cf",
+  "changed_file_count": 139,
+  "changed_paths_sha256": "06b391bf68dc069041e4bb01d1440785769a9ef15ce471e937a1b450c286a97f",
   "slices": [
     {
       "id": "release-integrity",
@@ -191,7 +191,6 @@
       "revert_boundary": "Revert isolated CI compatibility fixes independently; regenerate the scope manifest whenever reviewed base or changed paths change.",
       "certification": "exact_head",
       "path_globs": [
-        ".github/workflows/mad4b-context-authority.yml",
         ".github/workflows/mad4b-local-oauth-standalone.yml",
         "specs/007-content-intelligence-workflow-platform/change-slices.json",
         "wp-content/plugins/mad4b-site-control-plane/tests/context-admin-recovery-runtime.php",
