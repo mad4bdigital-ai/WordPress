@@ -3,7 +3,8 @@ on:
   pull_request:
     paths:
       - "wp-content/plugins/commerce-composition/**"
-      - "docs/commerce/qa42a/commerce-composition-runtime-manifest.json"
+      - "docs/releases/commerce-composition-0.16.2-source-manifest.json"
+      - "tests/group-plugins/commerce-composition/**"
       - ".github/workflows/commerce-composition-source.yml"
   workflow_dispatch:
 permissions:
@@ -31,18 +32,25 @@ jobs:
           while IFS= read -r -d '' file; do
             php -l "$file" >/dev/null
             count=$((count+1))
-          done < <(find wp-content/plugins/commerce-composition -type f -name '*.php' -print0)
+          done < <(find wp-content/plugins/commerce-composition tests/group-plugins/commerce-composition -type f -name '*.php' -print0)
           test "$count" -ge 100
           echo "PASS: linted $count PHP files"
       - name: Company commercial Quote Plan contract
-        run: php wp-content/plugins/commerce-composition/tests/commercial-quote-plan-contract.php
+        run: |
+          set -e
+          t=tests/group-plugins/commerce-composition
+          for f in run.php classification.php form.php commercial-quote-plan-contract.php; do php "$t/legacy-runtime/$f"; done
+          php "$t/request-lifecycle-hermetic.php"
+          php "$t/company-policy-hermetic.php"
+          php "$t/release-contract.php"
       - name: Exact SHA256 and byte-count manifest
         run: |
           python3 - <<'PY'
           import pathlib,hashlib,json
-          manifest=json.load(open('docs/commerce/qa42a/commerce-composition-runtime-manifest.json'))
+          manifest=json.load(open('docs/releases/commerce-composition-0.16.2-source-manifest.json'))
           root=pathlib.Path('wp-content/plugins/commerce-composition')
           records=manifest['source_files']
+          assert {r['path'] for r in records}=={p.relative_to(root).as_posix() for p in root.rglob('*') if p.is_file()}
           assert len(records)==manifest['source_count'] and len(records)>=65
           for record in records:
               path=root/record['path']

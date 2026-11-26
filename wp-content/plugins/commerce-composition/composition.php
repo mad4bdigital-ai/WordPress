@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Commerce Composition
  * Description: Channel-aware, policy-driven product and package composition. No product or order replacement.
- * Version: 0.16.0-qa.11
+ * Version: 0.16.2
  * Requires PHP: 8.1
  */
 defined('ABSPATH') || exit;
@@ -121,3 +121,12 @@ add_action('plugins_loaded', [Commerce\Composition\GuestConsentConfirmPage::clas
 if (is_admin()) add_action('plugins_loaded', [Commerce\Composition\Admin::class, 'bootstrap'], 45);
 if (is_admin()) add_action('plugins_loaded', [Commerce\Composition\ContactBridgeAdmin::class, 'bootstrap'], 49);
 if (is_admin()) add_action('plugins_loaded', [Commerce\Composition\RequestReviewAdmin::class, 'bootstrap'], 50);
+// Restore existing source-owned request providers without replacing certified execution providers.
+require_once __DIR__ . '/includes/CompanyPolicyLibrary.php';
+require_once __DIR__ . '/includes/RequestAdvancePayments.php';
+add_action('plugins_loaded', [Commerce\Composition\RequestAdvancePayments::class, 'bootstrap'], 58);
+require_once __DIR__ . '/includes/RequestAdvanceAccounting.php';
+require_once __DIR__ . '/includes/RequestLifecycle.php';
+add_action('plugins_loaded', [Commerce\Composition\RequestLifecycle::class, 'bootstrap'], 59);
+require_once __DIR__ . '/includes/SingleFluentPaymentRouter.php';
+add_action('plugins_loaded', [Commerce\Composition\SingleFluentPaymentRouter::class, 'boot'], 60);

@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace Commerce\Composition;
+require_once __DIR__.'/LifecycleAccess.php';
 
 /**
  * Durable command/outbox with idempotency, principal preservation and
@@ -61,17 +62,19 @@ final class WorkflowJobs
             return new \WP_Error('workflow_queue_origin_not_allowed');
         if(!preg_match('/^[A-Za-z0-9._:-]{16,128}$/D',$intentKey))
             return new \WP_Error('workflow_idempotency_key_invalid');
-        if($actorId<1||!user_can($actorId,'manage_options'))
+        if($actorId<1||!($action==='sync_request_lifecycle'
+            ?\Commerce\Composition\LifecycleAccess::can('commerce_run_workflows',$actorId):user_can($actorId,'manage_options')))
             return new \WP_Error('workflow_actor_not_authorized');
         // Publicly enqueued background jobs must not depend on an HTTP
         // customer's transient Woo session or gain sale/supplier authority.
         if(!in_array($action,[
             'link_contact_record',
-            'create_request_from_saved_submission'
+            'create_request_from_saved_submission',
+            'sync_request_lifecycle'
         ],true))return new \WP_Error('workflow_action_not_async_certified');
-        $keys=$action==='link_contact_record'
-            ?['contact_id','source_key','source_id','role']
-            :['form_id','submission_id'];
+        $keys=$action==='sync_request_lifecycle'
+            ?['form_id','submission_id','order_id','event','component','refund_id']
+            :($action==='link_contact_record'?['contact_id','source_key','source_id','role']:['form_id','submission_id']);
         $actualKeys=array_keys($payload);
         sort($actualKeys,SORT_STRING);
         $requiredKeys=$keys;
@@ -92,6 +95,10 @@ final class WorkflowJobs
                 'source_id'=>$payload['source_id'],
                 'role'=>$payload['role']
             ];
+        }elseif($action==='sync_request_lifecycle'){
+            if(!RequestLifecycle::validPayload($payload))return new \WP_Error('workflow_payload_schema_invalid');
+            $verified=RequestLifecycle::jobContext($payload);
+            if(is_wp_error($verified))return $verified;
         }else{
             if(!is_int($payload['form_id'])||$payload['form_id']<1||
                 !is_int($payload['submission_id'])||$payload['submission_id']<1)
@@ -222,7 +229,8 @@ final class WorkflowJobs
             !hash_equals((string)$row['payload_sha256'],
                 hash('sha256',$row['action_key'].':'.$row['payload_json'])))
             $result=new \WP_Error('workflow_job_payload_integrity_failed');
-        elseif(!user_can($actor,'manage_options'))
+        elseif(!($row['action_key']==='sync_request_lifecycle'
+            ?\Commerce\Composition\LifecycleAccess::can('commerce_run_workflows',$actor):user_can($actor,'manage_options')))
             $result=new \WP_Error('workflow_job_actor_revoked');
         else {
             $previous=get_current_user_id();

@@ -23,7 +23,7 @@ final class CompanyCommercePolicy
         'traveler_acceptance'=>['required','channel_verified'],
         'order_timing'=>['after_acceptance','after_payment','manual'],
         'supplier_booking_timing'=>['after_order','after_payment','manual'],
-        'deposit_mode'=>['full','percent','manual_review'],
+        'deposit_mode'=>['full','percent','fixed','manual_review'],
         'currency_source'=>['woocommerce','rate','manual_review'],
         'rate_sale_mode'=>['parent_with_rate','independent_rate','both','disabled']
     ];
@@ -75,7 +75,7 @@ final class CompanyCommercePolicy
         if($settings===[]||count($settings)>25)return false;
         foreach($settings as $k=>$v) {
             if(!is_string($k))return false;
-            if($k==='margin_value'||$k==='deposit_percent'){
+            if($k==='margin_value'||$k==='deposit_percent'||$k==='deposit_amount'){
                 if(!is_int($v)&&!is_float($v))return false;
                 if(!is_finite((float)$v)||(float)$v<0||(float)$v>($k==='deposit_percent'?100:1000000))
                     return false;
@@ -84,6 +84,8 @@ final class CompanyCommercePolicy
         }
         if(array_key_exists('margin_value',$settings) &&
             !isset($settings['margin_mode']))return false;
+        if(array_key_exists('deposit_amount',$settings) &&
+            ($settings['deposit_mode']??null)!=='fixed')return false;
         if(array_key_exists('deposit_percent',$settings) &&
             ($settings['deposit_mode']??null)!=='percent')return false;
         return true;
@@ -367,6 +369,7 @@ final class CompanyCommercePolicy
             return self::problem('policy_required_default_'.$key);
         if($effective['margin_mode']==='manual_review')unset($effective['margin_value']);
         if($effective['deposit_mode']!=='percent')unset($effective['deposit_percent']);
+        if($effective['deposit_mode']!=='fixed')unset($effective['deposit_amount']);
         // Sell mode is a company option, never an unconditional purchasability
         // override: parent/rate Woo identity and native checkout gates remain.
         $sellMode=$effective['rate_sale_mode'];

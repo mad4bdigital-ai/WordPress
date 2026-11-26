@@ -1,3 +1,10 @@
+## 0.16.2 — Review candidate
+
+- Recover native request advance, customer policy, lifecycle and accounting sources from the integration snapshot.
+- Strict published template identity; delegate lifecycle decisions to the existing native authority, deny missing provider.
+- Separate historical source tests and evidence from runtime distribution.
+- No production or financial activation authority.
+
 # 0.16.0-qa.11 — 2026-10-26 (Rate overlap and quote bridge QA)
 
 - Added TourRateResolution for overlapping candidate Rates and explicit source-saved selection. Gold Tour 60645 has winter Rate 61148 and 61158 both eligible for the same date: never auto-pick the first or cheapest.

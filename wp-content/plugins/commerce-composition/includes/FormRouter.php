@@ -26,7 +26,7 @@ final class FormRouter
             if(!is_array($provided))return new \WP_Error('form_policy_provider_invalid');
             return $provided;
         }
-        if(function_exists('BookingExperience\\booking_experience_policy_resolve')) {
+        if(function_exists('BookingExperience'.chr(92).'booking_experience_policy_resolve')) {
             $existing=\BookingExperience\booking_experience_policy_resolve($postId,0,$rateId??0);
             if(!is_wp_error($existing) && isset($existing['effective']) &&
                is_array($existing['effective']))
@@ -45,10 +45,33 @@ final class FormRouter
         if(!is_array($saved))return new \WP_Error('booking_form_policy_missing');
         return $saved;
     }
+    /** Template ownership does not depend on a priced composition or basket. */
+    public static function templateIdentity(int $postId,?int $rateId=null):array|\WP_Error {
+        $policy=self::policy($postId,$rateId);if(is_wp_error($policy))return $policy;
+        $mode=$policy['display_mode']??null;
+        if(!in_array($mode,['inquiry_only','booking_only','dual_tabs','dual_select'],true))return new \WP_Error('booking_form_mode_invalid');
+        $inquiry=filter_var($policy['inquiry_form_id']??0,FILTER_VALIDATE_INT,['options'=>['min_range'=>0]]);
+        $booking=filter_var($policy['booking_form_id']??0,FILTER_VALIDATE_INT,['options'=>['min_range'=>0]]);
+        if($inquiry===false||$booking===false)return new \WP_Error('booking_form_id_invalid');
+        return ['mode'=>$mode,
+            'inquiry_form_id'=>in_array($mode,['inquiry_only','dual_tabs','dual_select'],true)&&self::published($inquiry)?$inquiry:null,
+            'booking_form_id'=>in_array($mode,['booking_only','dual_tabs','dual_select'],true)&&self::published($booking)?$booking:null,
+            'checkout_authority'=>false];
+    }
+
     public static function describe(int $postId,?int $rateId=null): array|\WP_Error
     {
         $form=Integration::formDescriptor($postId,$rateId);
-        if(is_wp_error($form))return $form;
+        // A standalone, already-published Fluent form does not require a
+        // composite product policy. This fallback never certifies a price,
+        // add-on, checkout, basket or payment: those are separate owners.
+        if(is_wp_error($form)) {
+            if($form->get_error_code()!=='composition_policy_missing_or_invalid')
+                return $form;
+            $form=['ready_to_configure'=>true,'groups'=>[],
+                'revision'=>'native_fluent_non_composite_v1',
+                'source'=>'native_form_without_package_options'];
+        }
         $policy=self::policy($postId,$rateId);
         if(is_wp_error($policy))return $policy;
         $mode=$policy['display_mode']??null;

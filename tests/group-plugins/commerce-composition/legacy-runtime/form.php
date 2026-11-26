@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
-require dirname(__DIR__).'/includes/Channels.php';
-require dirname(__DIR__).'/includes/FormSchema.php';
+require dirname(__DIR__,4).'/wp-content/plugins/commerce-composition/includes/Channels.php';
+require dirname(__DIR__,4).'/wp-content/plugins/commerce-composition/includes/FormSchema.php';
 use Commerce\Composition\FormSchema;
 
 $policy=[

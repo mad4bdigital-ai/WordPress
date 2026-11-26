@@ -5,7 +5,7 @@ class WP_Error {
     public function get_error_code():string {return $this->code;}
 }
 function wp_json_encode(mixed $x,int $flags=0):string|false {return json_encode($x,$flags);}
-require __DIR__.'/../includes/CommercialQuotePlan.php';
+require dirname(__DIR__,4).'/wp-content/plugins/commerce-composition/includes/CommercialQuotePlan.php';
 
 use Commerce\Composition\CommercialQuotePlan as Plan;
 $receipt=[

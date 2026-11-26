@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-require dirname(__DIR__).'/includes/Classification.php';
+require dirname(__DIR__,4).'/wp-content/plugins/commerce-composition/includes/Classification.php';
 use Commerce\Composition\Classification;
 $registry=['schema'=>1,'definitions'=>[
  ['kind'=>'package','post_type'=>'tours-and-activities','all'=>[

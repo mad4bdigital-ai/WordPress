@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
-require dirname(__DIR__).'/includes/Channels.php';
-require dirname(__DIR__).'/includes/Composer.php';
+require dirname(__DIR__,4).'/wp-content/plugins/commerce-composition/includes/Channels.php';
+require dirname(__DIR__,4).'/wp-content/plugins/commerce-composition/includes/Composer.php';
 
 use Commerce\Composition\Channels;
 use Commerce\Composition\Composer;

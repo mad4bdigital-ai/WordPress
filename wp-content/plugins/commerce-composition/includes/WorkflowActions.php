@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace Commerce\Composition;
+require_once __DIR__.'/LifecycleAccess.php';
 
 /**
  * Explicit lifecycle boundaries. A relationship is not a conversion. A
@@ -27,6 +28,11 @@ final class WorkflowActions
                 'owner'=>'request_registry','available'=>RequestCheckout::ready(),
                 'effect'=>'verified_original_form_request_intake',
                 'requires'=>['form_id','submission_id','approved_server_policy']
+            ],
+            'sync_request_lifecycle'=>[
+                'owner'=>'native_request_lifecycle','available'=>class_exists(RequestLifecycle::class)&&LifecycleAccess::available(),
+                'effect'=>'source_owned_crm_boards_mail_advance_journals',
+                'requires'=>['form_id','submission_id','order_id','event','component','refund_id']
             ],
             'create_supplier_booking'=>[
                 'owner'=>'supplier_booking','available'=>false,
@@ -73,6 +79,11 @@ final class WorkflowActions
     /** Admin-only, explicit invocation. No code executes based on UI labels. */
     public static function execute(string $action,array $payload):array|\WP_Error
     {
+        if($action==='sync_request_lifecycle'){
+            if(!class_exists(RequestLifecycle::class)||!\Commerce\Composition\LifecycleAccess::can('commerce_run_workflows'))
+                return new \WP_Error('workflow_action_permission_denied');
+            return RequestLifecycle::execute($payload);
+        }
         if(!current_user_can('manage_options'))
             return new \WP_Error('workflow_action_permission_denied');
         $actions=self::definitions();
