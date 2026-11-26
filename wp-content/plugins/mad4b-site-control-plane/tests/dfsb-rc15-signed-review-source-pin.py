@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Review-only DFSB RC15 source pin, never provider install authorization."""
+"""Review-only DFSB current signed source pin and historical RC15 evidence, never install authorization."""
 import json
 from pathlib import Path
 
@@ -15,8 +15,12 @@ assert legacy["candidate_artifact_version"]=="0.4.0-alpha.13"
 assert legacy["provider_id"]=="etg-dynamic-filter-seo-bridge"
 assert neutral["provider_id"]=="dynamic-filter-seo-bridge"
 assert neutral["plugin_file"]=="dynamic-filter-seo-bridge/dynamic-filter-seo-bridge.php"
-assert neutral["candidate_source_commit_sha"]=="fbcfed264231a2553d197927617a9cdae67f5567"
-assert neutral["candidate_artifact_version"]=="0.4.0-alpha.15-rc.1"
+assert neutral["candidate_source_commit_sha"]=="2b76e2dfd11403c64f08e1a77f2c76620c1c47b0"
+assert neutral["candidate_artifact_version"]=="0.4.16"
+assert neutral["build_contract"]=="dfsb-release-review.v1"
+assert neutral["candidate_archive_sha256"]=="39fd4231202bc33a3c9ebb3737743d47d8f366b09bcf66c307c703fa29cd3864"
+assert neutral["candidate_review_run_id"]==45732288119
+assert neutral["candidate_review_artifact_id"]==15077461477
 assert neutral["candidate_state"]=="REVIEW_ONLY_SOURCE_PINNED"
 assert neutral["review_state"]=="source_reviewed_artifact_pending"
 assert neutral["package_certification"]=="pending"
@@ -30,4 +34,4 @@ doc=(ROOT/"docs/dfsb/rc15-signed-review-intake-20261029.md").read_text()
 for token in ("40826819043","bb7ab6bf995f477d075198e766ba7b41954a0b3f0eb5fb4bef906c5ee73d9b66",
   "provider_certified=false","package_certification: pending","Staging"):
  assert token in doc,token
-print("DFSB_RC15_SIGNED_REVIEW_SOURCE_PIN_PENDING_AND_LEGACY_ISOLATED: PASS")
+print("DFSB_SIGNED_REVIEW_SOURCE_PIN_PENDING_AND_LEGACY_ISOLATED: PASS")
