@@ -4,8 +4,8 @@
   "reviewed_base_sha": "c5c81cd0e23ed6ab63763521f29f4f8469d6df90",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 133,
-  "changed_paths_sha256": "eef2dc19ee7687fc2e477df2876bbc89f3e774b9a1e299b2b3af42d73d6b5f58",
+  "changed_file_count": 138,
+  "changed_paths_sha256": "068138aa3f6243e612603b750b89684e4b4597ff52793ef597a9bc8322d39753",
   "slices": [
     {
       "id": "release-integrity",
@@ -194,6 +194,19 @@
         ".github/workflows/mad4b-local-oauth-standalone.yml",
         "specs/007-content-intelligence-workflow-platform/change-slices.json",
         "wp-content/plugins/mad4b-site-control-plane/tests/context-admin-recovery-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-baseline-reconciliation",
+      "semantic_unit": "Exact repository parent metadata synchronization and bounded source-only impact review.",
+      "revert_boundary": "Revert the reviewed-parent metadata and evidence note together; preserve historical runtime identity and independent authority gates.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/baseline-review-20261126-dfsb.md",
+        "specs/007-content-intelligence-workflow-platform/feature.json",
+        "specs/007-content-intelligence-workflow-platform/implementation-closure.json",
+        "specs/007-content-intelligence-workflow-platform/implementation-closure.md",
+        "specs/007-content-intelligence-workflow-platform/post-merge-capability-fabric-closure.json"
       ]
     }
   ]
