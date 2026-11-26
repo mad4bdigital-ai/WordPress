@@ -7,6 +7,7 @@
    <button type="button" data-tab="factors">Factors &amp; markups</button>
    <button type="button" data-tab="calibrate">PDF calibration</button>
    <button type="button" data-tab="route">Route calculator</button>
+   <button type="button" data-tab="package">Package &amp; Rates</button>
   </nav>
   <section data-view="profiles">
    <h4>Vehicle operating profile</h4>
@@ -58,7 +59,6 @@
     <div class="mad4b-kinetic-grid">
      <label>Transportation source<select data-id="native-source"></select></label>
      <label>Existing Transport Rate<select data-id="native-rate"></select></label>
-     <label>Tour Rate ID (linked only)<input type="number" data-id="native-tour-rate" min="1" step="1" placeholder="Optional existing Tour Rate ID"></label>
     </div>
     <p class="mad4b-kinetic-muted" data-id="native-context-info">Select a PDF Transportation service. Vehicle profile and optional native cost overrides are then inherited; any Transport Rate must actually belong to that source.</p>
    </fieldset><p class="mad4b-kinetic-muted">Choose destinations, provide both coordinate pairs, or enter custom labels with manual distance and driving minutes. This estimate never verifies road-network distance.</p>
@@ -87,7 +87,100 @@
     <label><input type="checkbox" data-id="peak"> Peak period</label>
    </div>
    <button class="button button-primary" type="button" data-id="quote">Calculate draft scenario</button>
+   <div class="mad4b-kinetic-grid">
+    <label>Package stage key (optional; unique if reusing a vehicle)<input data-id="package-stage" type="text" maxlength="60" placeholder="day1_transfer"></label>
+    <label>Number of vehicles<input data-id="package-quantity" type="number" min="1" max="20" step="1" value="1"></label>
+   </div>
+   <button type="button" class="button" data-id="package-add">Add selected route to Package preview</button>
+   <p class="mad4b-kinetic-muted">Add a single explicitly selected option per OR stage. To cost multiple journeys, add each stage separately; use a different stage key. Do not enter passenger counts as vehicle quantity.</p>
    <div data-id="quote-result" aria-live="polite" class="mad4b-kinetic-results">Select a vehicle and route, then calculate.</div>
+  </section>
+  <section data-view="package" hidden>
+   <h4>Qualified Transportation sources for Tour Rate Drafts</h4>
+   <p class="mad4b-kinetic-muted">Use the existing route and Tour Component eligibility engine. A city-level draft candidate may still lack pickup confirmation, supplier availability and commercial Rate approval. A missing availability flag never means a service is currently bookable.</p>
+   <div class="mad4b-kinetic-grid">
+    <label>Origin city<select data-id="eligible-from"></select></label>
+    <label>Destination<select data-id="eligible-to"></select></label>
+    <label>Service category<select data-id="eligible-kind"><option value="any">All types</option><option value="transfer">Transfer</option><option value="facility">Airport or station</option><option value="sightseeing">Sightseeing</option><option value="extra">Operational extra</option></select></label>
+    <label>Content language<select data-id="eligible-lang"></select></label>
+   </div>
+   <button type="button" class="button button-primary" data-id="eligibility-find">Find Draft-ready Transportation candidates</button>
+   <div data-id="eligibility-result" role="status" aria-live="polite" class="mad4b-kinetic-results">Select origin, destination and language to evaluate routes.</div>
+   <h4>Commercial component readiness · 8 core packages</h4>
+   <p class="mad4b-kinetic-muted">Source-linked live review of Hotel / Cruise / Sleeper Train component proof for Silver, Gold and Diamond. This reads the existing Package Stage Guard and never creates Rates or approves prices.</p>
+   <div class="mad4b-kinetic-grid">
+    <label>Review window from<input type="date" data-id="readiness-from"></label>
+    <label>Review window to<input type="date" data-id="readiness-to"></label>
+   </div>
+   <button type="button" class="button" data-id="readiness-run">Review package readiness</button>
+   <div data-id="readiness-result" class="mad4b-kinetic-results" role="status" aria-live="polite">Select a date window and run the review. No changes will be saved.</div>
+   <h4>Hotel Property Rate · internal cost scenario (not a customer quote)</h4>
+   <p class="mad4b-kinetic-muted">Select a hotel already eligible in a package stage. The source amount is explicitly <strong>per person</strong>; the sheet does not prove the per-night basis. Calculating a conditional scenario never approves this cost or inventory.</p>
+   <div class="mad4b-kinetic-grid">
+    <label>Package<select data-id="stay-scenario-tour"><option value="">Run package readiness first</option></select></label>
+    <label>Package level<select data-id="stay-scenario-tier"><option value="">Choose package first</option></select></label>
+    <label>Hotel stage<select data-id="stay-scenario-stage"><option value="">Choose level first</option></select></label>
+    <label>Eligible Property<select data-id="stay-scenario-property"><option value="">Choose stage first</option></select></label>
+    <label>Trip start date<input data-id="stay-scenario-date" type="date"></label>
+    <label>Occupancy<select data-id="stay-scenario-adults">
+     <option value="2">Double · 2 adults</option>
+     <option value="3">Triple · 3 adults</option>
+    </select></label>
+   </div>
+   <label><input data-id="stay-scenario-assume" type="checkbox"> Show mathematical what-if assuming the sheet's per-person figure is also per night — NOT verified</label>
+   <button type="button" class="button" data-id="stay-scenario-run">Inspect Property Rate &amp; provisional scenario</button>
+   <div data-id="stay-scenario-result" class="mad4b-kinetic-results" role="status" aria-live="polite">The internal preview has no customer pricing, supplier approval, booking, or WooCommerce side effects.</div>
+   <h4>Supplier evidence queue · native Property Rates</h4>
+   <p class="mad4b-kinetic-muted">One grouped review per original hotel. Missing contracts, night basis, Peak, allotments and Cost Receipts stay blocked.</p>
+   <button type="button" class="button" data-id="supplier-evidence-run">Inspect outstanding supplier proof</button>
+   <div data-id="supplier-evidence-result" class="mad4b-kinetic-results" role="status" aria-live="polite">Read-only source review. No prices are approved or changed.</div>
+   <h4>Seasonal hotel assignment · stage-level exceptions</h4>
+   <p class="mad4b-kinetic-muted">The base Property + Package Level selection stays intact. Set Inherit to use it unchanged, Eligible to explicitly keep a choice, or Excluded to remove the candidate for the selected Season. These are assignment rules, not room availability. Seasons inherit their calendar from live Term Meta.</p>
+   <div class="mad4b-kinetic-grid">
+    <label>Package Tour<select data-id="season-tour"><option value="">Load package tours…</option></select></label>
+    <label>Stage / level / candidate hotel<select data-id="season-candidate"><option value="">Choose a stage</option></select></label>
+    <label>Season<select data-id="season-term"><option value="">Choose a season</option></select></label>
+    <label>Assignment rule<select data-id="season-rule">
+     <option value="inherit">Inherit base assignment (default)</option>
+     <option value="eligible">Eligible for this Season · not guaranteed room</option>
+     <option value="excluded">Exclude from this Season</option>
+    </select></label>
+   </div>
+   <div class="mad4b-kinetic-inline">
+    <button type="button" class="button" data-id="season-load">Load saved seasonal rules</button>
+    <button type="button" class="button button-primary" data-id="season-save">Save seasonal assignment</button>
+   </div>
+   <div class="mad4b-kinetic-results" data-id="season-result" role="status" aria-live="polite">Select a Package Tour and load its candidate hotels.</div>
+   <h4>Supplier quote sheet · reference only</h4>
+   <p class="mad4b-kinetic-muted">Read the connected quotation sheet beside the saved Company Properties. Values keep their original occupancy, meal plan, currency, row and seasonal label. Neither Winter nor Peak confirms a valid travel date or supplier contract.</p>
+   <div class="mad4b-kinetic-grid">
+    <label>Supplier quote category<select data-id="sheet-quote-tab">
+      <option value="hotels">Hotels · Cairo / Luxor / Aswan</option>
+      <option value="cruises">Nile cruises</option>
+      <option value="costal">Coastal resorts</option>
+    </select></label>
+    <label>Quoted season<select data-id="sheet-quote-period">
+      <option value="winter_2026_27">Winter 2026/27 · dates not approved</option>
+      <option value="summer">Summer · dates to verify</option>
+      <option value="peak">Peak · dates to verify</option>
+    </select></label>
+   </div>
+   <button class="button" type="button" data-id="sheet-quote-find">Show matched quotation references</button>
+   <div data-id="sheet-quote-result" class="mad4b-kinetic-results" role="status" aria-live="polite">Select category and season to inspect the original quoted prices.</div>
+   <h4>Package component cost preview</h4>
+   <p class="mad4b-kinetic-muted">Create each selected vehicle journey in the <strong>Route calculator</strong>, then use <strong>Add selected component</strong>. This list lives in your browser until you leave the page. It is not a stored Rate, supplier booking, or itinerary assignment.</p>
+   <div class="mad4b-kinetic-grid">
+    <label>Preview workflow<select data-id="package-context"><option value="planning">Planning · assignments not yet saved</option><option value="package">Verify saved Tour Rate relationship</option><option value="standalone">Standalone · explicit Transport Rate required</option></select></label>
+    <label>Existing Tour Rate ID (package only)<input type="number" data-id="native-tour-rate" min="1" step="1" placeholder="Tour Rate ID · optional for planning"></label>
+    <label>Travel date (reference only)<input type="date" data-id="package-date"></label>
+   </div>
+   <p class="mad4b-kinetic-warning">Default package costs are derived directly from the Cost Engine. Transport Rates are optional for packages and only used for source-bound contract overrides. Published prices, inventory, tax, supplier availability and checkout are <strong>never approved</strong> by this preview. No alternative is automatically selected or double-counted.</p>
+   <div data-id="package-list" class="mad4b-kinetic-results" role="status" aria-live="polite">No selected components yet.</div>
+   <div class="mad4b-kinetic-inline">
+    <button type="button" class="button button-primary" data-id="package-preview">Calculate selected components</button>
+    <button type="button" class="button" data-id="package-clear">Clear selected components</button>
+   </div>
+   <div data-id="package-result" class="mad4b-kinetic-results" role="status" aria-live="polite"></div>
   </section>
   <footer class="mad4b-kinetic-footer">
    <span data-id="dirty" role="status" aria-live="polite">Loading saved draft model…</span>

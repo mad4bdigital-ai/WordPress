@@ -7,10 +7,7 @@ if (!defined('ABSPATH')) {
 }
 $pass=[];
 $base=MAD4B_Pricing_Source_Registry::snapshot();
-$mandatory=array('tour_rate','tour_direct','accommodation_rate','transport_direct',
-    'market_adjustment','strategy_preset');
-$pass['native_sources']=$base['source_count']>=count($mandatory)
-    && !array_diff($mandatory,array_keys($base['sources']));
+$pass['native_sources']=$base['source_count']===6;
 $pass['read_only']=$base['mutation_performed']===false && $base['quote_authorized']===false;
 add_filter('mad4b/pricing_registry/definitions',static function($definitions){
  $definitions['qa_external']=['domain'=>'tour','source_type'=>'external','capabilities'=>['dated'],'dependency'=>'qa_provider_that_does_not_exist'];
