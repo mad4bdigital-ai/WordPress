@@ -1,6 +1,11 @@
 # MAD4B Commerce Suite — source-only enrollment shell
 
-**Status: development candidate; no activation or tenant deployment authorized.**
+**Status: 0.1.1 release candidate; no activation or tenant deployment authorized.**
+
+## 0.1.1 — release preparation
+- Use the numeric plugin version consistently in the WordPress header and status output.
+- Preserve existing module enrollment, authorization and no-activation behavior.
+- Verify the version reported by the status endpoint matches the plugin header.
 
 This WordPress plugin is an operator-facing entrypoint for a multi-company product. It is **not** a bundled replacement for WooCommerce, JetEngine, Elementor, Fluent Forms, Site Control Plane, Pricing Source Registry or Age & Occupancy Registry. Each owning engine remains authoritative.
 

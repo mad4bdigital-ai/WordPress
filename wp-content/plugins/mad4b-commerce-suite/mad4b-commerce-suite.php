@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Commerce Suite
  * Description: Governed company module inventory and enrollment for existing WooCommerce commerce engines.
- * Version: 0.1.0-dev
+ * Version: 0.1.1
  * Requires PHP: 8.1
  * Requires at least: 6.4
  * Text Domain: mad4b-commerce-suite
@@ -33,7 +33,7 @@ final class MAD4B_Commerce_Suite {
 
     public static function status(): array {
         $snapshot = MAD4B_Commerce_Suite_Registry::snapshot(self::desired());
-        $snapshot['version'] = '0.1.0-dev';
+        $snapshot['version'] = '0.1.1';
         $snapshot['tenant_readiness'] = MAD4B_Commerce_Readiness::inspect($snapshot);
         $snapshot['mode'] = 'source-only-inventory';
         $snapshot['site_environment'] = wp_get_environment_type();
