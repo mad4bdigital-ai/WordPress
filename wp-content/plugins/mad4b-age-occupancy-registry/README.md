@@ -1,4 +1,9 @@
-# MAD4B Age-Aware Occupancy Registry — Local integration
+# Age-Aware Occupancy Registry — 0.2.0 release candidate
+
+## 0.2.0
+- Decimal age normalization, policy-derived categories and site-configured Fluent Forms collection.
+- Recompute booking evidence against the trusted product context; form classification metadata does not authorize pricing.
+- Retain existing option/meta keys and policy contract. Full checkout and browser acceptance remain pending.
 
 ## Ownership and precedence
 
