@@ -11,6 +11,9 @@ function is_admin(){return $GLOBALS['mode']==='admin';}
 function wp_doing_ajax(){return $GLOBALS['mode']==='ajax';}
 function is_preview(){return $GLOBALS['mode']==='preview';}
 function is_singular($type){return $GLOBALS['mode']!=='page' && $type==='tours-and-activities';}
+$GLOBALS['nav_epochs']=['posts'=>'p1','terms'=>'t1'];
+function wp_get_environment_type(){return 'staging';}
+function wp_cache_get_last_changed($group){return $GLOBALS['nav_epochs'][$group];}
 function get_option($key){return $key==='_elementor_element_cache_unique_id'?'fixed-key':'';}
 function get_current_user_id(){return $GLOBALS['uid'];}
 function wp_get_session_token(){return $GLOBALS['session'];}
@@ -65,4 +68,7 @@ $bad=$a;$bad['data']=base64_encode(json_encode(['id'=>'6072b3f','widgetType'=>'t
 check($cb(false,'elementor-element',$bad,[''])===false,'non-navigation widget excluded');
 $GLOBALS['dataKind']='sensitive';$_COOKIE=['canary'=>'sensitive'];$GLOBALS['callbackCalls']=0;
 $send();$send();check($GLOBALS['callbackCalls']===2,'sensitive nonce HTML never cached');
+$GLOBALS['dataKind']='normal';$_COOKIE=[];$GLOBALS['nav_epochs']['terms']='t2';$GLOBALS['callbackCalls']=0;
+$send();check($GLOBALS['callbackCalls']===1,'term revision invalidates legacy replay');
+$send();check($GLOBALS['callbackCalls']===1,'new revision reuses native replay');
 echo 'ALL_GUARDS_PASS'.PHP_EOL;

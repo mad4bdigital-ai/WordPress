@@ -1,0 +1,89 @@
+[
+  {
+    "cohort": "route",
+    "samples": [
+      {
+        "lang": "en-US",
+        "grids": 11,
+        "cards": 44,
+        "active_markers": 0,
+        "bytes": 145029,
+        "unsafe": 0,
+        "volatile": 0
+      },
+      {
+        "lang": "en-US",
+        "grids": 11,
+        "cards": 44,
+        "active_markers": 0,
+        "bytes": 145029,
+        "unsafe": 0,
+        "volatile": 0
+      }
+    ],
+    "matched": 44,
+    "same_order": true,
+    "html_only": true,
+    "browser_certified": false,
+    "market_attested": false,
+    "replay_authorized": false
+  },
+  {
+    "cohort": "desktop",
+    "samples": [
+      {
+        "lang": "en-US",
+        "grids": 11,
+        "cards": 44,
+        "active_markers": 0,
+        "bytes": 145029,
+        "unsafe": 0,
+        "volatile": 0
+      },
+      {
+        "lang": "en-US",
+        "grids": 11,
+        "cards": 44,
+        "active_markers": 0,
+        "bytes": 145029,
+        "unsafe": 0,
+        "volatile": 0
+      }
+    ],
+    "matched": 44,
+    "same_order": true,
+    "html_only": true,
+    "browser_certified": false,
+    "market_attested": false,
+    "replay_authorized": false
+  },
+  {
+    "cohort": "es",
+    "samples": [
+      {
+        "lang": "es-ES",
+        "grids": 11,
+        "cards": 44,
+        "active_markers": 0,
+        "bytes": 143747,
+        "unsafe": 0,
+        "volatile": 0
+      },
+      {
+        "lang": "es-ES",
+        "grids": 11,
+        "cards": 44,
+        "active_markers": 0,
+        "bytes": 143747,
+        "unsafe": 0,
+        "volatile": 0
+      }
+    ],
+    "matched": 44,
+    "same_order": true,
+    "html_only": true,
+    "browser_certified": false,
+    "market_attested": false,
+    "replay_authorized": false
+  }
+]
