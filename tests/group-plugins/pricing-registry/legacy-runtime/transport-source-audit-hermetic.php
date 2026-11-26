@@ -2,7 +2,7 @@
 /** No WP or DB needed: php tests/transport-source-audit-hermetic.php. */
 define('ABSPATH','/fixture/');
 function add_action($event,$cb){}
-require_once __DIR__.'/../includes/transport-source-candidates.php';
+require_once dirname(__DIR__,4).'/wp-content/plugins/mad4b-pricing-registry/includes/transport-source-candidates.php';
 $c='MAD4B_Transport_Source_Candidates_V1';
 $s=$c::snapshot();
 $rows=$c::review_rows();

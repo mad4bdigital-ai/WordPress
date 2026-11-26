@@ -2,7 +2,7 @@
 /** Run under WP-CLI: wp eval-file tests/transport-readiness-runtime.php */
 if (!defined('ABSPATH')) exit(2);
 $class = 'MAD4B_Transport_Pricing_Readiness_V1';
-if (!class_exists($class)) require_once dirname(__DIR__) . '/includes/transport-readiness.php';
+if (!class_exists($class)) require_once dirname(__DIR__,4) . '/wp-content/plugins/mad4b-pricing-registry/includes/transport-readiness.php';
 $errors = array();
 $check = static function ($ok, $message) use (&$errors) { if (!$ok) $errors[] = $message; };
 $normalized = $class::decompose(array('fixed_route_schedule', 'seat_based_inventory', 'point_to_point'));

@@ -2,7 +2,8 @@
 /**
  * Plugin Name: Pricing Source Registry
  * Description: Read-only dynamic discovery and capability registry for existing pricing providers.
- * Version: 0.1.0
+ * Version: 0.2.0
+ * Requires PHP: 8.1
  */
 if (!defined('ABSPATH')) exit;
 final class MAD4B_Pricing_Source_Registry {

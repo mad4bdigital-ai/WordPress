@@ -50,7 +50,7 @@
   const c=copies[cfg.lang]||copies.en;
   const values=['','same_as_pickup','hotel','airport','rail_station','port',
     'meeting_point','to_confirm'];
-  const eligibleRates=new Set((cfg.eligibleRates||[]).map(Number));
+  const forms=new Set([Number(cfg.defaultForm),...Object.values(cfg.rateForms||{}).map(Number)].filter(id=>Number.isInteger(id)&&id>0));
   const qs=(form,name)=>form.querySelector('[name="'+name+'"]');
   function selectedRate(form){
     const broker=window.SharedPresentationSelectionV1;
@@ -97,11 +97,12 @@
     }
   }
   function update(){
-    document.querySelectorAll('form.fluent_form_6').forEach(form=>{
+    forms.forEach(id=>document.querySelectorAll('form.fluent_form_'+id).forEach(form=>{
       const mode=qs(form,'mad4b_dropoff_mode');
       if(!mode)return;
       translate(form);
-      const enabled=cfg.defaultEligible||eligibleRates.has(selectedRate(form));
+      const rate=selectedRate(form);
+      const enabled=Number(rate?(cfg.rateForms||{})[rate]:cfg.defaultForm)===id;
       const inputNames=['mad4b_dropoff_mode','mad4b_dropoff_place_name',
         'mad4b_dropoff_city','mad4b_dropoff_address'];
       const needDetail=enabled&&
@@ -119,7 +120,7 @@
         mode.dataset.mad4bDropoffBound='1';
         mode.addEventListener('change',update);
       }
-    });
+    }));
   }
   if(document.readyState==='loading')
     document.addEventListener('DOMContentLoaded',update);

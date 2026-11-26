@@ -7,6 +7,7 @@
  * pricing provider, or payment/checkout authority.
  */
 defined('ABSPATH') || exit;
+require_once __DIR__.'/pricing-admin-context.php';
 final class MAD4B_Transport_PDF_Review_V1 {
     public const CONTRACT='mad4b.transport-pdf-review.v1';
     private const VEHICLE_NAMES=array(
@@ -119,7 +120,7 @@ final class MAD4B_Transport_PDF_Review_V1 {
     public static function pricing_link(): void {
         if (!self::permitted() || !isset($_GET['page']))return;
         $page=sanitize_key((string)wp_unslash($_GET['page']));
-        if (!in_array($page,array('dynamic-pricing-controls','etg-dynamic-pricing-controls'),true))return;
+        if (!MAD4B_Pricing_Admin_Context_V1::matches($page))return;
         echo '<div class="notice notice-info"><p><strong>Transfer 2026:</strong> <a href="'.
          esc_url(admin_url('tools.php?page=mad4b-transfer-pdf-2026-review')).
          '">View the localized 51-source-operation review with vehicle photos and unverified rate cells</a>.</p></div>';

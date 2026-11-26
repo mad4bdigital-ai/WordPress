@@ -5,3 +5,7 @@ Read-only, additive provider discovery for Tours, Accommodation, Transportation,
 This plugin does not authorize quotes, change existing source arbitration, create WooCommerce orders, or mutate prices. Providers remain authoritative in their owning plugins. `mad4b/pricing_registry/definitions` permits separately registered providers. The REST GET `/wp-json/mad4b-pricing/v1/sources` requires `manage_woocommerce`.
 
 Before enabling price resolution via registry, validate provider contracts, original Page Options priorities, fallback behavior, source evidence, parity across preview/cart/checkout, and safe failure behavior. Missing providers are reported as unavailable, not silently replaced.
+
+## 0.2.0 review candidate
+
+Native package discovery, source-scoped editorial diagnostics and policy-owned booking template selection. Historical tests and one-off operator scripts reside outside the distributable directory. Legacy site-specific acceptance fixtures require requalification; no tenant changes or commercial approval implied.

@@ -6,6 +6,7 @@
  * authoritative. No quote, booking or published price is modified here.
  */
 defined('ABSPATH') || exit;
+require_once __DIR__.'/pricing-admin-context.php';
 
 final class MAD4B_Transport_Pricing_Readiness_V1 {
     public const CONTRACT = 'mad4b.transport-pricing-readiness.v1';
@@ -159,7 +160,7 @@ final class MAD4B_Transport_Pricing_Readiness_V1 {
     public static function pricing_link(): void {
         if (!self::permitted() || !isset($_GET['page'])) return;
         $page = sanitize_key((string) wp_unslash($_GET['page']));
-        if (!in_array($page, array('dynamic-pricing-controls', 'etg-dynamic-pricing-controls'), true)) return;
+        if (!MAD4B_Pricing_Admin_Context_V1::matches($page)) return;
         echo '<div class="notice notice-info"><p><strong>Transportation Pricing:</strong> ';
         echo 'Classification and rates integrity checks are available in ';
         echo '<a href="' . esc_url(admin_url('tools.php?page=mad4b-transport-pricing-readiness')) . '">Transport Pricing Readiness</a>. ';

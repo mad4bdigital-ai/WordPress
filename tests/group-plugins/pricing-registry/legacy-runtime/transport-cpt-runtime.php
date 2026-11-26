@@ -6,7 +6,7 @@ if (rtrim(home_url('/'), '/') !== 'https://tours.dev.mad4b.com') {
     exit(0);
 }
 if (!class_exists('MAD4B_Transport_CPT_Readiness_V1')) {
-    require dirname(__DIR__) . '/includes/transport-cpt-readiness.php';
+    require dirname(__DIR__,4) . '/wp-content/plugins/mad4b-pricing-registry/includes/transport-cpt-readiness.php';
 }
 $checks=array();
 $add=static function($name,$ok) use (&$checks){$checks[$name]=(bool)$ok;};

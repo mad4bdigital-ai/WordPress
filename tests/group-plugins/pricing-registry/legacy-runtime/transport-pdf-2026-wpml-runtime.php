@@ -2,7 +2,7 @@
 /** Site-neutral read-only WPML/price/media nonregression. Run via WP-CLI. */
 defined('ABSPATH') || exit(2);
 if (!class_exists('MAD4B_Transport_PDF_Review_V1')) {
-    require_once dirname(__DIR__).'/includes/transport-pdf-review.php';
+    require_once dirname(__DIR__,4).'/wp-content/plugins/mad4b-pricing-registry/includes/transport-pdf-review.php';
 }
 $site=rtrim(home_url('/'),'/');
 if(!in_array($site,array('https://tours.dev.mad4b.com','https://wayfatours.com'),true)){

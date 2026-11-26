@@ -8,12 +8,15 @@ defined('ABSPATH')||exit;
 final class MAD4B_Transport_Form6_Dropoff_V1 {
     public const CONTRACT='mad4b.form6.transport-dropoff.v1';
     public const RESPONSE='_mad4b_transport_dropoff_v1';
-    public const FORM_ID=6;
     public const FIELDS=['mad4b_dropoff_mode','mad4b_dropoff_place_name',
         'mad4b_dropoff_city','mad4b_dropoff_address'];
-    public static function supported_site():bool {
-        return in_array(rtrim(home_url('/'),'/'),
-            ['https://tours.dev.mad4b.com','https://wayfatours.com'],true);
+    /** Resolve the server-owned published booking template, not a host or request ID. */
+    public static function booking_form(int $tour,int $rate=0):int {
+        $router='Commerce\\Composition\\FormRouter';
+        if(!class_exists($router)||!self::permitted_context($tour,$rate))return 0;
+        $r=method_exists($router,'templateIdentity')?$router::templateIdentity($tour,$rate?:null):$router::describe($tour,$rate?:null);
+        $id=is_array($r)?($r['booking_form_id']??null):null;
+        return is_int($id)&&$id>0&&($r['checkout_authority']??null)===false?$id:0;
     }
     public static function modes():array {
         return ['same_as_pickup','hotel','airport','rail_station','port',
@@ -59,9 +62,10 @@ final class MAD4B_Transport_Form6_Dropoff_V1 {
     }
     /** Source-bound Tour or published Rate proof, not a browser-supplied id. */
     public static function permitted_context(int $tour,int $rate):bool {
-        if(!self::supported_site()||$tour<1||
+        if($tour<1||
            get_post_type($tour)!=='tours-and-activities' ||
            get_post_status($tour)!=='publish')return false;
+        if(!class_exists('MAD4B_Booking_Pickup_Policy',false)||($rate>0&&MAD4B_Booking_Pickup_Policy::rateFor($tour,$rate)!==$rate))return false;
         $pickupEligible=class_exists('MAD4B_Booking_Pickup_Policy',false) &&
             !empty(MAD4B_Booking_Pickup_Policy::resolve($tour,$rate)['eligible']);
         $rateEligible=$rate>0 &&
@@ -93,8 +97,7 @@ final class MAD4B_Transport_Form6_Dropoff_V1 {
             'route_point_supplier_verified'=>false];
     }
     public static function persist($insert) {
-        if(!self::supported_site()||!is_array($insert)||
-           (int)($insert['form_id']??0)!==self::FORM_ID)return $insert;
+        if(!is_array($insert)||($form=(int)($insert['form_id']??0))<1)return $insert;
         $response=json_decode((string)($insert['response']??''),true);
         if(!is_array($response))return $insert;
         $intent=$response['_shared_tour_booking_intent_v2']??null;
@@ -112,7 +115,7 @@ final class MAD4B_Transport_Form6_Dropoff_V1 {
         $embed=absint($posted['__fluent_form_embded_post_id']??
             $_POST['__fluent_form_embded_post_id']??0);
         if(!$embed||$embed!==$tour ||
-           !self::permitted_context($tour,$rate))return $insert;
+           self::booking_form($tour,$rate)!==$form)return $insert;
         $actual=[];
         foreach(self::FIELDS as $f){
             if(array_key_exists($f,$response)&&is_scalar($response[$f]))
@@ -121,7 +124,7 @@ final class MAD4B_Transport_Form6_Dropoff_V1 {
         $pickup=$response['_mad4b_booking_pickup_v1']??[];
         $pickup=is_array($pickup)?$pickup:[];
         $state=self::normalize($actual,$pickup);
-        $state['form_id']=self::FORM_ID;
+        $state['form_id']=$form;
         $state['tour_id']=$tour;
         $state['tour_rate_id']=$rate?:null;
         $state['pickup_record_key']='_mad4b_booking_pickup_v1';
@@ -137,26 +140,17 @@ final class MAD4B_Transport_Form6_Dropoff_V1 {
         $lang=(string)apply_filters('wpml_current_language',null);
         return in_array($lang,['en','ar','de','fr','es','it'],true)?$lang:'en';
     }
-    public static function styles():void {
-        if(!self::supported_site())return;
-        echo '<style>form.fluent_form_6 .mad4b-transport-dropoff-field{display:none}</style>';
-    }
     public static function frontend():void {
-        if(!self::supported_site()||!is_singular('tours-and-activities'))return;
+        if(!is_singular('tours-and-activities'))return;
         $tour=(int)get_queried_object_id();
-        if($tour<1||get_post_status($tour)!=='publish')return;
-        $rates=get_posts(['post_type'=>'tour-rates','post_status'=>'publish',
-            'posts_per_page'=>60,'fields'=>'ids','suppress_filters'=>true,
-            'meta_key'=>'has_transportations','meta_value'=>'1']);
-        $eligible=[];
-        foreach($rates as $rate){
-            if(class_exists('MAD4B_Booking_Pickup_Policy',false) &&
-               MAD4B_Booking_Pickup_Policy::rateFor($tour,(int)$rate)===(int)$rate)
-               $eligible[]=(int)$rate;
-        }
-        $defaults=self::permitted_context($tour,0);
-        $data=['tourId'=>$tour,'defaultEligible'=>$defaults,
-            'eligibleRates'=>$eligible,'lang'=>self::locale()];
+        if($tour<1||get_post_status($tour)!=='publish'||!class_exists('MAD4B_Booking_Pickup_Policy',false))return;
+        $source=MAD4B_Booking_Pickup_Policy::canonical($tour);
+        $rates=get_posts(['post_type'=>'tour-rates','post_status'=>'publish','posts_per_page'=>-1,'fields'=>'ids','suppress_filters'=>true,'meta_query'=>[['key'=>'related_tour_id','value'=>array_values(array_unique([$tour,$source])),'compare'=>'IN']]]);
+        $forms=[];
+        foreach($rates as $rate){$id=self::booking_form($tour,(int)$rate);if($id>0)$forms[(int)$rate]=$id;}
+        $default=self::booking_form($tour,0);
+        if(!$default&&!$forms)return;
+        $data=['tourId'=>$tour,'defaultForm'=>$default,'rateForms'=>$forms,'lang'=>self::locale()];
         $js=dirname(__DIR__).'/assets/transport-form6-dropoff.js';
         if(!is_file($js))return;
         wp_register_script('mad4b-transport-form6-dropoff',
@@ -169,6 +163,9 @@ final class MAD4B_Transport_Form6_Dropoff_V1 {
             'window.MAD4BTransportForm6Dropoff='.
             wp_json_encode($data,JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT).';',
             'before');
+    }
+    public static function styles():void {
+        if(is_singular('tours-and-activities'))echo '<style>form .mad4b-transport-dropoff-field{display:none}</style>';
     }
     public static function boot():void {
         add_filter('fluentform/filter_insert_data',[__CLASS__,'persist'],55,1);

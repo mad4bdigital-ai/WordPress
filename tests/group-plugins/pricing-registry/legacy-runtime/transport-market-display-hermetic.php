@@ -49,7 +49,7 @@ namespace BookingExperience {
     }
 }
 namespace {
-    require_once __DIR__.'/../includes/transport-market-display.php';
+    require_once dirname(__DIR__,4).'/wp-content/plugins/mad4b-pricing-registry/includes/transport-market-display.php';
     $class='MAD4B_Transport_Market_Display_V1';
     $checks=array();
     $assert=static function($name,$yes)use(&$checks){$checks[$name]=(bool)$yes;};

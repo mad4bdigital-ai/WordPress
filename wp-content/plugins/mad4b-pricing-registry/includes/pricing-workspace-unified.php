@@ -5,13 +5,13 @@
  * JetEngine native form, and standalone pricing policies unchanged.
  */
 defined('ABSPATH') || exit;
+require_once __DIR__.'/pricing-admin-context.php';
 final class MAD4B_Pricing_Workspace_Unified_V1 {
     public static function assets():void {
         if(!is_admin() || !class_exists('MAD4B_Transport_Self_Pricing_Controls_V1') ||
            !MAD4B_Transport_Self_Pricing_Controls_V1::permitted())return;
         $page=sanitize_key((string)($_GET['page']??''));
-        if(!in_array($page,['dynamic-pricing-controls',
-            'etg-dynamic-pricing-controls'],true))return;
+        if(!MAD4B_Pricing_Admin_Context_V1::matches($page))return;
         $base=dirname(__DIR__);
         $files=['pricing-workspace-unified.js',
             'pricing-workspace-unified.css'];

@@ -4,6 +4,7 @@
  * Source data is trusted and immutable; previews do not authorize checkout.
  */
 defined('ABSPATH') || exit;
+require_once __DIR__.'/pricing-admin-context.php';
 final class MAD4B_Transport_Self_Pricing_Controls_V1 {
     const OPTION='mad4b_transport_self_pricing_controls_v1';
     const HISTORY='mad4b_transport_self_pricing_history_v1';
@@ -287,7 +288,7 @@ final class MAD4B_Transport_Self_Pricing_Controls_V1 {
     public static function assets():void {
         if(!self::permitted()||!is_admin())return;
         $page=sanitize_key((string)($_GET['page']??''));
-        if(!in_array($page,['dynamic-pricing-controls','etg-dynamic-pricing-controls'],true))
+        if(!MAD4B_Pricing_Admin_Context_V1::matches($page))
             return;
         $dir=dirname(__DIR__).'/assets/';
         if(!is_file($dir.'transport-self-controls.js')||
