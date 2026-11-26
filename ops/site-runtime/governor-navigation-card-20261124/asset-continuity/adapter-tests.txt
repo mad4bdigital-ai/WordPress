@@ -1,0 +1,7 @@
+PASS native output stored within original policy ceiling
+PASS same original asset identity allows certified cross-route replay
+PASS CSS change falls back without new receipt or write
+PASS incorrect replayed segment falls back
+PASS non-segment asset change fails closed
+PASS revoked original manifest authority stays native
+ALL_CSS_ADAPTER_TESTS_PASS

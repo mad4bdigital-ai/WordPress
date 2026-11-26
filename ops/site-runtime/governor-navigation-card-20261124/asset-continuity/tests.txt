@@ -1,0 +1,17 @@
+PASS original ordered sources admitted
+PASS exact native CSS segment
+PASS unchanged bytes independent of bundle URL
+PASS same-size listing CSS edit invalidates
+PASS header CSS edit invalidates
+PASS native CSS ordering changes invalidate
+PASS runtime dependency change invalidates
+PASS unexpected segment bytes rejected
+PASS corrupted segment rejected
+PASS missing listing CSS rejected
+PASS duplicate handle rejected
+PASS unsupported media rejected
+PASS original bundler eligibility required
+PASS unqualified imports rejected
+PASS additional asset changes invalidate binding
+PASS missing other asset manifest denied
+ALL_CSS_DEPENDENCY_TESTS_PASS

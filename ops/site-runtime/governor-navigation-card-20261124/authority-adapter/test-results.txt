@@ -1,0 +1,15 @@
+PASS no receipt remains native
+PASS original manifest pin and native audit admit fixture
+PASS native audit derives admission rather than caller flag
+PASS failed native audit cannot be overridden
+PASS unenrolled listing rejected
+PASS generic fragment enrollment not enough
+PASS tenant host mismatch
+PASS production denied
+PASS changed receipt denied
+PASS receipt self assertion rejected
+PASS pending proof not authority
+PASS page outside certified cohort rejected
+PASS market mismatch
+PASS outside native navigation denied
+ALL_AUTHORITY_TESTS_PASS

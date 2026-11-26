@@ -1,0 +1,58 @@
+{
+    "contract": "mad4b.navigation-css-readback.v1",
+    "source_identity": {
+        "contract": "mad4b.navigation-css-dependency.v1",
+        "runtime_sha256": "4715bd97de3efc6e36cbda35d997f5157115e962fa5fcd1258c2214f9d270a19",
+        "members": [
+            {
+                "handle": "elementor-post-26212",
+                "sha256": "d05417294b7fd24f48f2fe35e8075ef3ba1e22d5b5a2f04a4aa92447e28847e3",
+                "bytes": 109028,
+                "media": "all"
+            },
+            {
+                "handle": "elementor-post-67125",
+                "sha256": "182300f2b44b71871497cf1bc0a8f0f5649051ef74e042cb454e1686610cdfba",
+                "bytes": 6978,
+                "media": "all"
+            },
+            {
+                "handle": "elementor-post-67124",
+                "sha256": "61822226c4a9151a8997a8a74d6224128be8f7055a4e10f3165a36a6dde64532",
+                "bytes": 2296,
+                "media": "all"
+            },
+            {
+                "handle": "elementor-post-68952",
+                "sha256": "64514b1e386226b96a56a99a2706b43e5fa0d2223b61cc5cba27fa212c180307",
+                "bytes": 17254,
+                "media": "all"
+            },
+            {
+                "handle": "elementor-post-45149",
+                "sha256": "e8f45bd1a496e5d1f4811a8434005f1671ed4d2fb2300335603addf51973d698",
+                "bytes": 21586,
+                "media": "all"
+            },
+            {
+                "handle": "elementor-post-33747",
+                "sha256": "302265dbea0bf71f102bab075fb89ff79b908c2b128402bb3565c7e7e8d6c80f",
+                "bytes": 37387,
+                "media": "all"
+            },
+            {
+                "handle": "elementor-post-48562",
+                "sha256": "14ed226e8cbff66972a7eab702b551718bd1bc4a7bb8c4f8bc0b9ae81de64fd0",
+                "bytes": 6909,
+                "media": "all"
+            }
+        ],
+        "native_segment_digest": "6837f1927fd5b11e85b9390c"
+    },
+    "source_identity_sha256": "6a20f3499cb09915d5f2bc1ad34246037ee5aca069745f37b6d1e3e47424bd42",
+    "bundle_sha256": "99e958dd5bf862c8620a0fd6990772573c8e6a505fbc24e8df2666e3d9f12305",
+    "exact_native_segment": true,
+    "native_eligible_from_observed_bundle": true,
+    "live_replay_verified": false,
+    "authority_verified": false
+}

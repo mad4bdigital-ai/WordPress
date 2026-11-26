@@ -1,0 +1,36 @@
+{
+  "contract": "mad4b.navigation-css-segment-evidence.v1",
+  "listing": 67125,
+  "source_segment_module_sha256": "4715bd97de3efc6e36cbda35d997f5157115e962fa5fcd1258c2214f9d270a19",
+  "observations": [
+    {
+      "sample": "a",
+      "header_handle": "elementor-post-26212",
+      "bundle_url": "https://tours.dev.mad4b.com/wp-content/uploads/elementor/css/mad4b-tour-css-6837f1927fd5b11e85b9390c.css",
+      "bundle_sha256": "99e958dd5bf862c8620a0fd6990772573c8e6a505fbc24e8df2666e3d9f12305",
+      "bundle_bytes": 201641,
+      "member_count": 7,
+      "filename_digest_verified": true,
+      "listing_handle": "elementor-post-67125",
+      "listing_css_sha256": "182300f2b44b71871497cf1bc0a8f0f5649051ef74e042cb454e1686610cdfba",
+      "listing_css_bytes": 6978,
+      "exact_member_verified": true
+    },
+    {
+      "sample": "b",
+      "header_handle": "elementor-post-26212",
+      "bundle_url": "https://tours.dev.mad4b.com/wp-content/uploads/elementor/css/mad4b-tour-css-6837f1927fd5b11e85b9390c.css",
+      "bundle_sha256": "99e958dd5bf862c8620a0fd6990772573c8e6a505fbc24e8df2666e3d9f12305",
+      "bundle_bytes": 201641,
+      "member_count": 7,
+      "filename_digest_verified": true,
+      "listing_handle": "elementor-post-67125",
+      "listing_css_sha256": "182300f2b44b71871497cf1bc0a8f0f5649051ef74e042cb454e1686610cdfba",
+      "listing_css_bytes": 6978,
+      "exact_member_verified": true
+    }
+  ],
+  "live_cache_replay_verified": false,
+  "browser_verified": false,
+  "authority_verified": false
+}

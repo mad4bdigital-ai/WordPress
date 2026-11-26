@@ -1,0 +1,20 @@
+[
+  {
+    "host": "tours.dev.mad4b.com",
+    "environment": "staging",
+    "status": "active",
+    "policy_sha256": "cd6008229d37640d429c33d674c1720f31f0fab12ec7e60cc1a0ca972cebd2ea",
+    "navigation_templates_admitted": [],
+    "navigation_card_receipts_present": false,
+    "governor_sha256": "d4635f4cb0dffdbc840b0d98d5836fa223ba8206a352f6b01d037fa053c685f0"
+  },
+  {
+    "host": "wayfatours.com",
+    "environment": "production",
+    "status": "active",
+    "policy_sha256": "1a3559fa542b8d911fee69aa80f6486e30a0912f1554e06fc48e402610625b31",
+    "navigation_templates_admitted": [],
+    "navigation_card_receipts_present": false,
+    "governor_sha256": "b3a222332dcf4ffeaf9623dad2e0315a0f4cd7515d293a902585821caf84cb8b"
+  }
+]
