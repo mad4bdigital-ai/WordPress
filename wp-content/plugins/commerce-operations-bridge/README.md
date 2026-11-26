@@ -1,0 +1,2 @@
+# Commerce Operations Bridge 0.1.2
+Observe-only operational projections. No sink mutation authority. Set site-owned `commerce_ops_intake_field_bindings_v1` with numeric published form IDs as keys; each mapping specifies `date`, `date_meaning` (requested_arrival or requested_departure), `adults`, and optional `children`, `infants`, `flex_to` field names. The original Fluent schema is checked at preview time. No global Form IDs or automatic configuration writes. Existing fixed mapping fixtures must be reviewed and explicitly mapped before use.
