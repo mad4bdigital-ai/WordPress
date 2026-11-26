@@ -4,8 +4,8 @@
   "reviewed_base_sha": "c5c81cd0e23ed6ab63763521f29f4f8469d6df90",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 138,
-  "changed_paths_sha256": "068138aa3f6243e612603b750b89684e4b4597ff52793ef597a9bc8322d39753",
+  "changed_file_count": 140,
+  "changed_paths_sha256": "0af3abe46b967a9de4ff8766f9351582f4dc6f88675aadfae8ddef4bb551d9cf",
   "slices": [
     {
       "id": "release-integrity",
@@ -191,9 +191,11 @@
       "revert_boundary": "Revert isolated CI compatibility fixes independently; regenerate the scope manifest whenever reviewed base or changed paths change.",
       "certification": "exact_head",
       "path_globs": [
+        ".github/workflows/mad4b-context-authority.yml",
         ".github/workflows/mad4b-local-oauth-standalone.yml",
         "specs/007-content-intelligence-workflow-platform/change-slices.json",
-        "wp-content/plugins/mad4b-site-control-plane/tests/context-admin-recovery-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-admin-recovery-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-authority-contract.py"
       ]
     },
     {
