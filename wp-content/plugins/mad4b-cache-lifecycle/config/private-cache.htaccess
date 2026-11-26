@@ -1,0 +1,14 @@
+# BEGIN MAD4B PRIVATE CACHE CONTEXT
+<IfModule LiteSpeed>
+RewriteEngine On
+RewriteCond %{REQUEST_URI} !\.(css|js|png|jpe?g|gif|webp|avif|svg|ico|woff2?|ttf|eot|mp4|pdf)$ [NC]
+RewriteCond %{HTTP_COOKIE} (currency|market|passport|traveller|traveler|woocommerce_items_in_cart|wp_woocommerce_session_)[^=;]*= [NC,OR]
+RewriteCond %{QUERY_STRING} (^|&)(currency|market|country|passport|travel_date|start_date|adults|children|infants|wc-ajax|_mad4b_cache_delivery)= [NC,OR]
+RewriteCond %{REQUEST_URI} /(wp-json|wp-admin/admin-ajax\.php|cart|checkout|my-account|booking|reserve|order-pay)(/|$) [NC,OR]
+RewriteCond %{REQUEST_METHOD} !^(GET|HEAD)$ [NC]
+RewriteRule .* - [E=Cache-Control:no-cache,E=MAD4B_PRIVATE_CACHE:1]
+</IfModule>
+<IfModule mod_headers.c>
+Header always set Cache-Control "private, no-store, no-cache, max-age=0, must-revalidate" env=MAD4B_PRIVATE_CACHE
+</IfModule>
+# END MAD4B PRIVATE CACHE CONTEXT
