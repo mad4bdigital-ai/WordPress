@@ -6,7 +6,7 @@ final class ContextPreviewPanel {
     public static function render(): void {
         if(!current_user_can('manage_options'))return;
         $source=plugins_url('assets/js/context-admin-preview.js',DFSB_MAIN_FILE);
-        wp_enqueue_script('dfsb-context-admin-preview',$source,array(),filemtime(dirname(DFSB_MAIN_FILE).'/assets/js/context-admin-preview.js'),true);
+        wp_enqueue_script('dfsb-context-admin-preview',$source,array(),\DynamicFilterSEOBridge\Runtime\AssetVersion::forPath('assets/js/context-admin-preview.js'),true);
         wp_localize_script('dfsb-context-admin-preview','dfsbContextAdmin',array(
             'base'=>esc_url_raw(rest_url('dfsb-admin/v1/')),
             'nonce'=>wp_create_nonce('wp_rest')));

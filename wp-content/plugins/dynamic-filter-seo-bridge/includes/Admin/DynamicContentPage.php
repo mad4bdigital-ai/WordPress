@@ -57,6 +57,14 @@ final class DynamicContentPage {
             'fallback_chain' => $this->post('fallback_chain'),
             'source_inventory_fingerprint' => (string) ($snapshot['snapshot_fingerprint'] ?? ''),
         );
+        if($slot['type']==='gallery'&&isset($_POST['term_gallery_enabled'])){
+            $slot['term_gallery']=ContentSlotRegistry::termGalleryDefinition(array(
+                'dfsb_background_gallery_meta_taxonomy'=>$this->post('term_gallery_taxonomy'),
+                'dfsb_background_gallery_meta_key'=>$this->post('term_gallery_field'),
+                'dfsb_background_gallery_media_policy'=>$this->post('term_gallery_policy','mixed'),
+            ));
+            if(!$slot['term_gallery'])wp_die('Invalid selected term gallery definition.','Invalid gallery',array('response'=>400));
+        }
         $revision = isset($_POST['slot_revision']) ? sanitize_text_field(wp_unslash((string) $_POST['slot_revision'])) : '';
         $lease = OptionMutationGate::acquire(ContentSlotRegistry::OPTION_NAME);
         if (is_wp_error($lease)) {
@@ -231,7 +239,7 @@ final class DynamicContentPage {
                 <td><?php echo esc_html((string) count((array) ($slot['sources'] ?? array()))); ?></td>
                 <td><span class="etg-slot-origin etg-slot-origin--<?php echo esc_attr($origin); ?>"><?php echo esc_html(str_replace('_', ' ', $origin)); ?></span></td>
                 <td><span class="etg-badge <?php echo !empty($slot['enabled']) ? 'etg-badge--safe' : 'etg-badge--warn'; ?>"><?php echo !empty($slot['enabled']) ? 'Enabled' : 'Disabled'; ?></span></td>
-                <td><a class="button button-small" href="<?php echo esc_url(AdminUi::pageUrl(self::SLUG, array('tab' => 'editor', 'slot' => $slot['id']))); ?>">Edit</a><?php if ('built_in' !== $origin): ?> <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display:inline"><input type="hidden" name="action" value="etg_dfsb_delete_dynamic_slot"><input type="hidden" name="slot_id" value="<?php echo esc_attr((string) $slot['id']); ?>"><?php wp_nonce_field('dfsb_delete_dynamic_slot'); ?><input type="hidden" name="slot_revision" value="<?php echo esc_attr($this->slots->revision()); ?>"><button class="button button-small" type="submit"><?php echo 'override' === $origin ? 'Reset' : 'Delete'; ?></button></form><?php endif; ?></td>
+                <td><a class="button button-small" href="<?php echo esc_url(AdminUi::pageUrl(self::SLUG, array('tab' => 'editor', 'slot' => $slot['id']))); ?>">Edit</a><?php if ('built_in' !== $origin): ?> <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display:inline"><input type="hidden" name="action" value="dfsb_delete_dynamic_slot"><input type="hidden" name="slot_id" value="<?php echo esc_attr((string) $slot['id']); ?>"><?php wp_nonce_field('dfsb_delete_dynamic_slot'); ?><input type="hidden" name="slot_revision" value="<?php echo esc_attr($this->slots->revision()); ?>"><button class="button button-small" type="submit"><?php echo 'override' === $origin ? 'Reset' : 'Delete'; ?></button></form><?php endif; ?></td>
             </tr>
         <?php endforeach; ?>
         </tbody></table></div></div></section>
@@ -245,7 +253,7 @@ final class DynamicContentPage {
         <div class="etg-editor-sections">
             <div class="etg-editor-main">
                 <section id="etg-slot-editor" class="etg-panel"><div class="etg-panel__head"><div><h2><?php echo $edit['id'] ? 'Edit Content Combination' : 'Create Content Combination'; ?></h2><p class="description">Use <code>{{token}}</code>, <code>{{source:alias}}</code>, or <code>{{resolved}}</code>. Image/Gallery slots resolve ordered source fallbacks to normalized attachment IDs.</p></div></div><div class="etg-panel__body">
-                    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>"><input type="hidden" name="action" value="etg_dfsb_save_dynamic_slot"><?php wp_nonce_field('dfsb_save_dynamic_slot'); ?><input type="hidden" name="slot_revision" value="<?php echo esc_attr($this->slots->revision()); ?>">
+                    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>"><input type="hidden" name="action" value="dfsb_save_dynamic_slot"><?php wp_nonce_field('dfsb_save_dynamic_slot'); ?><input type="hidden" name="slot_revision" value="<?php echo esc_attr($this->slots->revision()); ?>">
                     <h3 class="etg-kicker">Basic & Output</h3>
                     <table class="form-table" role="presentation">
                         <tr><th><label for="etg-slot-id">Slot ID</label></th><td><input id="etg-slot-id" name="slot_id" class="regular-text code" required value="<?php echo esc_attr((string) $edit['id']); ?>"></td></tr>
@@ -255,6 +263,14 @@ final class DynamicContentPage {
                         <tr><th><label for="etg-slot-template">Template</label></th><td><textarea id="etg-slot-template" name="template" class="large-text code" rows="5"><?php echo esc_textarea((string) $edit['template']); ?></textarea><p class="description">Example: <code>{{source:location_intro}}</code> · image/gallery: <code>{{resolved}}</code>.</p></td></tr>
                     </table>
 
+                    <?php $termGallery=(array)($edit['term_gallery']??array()); ?>
+                    <h3 class="etg-kicker">Selected Term Gallery</h3>
+                    <table class="form-table" role="presentation">
+                        <tr><th>Term gallery source</th><td><label><input type="checkbox" name="term_gallery_enabled" value="1" <?php checked(!empty($termGallery)); ?>> Use selected-term gallery (Gallery output only)</label><p class="description">A unique exact definition can bind existing term backgrounds; template fallback remains owned by the rendered document. This source replaces the ordinary gallery fallback chain.</p></td></tr>
+                        <tr><th><label for="dfsb-term-gallery-taxonomy">Taxonomy</label></th><td><input id="dfsb-term-gallery-taxonomy" name="term_gallery_taxonomy" class="regular-text code" value="<?php echo esc_attr($termGallery['dfsb_background_gallery_meta_taxonomy']??''); ?>"></td></tr>
+                        <tr><th><label for="dfsb-term-gallery-field">Gallery field</label></th><td><input id="dfsb-term-gallery-field" name="term_gallery_field" class="regular-text code" value="<?php echo esc_attr($termGallery['dfsb_background_gallery_meta_key']??''); ?>"></td></tr>
+                        <tr><th><label for="dfsb-term-gallery-policy">Media policy</label></th><td><select id="dfsb-term-gallery-policy" name="term_gallery_policy"><?php foreach(array('mixed'=>'Mixed','local_only'=>'Company Private','shared_only'=>'Shared Only')as$key=>$label): ?><option value="<?php echo esc_attr($key); ?>" <?php selected($termGallery['dfsb_background_gallery_media_policy']??'mixed',$key); ?>><?php echo esc_html($label); ?></option><?php endforeach; ?></select></td></tr>
+                    </table>
                     <h3 class="etg-kicker">Fallback & Wrapping</h3>
                     <table class="form-table" role="presentation">
                         <tr><th><label for="etg-slot-fallback-chain">Fallback Chain</label></th><td><input id="etg-slot-fallback-chain" name="fallback_chain" class="large-text code" value="<?php echo esc_attr(implode(',', (array) $edit['fallback_chain'])); ?>"><p class="description">Aliases in priority order, e.g. <code>style_image,location_image,related_image,query_image</code>.</p></td></tr>
@@ -312,8 +328,8 @@ final class DynamicContentPage {
     private function renderHelpers(array $edit): void {
         ?>
         <section class="etg-panel" data-etg-collapsible="1"><div class="etg-panel__head"><div><h2>JetEngine Helper Tools</h2><p class="description">Use the same combinations across Elementor, Listing Items, Components, Dynamic Repeater and Query Builder-driven layouts.</p></div></div><div class="etg-panel__body"><table class="widefat striped"><tbody>
-            <tr><th>JetEngine Macro — scalar slot</th><td><code>%etg_content_slot|YOUR_SLOT_ID%</code></td></tr>
-            <tr><th>JetEngine Macro — rows source</th><td><code>%etg_slot_rows|YOUR_SLOT_ID|SOURCE_ALIAS%</code></td></tr>
+            <tr><th>JetEngine Macro — scalar slot</th><td><code>%dfsb_content_slot|YOUR_SLOT_ID%</code></td></tr>
+            <tr><th>JetEngine Macro — rows source</th><td><code>%dfsb_slot_rows|YOUR_SLOT_ID|SOURCE_ALIAS%</code></td></tr>
             <tr><th>Dynamic Repeater bridge</th><td>Add CSS class <code><?php echo esc_html(ListingIntegration::repeaterMarker((string) ($edit['id'] ?: 'slot_id'), 'source_alias')); ?></code>.</td></tr>
             <tr><th>Listing / Component current object</th><td>Choose <code>listing_field</code> or <code>listing_meta</code>; follows JetEngine current-object context.</td></tr>
             <tr><th>Repeater source</th><td>Choose <code>repeater</code>, set exact Meta / Repeater Key, then Field / Path for the subfield.</td></tr>

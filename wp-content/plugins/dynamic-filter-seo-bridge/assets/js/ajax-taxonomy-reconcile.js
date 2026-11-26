@@ -60,7 +60,9 @@
         });
         Object.keys(state.query).forEach(function (name) { next[name] = state.query[name]; });
         group.currentQuery = next;
-        document.dispatchEvent(new CustomEvent('etg-dfsb/jsf-taxonomy-reconciled', { detail: { group: key, taxonomy_query: state.query } }));
+        var detail = { group: key, taxonomy_query: state.query };
+        document.dispatchEvent(new CustomEvent('dfsb/jsf-taxonomy-reconciled', { detail: detail }));
+        document.dispatchEvent(new CustomEvent('etg-dfsb/jsf-taxonomy-reconciled', { detail: detail }));
     }
 
     function reconcileKey(key) {

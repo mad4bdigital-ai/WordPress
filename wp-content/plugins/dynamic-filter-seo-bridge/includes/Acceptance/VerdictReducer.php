@@ -8,8 +8,21 @@ final class VerdictReducer {
         $rank=array('PASS'=>0,'INCOMPLETE_EVIDENCE'=>1,'BLOCKED'=>2,'FAIL'=>3);
         $verdict='PASS';$classification='NO_CONFIRMED_DEFECT';$blocking=array();$incomplete=array();$defects=array();$infrastructure=array();
         $tests=array('profile_resolution'=>'PASS','provider_binding'=>'PASS','query_binding'=>'PASS','direct_ajax_state_parity'=>'PASS','result_count_parity'=>'PASS','dataset_id_parity'=>'PASS','seo_non_authority'=>'PASS');
+        if(!$cases){$verdict='INCOMPLETE_EVIDENCE';$classification='OBSERVATION_GAP';$incomplete[]='acceptance_cases_not_observed';$tests=array_fill_keys(array_keys($tests),'INCOMPLETE_EVIDENCE');}
         foreach($cases as$case){
+            if(!is_array($case)){$case=array('verdict'=>'BLOCKED','classification'=>'TEST_INFRASTRUCTURE_FAILURE','blocking_reasons'=>array('acceptance_case_invalid'));}
+            // A PASS label cannot substitute for the measurements in the case.
+            if(($case['verdict']??null)==='PASS'){
+                foreach(array('provider_binding_parity','state_parity','result_count_parity','ids_parity','order_parity','seo_non_authority') as$field){
+                    if(($case[$field]??null)!==true){$case['incomplete_evidence'][]='case_measurement_not_verified:'.$field;}
+                }
+                if(!empty($case['defect_reasons'])){$case['verdict']='FAIL';$case['classification']='PRODUCT_DEFECT';}
+                elseif(!empty($case['blocking_reasons'])||!empty($case['infrastructure_failures'])){$case['verdict']='BLOCKED';$case['classification']='TEST_INFRASTRUCTURE_FAILURE';}
+                elseif(!empty($case['incomplete_evidence'])){$case['verdict']='INCOMPLETE_EVIDENCE';$case['classification']='OBSERVATION_GAP';}
+            }
+
             $caseVerdict=(string)($case['verdict']??'BLOCKED');
+            if(!isset($rank[$caseVerdict])){$caseVerdict='BLOCKED';$case['classification']='TEST_INFRASTRUCTURE_FAILURE';$case['blocking_reasons'][]='acceptance_case_verdict_invalid';}
             if(($rank[$caseVerdict]??2)>($rank[$verdict]??0)){$verdict=$caseVerdict;$classification=(string)($case['classification']??'UNKNOWN');}
             $blocking=array_merge($blocking,(array)($case['blocking_reasons']??array()));
             $incomplete=array_merge($incomplete,(array)($case['incomplete_evidence']??array()));

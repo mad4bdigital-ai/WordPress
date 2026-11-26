@@ -14,7 +14,8 @@
       "plugin_subdirectory": "wp-content/plugins/etg-dynamic-filter-seo-bridge",
       "plugin_file": "etg-dynamic-filter-seo-bridge/etg-dynamic-filter-seo-bridge.php",
       "provider_id": "etg-dynamic-filter-seo-bridge",
-      "review_state": "source_reviewed_artifact_pending",
+      "review_state": "legacy_retirement_pending",
+      "replacement_source_id": "dynamic-filter-seo-bridge",
       "candidate_source_commit_sha": "76ef918d8485c42e92dd38b3725efd4de5471556",
       "candidate_artifact_version": "0.4.0-alpha.13",
       "candidate_state": "REVIEW_ONLY_SOURCE_PINNED",
@@ -30,7 +31,7 @@
     },
     {
       "id": "dynamic-filter-seo-bridge",
-      "label": "Dynamic Filter SEO Bridge — tenant-neutral source",
+      "label": "Dynamic Filter SEO Bridge \u2014 tenant-neutral source",
       "repository": "mad4bdigital-ai/WordPress",
       "plugin_subdirectory": "wp-content/plugins/dynamic-filter-seo-bridge",
       "plugin_file": "dynamic-filter-seo-bridge/dynamic-filter-seo-bridge.php",

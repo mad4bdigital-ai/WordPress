@@ -67,17 +67,31 @@ final class LiveAcceptanceProvider {
         }}
         if(!$cases)return$this->planEnvelope('blocked',$profile,$routes,array('acceptance_cases_unavailable'));
         $plan=$this->planEnvelope('ready',$profile,$routes,array());$plan['cases']=$cases;$plan['case_count']=count($cases);
-        $plan['plan_digest']=hash('sha256',json_encode(array('profile_id'=>$profileId,'suite'=>'semantic','cases'=>$cases)));return$plan;
+        $plan['plan_digest']=hash('sha256',json_encode(array('profile_id'=>$profileId,'suite'=>'semantic','cases'=>$cases)));
+        $plan['profile_sha256']=$this->profileDigest($profile);
+        if($plan['profile_sha256']==='')return$this->planEnvelope('blocked',$profile,$routes,array('profile_identity_unavailable'));
+        $plan['case_coverage']=array('scope'=>'bounded_selected_routes_and_candidates','selected_route_count'=>count($routes),'selected_candidate_count'=>count($candidates),'candidate_pair_count'=>count($routes)*count($candidates),'planned_count'=>count($cases),'deferred_pair_count'=>count($routes)*count($candidates)-count($cases),'full_profile_coverage_inferred'=>false);
+        return$plan;
     }
 
     public function run(array$request):array{
         $plan=$this->plan($request);if('ready'!==(string)($plan['state']??''))return$this->runBlocked($request,$plan);
         $profiles=$this->profiles();$profileId=(string)($plan['profile_id']??'');$profile=is_array($profiles)&&isset($profiles[$profileId])&&is_array($profiles[$profileId])?$profiles[$profileId]:array();
         if(!$profile)return$this->runBlocked($request,$this->planEnvelope('blocked',array(),array(),array('profile_not_found')));
-        $results=array();foreach((array)($plan['cases']??array())as$case)$results[]=$this->caseRunner->run($profile,$case);
+        if(!hash_equals($plan['profile_sha256'],$this->profileDigest($profile)))return$this->runBlocked($request,$this->planEnvelope('blocked',$profile,array(),array('profile_changed_after_plan')));
+        $results=array();$seen=array();
+        foreach((array)($plan['cases']??array())as$case){
+            $result=$this->caseRunner->run($profile,$case);
+            if(isset($seen[$case['case_id']])||!$this->caseMatches($case,$result))return$this->runBlocked($request,$this->planEnvelope('blocked',$profile,array(),array('case_result_identity_mismatch')));
+            $seen[$case['case_id']]=true;$results[]=$result;
+        }
+        $latest=$this->profiles();$latestProfile=is_array($latest)&&is_array($latest[$profileId]??null)?$latest[$profileId]:array();
+        if(!$latestProfile||!hash_equals($plan['profile_sha256'],$this->profileDigest($latestProfile)))return$this->runBlocked($request,$this->planEnvelope('blocked',$profile,array(),array('profile_changed_during_run')));
+        $coverage=$plan['case_coverage'];$coverage['observed_count']=count($results);$coverage['planned_identity_match']=count($results)===$plan['case_count'];
         $reduced=$this->reducer->reduce($results);
         return array('contract'=>self::CONTRACT,'provider_id'=>self::PROVIDER_ID,'environment'=>function_exists('wp_get_environment_type')?(string)wp_get_environment_type():'','origin'=>function_exists('home_url')?(string)home_url('/'):'',
             'profile_id'=>$profileId,'suite'=>'semantic','plan_digest'=>(string)($plan['plan_digest']??''),
+            'profile_sha256'=>$plan['profile_sha256'],'case_coverage'=>$coverage,'measurement_scope'=>'semantic_only','independent_effect_observation_verified'=>false,
             'verification'=>array('semantic_parity_verified'=>'PASS'===$reduced['verdict'],'browser_runtime_parity_verified'=>false,'verified_through'=>'live_server_semantic'),
             'tests'=>$reduced['tests'],'cases'=>$results,'case_count'=>count($results),'authority'=>$this->authority(),'effects'=>$this->effects(),
             'blocking_reasons'=>$reduced['blocking_reasons'],'incomplete_evidence'=>array_values(array_unique(array_merge($reduced['incomplete_evidence'],array('browser_runtime_not_observed')))),
@@ -91,6 +105,12 @@ final class LiveAcceptanceProvider {
             'authority'=>$this->authority(),'effects'=>$this->effects(),'blocking_reasons'=>array_values(array_unique((array)($plan['blocking_reasons']??array('acceptance_plan_blocked')))),
             'incomplete_evidence'=>array('browser_runtime_not_observed'),'defect_reasons'=>array(),'infrastructure_failures'=>array(),
             'classification'=>'ENVIRONMENT_OR_PROVIDER_BLOCK','verdict'=>'BLOCKED','browser_runtime'=>'INCOMPLETE_EVIDENCE');
+    }
+
+    private function profileDigest(array $profile):string{$json=json_encode($profile);return is_string($json)?hash('sha256',$json):'';}
+    private function caseMatches(array $case,array $result):bool{
+        foreach(array('case_id','provider','query_id','taxonomy','term_id','term_slug') as $key){if(!array_key_exists($key,$result)||$result[$key]!==$case[$key])return false;}
+        return true;
     }
 
     private function routes(array$profile):array{

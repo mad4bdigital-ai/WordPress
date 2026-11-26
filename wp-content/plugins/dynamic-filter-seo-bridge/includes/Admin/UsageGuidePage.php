@@ -149,15 +149,15 @@ final class UsageGuidePage {
 
     private function renderJetEngine(): void {
         $macros=array(
-            array('%etg_content_slot|hero_title%','Resolved scalar Content Slot'),
-            array('%etg_slot_rows|cards|related_tours%','Content Slot source rows JSON'),
-            array('%etg_filter_value|result_count%','Presentation token'),
-            array('%etg_filter_term_id|location%','First selected term ID'),
-            array('%etg_filter_term_ids|location|,%','All selected term IDs'),
-            array('%etg_filter_term_slug|location%','First selected term slug'),
-            array('%etg_filter_term_slugs|location|,%','All selected term slugs'),
-            array('%etg_filter_term_meta|location|HeroImage%','Exact-case meta value from first selected term'),
-            array('%etg_filter_term_meta_values|location|RegionCode|,%','Exact-case meta values from all selected terms'),
+            array('%dfsb_content_slot|hero_title%','Resolved scalar Content Slot'),
+            array('%dfsb_slot_rows|cards|related_tours%','Content Slot source rows JSON'),
+            array('%dfsb_filter_value|result_count%','Presentation token'),
+            array('%dfsb_filter_term_id|location%','First selected term ID'),
+            array('%dfsb_filter_term_ids|location|,%','All selected term IDs'),
+            array('%dfsb_filter_term_slug|location%','First selected term slug'),
+            array('%dfsb_filter_term_slugs|location|,%','All selected term slugs'),
+            array('%dfsb_filter_term_meta|location|HeroImage%','Exact-case meta value from first selected term'),
+            array('%dfsb_filter_term_meta_values|location|RegionCode|,%','Exact-case meta values from all selected terms'),
         ); ?>
         <section class="etg-panel"><div class="etg-panel__head"><div><h2>JetEngine Native Integration</h2><p class="description">Use as a read-only presentation/context provider rather than duplicating JetEngine query, relation or listing engines.</p></div><div class="etg-actions"><a class="button button-primary" href="<?php echo esc_url(add_query_arg(array('page'=>'dfsb-jetengine-inspector'),admin_url('options-general.php'))); ?>">Open JetEngine Inspector</a></div></div><div class="etg-panel__body">
         <table class="widefat striped"><thead><tr><th>Capability</th><th>surface</th><th>Notes</th></tr></thead><tbody>
@@ -178,10 +178,10 @@ final class UsageGuidePage {
         $recipes=array(
             array('Dynamic Tours Archive Hero',array('Heading → Filter Title','Intro → Filter Intro','Result line → Filter Result Summary','Image slot → Content Slot Image','For transient filter changes use [dfsb_dynamic_image id="hero_image" live="1"] or [dfsb_dynamic_background ...].')),
             array('JetEngine Listing Grid + JetSmartFilters',array('Keep the Listing Grid provider/query native to JetEngine/JetSmartFilters.','Use Filter Context or macros only for supplementary content/query arguments.','Use exact provider/query identity from Inspector when scoping live content.','Do not create a second list renderer; JetEngine remains the item renderer.')),
-            array('Query Builder Slider',array('Create/read a normal JetEngine Query Builder query.','Use %etg_filter_term_ids|location|,% or %etg_filter_term_slugs|location|,% in supported query arguments.','Use the query as the data source for JetEngine/Elementor slider/listing.','For a separate image gallery payload use [dfsb_dynamic_gallery id="hero_gallery" live="1"] and listen for dfsb/media-updated.')),
-            array('Relation Cards + Relation Meta',array('Create a Content Slot source type relation for parents/children.','Set relation ID, direction and Field/Path for related object fields.','Add a relation_meta source for edge attributes such as order, label, price or featured flags.','Use Dynamic Repeater or %etg_slot_rows|SLOT|ALIAS% to consume rows.')),
+            array('Query Builder Slider',array('Create/read a normal JetEngine Query Builder query.','Use %dfsb_filter_term_ids|location|,% or %dfsb_filter_term_slugs|location|,% in supported query arguments.','Use the query as the data source for JetEngine/Elementor slider/listing.','For a separate image gallery payload use [dfsb_dynamic_gallery id="hero_gallery" live="1"] and listen for dfsb/media-updated.')),
+            array('Relation Cards + Relation Meta',array('Create a Content Slot source type relation for parents/children.','Set relation ID, direction and Field/Path for related object fields.','Add a relation_meta source for edge attributes such as order, label, price or featured flags.','Use Dynamic Repeater or %dfsb_slot_rows|SLOT|ALIAS% to consume rows.')),
             array('CCT Cards / Slider',array('Open JetEngine Inspector → CCTs and Fields.','Use a JetEngine Query Builder CCT query as a query source, or a Relation source whose object type is cct::slug.','Reference exact CCT field paths; media/gallery fields are normalized to attachment IDs when possible.','Render with JetEngine Listing/Component or a Content Slot media helper.')),
-            array('Repeater-driven Slider',array('Create a repeater source and enter the exact Meta / Repeater Key.','Set Field / Path to the repeater subfield needed by the card.','Dynamic Repeater bridge class: etg-source--SLOT_ID--SOURCE_ALIAS.','For media fields use image/gallery aggregate instead of parsing JSON manually.')),
+            array('Repeater-driven Slider',array('Create a repeater source and enter the exact Meta / Repeater Key.','Set Field / Path to the repeater subfield needed by the card.','Dynamic Repeater bridge class: dfsb-source--SLOT_ID--SOURCE_ALIAS.','For media fields use image/gallery aggregate instead of parsing JSON manually.')),
             array('Multi-provider Page',array('Use explicit group="provider/query-id" when more than one JetSmartFilters group exists.','Query ID is case-sensitive end-to-end.','Auto mode resolves pretty-URL group first, then one active group, then one available group.','Any remaining ambiguity fails closed.')),
         ); ?>
         <section class="etg-panel"><div class="etg-panel__head"><div><h2>Recipes</h2><p class="description">Practical Elementor + JetEngine + JetSmartFilters composition patterns.</p></div></div><div class="etg-panel__body"><div class="etg-guide-recipe-grid"><?php foreach($recipes as $recipe): ?><article class="etg-guide-recipe"><h3><?php echo esc_html($recipe[0]); ?></h3><ol><?php foreach($recipe[1] as $line): ?><li><?php echo esc_html($line); ?></li><?php endforeach; ?></ol></article><?php endforeach; ?></div></div></section><?php

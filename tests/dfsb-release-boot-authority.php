@@ -20,6 +20,8 @@ namespace {
     function check($valid, $msg) {
         if (!$valid) { throw new \RuntimeException($msg); }
     }
+    function sanitize_key($value) { return preg_replace('/[^a-z0-9_-]/','',strtolower((string)$value)); }
+    function get_option($key,$default=[]) { return $GLOBALS['boot_state'] ?? $default; }
     $digest = str_repeat('b',64);
     $git = str_repeat('a',40);
     $version = '0.4.0-alpha.15-rc.1';
@@ -47,6 +49,7 @@ namespace {
     // A legacy environment override may not bypass a missing certificate.
     define('DFSB_FORCE_FULL_BOOT', true);
     check($guard::shouldHold(), 'unsafe forced boot was permitted without receipt');
+    check($guard::status()['effective_hold'] && !$guard::status()['release_ready'], 'diagnostics must report missing receipt even with forced flag');
     $executed = false;
     check(!$guard::run(static function () use (&$executed) { $executed = true; }) && !$executed,
         'uncertified release executed boot callback');
@@ -57,8 +60,10 @@ namespace {
     $r=$guard::releaseReadiness();
     check($r['ready'] && !$r['authorizing'], 'matching in-memory mock fixture must be eligible for read-only result');
     check(!$guard::shouldHold(), 'synthetic matching certificate could not pass guarded override');
+    check(!$guard::status()['effective_hold'] && $guard::status()['release_ready'], 'mock diagnostic tracks actual guard');
     $GLOBALS['provider']['archive_sha256']=str_repeat('c',64);
     check(!$guard::releaseReadiness()['ready'], 'provider SHA mismatch allowed');
+    check($guard::shouldHold() && $guard::status()['effective_hold'] && !$guard::status()['boot_ok'], 'diagnostic must reflect revoked/mismatched authority');
     $GLOBALS['provider']['archive_sha256']=$digest;
     $GLOBALS['sources']['dynamic-filter-seo-bridge']['source_commit_sha']=str_repeat('c',40);
     check(!$guard::releaseReadiness()['ready'], 'source SHA mismatch allowed');

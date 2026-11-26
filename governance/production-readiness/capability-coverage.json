@@ -3605,6 +3605,24 @@
       "new_control_ids": [],
       "coverage_reuse_rationale": "Existing MCP admission, platform identity, security, owner-scoped administrative rights and execution-denial controls cover these staging-only authorization surfaces, without granting Production execution or public access.",
       "review_rationale": "New surface ability:mad4b/staging-write-grant-reconcile-staging is source-pinned in the W1 authority integration and assessed with hermetic owner-browser, agent REST route, Site Profile, OAuth, replay, write grant, exact mapping and negative permission fixtures. This is only CI source review, not evidence that the route is registered, usable, or authorized in Production."
+    },
+    {
+      "owner_role": "Repository source review (CI-only technical coverage; independent release approval remains required)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "tests/dfsb-source-transition-readiness-regression.py"
+      ],
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dfsb-adapter.php",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "review_rationale": "Unmounted neutral read-adapter declaration reuses eleven original descriptor pairs without granting runtime admission. Isolated fixture checks 24 observed names, unchanged original callbacks and schemas, no writes, fail-closed evidence and no native policy activation.",
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP, provider and execution controls cover this unmounted read-only source candidate; no new runtime grant, policy admission or certified release is claimed."
     }
   ],
   "lifecycle": [],
@@ -11538,6 +11556,76 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "The existing original Agent Registry exact grant, Staging-only provider review, site profile, mutation gate, owner approval, checkpoint, readback and audit safeguards govern this single diagnostic, without wildcard rights.",
       "review_rationale": "Exact source review allows a core grant to be considered only for mad4b/hub-queue-site-health-enqueue when the Ability is registered on the correct central Staging site. No grant is issued merely because this provider pair appears; broad hub-bulk-enqueue remains outside the reviewed policy and Production is not enabled."
+    },
+    {
+      "owner_role": "Repository source review (CI-only technical coverage; independent release approval remains required)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "tests/dfsb-source-transition-readiness-regression.py"
+      ],
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json",
+      "source_blob_sha": "720d1d196fa2ede4fb68a3aaad98152bb085560e",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "review_rationale": "Legacy retirement identifies the exact canonical replacement but leaves both historical candidate pins and package certification pending. Regression verifies original read-only deployment planning, absence of package authority and preservation of immutable release references."
+    },
+    {
+      "owner_role": "Repository source review (CI-only technical coverage; independent release approval remains required)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "tests/dfsb-source-transition-readiness-regression.py"
+      ],
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dfsb-adapter.php",
+      "source_blob_sha": "212bc2bd3d7e25e7206b0f5935f85d65f9361b52",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "review_rationale": "Unmounted neutral read-adapter declaration reuses eleven original descriptor pairs without granting runtime admission. Isolated fixture checks 24 observed names, unchanged original callbacks and schemas, no writes, fail-closed evidence and no native policy activation."
+    },
+    {
+      "owner_role": "Repository source review (CI-only technical coverage; independent release approval remains required)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "tests/dfsb-source-transition-readiness-regression.py"
+      ],
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php",
+      "source_blob_sha": "e76fdad20383eac93990afb46447645839d7f3e0",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "review_rationale": "Original read adapter rejects uncertain or throwing WordPress ability metadata and accepts structural eligibility only for strict true. Isolated native fixture checks original behavior, descriptor parity and zero mutation authority."
+    },
+    {
+      "owner_role": "Repository source review (CI-only technical coverage; independent release approval remains required)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "regression_tests": [
+        "tests/dfsb-source-transition-readiness-regression.py"
+      ],
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cross-plugin-deployment.php",
+      "source_blob_sha": "77ac774917a6ca6f5623ef9fe41fb690d485a25a",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "review_rationale": "Read-only discovery projects the registered replacement source ID without altering selection, package planning, executor or authorization. Original deployment fixture checks both source identities and uncertified package denial."
     }
   ],
   "code_change_rules": {

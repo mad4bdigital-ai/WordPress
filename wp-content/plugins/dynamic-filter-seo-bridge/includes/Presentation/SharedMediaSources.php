@@ -75,12 +75,11 @@ final class SharedMediaSources {
             $source='shared';$relative=substr($value,7);
         }
         if($source==='local' && $mode!=='shared_only' && $id>0){
-            $url=PortableMediaGallery::attachmentUrl($id);
-            if($url!=='')return array('id'=>$id,'url'=>$url,'source'=>'local');
+            return PortableMediaGallery::attachmentItem($id);
         }
         if($source==='shared' && $mode!=='local_only'){
             $url=self::urlForShared($relative);
-            if($url!=='')return array('id'=>0,'url'=>$url,'source'=>'shared','path'=>self::normalizeRelative($relative));
+            if($url!=='')return array('id'=>0,'url'=>$url,'source'=>'shared','path'=>self::normalizeRelative($relative),'width'=>0,'height'=>0,'aspect_ratio'=>0.0,'dimensions_source'=>'unknown');
         }
         return null;
     }

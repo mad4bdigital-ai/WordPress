@@ -1,10 +1,25 @@
 (function () {
     'use strict';
 
-    var selector = '.etg-dfsb-dynamic-background';
+    var selector = '.dfsb-dynamic-background, .etg-dfsb-dynamic-background';
     var states = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
     var resizeTimer = null;
     var viewportObserver = null;
+
+    // Existing rendered values remain authoritative during the compatibility phase.
+    // A neutral-only background also works without duplicating runtime state.
+    function backgroundAttribute(el, name) {
+        var legacy = el.getAttribute('data-etg-dfsb-background-' + name);
+        return legacy !== null ? legacy : el.getAttribute('data-dfsb-background-' + name);
+    }
+    function setSlideAttribute(slide, name, value) {
+        slide.setAttribute('data-dfsb-' + name, value);
+        slide.setAttribute('data-etg-dfsb-' + name, value);
+    }
+    function setBackgroundProperty(stage, name, value) {
+        stage.style.setProperty('--dfsb-background-' + name, value);
+        stage.style.setProperty('--etg-dfsb-background-' + name, value);
+    }
 
     function intValue(value, fallback, min, max) {
         value = Number(value);
@@ -48,7 +63,7 @@
     }
 
     function behavior(el) {
-        var value = (el.getAttribute('data-etg-dfsb-background-' + device()) || 'inherit').trim();
+        var value = (backgroundAttribute(el, device()) || 'inherit').trim();
         return ['inherit', 'first_image', 'disabled'].indexOf(value) !== -1 ? value : 'inherit';
     }
 
@@ -78,19 +93,19 @@
     }
 
     function playback(el) {
-        var value = (el.getAttribute('data-etg-dfsb-background-playback') || 'animated').trim();
+        var value = (backgroundAttribute(el, 'playback') || 'animated').trim();
         return value === 'static' ? 'static' : 'animated';
     }
 
     function suitabilityPolicy(el) {
-        var name = (el.getAttribute('data-etg-dfsb-background-suitability') || 'any').trim();
+        var name = (backgroundAttribute(el, 'suitability') || 'any').trim();
         if (['any','landscape','wide','custom'].indexOf(name) === -1) { name = 'any'; }
         return {
             name: name,
-            minWidth: floatValue(el.getAttribute('data-etg-dfsb-background-min-width'), 0, 0, 10000),
-            minHeight: floatValue(el.getAttribute('data-etg-dfsb-background-min-height'), 0, 0, 10000),
-            minRatio: floatValue(el.getAttribute('data-etg-dfsb-background-min-ratio'), 0, 0, 5),
-            empty: (el.getAttribute('data-etg-dfsb-background-no-suitable') || 'fallback').trim() === 'hide' ? 'hide' : 'fallback'
+            minWidth: floatValue(backgroundAttribute(el, 'min-width'), 0, 0, 10000),
+            minHeight: floatValue(backgroundAttribute(el, 'min-height'), 0, 0, 10000),
+            minRatio: floatValue(backgroundAttribute(el, 'min-ratio'), 0, 0, 5),
+            empty: (backgroundAttribute(el, 'no-suitable') || 'fallback').trim() === 'hide' ? 'hide' : 'fallback'
         };
     }
 
@@ -110,12 +125,13 @@
     }
 
     function readFallback(el) {
-        var raw = el.getAttribute('data-etg-dfsb-background-fallback') || '[]';
+        var raw = backgroundAttribute(el, 'fallback') || '[]';
         try { return uniqueGallery(JSON.parse(raw), 1); } catch (error) { return []; }
     }
 
     function readGallery(el) {
-        var raw = el.getAttribute('data-etg-dfsb-gallery') || '[]';
+        var legacy = el.getAttribute('data-etg-dfsb-gallery');
+        var raw = (legacy !== null ? legacy : el.getAttribute('data-dfsb-gallery')) || '[]';
         try { return uniqueGallery(JSON.parse(raw), 30); } catch (error) { return []; }
     }
 
@@ -128,9 +144,9 @@
     }
 
     function ensureStage(el) {
-        var scope = el.getAttribute('data-etg-dfsb-background-frame-scope') || 'self';
+        var scope = backgroundAttribute(el, 'frame-scope') || 'self';
         var frame = scope === 'first_child' ? Array.prototype.find.call(el.children, function (node) {
-            return node.nodeType === 1 && node.classList.contains('elementor-element') && node !== el.querySelector('.etg-dfsb-background-stage');
+            return node.nodeType === 1 && node.classList.contains('elementor-element') && node !== el.querySelector('.dfsb-background-stage, .etg-dfsb-background-stage');
         }) : el;
         if (!frame) { frame = el; }
         var state = states && states.get(el);
@@ -146,10 +162,10 @@
         }
 
         var stage = document.createElement('div');
-        stage.className = 'etg-dfsb-background-stage';
+        stage.className = 'dfsb-background-stage etg-dfsb-background-stage';
         stage.setAttribute('aria-hidden', 'true');
         var overlay = document.createElement('div');
-        overlay.className = 'etg-dfsb-background-stage__overlay';
+        overlay.className = 'dfsb-background-stage__overlay etg-dfsb-background-stage__overlay';
         stage.appendChild(overlay);
         if (frame.firstChild) { frame.insertBefore(stage, frame.firstChild); } else { frame.appendChild(stage); }
         state.stage = stage;
@@ -159,13 +175,13 @@
         if (!state.hoverBound) {
             el.addEventListener('mouseenter', function () {
                 var current = states && states.get(el) ? states.get(el) : state;
-                if (!current || (el.getAttribute('data-etg-dfsb-background-pause-hover') || '0') !== '1') { return; }
+                if (!current || (backgroundAttribute(el, 'pause-hover') || '0') !== '1') { return; }
                 current.paused = true;
                 clearTimer(current);
             });
             el.addEventListener('mouseleave', function () {
                 var current = states && states.get(el) ? states.get(el) : state;
-                if (!current || (el.getAttribute('data-etg-dfsb-background-pause-hover') || '0') !== '1') { return; }
+                if (!current || (backgroundAttribute(el, 'pause-hover') || '0') !== '1') { return; }
                 current.paused = false;
                 schedule(current);
             });
@@ -187,23 +203,23 @@
 
     function configure(state) {
         var el = state.element, stage = state.stage;
-        var fit = (el.getAttribute('data-etg-dfsb-background-fit') || 'cover').trim();
-        var position = (el.getAttribute('data-etg-dfsb-background-position') || 'center center').trim();
-        var transition = (el.getAttribute('data-etg-dfsb-background-transition') || 'crossfade').trim();
-        var transitionDuration = intValue(el.getAttribute('data-etg-dfsb-background-transition-duration'), 800, 0, 5000);
-        var duration = intValue(el.getAttribute('data-etg-dfsb-background-duration'), 5000, 1000, 30000);
-        var overlayOpacity = floatValue(el.getAttribute('data-etg-dfsb-background-overlay-opacity'), 0, 0, 1);
-        var overlayColor = (el.getAttribute('data-etg-dfsb-background-overlay-color') || '').trim();
+        var fit = (backgroundAttribute(el, 'fit') || 'cover').trim();
+        var position = (backgroundAttribute(el, 'position') || 'center center').trim();
+        var transition = (backgroundAttribute(el, 'transition') || 'crossfade').trim();
+        var transitionDuration = intValue(backgroundAttribute(el, 'transition-duration'), 800, 0, 5000);
+        var duration = intValue(backgroundAttribute(el, 'duration'), 5000, 1000, 30000);
+        var overlayOpacity = floatValue(backgroundAttribute(el, 'overlay-opacity'), 0, 0, 1);
+        var overlayColor = (backgroundAttribute(el, 'overlay-color') || '').trim();
         if (['cover', 'contain'].indexOf(fit) === -1) { fit = 'cover'; }
         if (['fade', 'crossfade', 'slide'].indexOf(transition) === -1) { transition = 'crossfade'; }
         stage.setAttribute('data-transition', reducedMotion() ? 'fade' : transition);
-        stage.setAttribute('data-ken-burns', !reducedMotion() && playback(el) === 'animated' && (el.getAttribute('data-etg-dfsb-background-ken-burns') || '0') === '1' ? '1' : '0');
-        stage.style.setProperty('--etg-dfsb-background-fit', fit);
-        stage.style.setProperty('--etg-dfsb-background-position', position);
-        stage.style.setProperty('--etg-dfsb-background-transition-duration', reducedMotion() ? '0ms' : transitionDuration + 'ms');
-        stage.style.setProperty('--etg-dfsb-background-duration', duration + 'ms');
-        stage.style.setProperty('--etg-dfsb-background-overlay-color', overlayColor || 'transparent');
-        stage.style.setProperty('--etg-dfsb-background-overlay-opacity', String(overlayOpacity));
+        stage.setAttribute('data-ken-burns', !reducedMotion() && playback(el) === 'animated' && (backgroundAttribute(el, 'ken-burns') || '0') === '1' ? '1' : '0');
+        setBackgroundProperty(stage, 'fit', fit);
+        setBackgroundProperty(stage, 'position', position);
+        setBackgroundProperty(stage, 'transition-duration', reducedMotion() ? '0ms' : transitionDuration + 'ms');
+        setBackgroundProperty(stage, 'duration', duration + 'ms');
+        setBackgroundProperty(stage, 'overlay-color', overlayColor || 'transparent');
+        setBackgroundProperty(stage, 'overlay-opacity', String(overlayOpacity));
     }
 
     function buildSlides(state, items) {
@@ -212,9 +228,9 @@
         state.slides = [];
         items.forEach(function (item) {
             var slide = document.createElement('div');
-            slide.className = 'etg-dfsb-background-stage__slide';
-            slide.setAttribute('data-etg-dfsb-attachment-id', String(item.id || 0));
-            slide.setAttribute('data-etg-dfsb-hydrated', '0');
+            slide.className = 'dfsb-background-stage__slide etg-dfsb-background-stage__slide';
+            setSlideAttribute(slide, 'attachment-id', String(item.id || 0));
+            setSlideAttribute(slide, 'hydrated', '0');
             stage.insertBefore(slide, state.overlay);
             state.slides.push(slide);
         });
@@ -229,17 +245,17 @@
         // them in the browser, not via a server-side fetch/SSRF. When a
         // shared item is missing, return to an available company-local frame.
         if (item.source === 'shared') {
-            slide.setAttribute('data-etg-dfsb-hydrated', 'loading');
+            setSlideAttribute(slide, 'hydrated', 'loading');
             var requested = item.url;
             var image = new Image();
             image.onload = function () {
                 if (!state.slides || state.slides[index] !== slide || !state.items || state.items[index] !== item) { return; }
                 slide.style.backgroundImage = safeBackgroundUrl(requested);
-                slide.setAttribute('data-etg-dfsb-hydrated', '1');
+                setSlideAttribute(slide, 'hydrated', '1');
             };
             image.onerror = function () {
                 if (!state.slides || state.slides[index] !== slide || !state.items || state.items[index] !== item) { return; }
-                slide.setAttribute('data-etg-dfsb-hydrated', 'failed');
+                setSlideAttribute(slide, 'hydrated', 'failed');
                 var fallback = state.items.some(function (candidate) {
                     return candidate !== item && candidate.source !== 'shared' && candidate.url;
                 });
@@ -255,13 +271,13 @@
             return;
         }
         slide.style.backgroundImage = safeBackgroundUrl(item.url);
-        slide.setAttribute('data-etg-dfsb-hydrated', '1');
+        setSlideAttribute(slide, 'hydrated', '1');
     }
 
     function activate(state, index, immediate) {
         if (!state.slides.length) { return; }
         index = ((index % state.slides.length) + state.slides.length) % state.slides.length;
-        if (immediate) { state.stage.style.setProperty('--etg-dfsb-background-transition-duration', '0ms'); }
+        if (immediate) { setBackgroundProperty(state.stage, 'transition-duration', '0ms'); }
         hydrateSlide(state, index);
         if (state.slides.length > 1 && autoplayEnabled(state)) { hydrateSlide(state, index + 1); }
         state.slides.forEach(function (slide, i) { slide.classList.toggle('is-active', i === index); });
@@ -272,9 +288,9 @@
     }
 
     function effectiveItems(state, items) {
-        var mode = (state.element.getAttribute('data-etg-dfsb-background-mode') || 'image').trim();
+        var mode = (backgroundAttribute(state.element, 'mode') || 'image').trim();
         var currentBehavior = behavior(state.element);
-        var minimum = intValue(state.element.getAttribute('data-etg-dfsb-background-min-slides'), 2, 1, 30);
+        var minimum = intValue(backgroundAttribute(state.element, 'min-slides'), 2, 1, 30);
         if (currentBehavior === 'disabled') { return []; }
         if (mode === 'image' || currentBehavior === 'first_image' || reducedMotion() || playback(state.element) === 'static') { return items.length ? [items[0]] : []; }
         if (mode === 'slideshow' && items.length > 0 && items.length < minimum) { return [items[0]]; }
@@ -283,14 +299,14 @@
 
     function autoplayEnabled(state) {
         if (reducedMotion() || behavior(state.element) !== 'inherit' || playback(state.element) !== 'animated') { return false; }
-        if ((state.element.getAttribute('data-etg-dfsb-background-mode') || '') !== 'slideshow') { return false; }
-        return (state.element.getAttribute('data-etg-dfsb-background-autoplay') || '0') === '1';
+        if ((backgroundAttribute(state.element, 'mode') || '') !== 'slideshow') { return false; }
+        return (backgroundAttribute(state.element, 'autoplay') || '0') === '1';
     }
 
     function schedule(state) {
         clearTimer(state);
         if (!state || !elementConnected(state.element) || !pageVisible() || state.inViewport === false || state.paused || !autoplayEnabled(state) || state.slides.length < 2) { return; }
-        var duration = intValue(state.element.getAttribute('data-etg-dfsb-background-duration'), 5000, 1000, 30000);
+        var duration = intValue(backgroundAttribute(state.element, 'duration'), 5000, 1000, 30000);
         state.timer = window.setTimeout(function () {
             state.timer = null;
             if (!elementConnected(state.element) || !pageVisible() || state.inViewport === false) { return; }
@@ -302,7 +318,7 @@
     function render(el, incoming, options) {
         var state = ensureStage(el);
         configure(state);
-        var maximum = intValue(el.getAttribute('data-etg-dfsb-background-max-slides'), 30, 1, 30);
+        var maximum = intValue(backgroundAttribute(el, 'max-slides'), 30, 1, 30);
         var sourceItems = uniqueGallery(incoming == null ? readGallery(el) : incoming, maximum);
         state.sourceItems = sourceItems;
         var rule = suitabilityPolicy(el);
@@ -313,15 +329,24 @@
             // During an AJAX refresh an empty media response is not proof the
             // gallery was removed. Preserve the last *healthy* collection,
             // but never override a deliberate Hide or disabled policy.
-            if (!eligible.length && state.items && state.items.length) {
+            if (!eligible.length && state.items && state.items.length && backgroundAttribute(el, 'source') !== 'registered_slot') {
                 eligible = suitableGallery(el, state.items);
             }
             usedFallback = eligible.length > 0;
         }
         var items = effectiveItems(state, eligible);
-        document.dispatchEvent(new CustomEvent('etg-dfsb/background-policy-applied', { detail: { element: el, policy: rule.name, source_count: sourceItems.length, eligible_count: eligible.length, used_fallback: usedFallback } }));
+        var policyDetail = { element: el, policy: rule.name, source_count: sourceItems.length, eligible_count: eligible.length, used_fallback: usedFallback };
+        document.dispatchEvent(new CustomEvent('dfsb/background-policy-applied', { detail: policyDetail }));
+        document.dispatchEvent(new CustomEvent('etg-dfsb/background-policy-applied', { detail: policyDetail }));
         clearTimer(state);
         state.items = items;
+        // The server's first-paint image must not outlive the selected gallery.
+        // Only manage inline first-frame styling for an explicitly template-bound gallery.
+        if (backgroundAttribute(el, 'template-gallery') !== null && el.style) {
+            var firstFrame = items.length ? safeBackgroundUrl(items[0].url) : 'none';
+            if (backgroundAttribute(el, 'frame-scope') === 'first_child') { el.style.setProperty('--dfsb-first-frame', firstFrame); }
+            else { el.style.backgroundImage = firstFrame; }
+        }
         if (!items.length) {
             state.stage.setAttribute('hidden', 'hidden');
             buildSlides(state, []);
@@ -329,7 +354,7 @@
         }
         state.stage.removeAttribute('hidden');
         buildSlides(state, items);
-        var random = playback(el) === 'animated' && (el.getAttribute('data-etg-dfsb-background-random-start') || '0') === '1' && items.length > 1;
+        var random = playback(el) === 'animated' && (backgroundAttribute(el, 'random-start') || '0') === '1' && items.length > 1;
         var index = options && typeof options.index === 'number' ? options.index : (random ? Math.floor(Math.random() * items.length) : 0);
         activate(state, index, true);
         schedule(state);
@@ -350,7 +375,7 @@
         var detail = event && event.detail ? event.detail : {};
         var el = detail.element;
         if (!el || !el.matches || !el.matches(selector)) { return; }
-        var mode = (el.getAttribute('data-etg-dfsb-background-mode') || 'image').trim();
+        var mode = (backgroundAttribute(el, 'mode') || 'image').trim();
         var items = Array.isArray(detail.gallery) ? detail.gallery : [];
         if (mode === 'image' && detail.image) { items = [detail.image]; }
         if (!items.length && detail.image) { items = [detail.image]; }

@@ -91,7 +91,8 @@ jobs:
 
   runtime:
     name: Local OAuth runtime (${{ matrix.wordpress }} / PHP ${{ matrix.php }} / ${{ matrix.adapter }})
-    runs-on: ubuntu-latest
+    # Playwright 1.56.1 supports Ubuntu 24.04, not the newer ubuntu-latest image.
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:

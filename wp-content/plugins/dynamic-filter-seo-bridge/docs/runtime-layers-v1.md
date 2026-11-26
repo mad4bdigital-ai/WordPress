@@ -2,7 +2,7 @@
 
 ## Versioned release boundary
 
-This separate advanced read-only runtime candidate is `0.4.0-alpha.15-rc.2`. The previously signed RC15 review artifact was built from a different source at version `0.4.0-alpha.15-rc.1`; its attestation, ZIP SHA and detached-receipt eligibility must never be reused for RC2. RC2 requires a fresh exact-head owner attestation, signed source-review workflow, independent provider certificate, immutable package publication, and site-specific governance review. All remain pending. The installed `alpha.14-local.1` is unchanged.
+This advanced read-only source candidate uses numeric version 0.4.16, the successor to 0.4.0-alpha.15-rc.2. The previously signed RC15 review artifact (0.4.0-alpha.15-rc.1) remains a different immutable artifact. Neither historical RC receipt nor a local build grants eligibility for this version. A fresh exact-head owner attestation, signed source-review workflow, independent provider certificate, immutable package publication and site-specific governance review remain required. The installed legacy packages are unchanged.
 
 
 ## Goal

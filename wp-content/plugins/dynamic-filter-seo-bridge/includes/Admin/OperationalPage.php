@@ -264,6 +264,16 @@ final class OperationalPage {
             <p><strong>Readiness:</strong> <?php echo esc_html(strtoupper((string) ($readiness['status'] ?? 'unknown'))); ?></p>
             <p>Runtime evidence is read-only. It must not be copied automatically into profile authority. Exact archive paths, exact provider/query routes, taxonomy sets and exact combinations remain operator-controlled.</p>
         </div>
+        <?php $mirror = \DynamicFilterSEOBridge\Runtime\LegacyOptionMirror::observe(); ?>
+        <div class="etg-card">
+            <h2>Configuration storage continuity</h2>
+            <p>Read-only observation. Existing storage remains authoritative; matching snapshots do not authorize a storage cutover.</p>
+            <table class="widefat striped"><thead><tr><th>Neutral option</th><th>Storage parity</th></tr></thead><tbody>
+            <?php foreach ($mirror['rows'] as $row): ?>
+                <tr><td><code><?php echo esc_html($row['neutral_option']); ?></code></td><td><?php echo esc_html(str_replace('_', ' ', $row['state'])); ?></td></tr>
+            <?php endforeach; ?>
+            </tbody></table>
+        </div>
         <?php
     }
 
@@ -271,7 +281,7 @@ final class OperationalPage {
         ?>
         <form method="post" action="options.php" class="etg-settings-form">
             <?php settings_fields('etg_dfsb'); ?>
-            <input type="hidden" name="etg_dfsb_expected_revision" value="<?php echo esc_attr($this->config->revision()); ?>" />
+            <input type="hidden" name="dfsb_expected_revision" value="<?php echo esc_attr($this->config->revision()); ?>" />
 
             <div class="etg-card">
                 <h2>Configuration lifecycle</h2>
@@ -447,7 +457,7 @@ final class OperationalPage {
                     <?php $this->helpTip('Collects the current bounded runtime snapshot in memory and displays it below. No profile, term, route or option is written.'); ?>
                 </form>
                 <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
-                    <input type="hidden" name="action" value="etg_dfsb_export_runtime_inventory" />
+                    <input type="hidden" name="action" value="dfsb_export_runtime_inventory" />
                     <?php wp_nonce_field('dfsb_export_runtime_inventory'); ?>
                     <button type="submit" class="button button-secondary">Download Inventory JSON</button>
                     <?php $this->helpTip('Downloads the same read-only runtime evidence as JSON for review, hashing and reconciliation. The file itself is non-authorizing evidence.'); ?>
@@ -489,7 +499,7 @@ final class OperationalPage {
                     <?php $this->helpTip('Collects a fresh runtime inventory and compares it with the current profile registry. It reports drift and disabled candidates without mutation.'); ?>
                 </form>
                 <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
-                    <input type="hidden" name="action" value="etg_dfsb_export_inventory_reconciliation" />
+                    <input type="hidden" name="action" value="dfsb_export_inventory_reconciliation" />
                     <?php wp_nonce_field('dfsb_export_inventory_reconciliation'); ?>
                     <button type="submit" class="button button-secondary">Download Reconciliation JSON</button>
                     <?php $this->helpTip('Downloads the read-only reconciliation result for audit/review. It does not apply findings or copy discovered authority into profiles.'); ?>

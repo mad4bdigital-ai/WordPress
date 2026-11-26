@@ -34,7 +34,7 @@ final class DynamicTagRegistrar {
         add_action('elementor/editor/after_enqueue_styles',array($this,'enqueueEditorStyles'));
 
         // Plugin activation, governed exact-candidate boot and other late-load
-        // paths can attach ETG after Elementor has already fired its one-shot
+        // paths can attach DFSB after Elementor has already fired its one-shot
         // dynamic-tag registration hook in the current request. Register against
         // the live manager immediately in that bounded case so the same request
         // cannot observe a false "tag unregistered" state.
@@ -49,7 +49,7 @@ final class DynamicTagRegistrar {
             'etg-dfsb-elementor-dynamic-tag-editor',
             plugins_url('assets/css/elementor-dynamic-tag-editor.css', DFSB_MAIN_FILE),
             array(),
-            defined('DFSB_ASSET_VERSION') ? DFSB_ASSET_VERSION : DFSB_VERSION
+            \DynamicFilterSEOBridge\Runtime\AssetVersion::forPath('assets/css/elementor-dynamic-tag-editor.css')
         );
     }
     public function register($manager):void{
@@ -59,7 +59,7 @@ final class DynamicTagRegistrar {
         // LiveBindingTrait owns the emitted data-etg-dfsb-token and data-etg-dfsb-slot
         // attributes. Registrar's contract is to keep every live-capable named tag
         // connected to that trait/runtime without constructor dependency drift.
-        if(method_exists($manager,'register_group')){$manager->register_group('etg-dfsb',array('title'=>'ETG Filter SEO'));}
+        if(method_exists($manager,'register_group')){$manager->register_group('etg-dfsb',array('title'=>'DFSB Filter SEO'));}
         $classes=array(FilterTitleTag::class,FilterIntroTag::class,FilterResultSummaryTag::class,FilterKeywordTag::class,FilterArchiveUrlTag::class,FilterCurrentUrlTag::class,InventoryValueTag::class,InventoryUrlTag::class,ContentSlotTag::class,ContentSlotUrlTag::class,TermFieldTag::class,TermMetaTag::class,TermSectionTag::class);
         $mediaAvailable=class_exists('\\Elementor\\Core\\DynamicTags\\Data_Tag')&&class_exists('\\Elementor\\Modules\\DynamicTags\\Module')&&$this->dataTagCompatible();
         if($mediaAvailable){$classes[]=FilterImageTag::class;$classes[]=FilterImageUrlTag::class;$classes[]=FilterGalleryTag::class;$classes[]=FilterSlideshowTag::class;$classes[]=ContentSlotImageTag::class;$classes[]=ContentSlotGalleryTag::class;}

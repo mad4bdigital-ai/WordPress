@@ -53,7 +53,7 @@ final class NativeFilterUrlAdapter {
                     $read = static function () use ($taxonomy, $slug) {
                         return get_terms(array('taxonomy' => $taxonomy, 'slug' => $slug, 'hide_empty' => false, 'number' => 50));
                     };
-                    // Reuse ETG's existing language-context adapter and its finally
+                    // Reuse DFSB's existing language-context adapter and its finally
                     // restoration. No undocumented WPML query flags or slug map.
                     if (has_filter('wpml_object_id')) {
                         $execution = (new \DynamicFilterSEOBridge\WPML\LanguageResolver())->executeInLanguage((string)$locale, $read);

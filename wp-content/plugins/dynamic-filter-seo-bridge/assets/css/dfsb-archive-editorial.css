@@ -74,3 +74,47 @@
 @media (max-width: 767px) {
   .dfsb-context-editorial { margin-block: 0.75rem; }
 }
+
+/* Restore portable status and focus styles without company kit IDs. */
+.dfsb-archive-editorial .dfsb-editorial-status {
+  color: var(--e-global-color-primary, inherit);
+  background: var(--dfsb-editorial-surface, #fff);
+  font: inherit;
+  border-radius: var(--dfsb-editorial-field-radius, 8px);
+  padding: 10px 14px;
+  margin: 0;
+}
+.dfsb-archive-editorial.dfsb-editorial-loading .dfsb-editorial-status {
+  border-inline-start: 3px solid var(--e-global-color-accent, currentColor);
+}
+.dfsb-archive-editorial .dfsb-editorial-status[hidden] { display: none !important; }
+.dfsb-archive-editorial :is(button, a):focus-visible {
+  outline: 3px solid var(--e-global-color-accent, currentColor);
+  outline-offset: 3px;
+}
+.dfsb-archive-editorial .jet-listing-dynamic-field.display-inline {
+  display: block !important;
+  width: 100% !important;
+}
+.dfsb-archive-editorial :is(.jet-listing-dynamic-field__inline-wrap, .jet-listing-dynamic-field__content, .etg-dfsb-live-slot, [data-dfsb-slot]) {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dfsb-archive-editorial .seo-readmore-content-wrap { transition: none !important; }
+}
+
+/* Opt-in selected-term cards; inherit the active site's global tokens. */
+.dfsb-archive-editorial .dfsb-editorial-cards,
+.dfsb-archive-editorial .dfsb-term-set { display: grid; gap: 12px; min-width: 0; width: 100%; }
+.dfsb-archive-editorial .dfsb-term-set { grid-template-columns: repeat(auto-fit, minmax(min(100%, 225px), 1fr)); }
+.dfsb-archive-editorial .dfsb-term-detail { min-width: 0; margin: 0; padding: 0; border: 1px solid var(--dfsb-editorial-border, #edf0f3); border-inline-start: 3px solid var(--e-global-color-accent, currentColor); border-radius: var(--dfsb-editorial-field-radius, 12px); background: var(--dfsb-editorial-surface, #fff); overflow-wrap: anywhere; }
+.dfsb-archive-editorial .dfsb-term-detail :is(summary, h3) { padding: 12px 14px; margin: 0; color: var(--e-global-color-primary, inherit); }
+.dfsb-archive-editorial .dfsb-term-detail summary { cursor: pointer; }
+.dfsb-archive-editorial .dfsb-term-detail summary:focus-visible { outline: 3px solid var(--e-global-color-accent, currentColor); outline-offset: -3px; }
+.dfsb-archive-editorial .dfsb-term-detail > p, .dfsb-archive-editorial .dfsb-term-detail__body { padding: 0 14px 14px; margin: 0; }
+@media (max-width: 767px) { .dfsb-archive-editorial .dfsb-term-set { grid-template-columns: minmax(0, 1fr); } }
+
+.dfsb-archive-editorial .dfsb-term-detail[hidden] { display: none !important; }

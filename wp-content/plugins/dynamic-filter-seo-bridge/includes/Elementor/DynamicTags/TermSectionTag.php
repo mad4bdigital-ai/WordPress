@@ -47,7 +47,7 @@ final class TermSectionTag extends \Elementor\Core\DynamicTags\Tag {
         $nameAttrs=$this->etgBindingAttributes('token',$nameToken,'');
         $contentAttrs=$this->etgBindingAttributes('token',$contentToken,$fallback);
         $hidden=$initialEmpty?' hidden="hidden"':'';
-        echo '<section class="etg-filter-term-section etg-filter-term-section--' . esc_attr($role) . '" data-etg-dfsb-live-section="1"' . $hidden . '>';
+        echo '<section class="etg-filter-term-section etg-filter-term-section--' . esc_attr($role) . '" data-dfsb-live-section="1" data-etg-dfsb-live-section="1"' . $hidden . '>';
         if ('yes' === (string) $this->get_settings('show_heading')) {
             echo '<' . esc_attr($level) . '><span class="etg-dfsb-live-value"' . $nameAttrs . '>' . esc_html((string) $name) . '</span></' . esc_attr($level) . '>';
         }

@@ -1,29 +1,29 @@
-:where(.etg-dfsb-dynamic-background) {
+:where(:is(.dfsb-dynamic-background, .etg-dfsb-dynamic-background)) {
     position: relative;
     isolation: isolate;
 }
 
 /* Frame an archive-root gallery inside its actual Hero child, not the
    parent container that also wraps thousands of pixels of tour listings. */
-.etg-dfsb-dynamic-background--frame-first_child > :first-child {
+:is(.dfsb-dynamic-background--frame-first_child, .etg-dfsb-dynamic-background--frame-first_child) > :first-child {
     position: relative;
     isolation: isolate;
     background-image: var(--dfsb-first-frame, none) !important;
     background-size: cover;
     background-position: center center;
 }
-.etg-dfsb-dynamic-background--frame-first_child > :first-child > .etg-dfsb-background-stage {
+:is(.dfsb-dynamic-background--frame-first_child, .etg-dfsb-dynamic-background--frame-first_child) > :first-child > :is(.dfsb-background-stage, .etg-dfsb-background-stage) {
     z-index: 0;
 }
-.etg-dfsb-dynamic-background--frame-first_child > :first-child > .elementor-element:not(.etg-dfsb-background-stage) {
+:is(.dfsb-dynamic-background--frame-first_child, .etg-dfsb-dynamic-background--frame-first_child) > :first-child > .elementor-element:not(:is(.dfsb-background-stage, .etg-dfsb-background-stage)) {
     position: relative;
     z-index: 1;
 }
-.etg-dfsb-dynamic-background--frame-first_child > :first-child > .elementor-shape {
+:is(.dfsb-dynamic-background--frame-first_child, .etg-dfsb-dynamic-background--frame-first_child) > :first-child > .elementor-shape {
     z-index: 2;
 }
-.etg-dfsb-dynamic-background > .etg-dfsb-background-stage,
-.etg-dfsb-dynamic-background--frame-first_child > :first-child > .etg-dfsb-background-stage {
+:is(.dfsb-dynamic-background, .etg-dfsb-dynamic-background) > :is(.dfsb-background-stage, .etg-dfsb-background-stage),
+:is(.dfsb-dynamic-background--frame-first_child, .etg-dfsb-dynamic-background--frame-first_child) > :first-child > :is(.dfsb-background-stage, .etg-dfsb-background-stage) {
     position: absolute;
     inset: 0;
     z-index: -1;
@@ -34,56 +34,56 @@
     background: transparent;
 }
 
-.etg-dfsb-dynamic-background > .etg-dfsb-background-stage[hidden] {
+:is(.dfsb-dynamic-background, .etg-dfsb-dynamic-background) > :is(.dfsb-background-stage, .etg-dfsb-background-stage)[hidden] {
     display: none !important;
 }
 
-.etg-dfsb-background-stage__slide {
+:is(.dfsb-background-stage__slide, .etg-dfsb-background-stage__slide) {
     position: absolute;
     inset: -1px;
     opacity: 0;
     background-repeat: no-repeat;
-    background-size: var(--etg-dfsb-background-fit, cover);
-    background-position: var(--etg-dfsb-background-position, center center);
+    background-size: var(--dfsb-background-fit, var(--etg-dfsb-background-fit, cover));
+    background-position: var(--dfsb-background-position, var(--etg-dfsb-background-position, center center));
     transition-property: opacity, transform;
-    transition-duration: var(--etg-dfsb-background-transition-duration, 800ms);
+    transition-duration: var(--dfsb-background-transition-duration, var(--etg-dfsb-background-transition-duration, 800ms));
     transition-timing-function: ease;
     transform: scale(1.001);
 }
 
-.etg-dfsb-background-stage[data-transition="fade"] .etg-dfsb-background-stage__slide,
-.etg-dfsb-background-stage[data-transition="crossfade"] .etg-dfsb-background-stage__slide {
+:is(.dfsb-background-stage, .etg-dfsb-background-stage)[data-transition="fade"] :is(.dfsb-background-stage__slide, .etg-dfsb-background-stage__slide),
+:is(.dfsb-background-stage, .etg-dfsb-background-stage)[data-transition="crossfade"] :is(.dfsb-background-stage__slide, .etg-dfsb-background-stage__slide) {
     transform: scale(1.001);
 }
 
-.etg-dfsb-background-stage[data-transition="slide"] .etg-dfsb-background-stage__slide {
+:is(.dfsb-background-stage, .etg-dfsb-background-stage)[data-transition="slide"] :is(.dfsb-background-stage__slide, .etg-dfsb-background-stage__slide) {
     transform: translate3d(100%, 0, 0);
 }
 
-.etg-dfsb-background-stage__slide.is-active {
+:is(.dfsb-background-stage__slide, .etg-dfsb-background-stage__slide).is-active {
     opacity: 1;
     transform: translate3d(0, 0, 0) scale(1.001);
 }
 
-.etg-dfsb-background-stage[data-transition="slide"] .etg-dfsb-background-stage__slide.is-active {
+:is(.dfsb-background-stage, .etg-dfsb-background-stage)[data-transition="slide"] :is(.dfsb-background-stage__slide, .etg-dfsb-background-stage__slide).is-active {
     transform: translate3d(0, 0, 0);
 }
 
-.etg-dfsb-background-stage[data-ken-burns="1"] .etg-dfsb-background-stage__slide.is-active {
-    animation: etg-dfsb-background-ken-burns var(--etg-dfsb-background-duration, 5000ms) ease-out both;
+:is(.dfsb-background-stage, .etg-dfsb-background-stage)[data-ken-burns="1"] :is(.dfsb-background-stage__slide, .etg-dfsb-background-stage__slide).is-active {
+    animation: etg-dfsb-background-ken-burns var(--dfsb-background-duration, var(--etg-dfsb-background-duration, 5000ms)) ease-out both;
 }
 
-.etg-dfsb-background-stage__overlay {
+:is(.dfsb-background-stage__overlay, .etg-dfsb-background-stage__overlay) {
     position: absolute;
     inset: 0;
     z-index: 2;
     pointer-events: none;
-    background: var(--etg-dfsb-background-overlay-color, transparent);
-    opacity: var(--etg-dfsb-background-overlay-opacity, 0);
+    background: var(--dfsb-background-overlay-color, var(--etg-dfsb-background-overlay-color, transparent));
+    opacity: var(--dfsb-background-overlay-opacity, var(--etg-dfsb-background-overlay-opacity, 0));
 }
 
 /*
- * ETG owns only its isolated negative background stage. Elementor, UAE, Jet
+ * DFSB owns only its isolated negative background stage. Elementor, UAE, Jet
  * shape dividers, particles, overlays, sticky/motion layers and widgets retain
  * their native stacking order.
  */
@@ -94,7 +94,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .etg-dfsb-background-stage__slide {
+    :is(.dfsb-background-stage__slide, .etg-dfsb-background-stage__slide) {
         transition: none !important;
         animation: none !important;
     }

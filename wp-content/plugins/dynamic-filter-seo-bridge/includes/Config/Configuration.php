@@ -304,7 +304,7 @@ final class Configuration {
 
     private function storedRaw(): array {
         if ( ! function_exists( 'get_option' ) ) return array();
-        $stored=\DynamicFilterSEOBridge\Runtime\LegacyOptionMirror::read(self::OPTION_NAME,array());
+        $stored=\DynamicFilterSEOBridge\Runtime\LegacyOptionMirror::readNeutral(self::NEUTRAL_OPTION_NAME,array());
         return is_array($stored)?$stored:array();
     }
 

@@ -6,6 +6,7 @@ verify provenance, external approvals, installed bytes and runtime evidence.
 """
 import argparse
 import hashlib
+import io
 import json
 from pathlib import Path
 import subprocess
@@ -19,6 +20,43 @@ EXCLUDE = {'build-identity.json', 'installed-content-manifest.json', 'etg-dfsb-p
 
 def git(repo, *args):
     return subprocess.check_output(['git', '-C', str(repo), *args]).decode().strip()
+
+
+def render_package(source_data, current, tree, release_review=False):
+    """Original deterministic renderer for already verified immutable source bytes."""
+    data = dict(source_data)
+    if not data or any(f in EXCLUDE for f in data):
+        raise RuntimeError('no source files, or generated files committed')
+    main = data.get('dynamic-filter-seo-bridge.php', b'').decode()
+    import re
+    match = re.search(r'\* Version:\s*([^\s]+)', main)
+    if not match:
+        raise RuntimeError('no WordPress version header')
+    version = match.group(1)
+    if f"define( 'DFSB_VERSION', '{version}' );" not in main:
+        raise RuntimeError('version header and runtime constant differ')
+    if release_review:
+        # This builds an independently reviewed INSTALLABLE CANDIDATE only;
+        # the builder cannot issue provider certificates or authorize sites.
+        if not re.fullmatch(r'(?:(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)|[0-9]+\.[0-9]+\.[0-9]+-alpha\.[0-9]+-rc\.[0-9]+)', version):
+            raise RuntimeError('release review requires a numeric or historical alpha-N-rc-N source')
+    elif '-local.' not in version:
+        raise RuntimeError('review source must be an explicitly held -local candidate')
+    identity = {'contract': 'etg.dfsb.embedded-build-identity.v1',
+                'git_sha': current, 'tree_sha': tree, 'plugin_version': version}
+    manifest = {'contract': 'etg.dfsb.installed-content-manifest.v1',
+                'algorithm': 'sha256',
+                'files': {f: hashlib.sha256(data[f]).hexdigest() for f in sorted(data)}}
+    data['build-identity.json'] = (json.dumps(identity, indent=2)+'\n').encode()
+    data['installed-content-manifest.json'] = (json.dumps(manifest, indent=2)+'\n').encode()
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+        for name in sorted(data):
+            zi = zipfile.ZipInfo(f'{PLUGIN}/{name}', (2026, 10, 28, 0, 0, 0))
+            zi.compress_type = zipfile.ZIP_DEFLATED
+            zi.external_attr = 0o100644 << 16
+            z.writestr(zi, data[name], compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
+    return buffer.getvalue(), version
 
 
 def build(repo, output, release_review=False):
@@ -46,35 +84,9 @@ def build(repo, output, release_review=False):
         if disk != committed:
             raise RuntimeError('source bytes do not match commit '+f)
         data[f] = disk
-    main = data.get('dynamic-filter-seo-bridge.php', b'').decode()
-    import re
-    match = re.search(r'\* Version:\s*([^\s]+)', main)
-    if not match:
-        raise RuntimeError('no WordPress version header')
-    version = match.group(1)
-    if f"define( 'DFSB_VERSION', '{version}' );" not in main:
-        raise RuntimeError('version header and runtime constant differ')
-    if release_review:
-        # This builds an independently reviewed INSTALLABLE CANDIDATE only;
-        # the builder cannot issue provider certificates or authorize sites.
-        if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+-alpha\.[0-9]+-rc\.[0-9]+', version):
-            raise RuntimeError('release review requires an explicitly versioned alpha-N-rc-N source')
-    elif '-local.' not in version:
-        raise RuntimeError('review source must be an explicitly held -local candidate')
-    identity = {'contract': 'etg.dfsb.embedded-build-identity.v1',
-                'git_sha': current, 'tree_sha': tree, 'plugin_version': version}
-    manifest = {'contract': 'etg.dfsb.installed-content-manifest.v1',
-                'algorithm': 'sha256',
-                'files': {f: hashlib.sha256(data[f]).hexdigest() for f in files}}
-    data['build-identity.json'] = (json.dumps(identity, indent=2)+'\n').encode()
-    data['installed-content-manifest.json'] = (json.dumps(manifest, indent=2)+'\n').encode()
+    package, version = render_package(data, current, tree, release_review=release_review)
     output.parent.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=9) as z:
-        for name in sorted(data):
-            zi = zipfile.ZipInfo(f'{PLUGIN}/{name}', (2026, 10, 28, 0, 0, 0))
-            zi.compress_type = zipfile.ZIP_DEFLATED
-            zi.external_attr = 0o100644 << 16
-            z.writestr(zi, data[name], compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
+    output.write_bytes(package)
     report = {'status': 'PASS', 'unsigned': True, 'certified': False, 'release_review': bool(release_review), 'source_sha': current,
               'root_tree_sha': tree, 'files': len(files), 'version': version,
               'zip_sha256': hashlib.sha256(output.read_bytes()).hexdigest()}

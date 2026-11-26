@@ -8,6 +8,9 @@ ROOT = Path(__file__).resolve().parents[2]
 PLUGIN = ROOT / "wp-content/plugins/mad4b-site-control-plane"
 NEUTRAL = ROOT / "wp-content/plugins/dynamic-filter-seo-bridge"
 READ_ADAPTER = PLUGIN / "includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php"
+NEUTRAL_READ_ADAPTER = PLUGIN / "includes/adapters/class-mad4b-scp-dfsb-adapter.php"
+CONTROL_ENTRY = PLUGIN / "mad4b-site-control-plane.php"
+CAPABILITY_POLICY = PLUGIN / "config/provider-capability-contracts.json"
 WRITE_ADAPTER = PLUGIN / "includes/adapters/class-mad4b-scp-etg-dfsb-write-adapter.php"
 REGISTRY = PLUGIN / "config/adapter-registration-policy.json"
 SKILLS = PLUGIN / "config/skill-provider-catalog.json"
@@ -93,8 +96,41 @@ def audit(read_source, write_source, plugin_source, registry, skills, mirror, so
     }
 
 
+def inspect_bundled_read_consumers(entry, sources, registry, capability_policy, canonical_version):
+    # Inspect declarations in the actual entrypoint, not class aliases or names
+    # inferred from the candidate package. This is not a runtime admission test.
+    includes = re.findall(r"require_once\s+MAD4B_SCP_DIR\s*\.\s*'([^']+)'", entry)
+    approved = set(registry.get("approved_classes", []))
+    hook_classes = set(registry.get("registered_hook_classes", []))
+    rows = []
+    for path in includes:
+        if path not in sources:
+            continue
+        body = sources[path]
+        name = matched(r"final\s+class\s+(\w+)\s+extends\s+MAD4B_SCP_Adapter_Base", body, path)
+        provider = matched(r"function\s+id\(\)\s*\{\s*return\s+'([^']+)'", body, path)
+        version = matched(r"const\s+SUPPORTED_VERSION\s*=\s*'([^']+)'", body, path)
+        declared = sorted(set(re.findall(r"'((?:etg-dfsb|dfsb)/[a-z0-9-]+)'", body)))
+        definitions = re.search(r"private function read_definitions\(\)\s*\{(.*?)\n    \}", body, re.S)
+        if definitions:
+            suffixes = re.findall(r"^\s*'([a-z0-9-]+)'\s*=>\s*array\(", definitions.group(1), re.M)
+            declared = sorted(set(declared) | {prefix + suffix for suffix in suffixes
+                              for prefix in ("dfsb/", "etg-dfsb/")})
+        rows.append({"path": path, "class": name, "provider_id": provider,
+                     "supported_version": version, "source_version_matches": version == canonical_version,
+                     "exact_class_reviewed": name in approved, "exact_hook_class_reviewed": name in hook_classes,
+                     "declared_identifiers": declared,
+                     "capability_policy_present": provider in capability_policy.get("providers", {}),
+                     "runtime_admission_verified": False, "authorizing": False})
+    ids = {row["provider_id"] for row in rows}
+    return {"scope": "entrypoint_static_declarations", "consumers": rows,
+            "unmounted_source_declarations": sorted(set(sources) - set(includes)),
+            "shared_provider_identity": sorted(i for i in ids if sum(row["provider_id"] == i for row in rows) > 1),
+            "runtime_admission_verified": False, "authorizing": False}
+
+
 def current():
-    return audit(
+    result = audit(
         READ_ADAPTER.read_text(encoding="utf-8"),
         WRITE_ADAPTER.read_text(encoding="utf-8"),
         NEUTRAL_ENTRY.read_text(encoding="utf-8"),
@@ -103,6 +139,15 @@ def current():
         MIRROR.read_text(encoding="utf-8"),
         json.loads(SOURCES.read_text(encoding="utf-8")),
     )
+    result["bundled_read_consumers"] = inspect_bundled_read_consumers(
+        CONTROL_ENTRY.read_text(encoding="utf-8"),
+        {str(path.relative_to(PLUGIN)): path.read_text(encoding="utf-8")
+         for path in (READ_ADAPTER, NEUTRAL_READ_ADAPTER)},
+        json.loads(REGISTRY.read_text(encoding="utf-8")),
+        json.loads(CAPABILITY_POLICY.read_text(encoding="utf-8")),
+        result["neutral_plugin_version"],
+    )
+    return result
 
 
 if __name__ == "__main__":

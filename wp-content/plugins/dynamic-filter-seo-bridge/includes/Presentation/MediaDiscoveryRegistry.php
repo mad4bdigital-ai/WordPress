@@ -12,7 +12,7 @@ final class MediaDiscoveryRegistry {
     const MAX_TAXONOMIES = 50;
 
     public function all(): array {
-        $stored = function_exists('get_option') ? \DynamicFilterSEOBridge\Runtime\LegacyOptionMirror::read(self::OPTION_NAME, array()) : array();
+        $stored = function_exists('get_option') ? \DynamicFilterSEOBridge\Runtime\LegacyOptionMirror::readNeutral(self::NEUTRAL_OPTION_NAME, array()) : array();
         return $this->sanitize(is_array($stored) ? $stored : array());
     }
 
@@ -39,8 +39,9 @@ final class MediaDiscoveryRegistry {
         $clean = $this->sanitize($input);
         $current = $this->all();
         if ($clean === $current) { return array('saved'=>true,'unchanged'=>true,'settings'=>$clean,'authorizing'=>false); }
-        $saved = function_exists('update_option') ? update_option(self::OPTION_NAME, $clean, false) : false;
-        return array('saved'=>(bool)$saved, 'unchanged'=>false, 'settings'=>$clean, 'authorizing'=>false);
+        if (function_exists('update_option')) update_option(self::OPTION_NAME, $clean, false);
+        $observed = $this->all();
+        return array('saved'=>$observed === $clean, 'unchanged'=>false, 'settings'=>$observed, 'authorizing'=>false);
     }
 
     public function sanitize(array $input): array {

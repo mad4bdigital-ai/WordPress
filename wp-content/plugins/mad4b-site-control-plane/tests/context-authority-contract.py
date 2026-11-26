@@ -37,6 +37,20 @@ ai_review_runtime = (root / "tests/context-ai-agent-review-runtime.php").read_te
 def require(text, needle, label):
     assert needle in text, f"missing {label}: {needle}"
 
+# Every context trigger required by the verdict must be subscribed in both events.
+# Keep exact pattern parity, including new files matched by the family globs.
+import ast
+import re
+verdict = (root.parents[2] / ".github/workflows/mad4b-release-verdict.yml").read_text(encoding="utf-8")
+trigger_list = re.search(r"context_authority_trigger_patterns = (\[.*?\])", verdict, re.S)
+assert trigger_list, "release verdict context trigger definition missing"
+required_patterns = set(ast.literal_eval(trigger_list.group(1)))
+for event, block in (("pull_request", workflow.split("  pull_request:\n", 1)[1].split("  push:\n", 1)[0]),
+                     ("push", workflow.split("  push:\n", 1)[1].split("  workflow_dispatch:", 1)[0])):
+    subscribed = set(re.findall(r"^      - '([^']+)'$", block, re.M))
+    assert required_patterns <= subscribed, f"Context Authority {event} trigger gap: {sorted(required_patterns - subscribed)}"
+require(workflow, "php wp-content/plugins/mad4b-site-control-plane/tests/context-admin-recovery-runtime.php", "Context Admin recovery execution")
+
 # Lifecycle and adapter registration.
 require(main, "class-mad4b-scp-context-authority.php", "context authority wiring")
 require(main, "class-mad4b-scp-google-drive-context.php", "google drive wiring")

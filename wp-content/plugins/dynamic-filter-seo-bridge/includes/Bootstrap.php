@@ -168,7 +168,11 @@ final class Bootstrap {
         $sourceResolver=new ContentSourceResolver($listingContext,$queryRunner,$relationResolver,$normalizer,$fieldDiscovery);
         $mediaInspector=new MediaInspector($mediaRegistry);
         $this->presentation=new PresentationResolver($provider,$content,$gallery,$slots,$evidenceProvider,$sourceResolver);
-        $catalogProvider=function()use($catalog,$catalogInventory,$profiles):array{static$cached=null;if(null!==$cached){return$cached;}$cached=$catalog->build($catalogInventory->collect(),$profiles->all());return$cached;};
+        $publicCatalogCache=new \DynamicFilterSEOBridge\Presentation\PublicCatalogCache();
+        $publicCatalogCache->registerInvalidationHooks();
+        $catalogProvider=function()use($catalog,$catalogInventory,$profiles,$publicCatalogCache):array{
+            return $publicCatalogCache->get($profiles->all(),function()use($catalogInventory){return $catalogInventory->collect();},$catalog);
+        };
         $previewContextProvider=function(string$previewUrl):array{return$this->previewEvidenceContext($previewUrl);};
 
         // Optional runtime adapters are registered only when an enabled profile
@@ -187,7 +191,7 @@ final class Bootstrap {
         // Frontend scripts stay strictly gated by profile adapter requirements.
         $ajaxPresentation=new AjaxPresentationEndpoint($this->builder,$this->presentation,$slots,$catalogProvider);
         add_action('rest_api_init',array($ajaxPresentation,'routes'));
-        if($needsJetSmartFilters||$needsJetEngine||$previewJetSmartFilters||$previewJetEngine){add_action('wp_enqueue_scripts',array($ajaxPresentation,'assets'),30);}
+        $this->registerPresentationAssets($ajaxPresentation,$runtimeBlocked,$requiredAdapters,$previewAdapters);
 
         // Admin/read-only surfaces remain available while Global is OFF so an
         // operator can inspect, resolve migration state and prepare authority.
@@ -221,6 +225,18 @@ final class Bootstrap {
         (new PublicationPage($this->config,$profiles,$publication,$evidenceBundle))->register();
         if(defined('WP_CLI')&&WP_CLI&&class_exists('\\WP_CLI')){(new \DynamicFilterSEOBridge\CLI\Commands($runtimeInventory,$reconciler,$profiles))->register();}
         do_action('etg_filter_seo_bridge_booted',$this->readiness->report());
+    }
+
+    /** Register once at full boot; observe vendor readiness at the original enqueue phase. */
+    private function registerPresentationAssets(AjaxPresentationEndpoint $endpoint,bool $runtimeBlocked,array $requiredAdapters,array $previewAdapters):void {
+        if($runtimeBlocked)return;
+        $adapters=array_unique(array_merge($requiredAdapters,$previewAdapters));
+        if(!array_intersect($adapters,array('jet_smart_filters','jet_engine')))return;
+        // Do not depend on the earlier plugins_loaded snapshot of vendor functions.
+        add_action('wp_enqueue_scripts',array($endpoint,'assets'),30);
+        // The adapter independently verifies the current shared catalog route,
+        // native vendor, locale and enqueued AJAX dependency before mapping terms.
+        add_action('wp_enqueue_scripts',array(new \DynamicFilterSEOBridge\WPML\ActiveFacetLanguageSwitcher(),'enqueue'),45);
     }
 
     public function context():array{if(null!==$this->context){return$this->context;}if(!$this->builder){return array();}$context=$this->builder->build();$stable=empty($context['active'])||empty($context['in_scope'])||!empty($context['result_count_authoritative'])||!$this->config||!$this->config->get('require_result_count_for_index',true);if($stable){$this->context=$context;}return$context;}

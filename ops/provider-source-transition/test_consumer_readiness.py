@@ -4,7 +4,7 @@ import re
 import unittest
 from audit_consumer_readiness import (
     NEUTRAL_ENTRY, READ_ADAPTER, WRITE_ADAPTER, REGISTRY, SKILLS, MIRROR, SOURCES,
-    audit, current,
+    audit, current, inspect_bundled_read_consumers,
 )
 
 
@@ -59,6 +59,31 @@ class ConsumerReadinessTests(unittest.TestCase):
         self.assertIn("etg-dfsb/slot-apply", result["legacy_write_abilities"])
         self.assertIn("etg-dfsb/profile-apply", result["legacy_write_abilities"])
         self.assertFalse(result["new_write_authority"])
+
+    def test_actual_entrypoint_consumers_follow_exact_includes(self):
+        from audit_consumer_readiness import CONTROL_ENTRY, PLUGIN, NEUTRAL_READ_ADAPTER
+        report = current()["bundled_read_consumers"]
+        rows = {row["class"]: row for row in report["consumers"]}
+        entry = CONTROL_ENTRY.read_text(encoding="utf-8")
+        neutral_path = str(NEUTRAL_READ_ADAPTER.relative_to(PLUGIN))
+        includes = re.findall(r"require_once\s+MAD4B_SCP_DIR\s*\.\s*'([^']+)'", entry)
+        self.assertIn("MAD4B_SCP_ETG_DFSB_Adapter", rows)
+        self.assertTrue(rows["MAD4B_SCP_ETG_DFSB_Adapter"]["exact_class_reviewed"])
+        if neutral_path in includes:
+            self.assertIn("dfsb/status", rows["MAD4B_SCP_DFSB_Adapter"]["declared_identifiers"])
+            self.assertEqual(report["shared_provider_identity"], ["etg-dfsb"])
+            self.assertNotIn(neutral_path, report["unmounted_source_declarations"])
+        else:
+            self.assertNotIn("MAD4B_SCP_DFSB_Adapter", rows)
+            self.assertEqual(report["shared_provider_identity"], [])
+            self.assertIn(neutral_path, report["unmounted_source_declarations"])
+        self.assertFalse(report["runtime_admission_verified"])
+        self.assertTrue(all(not row["authorizing"] for row in rows.values()))
+
+    def test_unloaded_declaration_is_not_entrypoint_consumer(self):
+        report = inspect_bundled_read_consumers("", {"unused.php": "not a class"}, {}, {}, "0.4.16")
+        self.assertEqual(report["consumers"], [])
+        self.assertFalse(report["authorizing"])
 
     def test_alias_removed_still_no_authority(self):
         content = self.sources["neutral"].replace(

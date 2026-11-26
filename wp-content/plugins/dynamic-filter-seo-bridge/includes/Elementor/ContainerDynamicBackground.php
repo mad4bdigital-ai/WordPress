@@ -5,7 +5,6 @@ use DynamicFilterSEOBridge\Presentation\PortableMediaGallery;
 
 use DynamicFilterSEOBridge\Elementor\DynamicTags\DynamicTagRuntime;
 use DynamicFilterSEOBridge\Presentation\ContentSlotRegistry;
-use DynamicFilterSEOBridge\Presentation\MediaAssetValidator;
 use DynamicFilterSEOBridge\Presentation\PresentationResolver;
 
 final class ContainerDynamicBackground {
@@ -29,36 +28,30 @@ final class ContainerDynamicBackground {
 
     public function enqueueAssets(): void {
         if (is_admin()) { return; }
-        $version=defined('DFSB_ASSET_VERSION') ? DFSB_ASSET_VERSION : DFSB_VERSION;
-        $labVersion=function_exists('wp_get_environment_type') && wp_get_environment_type()==='local';
-        $cssFile=dirname(DFSB_MAIN_FILE).'/assets/css/container-dynamic-background.css';
-        $jsFile=dirname(DFSB_MAIN_FILE).'/assets/js/container-dynamic-background.js';
-        $editorialFile=dirname(DFSB_MAIN_FILE).'/assets/css/dfsb-archive-editorial.css';
         wp_enqueue_style(
             'etg-dfsb-container-background',
             plugins_url('assets/css/container-dynamic-background.css', DFSB_MAIN_FILE),
             array(),
-            $labVersion && is_file($cssFile) ? (string)filemtime($cssFile) : $version
+            \DynamicFilterSEOBridge\Runtime\AssetVersion::forPath('assets/css/container-dynamic-background.css')
         );
         wp_enqueue_style(
             'dfsb-archive-editorial',
             plugins_url('assets/css/dfsb-archive-editorial.css', DFSB_MAIN_FILE),
             array('etg-dfsb-container-background'),
-            $labVersion && is_file($editorialFile) ? (string)filemtime($editorialFile) : $version
+            \DynamicFilterSEOBridge\Runtime\AssetVersion::forPath('assets/css/dfsb-archive-editorial.css')
         );
-        $editorialJsFile=dirname(DFSB_MAIN_FILE).'/assets/js/dfsb-archive-editorial.js';
         wp_enqueue_script(
             'dfsb-archive-editorial',
             plugins_url('assets/js/dfsb-archive-editorial.js', DFSB_MAIN_FILE),
             array(),
-            $labVersion && is_file($editorialJsFile) ? (string)filemtime($editorialJsFile) : $version,
+            \DynamicFilterSEOBridge\Runtime\AssetVersion::forPath('assets/js/dfsb-archive-editorial.js'),
             true
         );
         wp_enqueue_script(
             'etg-dfsb-container-background',
             plugins_url('assets/js/container-dynamic-background.js', DFSB_MAIN_FILE),
             array(),
-            $labVersion && is_file($jsFile) ? (string)filemtime($jsFile) : $version,
+            \DynamicFilterSEOBridge\Runtime\AssetVersion::forPath('assets/js/container-dynamic-background.js'),
             true
         );
     }
@@ -69,13 +62,13 @@ final class ContainerDynamicBackground {
         $mediaModes = ContentSlotRegistry::mediaModes();
 
         $element->start_controls_section(self::SECTION_ID, array(
-            'label' => 'ETG Dynamic Background',
+            'label' => 'DFSB Dynamic Background',
             'tab' => $controls::TAB_STYLE,
         ));
         $element->add_control('etg_dfsb_background_mode', array(
             'label' => 'Background Mode',
             'type' => $controls::SELECT,
-            'options' => array('off' => 'Elementor Default', 'image' => 'ETG Dynamic Image', 'slideshow' => 'ETG Dynamic Slideshow'),
+            'options' => array('off' => 'Elementor Default', 'image' => 'DFSB Dynamic Image', 'slideshow' => 'DFSB Dynamic Slideshow'),
             'default' => 'off',
             'render_type' => 'template',
         ));
@@ -97,7 +90,7 @@ final class ContainerDynamicBackground {
             ),
             'default' => 'any',
             'condition' => array('etg_dfsb_background_mode!' => 'off'),
-            'description' => 'Filters ETG media before rendering. Wide Hero requires at least 1200px width and 1.5 aspect ratio.',
+            'description' => 'Filters DFSB media before rendering. Wide Hero requires at least 1200px width and 1.5 aspect ratio.',
         ));
         $element->add_control('etg_dfsb_background_min_width', array(
             'label' => 'Minimum Width (px)', 'type' => $controls::NUMBER, 'min' => 0, 'max' => 10000, 'step' => 10, 'default' => 1200,
@@ -115,7 +108,7 @@ final class ContainerDynamicBackground {
         $element->add_control('etg_dfsb_background_no_suitable', array(
             'label' => 'When No Suitable Image Exists',
             'type' => $controls::SELECT,
-            'options' => array('fallback' => 'Use configured fallback', 'hide' => 'Hide ETG background'),
+            'options' => array('fallback' => 'Use configured fallback', 'hide' => 'Hide DFSB background'),
             'default' => 'fallback',
             'condition' => array('etg_dfsb_background_mode!' => 'off', 'etg_dfsb_background_suitability!' => 'any'),
         ));
@@ -131,13 +124,20 @@ final class ContainerDynamicBackground {
             'label' => 'Slideshow Source',
             'type' => $controls::SELECT,
             'options' => array(
-                'collection' => 'ETG Collection (Recommended)',
+                'collection' => 'DFSB Collection (Recommended)',
                 'dynamic_gallery' => 'External Dynamic Gallery (Initial only)',
                 'meta_field' => 'WordPress / JetEngine Meta Field (Portable)',
+                'registered_slot' => 'Registered Gallery Content Slot (Live)',
             ),
             'default' => 'collection',
             'condition' => array('etg_dfsb_background_mode' => 'slideshow'),
-            'description' => 'ETG Collection resolves Collection Mode directly. Use External only for a separate Gallery Dynamic Tag.',
+            'description' => 'DFSB Collection resolves Collection Mode directly. Use External only for a separate Gallery Dynamic Tag.',
+        ));
+        $element->add_control('dfsb_background_registered_gallery_slot', array(
+            'label' => 'Live Gallery Content Slot', 'type' => $controls::SELECT,
+            'options' => $this->registeredGalleryOptions(), 'default' => '',
+            'condition' => array('etg_dfsb_background_mode' => 'slideshow', 'etg_dfsb_background_gallery_source' => 'registered_slot'),
+            'description' => 'Select an enabled server-managed Gallery slot. Initial rendering and AJAX use the same slot resolver.',
         ));
         $element->add_control('dfsb_background_gallery_meta_key', array(
             'label' => 'Gallery Meta Field Key', 'type' => $controls::TEXT,
@@ -147,7 +147,7 @@ final class ContainerDynamicBackground {
         ));
         $element->add_control('dfsb_background_gallery_meta_scope', array(
             'label' => 'Gallery Meta Owner', 'type' => $controls::SELECT,
-            'options' => array('term_then_template' => 'Active Destination → Archive Template Fallback', 'template' => 'Archive Template Meta Only', 'term' => 'Active Destination Term Meta Only'),
+            'options' => array('term_then_template' => 'Active Term → Archive Template Fallback', 'template' => 'Archive Template Meta Only', 'term' => 'Active Term Meta Only'),
             'default' => 'term_then_template',
             'condition' => array('etg_dfsb_background_mode' => 'slideshow', 'etg_dfsb_background_gallery_source' => 'meta_field'),
         ));
@@ -161,7 +161,7 @@ final class ContainerDynamicBackground {
             'description' => 'Attachment IDs are company-private; shared:relative/path/image.webp is shared. No automatic private-to-shared promotion.',
         ));
         $element->add_control('dfsb_background_gallery_meta_taxonomy', array(
-            'label' => 'Destination Taxonomy Slug', 'type' => $controls::TEXT,
+            'label' => 'Gallery Taxonomy Slug', 'type' => $controls::TEXT,
             'default' => 'destinations',
             'condition' => array('etg_dfsb_background_mode' => 'slideshow', 'etg_dfsb_background_gallery_source' => 'meta_field', 'dfsb_background_gallery_meta_scope!' => 'template'),
             'description' => 'Tenant-specific taxonomy, for example destinations or location_jet.',
@@ -171,7 +171,7 @@ final class ContainerDynamicBackground {
             'type' => $controls::MEDIA,
             'dynamic' => array('active' => true),
             'condition' => array('etg_dfsb_background_mode' => 'image'),
-            'description' => 'Optional. Dynamic Tags are supported. ETG live filtering still uses the selected Collection Mode.',
+            'description' => 'Optional. Dynamic Tags are supported. DFSB live filtering still uses the selected Collection Mode.',
         ));
         $element->add_control('etg_dfsb_background_gallery', array(
             'label' => 'External Dynamic Gallery',
@@ -293,14 +293,14 @@ final class ContainerDynamicBackground {
             'condition' => array('etg_dfsb_background_mode' => 'slideshow', 'etg_dfsb_background_playback' => 'animated'),
         ));
         $element->add_control('etg_dfsb_background_overlay_color', array(
-            'label' => 'ETG Overlay Color',
+            'label' => 'DFSB Overlay Color',
             'type' => $controls::COLOR,
             'default' => '',
             'condition' => array('etg_dfsb_background_mode!' => 'off'),
             'description' => 'Optional. Elementor Background Overlay remains supported independently.',
         ));
         $element->add_control('etg_dfsb_background_overlay_opacity', array(
-            'label' => 'ETG Overlay Opacity',
+            'label' => 'DFSB Overlay Opacity',
             'type' => $controls::NUMBER,
             'min' => 0,
             'max' => 1,
@@ -340,6 +340,19 @@ final class ContainerDynamicBackground {
         }
     }
 
+    private function registeredGalleryOptions():array {
+        $options=array(''=>'Select Gallery Slot');
+        foreach($this->slots->all() as $id=>$slot){
+            if(!empty($slot['enabled'])&&($slot['type']??'')==='gallery')$options[$id]=(string)($slot['label']??$id);
+        }
+        return $options;
+    }
+    private function registeredGallerySlot(array $settings):string {
+        $id=sanitize_key((string)($settings['dfsb_background_registered_gallery_slot']??''));
+        $options=$this->registeredGalleryOptions();
+        return $id!==''&&isset($options[$id])?$id:'';
+    }
+
     public function beforeRender($element): void {
         if (!is_object($element) || !method_exists($element, 'get_settings_for_display') || !method_exists($element, 'add_render_attribute')) { return; }
         $settings = $element->get_settings_for_display();
@@ -355,7 +368,12 @@ final class ContainerDynamicBackground {
         $slotId = ContentSlotRegistry::backgroundSlotId($mode === 'image' ? 'image' : 'gallery', $collection);
 
         $gallerySource = sanitize_key((string)($settings['etg_dfsb_background_gallery_source'] ?? 'collection'));
-        if (!in_array($gallerySource, array('collection', 'dynamic_gallery', 'meta_field'), true)) { $gallerySource = 'collection'; }
+        if (!in_array($gallerySource, array('collection', 'dynamic_gallery', 'meta_field', 'registered_slot'), true)) { $gallerySource = 'collection'; }
+        if('slideshow'===$mode&&'registered_slot'===$gallerySource){$slotId=$this->registeredGallerySlot($settings);}
+        if('slideshow'===$mode&&'meta_field'===$gallerySource){
+            $matched=$this->slots->matchingTermGallerySlot($settings);
+            if($matched!==''){$slotId=$matched;}else{$matched='';}
+        }
         $playback = sanitize_key((string)($settings['etg_dfsb_background_playback'] ?? 'animated'));
         if (!in_array($playback, array('animated', 'static'), true)) { $playback = 'animated'; }
         $suitability = $this->suitabilityPolicy($settings);
@@ -375,16 +393,20 @@ final class ContainerDynamicBackground {
         if ('' === $group) { $group = 'auto'; }
         if ('auto' !== $group && !preg_match('/\A[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\z/', $group)) { $group = 'auto'; }
 
+        // Preserve the legacy initial render; only the live binding changes for an exact match.
+        $liveGallerySource=!empty($matched)?'registered_slot':$gallerySource;
         $attrs = array(
-            'class' => array('etg-dfsb-dynamic-background', 'etg-dfsb-dynamic-background--' . $mode,
+            'class' => array('dfsb-dynamic-background', 'dfsb-dynamic-background--' . $mode, 'dfsb-dynamic-background--frame-' . $frameScope,
+                'etg-dfsb-dynamic-background', 'etg-dfsb-dynamic-background--' . $mode,
                 'etg-dfsb-dynamic-background--frame-' . $frameScope),
             'data-etg-dfsb-background-frame-scope' => $frameScope,
             'data-etg-dfsb-background-mode' => $mode,
-            'data-etg-dfsb-background-source' => 'slideshow' === $mode ? $gallerySource : 'collection',
+            'data-etg-dfsb-background-source' => 'slideshow' === $mode ? $liveGallerySource : 'collection',
             'data-etg-dfsb-media-slot' => $slotId,
             'data-etg-dfsb-media-target' => 'gallery',
             'data-etg-dfsb-group' => $group,
             'data-etg-dfsb-gallery' => $this->encode($items),
+            'data-dfsb-gallery' => $this->encode($items),
             'data-etg-dfsb-background-fallback' => $this->encode($fallbackItems),
             'data-etg-dfsb-background-max-slides' => (string)$limit,
             'data-etg-dfsb-background-min-slides' => (string)$minimum,
@@ -409,6 +431,16 @@ final class ContainerDynamicBackground {
             'data-etg-dfsb-background-tablet' => $this->behavior((string)($settings['etg_dfsb_background_tablet_behavior'] ?? 'inherit')),
             'data-etg-dfsb-background-mobile' => $this->behavior((string)($settings['etg_dfsb_background_mobile_behavior'] ?? 'inherit')),
         );
+        if(!empty($matched)&&($settings['dfsb_background_gallery_meta_scope']??'term_then_template')==='term_then_template'){
+            // This owner is the rendered Elementor document, never an ID or key from AJAX.
+            $attrs['data-etg-dfsb-background-template-gallery']=$this->encode($this->templateGalleryItems($element,$settings,$limit,$minimum));
+        }
+        // Mirror only immutable background settings, not mutable AJAX gallery data.
+        foreach ($attrs as $name => $value) {
+            if (0 === strpos($name, 'data-etg-dfsb-background-')) {
+                $attrs['data-dfsb-' . substr($name, strlen('data-etg-dfsb-'))] = $value;
+            }
+        }
         $element->add_render_attribute('_wrapper', $attrs);
         // Use the SAME tenant-owned metadata source for the first paint.
         // It avoids a blank hero before JS and never stores a domain URL.
@@ -434,12 +466,24 @@ final class ContainerDynamicBackground {
     }
 
     private function initialGalleryItems($element, string $slotId, ?array $context = null, int $limit = 8, int $minimum = 2, string $source = 'collection'): array {
-        $source = in_array($source, array('collection', 'dynamic_gallery', 'meta_field'), true) ? $source : 'collection';
+        $source = in_array($source, array('collection', 'dynamic_gallery', 'meta_field', 'registered_slot'), true) ? $source : 'collection';
         $items = array();
 
         if ('meta_field' === $source) {
             $settings = method_exists($element,'get_settings_for_display') ? $element->get_settings_for_display() : array();
-            $items = PortableMediaGallery::fromConfiguredMeta($element,is_array($settings)?$settings:array());
+            $settings=is_array($settings)?$settings:array();
+            $scope=(string)($settings['dfsb_background_gallery_meta_scope']??'term_then_template');
+            $selected=$scope==='template'?null:$this->resolver->configuredTermGallery($settings,$context,$limit);
+            if(null===$selected){$items=PortableMediaGallery::fromConfiguredMeta($element,$settings);}
+            else{
+                $items=$selected;
+                if(!$items&&$scope==='term_then_template'){
+                    $settings['dfsb_background_gallery_meta_scope']='template';
+                    $items=PortableMediaGallery::fromConfiguredMeta($element,$settings);
+                }
+            }
+        } elseif ('registered_slot' === $source) {
+            $items = $slotId!==''?$this->resolver->slotGallery($slotId,$context,$limit):array();
         } elseif ('dynamic_gallery' === $source) {
             $value = method_exists($element, 'get_settings_for_display') ? $element->get_settings_for_display('etg_dfsb_background_gallery') : array();
             $items = $this->normalizeGallery($value, $limit);
@@ -449,6 +493,13 @@ final class ContainerDynamicBackground {
 
         if ($items && count($items) < $minimum) { $items = array($items[0]); }
         return array_slice($this->normalizeGallery($items, $limit), 0, $limit);
+    }
+
+    private function templateGalleryItems($element,array $settings,int $limit,int $minimum):array {
+        $settings['dfsb_background_gallery_meta_scope']='template';
+        $items=PortableMediaGallery::fromConfiguredMeta($element,$settings);
+        if($items&&count($items)<$minimum)$items=array($items[0]);
+        return $this->normalizeGallery($items,$limit);
     }
 
     private function fallbackItems($element, string $mode): array {
@@ -489,16 +540,9 @@ final class ContainerDynamicBackground {
         }
 
         if ($id > 0) {
-            $health = MediaAssetValidator::inspect($id);
-            if (empty($health['valid'])) { return array('id' => 0, 'url' => '', 'width' => 0, 'height' => 0, 'aspect_ratio' => 0.0, 'dimensions_source' => 'invalid'); }
-            $url = isset($health['url']) && is_scalar($health['url']) ? trim((string)$health['url']) : '';
-            $width = max(0, (int)($health['width'] ?? $width));
-            $height = max(0, (int)($health['height'] ?? $height));
-            $ratio = isset($health['aspect_ratio']) && is_numeric($health['aspect_ratio']) ? max(0.0, (float)$health['aspect_ratio']) : ($height > 0 ? round($width / $height, 4) : $ratio);
-            $dimensionsSource = sanitize_key((string)($health['dimensions_source'] ?? $dimensionsSource));
-            // Always honor the current tenant's media library, never the
-            // original site's saved background URL or a static Lab origin.
-            $url = PortableMediaGallery::attachmentUrl($id);
+            $item=PortableMediaGallery::attachmentItem($id);
+            if(null===$item)return array('id'=>0,'url'=>'','width'=>0,'height'=>0,'aspect_ratio'=>0.0,'dimensions_source'=>'invalid');
+            return $item;
         }
 
         if ('' !== $url && function_exists('esc_url_raw')) { $url = (string)esc_url_raw($url); }

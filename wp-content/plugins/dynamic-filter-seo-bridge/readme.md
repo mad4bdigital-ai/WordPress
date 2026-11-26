@@ -224,11 +224,13 @@ The same identity contract is shared across runtime provider observation, reques
 
 ## JetSmartFilters AJAX presentation runtime
 
-Alpha13 adds a presentation-only REST bridge:
+The presentation-only REST bridge uses the neutral route for new clients:
 
 ```text
-POST /wp-json/etg-dfsb/v1/ajax-presentation
+POST /wp-json/dfsb/v1/ajax-presentation
 ```
+
+The historical `etg-dfsb/v1/ajax-presentation` route remains a compatibility alias of the same handler and rate limiter. The legacy response contract and the canonical contract remain unchanged.
 
 The endpoint is public because filtered archive visitors need it, but it is bounded and fail-closed for presentation state:
 

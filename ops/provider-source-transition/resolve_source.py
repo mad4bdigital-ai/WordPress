@@ -19,6 +19,24 @@ def load(path):
     return data
 
 
+def central_authority_policy(policy):
+    expected = {
+        "origin": "https://tours.dev.mad4b.com",
+        "scope": "mad4b-central:staging",
+        "identity_basis": "verified_original_registrar",
+        "code_sources": ["live", "local_git", "github"],
+        "source_change_reenrollment": False,
+        "source_change_grant_revocation": False,
+        "source_change_grant_creation": False,
+        "bootstrap_independent_of_release": True,
+    }
+    authority = policy.get("central_authority")
+    if authority != expected or any(authority[k] is not False for k in
+        ("source_change_reenrollment", "source_change_grant_revocation", "source_change_grant_creation")) or authority["bootstrap_independent_of_release"] is not True:
+        raise ValueError("central authority continuity policy invalid")
+    return dict(authority)
+
+
 def indexes(policy, catalog):
     if policy.get("contract") != "mad4b.provider-source-transition.v1":
         raise ValueError("unsupported transition policy")
@@ -26,6 +44,7 @@ def indexes(policy, catalog):
         raise ValueError("unsupported native source catalog")
     if policy.get("implicit_legacy_fallback") is not False or policy.get("execution_authority") != "never_derived_from_source_selection":
         raise ValueError("unsafe implicit authorization policy")
+    central_authority_policy(policy)
     sources = catalog.get("sources")
     families = policy.get("families")
     if not isinstance(sources, list) or not isinstance(families, list):
@@ -104,6 +123,8 @@ def plan(policy, catalog, family_name, site_mode, existing_source=None):
         "canonical_source_id": canonical,
         "native_provider_id": record.get("provider_id"),
         "catalog_evidence": source_evidence(record),
+        "central_authority_policy": central_authority_policy(policy),
+        "authority_registration_verified_by_source_plan": False,
         "execution_allowed": False,
         "publication_allowed": False,
         "mutation_allowed": False,

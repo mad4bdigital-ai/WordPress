@@ -33,13 +33,13 @@ final class AdminAssets {
             'etg-dfsb-admin-alpha13',
             plugins_url('assets/css/admin-alpha13.css', DFSB_MAIN_FILE),
             array(),
-            defined('DFSB_ASSET_VERSION') ? DFSB_ASSET_VERSION : DFSB_VERSION
+            \DynamicFilterSEOBridge\Runtime\AssetVersion::forPath('assets/css/admin-alpha13.css')
         );
         wp_enqueue_script(
             'etg-dfsb-admin-shell',
             plugins_url('assets/js/admin-shell.js', DFSB_MAIN_FILE),
             array(),
-            defined('DFSB_ASSET_VERSION') ? DFSB_ASSET_VERSION : DFSB_VERSION,
+            \DynamicFilterSEOBridge\Runtime\AssetVersion::forPath('assets/js/admin-shell.js'),
             true
         );
 
@@ -48,7 +48,7 @@ final class AdminAssets {
                 'dfsb-media-lab',
                 plugins_url('assets/css/media-lab.css', DFSB_MAIN_FILE),
                 array('etg-dfsb-admin-alpha13'),
-                defined('DFSB_ASSET_VERSION') ? DFSB_ASSET_VERSION : DFSB_VERSION
+                \DynamicFilterSEOBridge\Runtime\AssetVersion::forPath('assets/css/media-lab.css')
             );
         }
 
@@ -57,13 +57,13 @@ final class AdminAssets {
                 'etg-dfsb-admin-discovery',
                 plugins_url('assets/css/admin-discovery.css', DFSB_MAIN_FILE),
                 array('etg-dfsb-admin-alpha13'),
-                defined('DFSB_ASSET_VERSION') ? DFSB_ASSET_VERSION : DFSB_VERSION
+                \DynamicFilterSEOBridge\Runtime\AssetVersion::forPath('assets/css/admin-discovery.css')
             );
             wp_enqueue_script(
                 'etg-dfsb-admin-discovery',
                 plugins_url('assets/js/admin-discovery.js', DFSB_MAIN_FILE),
                 array('etg-dfsb-admin-shell'),
-                defined('DFSB_ASSET_VERSION') ? DFSB_ASSET_VERSION : DFSB_VERSION,
+                \DynamicFilterSEOBridge\Runtime\AssetVersion::forPath('assets/js/admin-discovery.js'),
                 true
             );
             wp_localize_script('etg-dfsb-admin-discovery', 'DFSB_ADMIN_DISCOVERY', array(
@@ -83,7 +83,7 @@ final class AdminAssets {
                 'etg-dfsb-dynamic-content-admin',
                 plugins_url('assets/js/dynamic-content-admin.js', DFSB_MAIN_FILE),
                 array('etg-dfsb-admin-shell', 'etg-dfsb-admin-discovery'),
-                defined('DFSB_ASSET_VERSION') ? DFSB_ASSET_VERSION : DFSB_VERSION,
+                \DynamicFilterSEOBridge\Runtime\AssetVersion::forPath('assets/js/dynamic-content-admin.js'),
                 true
             );
         }
@@ -92,7 +92,7 @@ final class AdminAssets {
             'etg-dfsb-admin-shell-responsive',
             plugins_url('assets/css/admin-shell-responsive.css', DFSB_MAIN_FILE),
             array('etg-dfsb-admin-alpha13'),
-            defined('DFSB_ASSET_VERSION') ? DFSB_ASSET_VERSION : DFSB_VERSION
+            \DynamicFilterSEOBridge\Runtime\AssetVersion::forPath('assets/css/admin-shell-responsive.css')
         );
 
         if (in_array($page, array('dfsb-usage-guide','etg-dfsb-usage-guide'), true)) {
@@ -100,7 +100,7 @@ final class AdminAssets {
                 'dfsb-usage-guide',
                 plugins_url('assets/js/usage-guide.js', DFSB_MAIN_FILE),
                 array('etg-dfsb-admin-shell'),
-                defined('DFSB_ASSET_VERSION') ? DFSB_ASSET_VERSION : DFSB_VERSION,
+                \DynamicFilterSEOBridge\Runtime\AssetVersion::forPath('assets/js/usage-guide.js'),
                 true
             );
         }

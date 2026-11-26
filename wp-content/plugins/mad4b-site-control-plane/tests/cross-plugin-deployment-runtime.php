@@ -40,13 +40,14 @@ foreach ($catalog['items'] as $record) {
 check($catalog['count']>=2 && $catalog['count']===count($registered)
     && !$catalog['mutation_performed'],'source registry inventory');
 check($GLOBALS['remote_calls']===0,'passive discover triggers no GitHub request');
+check($registered['etg-dynamic-filter-seo-bridge']['replacement_source_id']==='dynamic-filter-seo-bridge','legacy discovery retains canonical replacement identity');
 check(isset($registered['etg-dynamic-filter-seo-bridge'])
     && isset($registered['dynamic-filter-seo-bridge']),'both legacy and neutral source visible');
 foreach (array('etg-dynamic-filter-seo-bridge','dynamic-filter-seo-bridge') as $sourceId) {
     check($registered[$sourceId]['repository']==='mad4bdigital-ai/WordPress',
         'registered same-repository source missing: '.$sourceId);
     check($registered[$sourceId]['package_certification']==='pending'
-        && $registered[$sourceId]['review_state']==='source_reviewed_artifact_pending',
+        && $registered[$sourceId]['review_state']===($sourceId==='etg-dynamic-filter-seo-bridge'?'legacy_retirement_pending':'source_reviewed_artifact_pending'),
         'candidate must not promote package certification: '.$sourceId);
     check($registered[$sourceId]['installed']===false,'not-installed source detected: '.$sourceId);
 }

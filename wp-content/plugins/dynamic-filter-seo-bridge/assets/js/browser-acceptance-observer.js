@@ -2,7 +2,7 @@
     'use strict';
 
     var CONTRACT = 'etg.dfsb.browser-acceptance-observer.v1';
-    var ENDPOINT = '/wp-json/etg-dfsb/v1/ajax-presentation';
+    var ENDPOINT = '/wp-json/dfsb/v1/ajax-presentation';
     var MAX_DIAGNOSTIC_EVENTS = 32;
     var originalFetch = null, originalPushState = null, originalReplaceState = null;
     var jsfSubscribed = false, armed = false, currentCase = null, currentChallengeNonce = '';
