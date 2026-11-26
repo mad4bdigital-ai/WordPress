@@ -11626,6 +11626,25 @@
         "ROLLOUT-01"
       ],
       "review_rationale": "Read-only discovery projects the registered replacement source ID without altering selection, package planning, executor or authorization. Original deployment fixture checks both source identities and uncertified package denial."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json",
+      "source_blob_sha": "e23eb0ba8fa01cae2c894d7aff3af1b6ab75f9cc",
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/dfsb-rc15-signed-review-source-pin.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-source-matrix-contract.py"
+      ],
+      "owner_role": "Repository source review (CI-only technical coverage; independent release approval remains required)",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ],
+      "review_rationale": "Reviewed candidate-only DFSB 0.4.16 exact source pin, reviewed native build contract and signed-review archive digest; deterministic rebuild matches signed artifact byte-for-byte. Same-PR native and standard builder regressions reject unknown contract, incorrect digest and forged receipt. Exact source-pin regression preserves legacy identity and prohibits certified provider, production promotion or deployment authority. Signed review evidence is not immutable publication or independent provider certification."
     }
   ],
   "code_change_rules": {

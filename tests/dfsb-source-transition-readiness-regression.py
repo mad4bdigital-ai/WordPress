@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 import shutil
+import sys
 import subprocess
 
 root = Path(__file__).resolve().parents[1]
@@ -33,7 +34,10 @@ legacy, neutral = (by_id[x] for x in ("etg-dynamic-filter-seo-bridge", "dynamic-
 assert legacy["review_state"] == "legacy_retirement_pending"
 assert legacy["replacement_source_id"] == neutral["id"]
 assert legacy["candidate_source_commit_sha"] == "76ef918d8485c42e92dd38b3725efd4de5471556"
-assert neutral["candidate_source_commit_sha"] == "fbcfed264231a2553d197927617a9cdae67f5567"
+# Reuse the exact signed source-pin contract. Do not derive expected SHA from
+# the same mutable registry being tested or duplicate historical candidates.
+subprocess.run([sys.executable, str(scp / "tests/dfsb-rc15-signed-review-source-pin.py")],
+               cwd=root, check=True, timeout=60)
 for row in (legacy, neutral):
     assert row["package_certification"] == "pending"
     assert all(row[k] == "" for k in ("source_commit_sha", "artifact_sha256", "artifact_version", "production_promotion_attestation"))

@@ -17,6 +17,8 @@ assert 'git -C candidate -c protocol.version=2 fetch --no-tags --depth=1 origin'
 assert 'git -C candidate rev-parse HEAD' in workflow
 assert 'production' not in workflow.lower()
 assert 'candidate_source_commit_sha' in selector
+assert "- 'tools/dfsb-neutral/build_candidate.py'" in workflow
+assert 'build_contract' in selector
 assert registry['default_execution']=='deny_until_exact_artifact_certified'
 assert all(r['package_certification']=='pending' and not r['artifact_sha256']
            for r in registry['sources'] if r['review_state']=='source_reviewed_artifact_pending')

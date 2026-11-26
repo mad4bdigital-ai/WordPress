@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Build deterministic, review-only WordPress plugin ZIP from a reviewed repo source.
 
-No source code is executed, no credentials loaded and nothing is deployed.
+No fetched provider code is executed, no credentials loaded and nothing is deployed.
 """
 import argparse
 import hashlib
+import io
+import importlib.util
 import json
 import os
 import pathlib
@@ -117,19 +119,57 @@ def build(trusted_manifest, checkout, source_id, source_sha, out_dir):
     out_dir = pathlib.Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     zip_path = out_dir / (source_id + "-" + source_sha + ".zip")
+    # Resolve only trusted, locally implemented contracts; never import or
+    # execute a builder from the fetched provider checkout.
+    build_contract = source.get("build_contract", "wordpress-source-zip.v1")
+    require(build_contract in ("wordpress-source-zip.v1", "dfsb-release-review.v1"),
+            "unsupported reviewed build contract")
+    def verified_payload(relative, path):
+        payload = path.read_bytes()
+        git_blob = hashlib.sha1(b"blob " + str(len(payload)).encode("ascii") + b"\0" + payload).hexdigest()
+        require(git_blob == expected_blobs[relative], "source blob changed before archive write")
+        return payload
+
+    tree_sha = subprocess.check_output(["git", "-C", str(checkout), "rev-parse", source_sha + "^{tree}"], text=True, timeout=15).strip()
+    require(GIT_SHA.fullmatch(tree_sha) is not None, "invalid exact source tree")
+    if build_contract == "dfsb-release-review.v1":
+        require(main == "dynamic-filter-seo-bridge/dynamic-filter-seo-bridge.php"
+                and subdir == "wp-content/plugins/dynamic-filter-seo-bridge", "native contract identity mismatch")
+        expected_archive = source.get("candidate_archive_sha256", "")
+        require(isinstance(expected_archive, str) and re.fullmatch(r"[a-f0-9]{64}", expected_archive),
+                "native build requires reviewed exact archive digest")
+        verified = {relative: verified_payload(relative, path) for relative, path in contents}
+        require(b"DFSB_FORCE_FULL_BOOT" not in verified[main.split("/", 1)[1]], "unsafe boot override in plugin header")
+        renderer = pathlib.Path(__file__).resolve().parent / "dfsb-neutral/build_candidate.py"
+        spec = importlib.util.spec_from_file_location("mad4b_trusted_dfsb_renderer", renderer)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        package, rendered_version = module.render_package(verified, source_sha, tree_sha, release_review=True)
+        require(rendered_version == version, "native renderer version mismatch")
+        require(hashlib.sha256(package).hexdigest() == expected_archive, "native archive differs from reviewed digest")
+    else:
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zipped:
+            for relative, path in contents:
+                payload = verified_payload(relative, path)
+                info = zipfile.ZipInfo(slug + "/" + relative, date_time=(1980, 1, 1, 0, 0, 0))
+                info.create_system = 3
+                info.external_attr = 0o100644 << 16
+                info.compress_type = zipfile.ZIP_DEFLATED
+                zipped.writestr(info, payload, compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
+        package = buffer.getvalue()
+        expected_archive = source.get("candidate_archive_sha256")
+        require(not expected_archive or hashlib.sha256(package).hexdigest() == expected_archive,
+                "archive differs from reviewed digest")
     file_entries = []
-    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zipped:
-        for relative, path in contents:
-            payload = path.read_bytes()
-            git_blob = hashlib.sha1(b"blob " + str(len(payload)).encode("ascii") + b"\0" + payload).hexdigest()
-            require(git_blob == expected_blobs[relative], "source blob changed before archive write")
-            name = slug + "/" + relative
-            info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
-            info.create_system = 3
-            info.external_attr = 0o100644 << 16
-            info.compress_type = zipfile.ZIP_DEFLATED
-            zipped.writestr(info, payload, compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
+    with zipfile.ZipFile(io.BytesIO(package)) as zipped:
+        for name in sorted(zipped.namelist()):
+            payload = zipped.read(name)
             file_entries.append(dict(path=name, sha256=hashlib.sha256(payload).hexdigest(), bytes=len(payload)))
+    require(len(file_entries) <= MAX_FILES and sum(x["bytes"] for x in file_entries) <= MAX_UNPACKED_BYTES,
+            "rendered archive exceeds budget")
+    require(len(package) <= MAX_ARCHIVE_BYTES, "compressed archive budget exceeded")
+    zip_path.write_bytes(package)
     archive_size = zip_path.stat().st_size
     require(archive_size <= MAX_ARCHIVE_BYTES, "compressed archive budget exceeded")
     entries_digest = hashlib.sha256(json.dumps(
@@ -146,7 +186,10 @@ def build(trusted_manifest, checkout, source_id, source_sha, out_dir):
         "archive_sha256": hashlib.sha256(zip_path.read_bytes()).hexdigest(),
         "archive_bytes": archive_size,
         "archive_manifest_sha256": entries_digest,
-        "archive_file_count": len(contents),
+        "archive_file_count": len(file_entries),
+        "source_file_count": len(contents),
+        "build_contract": build_contract,
+        "source_tree_sha": tree_sha,
         "source_blob_verification": True,
         "outcome_authorizes_deployment": False,
         "production_promotion_granted": False,
@@ -168,7 +211,7 @@ def main():
     try:
         zip_path, manifest_path, result = build(
             args.trusted_manifest, args.checkout, args.source_id, args.sha, args.out)
-    except (ValueError, OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+    except (ValueError, RuntimeError, OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
         print("Source-only build rejected: " + str(exc), file=sys.stderr)
         sys.exit(2)
     print(json.dumps({"zip": str(zip_path), "manifest": str(manifest_path),

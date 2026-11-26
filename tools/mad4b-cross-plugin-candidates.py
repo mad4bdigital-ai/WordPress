@@ -47,6 +47,10 @@ def candidates(manifest, requested=""):
             or not isinstance(provider, str) or not ID.fullmatch(provider)
             or not entry.startswith(directory.rsplit("/", 1)[-1] + "/")):
             raise ValueError("candidate lacks exact reviewed identity: " + ident)
+        contract = row.get("build_contract", "wordpress-source-zip.v1")
+        digest = row.get("candidate_archive_sha256", "")
+        if contract not in ("wordpress-source-zip.v1", "dfsb-release-review.v1") or (digest and (not isinstance(digest, str) or not re.fullmatch(r"[a-f0-9]{64}", digest))) or (contract == "dfsb-release-review.v1" and not digest):
+            raise ValueError("invalid reviewed build contract: " + ident)
         matrix.append({"source_id": ident, "repository": repo, "source_commit_sha": sha})
     if requested and not matrix:
         raise ValueError("source absent or not approved for candidate build")

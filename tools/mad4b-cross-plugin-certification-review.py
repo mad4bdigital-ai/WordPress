@@ -45,6 +45,9 @@ def verify(registry_path, source_id, archive_path, receipt_path):
         or receipt.get("outcome_authorizes_deployment") is not False
         or receipt.get("production_promotion_granted") is not False):
         raise ValueError("candidate receipt does not match exact source")
+    build_contract = source.get("build_contract", "wordpress-source-zip.v1")
+    if build_contract not in ("wordpress-source-zip.v1", "dfsb-release-review.v1") or receipt.get("build_contract", "wordpress-source-zip.v1") != build_contract:
+        raise ValueError("candidate build contract mismatch")
     archive = Path(archive_path)
     size = archive.stat().st_size
     if not 0 < size <= MAX_COMPRESSED or size != receipt.get("archive_bytes"):
@@ -52,6 +55,9 @@ def verify(registry_path, source_id, archive_path, receipt_path):
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
     if not HEX64.fullmatch(str(receipt.get("archive_sha256", ""))) or digest != receipt["archive_sha256"]:
         raise ValueError("ZIP SHA256 changed since builder receipt")
+    expected_archive = source.get("candidate_archive_sha256")
+    if (build_contract == "dfsb-release-review.v1" and not expected_archive) or (expected_archive and digest != expected_archive):
+        raise ValueError("archive differs from reviewed digest")
     slug = PurePosixPath(source["plugin_subdirectory"]).name
     files = []
     seen = set()
@@ -79,6 +85,23 @@ def verify(registry_path, source_id, archive_path, receipt_path):
     files.sort(key=lambda x: x["path"])
     if not files or slug + "/" + source["plugin_file"].split("/", 1)[1] not in seen:
         raise ValueError("plugin header/entrypoint missing")
+    if build_contract == "dfsb-release-review.v1":
+        if source["plugin_file"] != "dynamic-filter-seo-bridge/dynamic-filter-seo-bridge.php":
+            raise ValueError("native contract identity mismatch")
+        with zipfile.ZipFile(archive) as zipped:
+            identity = json.loads(zipped.read(slug + "/build-identity.json"))
+            manifest = json.loads(zipped.read(slug + "/installed-content-manifest.json"))
+        if (identity.get("contract") != "etg.dfsb.embedded-build-identity.v1"
+            or identity.get("git_sha") != sha or identity.get("plugin_version") != version
+            or not HEX40.fullmatch(str(identity.get("tree_sha", "")))
+            or identity.get("tree_sha") != receipt.get("source_tree_sha")):
+            raise ValueError("embedded source identity mismatch")
+        expected_files = {x["path"].split("/", 1)[1]: x["sha256"] for x in files
+                          if x["path"].split("/", 1)[1] not in {"build-identity.json", "installed-content-manifest.json"}}
+        if (manifest.get("contract") != "etg.dfsb.installed-content-manifest.v1"
+            or manifest.get("algorithm") != "sha256" or manifest.get("files") != expected_files
+            or receipt.get("source_file_count") != len(expected_files)):
+            raise ValueError("embedded installed-content manifest mismatch")
     if receipt.get("archive_file_count") != len(files):
         raise ValueError("archive file-count mismatch")
     manifest_sha = hashlib.sha256(json.dumps(
@@ -89,7 +112,8 @@ def verify(registry_path, source_id, archive_path, receipt_path):
             "phase": "certification", "state": "VERIFIED_CANDIDATE_NEEDS_INDEPENDENT_REVIEW",
             "source_id": source_id, "repository": source["repository"], "source_commit_sha": sha,
             "version": version, "archive_sha256": digest, "archive_bytes": size,
-            "archive_file_count": len(files), "archive_manifest_sha256": manifest_sha,
+            "archive_file_count": len(files),
+            "build_contract": build_contract, "archive_manifest_sha256": manifest_sha,
             "independent_review_required": True,
             "source_registry_certified": False,
             "staging_apply_authorized": False,
