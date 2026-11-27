@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MAD4B Mixed Elementor Family — Public Island Compiler
  * Description: Splits approved public Tour containers from live Rate/Form/booking siblings without modifying Elementor templates.
- * Version: 0.2.3
+ * Version: 0.2.4
  */
 defined('ABSPATH') || exit;
 
@@ -206,7 +206,19 @@ final class MAD4B_Mixed_Family_Public_Islands_V1 {
             'generation'=>(string)get_option('mad4b_render_query_data_generation','initial')
         ];
         $json=wp_json_encode($deps,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
-        return is_string($json)?hash('sha256',$json):'';
+        if(!is_string($json))return '';
+        self::record_dependencies((int)$root['family'],array_keys($listingSha),array_column($termsData,0));
+        return hash('sha256',$json);
+    }
+    private static function record_dependencies(int $family,array $listings,array $terms):void {
+        if(!class_exists('MAD4B_Page_Dependency_Cache',false))return;
+        MAD4B_Page_Dependency_Cache::depend('post:'.self::$tour);
+        MAD4B_Page_Dependency_Cache::depend('template:'.$family);
+        foreach($listings as $id){
+            MAD4B_Page_Dependency_Cache::depend('template:'.(int)$id);
+            MAD4B_Page_Dependency_Cache::depend('listing:'.(int)$id);
+        }
+        foreach($terms as $id)MAD4B_Page_Dependency_Cache::depend('term:destinations:'.(int)$id);
     }
     public static function safe_html($html): bool {
         if(!is_string($html)||strlen($html)<400||strlen($html)>350000)return false;
@@ -283,13 +295,6 @@ final class MAD4B_Mixed_Family_Public_Islands_V1 {
         $data=['html'=>$html,'sha'=>hash('sha256',$html),'scripts'=>$scripts,'styles'=>$styles];
         $stored=wp_cache_set('island_'.$key,$data,self::GROUP,120);
         self::receipt($stored?'MISS_STORED':'MISS_WRITE_FAILED',$key,(hrtime(true)-$t)/1e6,strlen($html));
-        if($stored && class_exists('MAD4B_Page_Dependency_Cache',false)
-            && method_exists('MAD4B_Page_Dependency_Cache','depend')) {
-            MAD4B_Page_Dependency_Cache::depend('template:'.(int)$root['family']);
-            MAD4B_Page_Dependency_Cache::depend('post:'.self::$tour);
-            foreach((array)($root['listings']??[]) as $listing)
-                MAD4B_Page_Dependency_Cache::depend('template:'.absint($listing));
-        }
         return $html;
     }
     public static function shutdown():void {

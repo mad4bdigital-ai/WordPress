@@ -1481,3 +1481,6 @@ add_action('mad4b/wpml/term_permalink/invalidate','mad4b_render_query_invalidate
 // A central Content Job / controlled SQL import already emits this action.
 // It only flushes WPML term permalinks when explicitly marked as a taxonomy migration.
 add_action('mad4b/render_query/term_taxonomy_migrated','mad4b_render_query_invalidate_wpml_term_links',50);
+
+// Adaptive cost observations use the original Governor lifecycle ring.
+require_once __DIR__.'/includes/mad4b-adaptive-render-profile-v1.php';
