@@ -102,7 +102,7 @@ def validate_zip(archive, receipt_path, expected_head, expected_digest):
     check(archive.is_file() and receipt_path.is_file(), "missing CI package files")
     check(not archive.is_symlink() and not receipt_path.is_symlink(), "symlink package input")
     b = archive.read_bytes()
-    check(0 < len(b) <= 16*1024*1024 and sha(b) == expected_digest, "ZIP hash changed")
+    check(0 < len(b) <= 24*1024*1024 and sha(b) == expected_digest, "ZIP hash changed")
     receipt = json.loads(receipt_path.read_text())
     check(receipt.get("contract") == "mad4b.deterministic-control-plane-package.v1",
           "receipt contract incorrect")

@@ -90,7 +90,7 @@ def main() -> None:
         if not src.is_file() or src.is_symlink():
             fail("Missing or symlinked private/evidence input: " + src.name)
     zipsize = args.zip.stat().st_size
-    if zipsize <= 0 or zipsize > 16 * 1024 * 1024:
+    if zipsize <= 0 or zipsize > 24 * 1024 * 1024:
         fail("Plugin ZIP size outside selected-HEAD WordPress limit.")
     receipt = read_json(args.canonical_receipt)
     evidence = read_json(args.gate_results)

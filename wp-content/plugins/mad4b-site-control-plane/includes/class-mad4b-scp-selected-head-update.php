@@ -16,7 +16,7 @@ final class MAD4B_SCP_Selected_Head_Update {
     const REPO = 'mad4bdigital-ai/WordPress';
     const RELEASE_TAG = 'mad4b-site-control-plane-update-channel';
     const MAX_MANIFEST_BYTES = 16384;
-    const MAX_ZIP_BYTES = 16777216;
+    const MAX_ZIP_BYTES = 25165824;
 
     public static function boot() {
         // Register scoped WordPress-only attestation trust enrollment without

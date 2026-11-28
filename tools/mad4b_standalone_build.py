@@ -23,6 +23,8 @@ CANONICAL_BUILDER = PLUGIN / "tests/build-deterministic-control-plane-package.py
 POLICY = PLUGIN / "config/runtime-release-policy.json"
 PROFILES = PLUGIN / "config/certified-provider-profiles.json"
 CONTRACT = "mad4b.standalone-source-build.v1"
+# Bounded Staging-only package envelope; all signed-source and ZIP integrity gates remain mandatory.
+MAX_STAGING_PACKAGE_BYTES = 24 * 1024 * 1024
 SHA40 = re.compile(r"^[0-9a-f]{40}$")
 VERSION = re.compile(r"^ \* Version: ([0-9A-Za-z._-]+)", re.MULTILINE)
 TESTS = (
@@ -265,7 +267,7 @@ def build(root: Path, output: Path, source: str, adapter: Path,
                 "canonical_builder_failed")
         receipt = json.loads(receipt_file.read_text(encoding="utf-8"))
         verify_zip(archive, receipt, source)
-        require(archive.stat().st_size <= 16 * 1024 * 1024,
+        require(archive.stat().st_size <= MAX_STAGING_PACKAGE_BYTES,
                 "package_exceeds_staging_upload_limit")
     source_identity(root, source)
     result = {"contract": CONTRACT, "source_commit_sha": source,

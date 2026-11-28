@@ -47,6 +47,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 -B tests/mad4b-package-size-budget-contract.py
           python3 -B tools/mad4b_publish_ci_staging_candidate.py --self-test
 
       - name: Verify and publish two immutable Staging-only assets
